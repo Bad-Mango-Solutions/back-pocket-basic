@@ -457,18 +457,15 @@ public readonly struct BasicValue
     /// This method is intended for BASIC interpreter operations where floating-point equality should use
     /// tolerance-based comparison. For exact equality (e.g., for use in hash-based collections), use the
     /// == operator or Equals method instead.
-    /// String values are compared exactly, not approximately.
+    /// String values are compared exactly. If one value is a string and the other is numeric, the string
+    /// is converted to a number (using BASIC conversion rules where non-numeric strings become 0) and
+    /// compared numerically, matching the behavior of the == operator and Applesoft BASIC semantics.
     /// </remarks>
     public bool ApproximatelyEquals(BasicValue other)
     {
         if (IsString && other.IsString)
         {
             return AsString() == other.AsString();
-        }
-
-        if (IsString || other.IsString)
-        {
-            return false;
         }
 
         return AreDoublesApproximatelyEqual(AsNumber(), other.AsNumber());
