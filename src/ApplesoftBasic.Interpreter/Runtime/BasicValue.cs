@@ -156,7 +156,7 @@ public readonly struct BasicValue
     public static BasicValue operator /(BasicValue a, BasicValue b)
     {
         double divisor = b.AsNumber();
-        if (IsZero(divisor))
+        if (divisor == 0.0)
         {
             throw new BasicRuntimeException("?DIVISION BY ZERO ERROR");
         }
