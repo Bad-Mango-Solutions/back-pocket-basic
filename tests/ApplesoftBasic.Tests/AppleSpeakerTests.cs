@@ -71,12 +71,11 @@ public class AppleSpeakerTests
     [Test]
     public void Click_TogglesState_BetweenCalls()
     {
-        // Act - Generate two clicks with a small delay between them
+        // Act - Generate two clicks and flush them separately
         speaker.Click();
         speaker.Flush();
         var firstClickSamples = testAudioOutput.LastSamples;
 
-        Thread.Sleep(10); // Small delay to ensure timing difference
         testAudioOutput.Clear();
 
         speaker.Click();
