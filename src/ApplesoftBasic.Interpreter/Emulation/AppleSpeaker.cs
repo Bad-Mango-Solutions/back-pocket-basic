@@ -46,8 +46,8 @@ public class AppleSpeaker : IAppleSpeaker
     private const int ClickSamples = 64; // ~1.5ms pulse
 
     // Beep configuration - authentic Apple II beep is ~1000Hz for ~0.1 seconds
-    private const int BeepFrequency = 1000;
-    private const double BeepDuration = 0.1;
+    private const int BeepFrequency = 800;
+    private const double BeepDuration = 0.15;
 
     // Audio buffer for accumulating clicks
     private readonly List<short> _audioBuffer = new();
