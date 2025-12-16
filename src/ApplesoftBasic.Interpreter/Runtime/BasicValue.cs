@@ -449,9 +449,27 @@ public readonly struct BasicValue
     /// <param name="a">The first double value to compare.</param>
     /// <param name="b">The second double value to compare.</param>
     /// <returns>
-    /// <c>true</c> if the absolute difference between the two values is less than or equal to <see cref="Epsilon"/>; otherwise, <c>false</c>.
+    /// <c>true</c> if the absolute difference between the two values is less than or equal to <see cref="Epsilon"/>
+    /// or the relative difference is within the tolerance; otherwise, <c>false</c>.
     /// </returns>
-    private static bool AreDoublesEqual(double a, double b) => Math.Abs(a - b) <= Epsilon;
+    /// <remarks>
+    /// Uses a hybrid approach: absolute epsilon for small numbers, relative epsilon for large numbers.
+    /// This ensures accurate comparisons across different magnitude ranges.
+    /// </remarks>
+    private static bool AreDoublesEqual(double a, double b)
+    {
+        double diff = Math.Abs(a - b);
+
+        // For numbers close to zero, use absolute epsilon
+        if (diff <= Epsilon)
+        {
+            return true;
+        }
+
+        // For larger numbers, use relative epsilon
+        double maxAbs = Math.Max(Math.Abs(a), Math.Abs(b));
+        return diff <= Epsilon * maxAbs;
+    }
 
     /// <summary>
     /// Determines whether a double value is approximately zero within a small epsilon tolerance.
