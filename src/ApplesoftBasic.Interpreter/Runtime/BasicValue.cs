@@ -9,6 +9,11 @@ namespace ApplesoftBasic.Interpreter.Runtime;
 /// </summary>
 public readonly struct BasicValue
 {
+    /// <summary>
+    /// Epsilon value for floating-point comparisons.
+    /// </summary>
+    private const double Epsilon = 1e-10;
+
     private readonly double numericValue;
     private readonly string? stringValue;
 
@@ -151,7 +156,7 @@ public readonly struct BasicValue
     public static BasicValue operator /(BasicValue a, BasicValue b)
     {
         double divisor = b.AsNumber();
-        if (divisor == 0)
+        if (IsZero(divisor))
         {
             throw new BasicRuntimeException("?DIVISION BY ZERO ERROR");
         }
@@ -201,7 +206,7 @@ public readonly struct BasicValue
             return a.AsString() == b.AsString();
         }
 
-        return a.AsNumber() == b.AsNumber();
+        return AreDoublesEqual(a.AsNumber(), b.AsNumber());
     }
 
     /// <summary>
@@ -343,19 +348,18 @@ public readonly struct BasicValue
         }
 
         // Format number like Applesoft
-        if (numericValue == 0)
+        if (IsZero(numericValue))
         {
             return "0";
         }
 
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (numericValue == Math.Floor(numericValue) && Math.Abs(numericValue) < 1e10)
+        if (AreDoublesEqual(numericValue, Math.Floor(numericValue)) && Math.Abs(numericValue) < 1e10)
         {
             return ((long)numericValue).ToString();
         }
 
         // Use E notation for very large/small numbers
-        if (Math.Abs(numericValue) >= 1e10 || (Math.Abs(numericValue) < 0.01 && numericValue != 0))
+        if (Math.Abs(numericValue) >= 1e10 || (Math.Abs(numericValue) < 0.01 && !IsZero(numericValue)))
         {
             return numericValue.ToString("E8").TrimEnd('0').TrimEnd('.');
         }
@@ -404,7 +408,7 @@ public readonly struct BasicValue
             return !string.IsNullOrEmpty(stringValue);
         }
 
-        return numericValue != 0;
+        return !IsZero(numericValue);
     }
 
     /// <summary>
@@ -438,4 +442,23 @@ public readonly struct BasicValue
     /// If the instance represents a numeric value, the hash code of the numeric value is returned.
     /// </returns>
     public override int GetHashCode() => IsString ? stringValue?.GetHashCode() ?? 0 : numericValue.GetHashCode();
+
+    /// <summary>
+    /// Determines whether two double values are approximately equal within a small epsilon tolerance.
+    /// </summary>
+    /// <param name="a">The first double value to compare.</param>
+    /// <param name="b">The second double value to compare.</param>
+    /// <returns>
+    /// <c>true</c> if the absolute difference between the two values is less than or equal to <see cref="Epsilon"/>; otherwise, <c>false</c>.
+    /// </returns>
+    private static bool AreDoublesEqual(double a, double b) => Math.Abs(a - b) <= Epsilon;
+
+    /// <summary>
+    /// Determines whether a double value is approximately zero within a small epsilon tolerance.
+    /// </summary>
+    /// <param name="value">The double value to check.</param>
+    /// <returns>
+    /// <c>true</c> if the absolute value is less than or equal to <see cref="Epsilon"/>; otherwise, <c>false</c>.
+    /// </returns>
+    private static bool IsZero(double value) => Math.Abs(value) <= Epsilon;
 }
