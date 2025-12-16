@@ -2,13 +2,26 @@ name: Sync Wiki
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'wiki/**'     # Only trigger if files in wiki/ change
 
+# Prevent concurrent wiki syncs
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
 jobs:
   sync-wiki:
+    name: Sync Wiki
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout main repo
         uses: actions/checkout@v4
@@ -22,10 +35,35 @@ jobs:
 
       - name: Sync wiki folder
         run: |
+          echo "Syncing wiki files..."
           rsync -av --delete wiki/ wiki-repo/
+          
+      - name: Check for changes
+        id: check_changes
+        run: |
+          cd wiki-repo/
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git status --short
+          fi
+          
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
           cd wiki-repo/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Sync wiki from main repo" || echo "No changes to commit"
-          git push origin master
+          git commit -m "Sync wiki from main repo"
+          
+          # Try to push, handling both master and main branch names
+          if git push origin HEAD; then
+            echo "Successfully pushed to wiki repository"
+          else
+            echo "Push failed, retrying..."
+            git push origin master || git push origin main
+          fi
