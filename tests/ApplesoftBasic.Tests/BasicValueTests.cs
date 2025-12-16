@@ -443,4 +443,226 @@ public class BasicValueTests
         var value = BasicValue.FromNumber(42);
         Assert.That(value.AsString(), Is.EqualTo("42"));
     }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns true for identical values.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_IdenticalValues_ReturnsTrue()
+    {
+        var a = BasicValue.FromNumber(42.0);
+        var b = BasicValue.FromNumber(42.0);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns true for values
+    /// within epsilon tolerance (1e-10).
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_WithinEpsilon_ReturnsTrue()
+    {
+        var a = BasicValue.FromNumber(1.0);
+        var b = BasicValue.FromNumber(1.0 + 5e-11); // Well within epsilon
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns false for values
+    /// that differ by more than epsilon tolerance.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_BeyondEpsilon_ReturnsFalse()
+    {
+        var a = BasicValue.FromNumber(1.0);
+        var b = BasicValue.FromNumber(1.0 + 2e-10); // Beyond epsilon (1e-10)
+
+        Assert.That(a.ApproximatelyEquals(b), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> correctly handles values
+    /// at the epsilon boundary (1e-10).
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_AtEpsilonBoundary_ReturnsTrue()
+    {
+        var a = BasicValue.FromNumber(1.0);
+        var b = BasicValue.FromNumber(1.0 + 9e-11); // Just within epsilon tolerance
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> works correctly with
+    /// very large numbers using relative epsilon.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_LargeNumbers_UsesRelativeEpsilon()
+    {
+        var a = BasicValue.FromNumber(1e15);
+        var b = BasicValue.FromNumber(1e15 + 1e5); // Within relative epsilon
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns false for
+    /// large numbers that differ beyond relative epsilon.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_LargeNumbersBeyondRelativeEpsilon_ReturnsFalse()
+    {
+        var a = BasicValue.FromNumber(1e15);
+        var b = BasicValue.FromNumber(1e15 + 2e6); // Beyond relative epsilon
+
+        Assert.That(a.ApproximatelyEquals(b), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> correctly handles
+    /// very small numbers near zero using absolute epsilon.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_VerySmallNumbers_UsesAbsoluteEpsilon()
+    {
+        var a = BasicValue.FromNumber(1e-11);
+        var b = BasicValue.FromNumber(2e-11);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True); // Both within epsilon of 0
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns true for
+    /// mixed magnitude comparisons within tolerance.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_MixedMagnitudes_WithinTolerance()
+    {
+        var a = BasicValue.FromNumber(1000.0);
+        var b = BasicValue.FromNumber(1000.0 + 5e-8); // Within relative epsilon
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns true when
+    /// comparing identical string values.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_IdenticalStrings_ReturnsTrue()
+    {
+        var a = BasicValue.FromString("HELLO");
+        var b = BasicValue.FromString("HELLO");
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> returns false when
+    /// comparing different string values.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_DifferentStrings_ReturnsFalse()
+    {
+        var a = BasicValue.FromString("HELLO");
+        var b = BasicValue.FromString("WORLD");
+
+        Assert.That(a.ApproximatelyEquals(b), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> handles mixed string/numeric
+    /// comparisons by converting strings to numbers.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_StringAndNumeric_ConvertsAndCompares()
+    {
+        var a = BasicValue.FromString("42");
+        var b = BasicValue.FromNumber(42.0);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> treats non-numeric strings
+    /// as zero when compared with numeric values.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_NonNumericStringAndZero_ReturnsTrue()
+    {
+        var a = BasicValue.FromString("ABC");
+        var b = BasicValue.FromNumber(0.0);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True); // "ABC" converts to 0
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> is symmetric:
+    /// a.ApproximatelyEquals(b) == b.ApproximatelyEquals(a).
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_IsSymmetric()
+    {
+        var a = BasicValue.FromNumber(1.0);
+        var b = BasicValue.FromNumber(1.0 + 5e-11);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.EqualTo(b.ApproximatelyEquals(a)));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> maintains consistency
+    /// with exact equality for values that are exactly equal.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_ExactlyEqualValues_ConsistentWithOperator()
+    {
+        var a = BasicValue.FromNumber(42.0);
+        var b = BasicValue.FromNumber(42.0);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+        Assert.That(a == b, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> and the == operator
+    /// can differ for values within epsilon tolerance.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_DiffersFromOperator_ForEpsilonDifferences()
+    {
+        var a = BasicValue.FromNumber(1.0);
+        var b = BasicValue.FromNumber(1.0 + 5e-11);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+        Assert.That(a == b, Is.False); // Exact equality is false
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> correctly handles
+    /// negative numbers within epsilon tolerance.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_NegativeNumbers_WithinEpsilon()
+    {
+        var a = BasicValue.FromNumber(-1.0);
+        var b = BasicValue.FromNumber(-1.0 - 5e-11);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.ApproximatelyEquals"/> correctly handles
+    /// comparisons across zero.
+    /// </summary>
+    [Test]
+    public void ApproximatelyEquals_AcrossZero_WithinEpsilon()
+    {
+        var a = BasicValue.FromNumber(5e-11);
+        var b = BasicValue.FromNumber(-5e-11);
+
+        Assert.That(a.ApproximatelyEquals(b), Is.True); // Both within epsilon of 0
+    }
 }

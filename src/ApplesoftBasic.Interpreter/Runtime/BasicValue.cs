@@ -9,6 +9,12 @@ namespace ApplesoftBasic.Interpreter.Runtime;
 /// </summary>
 public readonly struct BasicValue
 {
+    /// <summary>
+    /// Epsilon value for approximate floating-point comparisons in BASIC operations.
+    /// This tolerance (1e-10) is appropriate for the precision of Applesoft BASIC.
+    /// </summary>
+    private const double Epsilon = 1e-10;
+
     private readonly double numericValue;
     private readonly string? stringValue;
 
@@ -151,7 +157,7 @@ public readonly struct BasicValue
     public static BasicValue operator /(BasicValue a, BasicValue b)
     {
         double divisor = b.AsNumber();
-        if (divisor == 0)
+        if (divisor == 0.0)
         {
             throw new BasicRuntimeException("?DIVISION BY ZERO ERROR");
         }
@@ -192,7 +198,8 @@ public readonly struct BasicValue
     /// </returns>
     /// <remarks>
     /// If both instances represent strings, they are compared using string equality.
-    /// If both instances represent numbers, they are compared numerically.
+    /// If both instances represent numbers, they are compared numerically using exact equality
+    /// to maintain the Equals/GetHashCode contract required for use in hash-based collections.
     /// </remarks>
     public static bool operator ==(BasicValue a, BasicValue b)
     {
@@ -355,7 +362,7 @@ public readonly struct BasicValue
         }
 
         // Use E notation for very large/small numbers
-        if (Math.Abs(numericValue) >= 1e10 || (Math.Abs(numericValue) < 0.01 && numericValue != 0))
+        if (Math.Abs(numericValue) >= 1e10 || (Math.Abs(numericValue) < 0.01 && numericValue != 0.0))
         {
             return numericValue.ToString("E8").TrimEnd('0').TrimEnd('.');
         }
@@ -404,7 +411,7 @@ public readonly struct BasicValue
             return !string.IsNullOrEmpty(stringValue);
         }
 
-        return numericValue != 0;
+        return numericValue != 0.0;
     }
 
     /// <summary>
@@ -438,4 +445,57 @@ public readonly struct BasicValue
     /// If the instance represents a numeric value, the hash code of the numeric value is returned.
     /// </returns>
     public override int GetHashCode() => IsString ? stringValue?.GetHashCode() ?? 0 : numericValue.GetHashCode();
+
+    /// <summary>
+    /// Determines whether this <see cref="BasicValue"/> is approximately equal to another using epsilon-based comparison.
+    /// </summary>
+    /// <param name="other">The <see cref="BasicValue"/> to compare with.</param>
+    /// <returns>
+    /// <c>true</c> if both values are approximately equal within epsilon tolerance; otherwise, <c>false</c>.
+    /// </returns>
+    /// <remarks>
+    /// This method is intended for BASIC interpreter operations where floating-point equality should use
+    /// tolerance-based comparison. For exact equality (e.g., for use in hash-based collections), use the
+    /// == operator or Equals method instead.
+    /// String values are compared exactly. If one value is a string and the other is numeric, the string
+    /// is converted to a number (using BASIC conversion rules where non-numeric strings become 0) and
+    /// compared numerically, matching the behavior of the == operator and Applesoft BASIC semantics.
+    /// </remarks>
+    public bool ApproximatelyEquals(BasicValue other)
+    {
+        if (IsString && other.IsString)
+        {
+            return AsString() == other.AsString();
+        }
+
+        return AreDoublesApproximatelyEqual(AsNumber(), other.AsNumber());
+    }
+
+    /// <summary>
+    /// Determines whether two double values are approximately equal within epsilon tolerance.
+    /// </summary>
+    /// <param name="a">The first double value to compare.</param>
+    /// <param name="b">The second double value to compare.</param>
+    /// <returns>
+    /// <c>true</c> if the absolute difference between the two values is less than or equal to epsilon
+    /// or the relative difference is within the tolerance; otherwise, <c>false</c>.
+    /// </returns>
+    /// <remarks>
+    /// Uses a hybrid approach: absolute epsilon for small numbers, relative epsilon for large numbers.
+    /// This ensures accurate comparisons across different magnitude ranges.
+    /// </remarks>
+    private static bool AreDoublesApproximatelyEqual(double a, double b)
+    {
+        double diff = Math.Abs(a - b);
+
+        // For numbers close to zero, use absolute epsilon
+        if (diff <= Epsilon)
+        {
+            return true;
+        }
+
+        // For larger numbers, use relative epsilon
+        double maxAbs = Math.Max(Math.Abs(a), Math.Abs(b));
+        return diff <= Epsilon * maxAbs;
+    }
 }
