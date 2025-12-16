@@ -32,9 +32,19 @@ public class InterpreterModule : Module
         // Emulation
         builder.RegisterType<AppleMemory>().As<IMemory>().InstancePerLifetimeScope();
         builder.RegisterType<Cpu6502>().As<ICpu>().InstancePerLifetimeScope();
+        builder.RegisterType<AppleSpeaker>().As<IAppleSpeaker>().InstancePerLifetimeScope();
         builder.RegisterType<AppleSystem>().As<IAppleSystem>().InstancePerLifetimeScope();
         
-        // Interpreter
-        builder.RegisterType<BasicInterpreter>().As<IBasicInterpreter>().InstancePerLifetimeScope();
+        // Interpreter - with callback to wire up speaker to IO
+        builder.RegisterType<BasicInterpreter>()
+            .As<IBasicInterpreter>()
+            .InstancePerLifetimeScope()
+            .OnActivated(e =>
+            {
+                // Wire the speaker to the IO for CHR$(7) beep support
+                var io = e.Context.Resolve<IBasicIO>();
+                var speaker = e.Context.Resolve<IAppleSpeaker>();
+                io.SetSpeaker(speaker);
+            });
     }
 }

@@ -36,6 +36,11 @@ public interface IMemory
     /// Total memory size
     /// </summary>
     int Size { get; }
+
+    /// <summary>
+    /// Sets the speaker instance for audio output on $C030 access
+    /// </summary>
+    void SetSpeaker(IAppleSpeaker? speaker);
 }
 
 /// <summary>
@@ -45,6 +50,7 @@ public class AppleMemory : IMemory
 {
     private readonly byte[] _memory;
     private readonly ILogger<AppleMemory> _logger;
+    private IAppleSpeaker? _speaker;
     
     // Standard Apple II memory size (64KB)
     public const int StandardMemorySize = 65536;
@@ -63,6 +69,9 @@ public class AppleMemory : IMemory
     public const int DOS = 0x9D00;
     public const int IOSpace = 0xC000;
     public const int RomStart = 0xD000;
+
+    // Speaker soft switch address
+    public const int SpeakerToggle = 0xC030;
     
     public int Size => _memory.Length;
 
@@ -71,6 +80,11 @@ public class AppleMemory : IMemory
         _logger = logger;
         _memory = new byte[size];
         InitializeMemory();
+    }
+
+    public void SetSpeaker(IAppleSpeaker? speaker)
+    {
+        _speaker = speaker;
     }
 
     private void InitializeMemory()
@@ -166,7 +180,7 @@ public class AppleMemory : IMemory
         {
             0xC000 => _memory[0xC000],  // KBD - Keyboard data
             0xC010 => ClearKeyboardStrobe(),
-            0xC030 => ToggleSpeaker(),
+            SpeakerToggle => ToggleSpeaker(),
             0xC050 => SetGraphicsMode(),
             0xC051 => SetTextMode(),
             0xC052 => SetFullScreen(),
@@ -191,7 +205,7 @@ public class AppleMemory : IMemory
             case 0xC010:
                 ClearKeyboardStrobe();
                 break;
-            case 0xC030:
+            case SpeakerToggle:
                 ToggleSpeaker();
                 break;
             default:
@@ -208,7 +222,8 @@ public class AppleMemory : IMemory
 
     private byte ToggleSpeaker()
     {
-        // In actual emulation, this would trigger sound
+        // Trigger speaker click for authentic Apple II sound
+        _speaker?.Click();
         return 0;
     }
 

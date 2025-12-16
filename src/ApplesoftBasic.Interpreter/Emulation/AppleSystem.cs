@@ -16,6 +16,11 @@ public interface IAppleSystem
     /// The memory
     /// </summary>
     IMemory Memory { get; }
+
+    /// <summary>
+    /// The speaker
+    /// </summary>
+    IAppleSpeaker Speaker { get; }
     
     /// <summary>
     /// Reads a byte from emulated memory (PEEK)
@@ -58,6 +63,7 @@ public class AppleSystem : IAppleSystem
     
     public ICpu Cpu { get; }
     public IMemory Memory { get; }
+    public IAppleSpeaker Speaker { get; }
 
     // Important Apple II memory locations
     public static class MemoryLocations
@@ -103,6 +109,7 @@ public class AppleSystem : IAppleSystem
         public const int KBDSTRB = 0xC010;// Keyboard strobe
         
         // Soft switches
+        public const int SPKR = 0xC030;   // Speaker toggle
         public const int TXTCLR = 0xC050; // Graphics mode
         public const int TXTSET = 0xC051; // Text mode
         public const int MIXCLR = 0xC052; // Full screen
@@ -113,11 +120,15 @@ public class AppleSystem : IAppleSystem
         public const int HIRES = 0xC057;  // Hi-res mode
     }
 
-    public AppleSystem(IMemory memory, ICpu cpu, ILogger<AppleSystem> logger)
+    public AppleSystem(IMemory memory, ICpu cpu, IAppleSpeaker speaker, ILogger<AppleSystem> logger)
     {
         Memory = memory;
         Cpu = cpu;
+        Speaker = speaker;
         _logger = logger;
+
+        // Wire up the speaker to memory for $C030 access
+        Memory.SetSpeaker(speaker);
         
         InitializeSystem();
     }
@@ -184,8 +195,8 @@ public class AppleSystem : IAppleSystem
                 return true;
                 
             case MemoryLocations.BELL:
-                // Bell - could trigger console beep
-                Console.Beep(800, 100);
+                // Bell - use the Apple II speaker emulation
+                Speaker.Beep();
                 return true;
                 
             case -868: // $FC5C - Clear screen

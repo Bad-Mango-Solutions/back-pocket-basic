@@ -24,6 +24,7 @@ public class InterpreterTests
         var variableLogger = new Mock<ILogger<VariableManager>>();
         var memoryLogger = new Mock<ILogger<AppleMemory>>();
         var cpuLogger = new Mock<ILogger<Cpu6502>>();
+        var speakerLogger = new Mock<ILogger<AppleSpeaker>>();
         var systemLogger = new Mock<ILogger<AppleSystem>>();
         var interpreterLogger = new Mock<ILogger<BasicInterpreter>>();
 
@@ -36,7 +37,8 @@ public class InterpreterTests
         var gosub = new GosubManager();
         var memory = new AppleMemory(memoryLogger.Object);
         var cpu = new Cpu6502(memory, cpuLogger.Object);
-        var appleSystem = new AppleSystem(memory, cpu, systemLogger.Object);
+        var speaker = new AppleSpeaker(speakerLogger.Object);
+        var appleSystem = new AppleSystem(memory, cpu, speaker, systemLogger.Object);
 
         _output = new List<string>();
         _mockIO = new Mock<IBasicIO>();

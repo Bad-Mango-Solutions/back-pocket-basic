@@ -1,3 +1,5 @@
+using ApplesoftBasic.Interpreter.Emulation;
+
 namespace ApplesoftBasic.Interpreter.IO;
 
 /// <summary>
@@ -54,6 +56,11 @@ public interface IBasicIO
     /// Produces a beep
     /// </summary>
     void Beep();
+
+    /// <summary>
+    /// Sets the speaker instance for audio output
+    /// </summary>
+    void SetSpeaker(IAppleSpeaker? speaker);
 }
 
 /// <summary>
@@ -73,17 +80,29 @@ public class ConsoleBasicIO : IBasicIO
 {
     private TextMode _currentMode = TextMode.Normal;
     private int _cursorColumn;
+    private IAppleSpeaker? _speaker;
+
+    // Bell character (CHR$(7))
+    private const char BellChar = '\x07';
+
+    public void SetSpeaker(IAppleSpeaker? speaker)
+    {
+        _speaker = speaker;
+    }
 
     public void Write(string text)
     {
+        // Process text for control characters
+        var processedText = ProcessControlCharacters(text);
+        
         if (_currentMode == TextMode.Inverse)
         {
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
         }
         
-        Console.Write(text);
-        _cursorColumn += text.Length;
+        Console.Write(processedText);
+        _cursorColumn += processedText.Length;
         
         if (_currentMode == TextMode.Inverse)
         {
@@ -93,19 +112,48 @@ public class ConsoleBasicIO : IBasicIO
 
     public void WriteLine(string text = "")
     {
+        // Process text for control characters
+        var processedText = ProcessControlCharacters(text);
+        
         if (_currentMode == TextMode.Inverse)
         {
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
         }
         
-        Console.WriteLine(text);
+        Console.WriteLine(processedText);
         _cursorColumn = 0;
         
         if (_currentMode == TextMode.Inverse)
         {
             Console.ResetColor();
         }
+    }
+
+    /// <summary>
+    /// Processes control characters in text, handling special cases like CHR$(7) (bell)
+    /// </summary>
+    private string ProcessControlCharacters(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        // Check for bell character and trigger beep
+        if (text.Contains(BellChar))
+        {
+            // Count and trigger beeps
+            foreach (char c in text)
+            {
+                if (c == BellChar)
+                {
+                    Beep();
+                }
+            }
+            // Remove bell characters from output text
+            text = text.Replace(BellChar.ToString(), "");
+        }
+
+        return text;
     }
 
     public string ReadLine(string? prompt = null)
@@ -195,13 +243,25 @@ public class ConsoleBasicIO : IBasicIO
 
     public void Beep()
     {
-        try
+        // Use the Apple II speaker emulation if available
+        if (_speaker != null)
         {
-            Console.Beep(800, 100);
+            _speaker.Beep();
         }
-        catch
+        else
         {
-            // Beep may not work in all environments
+            // Fallback to console beep if speaker not available
+            try
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    Console.Beep(1000, 100);
+                }
+            }
+            catch
+            {
+                // Beep may not work in all environments
+            }
         }
     }
 }
