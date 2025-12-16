@@ -13,6 +13,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplesoftBasic.Tests", "tests\ApplesoftBasic.Tests\ApplesoftBasic.Tests.csproj", "{84DB2249-1C99-4FB0-B01A-210D5688D97F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{43D34305-41C3-4A56-B958-70C6C467A8F3}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		StyleCop.json = StyleCop.json
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5FF29C34-C3D8-4111-BE77-36A3B3AB9EB7}"
 	ProjectSection(SolutionItems) = preProject
 		samples\demo.bas = samples\demo.bas
@@ -20,12 +27,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5FF2
 		samples\memory.bas = samples\memory.bas
 		samples\primes.bas = samples\primes.bas
 		samples\sleep.bas = samples\sleep.bas
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{43D34305-41C3-4A56-B958-70C6C467A8F3}"
-	ProjectSection(SolutionItems) = preProject
-		.editorconfig = .editorconfig
-		StyleCop.json = StyleCop.json
 	EndProjectSection
 EndProject
 Global
