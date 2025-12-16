@@ -75,14 +75,7 @@ public class DataManager : IDataManager
     /// </param>
     public void RestoreToPosition(int position)
     {
-        if (position < 0 || position >= dataValues.Count)
-        {
-            dataPointer = 0;
-        }
-        else
-        {
-            dataPointer = position;
-        }
+        dataPointer = (position < 0 || position >= dataValues.Count) ? 0 : position;
     }
 
     /// <summary>
