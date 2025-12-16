@@ -408,7 +408,7 @@ public readonly struct BasicValue
             return !string.IsNullOrEmpty(stringValue);
         }
 
-        return !IsZero(numericValue);
+        return numericValue != 0.0;
     }
 
     /// <summary>
