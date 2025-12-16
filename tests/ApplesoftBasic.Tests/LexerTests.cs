@@ -1,9 +1,13 @@
-using ApplesoftBasic.Interpreter.Lexer;
-using ApplesoftBasic.Interpreter.Tokens;
-using Microsoft.Extensions.Logging;
-using Moq;
+// <copyright file="LexerTests.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Tests;
+
+using Interpreter.Lexer;
+using Interpreter.Tokens;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 [TestFixture]
 public class LexerTests
@@ -21,7 +25,7 @@ public class LexerTests
     public void Tokenize_EmptySource_ReturnsOnlyEOF()
     {
         var tokens = _lexer.Tokenize("");
-        
+
         Assert.That(tokens, Has.Count.EqualTo(1));
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.EOF));
     }
@@ -30,7 +34,7 @@ public class LexerTests
     public void Tokenize_LineNumber_ReturnsNumber()
     {
         var tokens = _lexer.Tokenize("10");
-        
+
         Assert.That(tokens, Has.Count.EqualTo(2));
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Number));
         Assert.That(tokens[0].Value, Is.EqualTo(10.0));
@@ -40,7 +44,7 @@ public class LexerTests
     public void Tokenize_PrintStatement_ReturnsCorrectTokens()
     {
         var tokens = _lexer.Tokenize("10 PRINT \"HELLO\"");
-        
+
         Assert.That(tokens, Has.Count.GreaterThan(3));
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Number));
         Assert.That(tokens[1].Type, Is.EqualTo(TokenType.PRINT));
@@ -52,7 +56,7 @@ public class LexerTests
     public void Tokenize_QuestionMark_RecognizedAsPrint()
     {
         var tokens = _lexer.Tokenize("10 ? \"TEST\"");
-        
+
         Assert.That(tokens[1].Type, Is.EqualTo(TokenType.PRINT));
     }
 
@@ -60,7 +64,7 @@ public class LexerTests
     public void Tokenize_MathOperators_RecognizesAll()
     {
         var tokens = _lexer.Tokenize("1 + 2 - 3 * 4 / 5 ^ 6");
-        
+
         Assert.That(tokens.Any(t => t.Type == TokenType.Plus));
         Assert.That(tokens.Any(t => t.Type == TokenType.Minus));
         Assert.That(tokens.Any(t => t.Type == TokenType.Multiply));
@@ -72,7 +76,7 @@ public class LexerTests
     public void Tokenize_ComparisonOperators_RecognizesAll()
     {
         var tokens = _lexer.Tokenize("A = B < C > D <= E >= F <> G");
-        
+
         Assert.That(tokens.Any(t => t.Type == TokenType.Equal));
         Assert.That(tokens.Any(t => t.Type == TokenType.LessThan));
         Assert.That(tokens.Any(t => t.Type == TokenType.GreaterThan));
@@ -86,7 +90,7 @@ public class LexerTests
     {
         var source = "PRINT INPUT LET DIM FOR TO STEP NEXT IF THEN GOTO GOSUB RETURN END";
         var tokens = _lexer.Tokenize(source);
-        
+
         Assert.That(tokens.Any(t => t.Type == TokenType.PRINT));
         Assert.That(tokens.Any(t => t.Type == TokenType.INPUT));
         Assert.That(tokens.Any(t => t.Type == TokenType.LET));
@@ -107,7 +111,7 @@ public class LexerTests
     public void Tokenize_StringVariable_IncludesDollarSign()
     {
         var tokens = _lexer.Tokenize("A$");
-        
+
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Identifier));
         Assert.That(tokens[0].Lexeme, Is.EqualTo("A$"));
     }
@@ -116,7 +120,7 @@ public class LexerTests
     public void Tokenize_IntegerVariable_IncludesPercent()
     {
         var tokens = _lexer.Tokenize("N%");
-        
+
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Identifier));
         Assert.That(tokens[0].Lexeme, Is.EqualTo("N%"));
     }
@@ -125,7 +129,7 @@ public class LexerTests
     public void Tokenize_StringFunctions_Recognized()
     {
         var tokens = _lexer.Tokenize("MID$ LEFT$ RIGHT$ CHR$ STR$");
-        
+
         Assert.That(tokens.Any(t => t.Type == TokenType.MID_S));
         Assert.That(tokens.Any(t => t.Type == TokenType.LEFT_S));
         Assert.That(tokens.Any(t => t.Type == TokenType.RIGHT_S));
@@ -137,7 +141,7 @@ public class LexerTests
     public void Tokenize_MathFunctions_Recognized()
     {
         var tokens = _lexer.Tokenize("ABS SIN COS TAN ATN LOG EXP SQR INT RND SGN");
-        
+
         Assert.That(tokens.Any(t => t.Type == TokenType.ABS));
         Assert.That(tokens.Any(t => t.Type == TokenType.SIN));
         Assert.That(tokens.Any(t => t.Type == TokenType.COS));
@@ -155,7 +159,7 @@ public class LexerTests
     public void Tokenize_FloatingPoint_ParsedCorrectly()
     {
         var tokens = _lexer.Tokenize("3.14159");
-        
+
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Number));
         Assert.That(tokens[0].Value, Is.EqualTo(3.14159).Within(0.00001));
     }
@@ -164,7 +168,7 @@ public class LexerTests
     public void Tokenize_ScientificNotation_ParsedCorrectly()
     {
         var tokens = _lexer.Tokenize("1.5E10");
-        
+
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Number));
         Assert.That(tokens[0].Value, Is.EqualTo(1.5e10));
     }
@@ -173,7 +177,7 @@ public class LexerTests
     public void Tokenize_CustomSleep_Recognized()
     {
         var tokens = _lexer.Tokenize("SLEEP");
-        
+
         Assert.That(tokens[0].Type, Is.EqualTo(TokenType.SLEEP));
     }
 }

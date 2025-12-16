@@ -1,52 +1,13 @@
-using ApplesoftBasic.Interpreter.AST;
+// <copyright file="FunctionManager.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Runtime;
 
-/// <summary>
-/// Manages user-defined functions (DEF FN)
-/// </summary>
-public interface IFunctionManager
-{
-    /// <summary>
-    /// Defines a user function
-    /// </summary>
-    void DefineFunction(string name, string parameter, IExpression body);
-    
-    /// <summary>
-    /// Gets a user-defined function
-    /// </summary>
-    UserFunction? GetFunction(string name);
-    
-    /// <summary>
-    /// Checks if a function is defined
-    /// </summary>
-    bool FunctionExists(string name);
-    
-    /// <summary>
-    /// Clears all user-defined functions
-    /// </summary>
-    void Clear();
-}
+using AST;
 
 /// <summary>
-/// Represents a user-defined function
-/// </summary>
-public class UserFunction
-{
-    public string Name { get; }
-    public string Parameter { get; }
-    public IExpression Body { get; }
-
-    public UserFunction(string name, string parameter, IExpression body)
-    {
-        Name = name;
-        Parameter = parameter;
-        Body = body;
-    }
-}
-
-/// <summary>
-/// Default implementation of function manager
+/// Default implementation of function manager.
 /// </summary>
 public class FunctionManager : IFunctionManager
 {

@@ -1,6 +1,10 @@
-using ApplesoftBasic.Interpreter.Runtime;
+// <copyright file="BasicValueTests.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Tests;
+
+using Interpreter.Runtime;
 
 [TestFixture]
 public class BasicValueTests
@@ -9,7 +13,7 @@ public class BasicValueTests
     public void FromNumber_CreatesNumericValue()
     {
         var value = BasicValue.FromNumber(42);
-        
+
         Assert.That(value.IsNumeric, Is.True);
         Assert.That(value.IsString, Is.False);
         Assert.That(value.AsNumber(), Is.EqualTo(42));
@@ -19,7 +23,7 @@ public class BasicValueTests
     public void FromString_CreatesStringValue()
     {
         var value = BasicValue.FromString("HELLO");
-        
+
         Assert.That(value.IsString, Is.True);
         Assert.That(value.IsNumeric, Is.False);
         Assert.That(value.AsString(), Is.EqualTo("HELLO"));
@@ -30,9 +34,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(10);
         var b = BasicValue.FromNumber(20);
-        
+
         var result = a + b;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(30));
     }
 
@@ -41,9 +45,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromString("HELLO");
         var b = BasicValue.FromString(" WORLD");
-        
+
         var result = a + b;
-        
+
         Assert.That(result.AsString(), Is.EqualTo("HELLO WORLD"));
     }
 
@@ -52,9 +56,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(30);
         var b = BasicValue.FromNumber(10);
-        
+
         var result = a - b;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(20));
     }
 
@@ -63,9 +67,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(5);
         var b = BasicValue.FromNumber(4);
-        
+
         var result = a * b;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(20));
     }
 
@@ -74,9 +78,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(20);
         var b = BasicValue.FromNumber(4);
-        
+
         var result = a / b;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(5));
     }
 
@@ -85,8 +89,8 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(10);
         var b = BasicValue.FromNumber(0);
-        
-        Assert.Throws<BasicRuntimeException>(() => { var _ = a / b; });
+
+        Assert.Throws<BasicRuntimeException>(() => _ = a / b);
     }
 
     [Test]
@@ -94,9 +98,9 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(2);
         var b = BasicValue.FromNumber(3);
-        
+
         var result = a ^ b;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(8));
     }
 
@@ -104,9 +108,9 @@ public class BasicValueTests
     public void Negation_Number_NegatesCorrectly()
     {
         var value = BasicValue.FromNumber(5);
-        
+
         var result = -value;
-        
+
         Assert.That(result.AsNumber(), Is.EqualTo(-5));
     }
 
@@ -115,7 +119,7 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(42);
         var b = BasicValue.FromNumber(42);
-        
+
         Assert.That(a == b, Is.True);
     }
 
@@ -124,7 +128,7 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(42);
         var b = BasicValue.FromNumber(43);
-        
+
         Assert.That(a == b, Is.False);
     }
 
@@ -133,7 +137,7 @@ public class BasicValueTests
     {
         var a = BasicValue.FromString("HELLO");
         var b = BasicValue.FromString("HELLO");
-        
+
         Assert.That(a == b, Is.True);
     }
 
@@ -142,7 +146,7 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(5);
         var b = BasicValue.FromNumber(10);
-        
+
         Assert.That(a < b, Is.True);
         Assert.That(b < a, Is.False);
     }
@@ -152,7 +156,7 @@ public class BasicValueTests
     {
         var a = BasicValue.FromNumber(10);
         var b = BasicValue.FromNumber(5);
-        
+
         Assert.That(a > b, Is.True);
         Assert.That(b > a, Is.False);
     }

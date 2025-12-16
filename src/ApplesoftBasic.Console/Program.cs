@@ -1,5 +1,11 @@
-﻿using ApplesoftBasic.Interpreter;
-using ApplesoftBasic.Interpreter.Execution;
+﻿// <copyright file="Program.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
+
+namespace ApplesoftBasic.Console;
+
+using Interpreter;
+using Interpreter.Execution;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,10 +14,8 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 
-namespace ApplesoftBasic.Console;
-
 /// <summary>
-/// Applesoft BASIC Interpreter Console Application
+/// Applesoft BASIC Interpreter Console Application.
 /// </summary>
 public class Program
 {
@@ -34,7 +38,7 @@ public class Program
         try
         {
             Log.Information("Starting Applesoft BASIC Interpreter");
-            
+
             if (args.Length == 0)
             {
                 System.Console.WriteLine("Applesoft BASIC Interpreter");
@@ -46,7 +50,7 @@ public class Program
             }
 
             string sourceFile = args[0];
-            
+
             if (!File.Exists(sourceFile))
             {
                 System.Console.WriteLine($"Error: File not found: {sourceFile}");
@@ -66,13 +70,13 @@ public class Program
             // Run the interpreter
             using var scope = host.Services.CreateScope();
             var interpreter = scope.ServiceProvider.GetRequiredService<IBasicInterpreter>();
-            
+
             string source = await File.ReadAllTextAsync(sourceFile);
-            
+
             Log.Information("Executing {SourceFile}", sourceFile);
-            
+
             interpreter.Run(source);
-            
+
             Log.Information("Execution complete");
             return 0;
         }

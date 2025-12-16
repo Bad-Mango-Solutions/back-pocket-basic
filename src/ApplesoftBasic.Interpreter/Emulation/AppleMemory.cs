@@ -1,60 +1,23 @@
-using Microsoft.Extensions.Logging;
+// <copyright file="AppleMemory.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
-/// <summary>
-/// Interface for the emulated memory space
-/// </summary>
-public interface IMemory
-{
-    /// <summary>
-    /// Reads a byte from memory
-    /// </summary>
-    byte Read(int address);
-    
-    /// <summary>
-    /// Writes a byte to memory
-    /// </summary>
-    void Write(int address, byte value);
-    
-    /// <summary>
-    /// Reads a 16-bit word from memory (little-endian)
-    /// </summary>
-    ushort ReadWord(int address);
-    
-    /// <summary>
-    /// Writes a 16-bit word to memory (little-endian)
-    /// </summary>
-    void WriteWord(int address, ushort value);
-    
-    /// <summary>
-    /// Clears all memory
-    /// </summary>
-    void Clear();
-    
-    /// <summary>
-    /// Total memory size
-    /// </summary>
-    int Size { get; }
-
-    /// <summary>
-    /// Sets the speaker instance for audio output on $C030 access
-    /// </summary>
-    void SetSpeaker(IAppleSpeaker? speaker);
-}
+using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Emulated 64KB memory space for Apple II
+/// Emulated 64KB memory space for Apple II.
 /// </summary>
 public class AppleMemory : IMemory
 {
     private readonly byte[] _memory;
     private readonly ILogger<AppleMemory> _logger;
     private IAppleSpeaker? _speaker;
-    
+
     // Standard Apple II memory size (64KB)
     public const int StandardMemorySize = 65536;
-    
+
     // Apple II memory map constants
     public const int ZeroPage = 0x0000;
     public const int Stack = 0x0100;
@@ -72,7 +35,7 @@ public class AppleMemory : IMemory
 
     // Speaker soft switch address
     public const int SpeakerToggle = 0xC030;
-    
+
     public int Size => _memory.Length;
 
     public AppleMemory(ILogger<AppleMemory> logger, int size = StandardMemorySize)
@@ -91,59 +54,59 @@ public class AppleMemory : IMemory
     {
         // Initialize with typical Apple II boot state
         Clear();
-        
+
         // Set up some standard memory locations
         WriteWord(0x03F0, 0xC600); // Reset vector points to boot ROM
         WriteWord(0x03F2, 0xFA62); // Applesoft cold start
         WriteWord(0x03F4, 0xFA62); // Applesoft warm start
-        
+
         // BASIC pointers
         WriteWord(0x67, BasicProgram); // TXTTAB - Start of BASIC program
         WriteWord(0x69, BasicProgram); // VARTAB - Start of variables
-        WriteWord(0x6B, BasicProgram); // ARYTAB - Start of arrays  
+        WriteWord(0x6B, BasicProgram); // ARYTAB - Start of arrays
         WriteWord(0x6D, BasicProgram); // STREND - End of arrays
         WriteWord(0x6F, BasicVariables); // FRETOP - Top of string space
         WriteWord(0x73, 0x9600); // MEMSIZ - Top of memory
         WriteWord(0x4C, 0x0801); // CURLIN - Current line number storage
-        
+
         // Keyboard/input locations
         _memory[0xC000] = 0x00; // Keyboard data
         _memory[0xC010] = 0x00; // Keyboard strobe
-        
+
         _logger.LogDebug("Memory initialized with {Size} bytes", _memory.Length);
     }
 
     public byte Read(int address)
     {
         ValidateAddress(address);
-        
+
         // Handle soft switches and I/O
         if (address >= IOSpace && address < RomStart)
         {
             return HandleIORead(address);
         }
-        
+
         return _memory[address];
     }
 
     public void Write(int address, byte value)
     {
         ValidateAddress(address);
-        
+
         // Handle soft switches and I/O
         if (address >= IOSpace && address < RomStart)
         {
             HandleIOWrite(address, value);
             return;
         }
-        
+
         // Prevent writing to ROM area
         if (address >= RomStart)
         {
             _logger.LogWarning("Attempted write to ROM address ${Address:X4}", address);
             return;
         }
-        
+
         _memory[address] = value;
     }
 
@@ -228,20 +191,31 @@ public class AppleMemory : IMemory
     }
 
     private byte SetGraphicsMode() => 0;
+
     private byte SetTextMode() => 0;
+
     private byte SetFullScreen() => 0;
+
     private byte SetMixedMode() => 0;
+
     private byte SetPage1() => 0;
+
     private byte SetPage2() => 0;
+
     private byte SetLoRes() => 0;
+
     private byte SetHiRes() => 0;
+
     private byte ReadPushButton0() => 0;
+
     private byte ReadPushButton1() => 0;
+
     private byte ReadPaddle0() => 128; // Center position
+
     private byte ReadPaddle1() => 128; // Center position
 
     /// <summary>
-    /// Loads data into memory at the specified address
+    /// Loads data into memory at the specified address.
     /// </summary>
     public void LoadData(int startAddress, byte[] data)
     {
@@ -249,29 +223,22 @@ public class AppleMemory : IMemory
         {
             throw new MemoryAccessException($"Data too large to fit at address ${startAddress:X4}");
         }
-        
+
         Array.Copy(data, 0, _memory, startAddress, data.Length);
         _logger.LogDebug("Loaded {Length} bytes at ${Address:X4}", data.Length, startAddress);
     }
 
     /// <summary>
-    /// Gets a copy of a memory region
+    /// Gets a copy of a memory region.
     /// </summary>
+    /// <returns></returns>
     public byte[] GetRegion(int startAddress, int length)
     {
         ValidateAddress(startAddress);
         ValidateAddress(startAddress + length - 1);
-        
+
         var region = new byte[length];
         Array.Copy(_memory, startAddress, region, 0, length);
         return region;
     }
-}
-
-/// <summary>
-/// Exception thrown for invalid memory access
-/// </summary>
-public class MemoryAccessException : Exception
-{
-    public MemoryAccessException(string message) : base(message) { }
 }

@@ -1,55 +1,13 @@
-using Microsoft.Extensions.Logging;
+// <copyright file="VariableManager.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Runtime;
 
-/// <summary>
-/// Manages BASIC variables and arrays
-/// </summary>
-public interface IVariableManager
-{
-    /// <summary>
-    /// Gets a variable value
-    /// </summary>
-    BasicValue GetVariable(string name);
-    
-    /// <summary>
-    /// Sets a variable value
-    /// </summary>
-    void SetVariable(string name, BasicValue value);
-    
-    /// <summary>
-    /// Gets an array element
-    /// </summary>
-    BasicValue GetArrayElement(string name, int[] indices);
-    
-    /// <summary>
-    /// Sets an array element
-    /// </summary>
-    void SetArrayElement(string name, int[] indices, BasicValue value);
-    
-    /// <summary>
-    /// Declares an array with specified dimensions
-    /// </summary>
-    void DimArray(string name, int[] dimensions);
-    
-    /// <summary>
-    /// Clears all variables and arrays
-    /// </summary>
-    void Clear();
-    
-    /// <summary>
-    /// Checks if a variable exists
-    /// </summary>
-    bool VariableExists(string name);
-    
-    /// <summary>
-    /// Checks if an array exists
-    /// </summary>
-    bool ArrayExists(string name);
-}
+using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Default implementation of variable manager
+/// Default implementation of variable manager.
 /// </summary>
 public class VariableManager : IVariableManager
 {
@@ -66,12 +24,12 @@ public class VariableManager : IVariableManager
     {
         // Normalize variable name (Applesoft only uses first 2 characters)
         string normalizedName = NormalizeVariableName(name);
-        
+
         if (_variables.TryGetValue(normalizedName, out var value))
         {
             return value;
         }
-        
+
         // Return default value based on type
         return IsStringVariable(name) ? BasicValue.Empty : BasicValue.Zero;
     }
@@ -79,7 +37,7 @@ public class VariableManager : IVariableManager
     public void SetVariable(string name, BasicValue value)
     {
         string normalizedName = NormalizeVariableName(name);
-        
+
         // Type checking
         if (IsStringVariable(name) && !value.IsString)
         {
@@ -89,7 +47,7 @@ public class VariableManager : IVariableManager
         {
             throw new BasicRuntimeException("?TYPE MISMATCH ERROR");
         }
-        
+
         _variables[normalizedName] = value;
         _logger.LogTrace("Set variable {Name} = {Value}", normalizedName, value);
     }
@@ -97,7 +55,7 @@ public class VariableManager : IVariableManager
     public BasicValue GetArrayElement(string name, int[] indices)
     {
         string normalizedName = NormalizeVariableName(name);
-        
+
         // Auto-dimension if not exists (Applesoft behavior - default dimension 10)
         if (!_arrays.ContainsKey(normalizedName))
         {
@@ -108,17 +66,17 @@ public class VariableManager : IVariableManager
             }
             DimArray(name, defaultDims);
         }
-        
+
         var array = _arrays[normalizedName];
         ValidateIndices(array, indices);
-        
+
         return array.GetElement(indices);
     }
 
     public void SetArrayElement(string name, int[] indices, BasicValue value)
     {
         string normalizedName = NormalizeVariableName(name);
-        
+
         // Auto-dimension if not exists
         if (!_arrays.ContainsKey(normalizedName))
         {
@@ -129,30 +87,33 @@ public class VariableManager : IVariableManager
             }
             DimArray(name, defaultDims);
         }
-        
+
         var array = _arrays[normalizedName];
         ValidateIndices(array, indices);
-        
+
         // Type checking
         if (IsStringVariable(name) && !value.IsString)
         {
             throw new BasicRuntimeException("?TYPE MISMATCH ERROR");
         }
-        
+
         array.SetElement(indices, value);
-        _logger.LogTrace("Set array {Name}({Indices}) = {Value}", 
-            normalizedName, string.Join(",", indices), value);
+        _logger.LogTrace(
+            "Set array {Name}({Indices}) = {Value}",
+            normalizedName,
+            string.Join(",", indices),
+            value);
     }
 
     public void DimArray(string name, int[] dimensions)
     {
         string normalizedName = NormalizeVariableName(name);
-        
+
         if (_arrays.ContainsKey(normalizedName))
         {
             throw new BasicRuntimeException("?REDIM'D ARRAY ERROR");
         }
-        
+
         // Applesoft arrays are 0-based but DIM specifies the maximum index
         // So DIM A(10) creates an array with indices 0-10 (11 elements)
         int[] actualDims = new int[dimensions.Length];
@@ -160,12 +121,14 @@ public class VariableManager : IVariableManager
         {
             actualDims[i] = dimensions[i] + 1;
         }
-        
+
         bool isString = IsStringVariable(name);
         _arrays[normalizedName] = new BasicArray(actualDims, isString);
-        
-        _logger.LogTrace("Dimensioned array {Name}({Dims})", 
-            normalizedName, string.Join(",", dimensions));
+
+        _logger.LogTrace(
+            "Dimensioned array {Name}({Dims})",
+            normalizedName,
+            string.Join(",", dimensions));
     }
 
     public void Clear()
@@ -191,19 +154,20 @@ public class VariableManager : IVariableManager
         // plus the type suffix ($ or %)
         string baseName = name.TrimEnd('$', '%');
         string suffix = "";
-        
+
         if (name.EndsWith('$')) suffix = "$";
         else if (name.EndsWith('%')) suffix = "%";
-        
+
         if (baseName.Length > 2)
         {
             baseName = baseName[..2];
         }
-        
+
         return baseName.ToUpperInvariant() + suffix;
     }
 
     private static bool IsStringVariable(string name) => name.EndsWith('$');
+
     private static bool IsIntegerVariable(string name) => name.EndsWith('%');
 
     private static void ValidateIndices(BasicArray array, int[] indices)
@@ -212,7 +176,7 @@ public class VariableManager : IVariableManager
         {
             throw new BasicRuntimeException("?BAD SUBSCRIPT ERROR");
         }
-        
+
         for (int i = 0; i < indices.Length; i++)
         {
             if (indices[i] < 0 || indices[i] >= array.Dimensions[i])
@@ -220,62 +184,5 @@ public class VariableManager : IVariableManager
                 throw new BasicRuntimeException("?BAD SUBSCRIPT ERROR");
             }
         }
-    }
-}
-
-/// <summary>
-/// Represents a BASIC array
-/// </summary>
-internal class BasicArray
-{
-    public int[] Dimensions { get; }
-    private readonly BasicValue[] _elements;
-    private readonly bool _isStringArray;
-
-    public BasicArray(int[] dimensions, bool isStringArray)
-    {
-        Dimensions = dimensions;
-        _isStringArray = isStringArray;
-        
-        int totalElements = 1;
-        foreach (int dim in dimensions)
-        {
-            totalElements *= dim;
-        }
-        
-        _elements = new BasicValue[totalElements];
-        
-        // Initialize with default values
-        BasicValue defaultValue = isStringArray ? BasicValue.Empty : BasicValue.Zero;
-        for (int i = 0; i < _elements.Length; i++)
-        {
-            _elements[i] = defaultValue;
-        }
-    }
-
-    public BasicValue GetElement(int[] indices)
-    {
-        int index = CalculateIndex(indices);
-        return _elements[index];
-    }
-
-    public void SetElement(int[] indices, BasicValue value)
-    {
-        int index = CalculateIndex(indices);
-        _elements[index] = value;
-    }
-
-    private int CalculateIndex(int[] indices)
-    {
-        int index = 0;
-        int multiplier = 1;
-        
-        for (int i = indices.Length - 1; i >= 0; i--)
-        {
-            index += indices[i] * multiplier;
-            multiplier *= Dimensions[i];
-        }
-        
-        return index;
     }
 }

@@ -1,68 +1,23 @@
-using Microsoft.Extensions.Logging;
+// <copyright file="AppleSystem.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
-/// <summary>
-/// Interface for Apple II system emulation
-/// </summary>
-public interface IAppleSystem
-{
-    /// <summary>
-    /// The CPU
-    /// </summary>
-    ICpu Cpu { get; }
-    
-    /// <summary>
-    /// The memory
-    /// </summary>
-    IMemory Memory { get; }
-
-    /// <summary>
-    /// The speaker
-    /// </summary>
-    IAppleSpeaker Speaker { get; }
-    
-    /// <summary>
-    /// Reads a byte from emulated memory (PEEK)
-    /// </summary>
-    byte Peek(int address);
-    
-    /// <summary>
-    /// Writes a byte to emulated memory (POKE)
-    /// </summary>
-    void Poke(int address, byte value);
-    
-    /// <summary>
-    /// Executes machine code at the specified address (CALL)
-    /// </summary>
-    void Call(int address);
-    
-    /// <summary>
-    /// Sets the keyboard buffer
-    /// </summary>
-    void SetKeyboardInput(char key);
-    
-    /// <summary>
-    /// Gets and clears the keyboard buffer
-    /// </summary>
-    char? GetKeyboardInput();
-    
-    /// <summary>
-    /// Resets the system
-    /// </summary>
-    void Reset();
-}
+using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Apple II system emulation layer
+/// Apple II system emulation layer.
 /// </summary>
 public class AppleSystem : IAppleSystem
 {
     private readonly ILogger<AppleSystem> _logger;
     private char? _keyboardBuffer;
-    
+
     public ICpu Cpu { get; }
+
     public IMemory Memory { get; }
+
     public IAppleSpeaker Speaker { get; }
 
     // Important Apple II memory locations
@@ -77,7 +32,7 @@ public class AppleSystem : IAppleSystem
         public const int CV = 0x25;       // Cursor vertical position
         public const int GPTS = 0x2C;     // Graphics point coordinates
         public const int PROMPT = 0x33;   // Input prompt character
-        
+
         // BASIC variables
         public const int TXTTAB = 0x67;   // Start of BASIC program
         public const int VARTAB = 0x69;   // Start of simple variables
@@ -93,7 +48,7 @@ public class AppleSystem : IAppleSystem
         public const int DATPTR = 0x7D;   // Pointer to next DATA item
         public const int VARNAM = 0x82;   // Current variable name
         public const int VARPNT = 0x83;   // Pointer to current variable
-        
+
         // ROM entry points
         public const int OUTCH = 0xFDED;  // Character output routine
         public const int RDKEY = 0xFD0C;  // Read keyboard
@@ -103,11 +58,11 @@ public class AppleSystem : IAppleSystem
         public const int HOME = 0xFC58;   // Clear screen and home cursor
         public const int CLREOL = 0xFC9C; // Clear to end of line
         public const int COUT = 0xFDF0;   // Character output (uses OUTCH)
-        
+
         // Keyboard
         public const int KBD = 0xC000;    // Keyboard data
         public const int KBDSTRB = 0xC010;// Keyboard strobe
-        
+
         // Soft switches
         public const int SPKR = 0xC030;   // Speaker toggle
         public const int TXTCLR = 0xC050; // Graphics mode
@@ -129,7 +84,7 @@ public class AppleSystem : IAppleSystem
 
         // Wire up the speaker to memory for $C030 access
         Memory.SetSpeaker(speaker);
-        
+
         InitializeSystem();
     }
 
@@ -143,7 +98,7 @@ public class AppleSystem : IAppleSystem
         Memory.Write(MemoryLocations.CH, 0);
         Memory.Write(MemoryLocations.CV, 0);
         Memory.Write(MemoryLocations.PROMPT, (byte)']'); // Applesoft prompt
-        
+
         _logger.LogDebug("Apple II system initialized");
     }
 
@@ -164,13 +119,13 @@ public class AppleSystem : IAppleSystem
     {
         ValidateAddress(address);
         _logger.LogDebug("CALL {Address}", address);
-        
+
         // Handle common ROM calls specially
         if (HandleRomCall(address))
         {
             return;
         }
-        
+
         // Execute actual machine code
         try
         {
@@ -193,20 +148,20 @@ public class AppleSystem : IAppleSystem
             case MemoryLocations.HOME:
                 // Clear screen - handled by interpreter
                 return true;
-                
+
             case MemoryLocations.BELL:
                 // Bell - use the Apple II speaker emulation
                 Speaker.Beep();
                 return true;
-                
+
             case -868: // $FC5C - Clear screen
             case 64092: // Same address as unsigned
                 return true;
-                
+
             case -936: // $FC58 - HOME
             case 64344:
                 return true;
-                
+
             default:
                 // For addresses in ROM range, log warning
                 if (address >= 0xD000)
@@ -247,119 +202,5 @@ public class AppleSystem : IAppleSystem
             throw new MemoryAccessException(
                 $"Address {address} (${address:X4}) out of bounds. Valid range: 0-{Memory.Size - 1} ($0000-${Memory.Size - 1:X4})");
         }
-    }
-}
-
-/// <summary>
-/// ProDOS emulation layer
-/// </summary>
-public class ProDosEmulator
-{
-    private readonly IMemory _memory;
-    private readonly ILogger<ProDosEmulator> _logger;
-    
-    // ProDOS system locations
-    public const int MLI = 0xBF00;        // Machine Language Interface entry
-    public const int DEVADR = 0xBF10;     // Device driver addresses
-    public const int DEVNUM = 0xBF30;     // Device number
-    public const int DATETIME = 0xBF90;   // Date/time storage
-    public const int MACHID = 0xBF98;     // Machine identification
-    public const int PREFIX = 0xBF00;     // Current prefix
-
-    // ProDOS MLI calls
-    public const byte CREATE = 0xC0;
-    public const byte DESTROY = 0xC1;
-    public const byte RENAME = 0xC2;
-    public const byte SET_FILE_INFO = 0xC3;
-    public const byte GET_FILE_INFO = 0xC4;
-    public const byte ONLINE = 0xC5;
-    public const byte SET_PREFIX = 0xC6;
-    public const byte GET_PREFIX = 0xC7;
-    public const byte OPEN = 0xC8;
-    public const byte NEWLINE = 0xC9;
-    public const byte READ = 0xCA;
-    public const byte WRITE = 0xCB;
-    public const byte CLOSE = 0xCC;
-    public const byte FLUSH = 0xCD;
-    public const byte SET_MARK = 0xCE;
-    public const byte GET_MARK = 0xCF;
-    public const byte SET_EOF = 0xD0;
-    public const byte GET_EOF = 0xD1;
-    public const byte SET_BUF = 0xD2;
-    public const byte GET_BUF = 0xD3;
-
-    public ProDosEmulator(IMemory memory, ILogger<ProDosEmulator> logger)
-    {
-        _memory = memory;
-        _logger = logger;
-        
-        InitializeProDos();
-    }
-
-    private void InitializeProDos()
-    {
-        // Set machine ID (Apple IIe)
-        _memory.Write(MACHID, 0xB3); // Apple IIe, 128K, 80-col
-        
-        // Set date/time to current
-        var now = DateTime.Now;
-        int dosDate = ((now.Year - 1900) << 9) | (now.Month << 5) | now.Day;
-        int dosTime = (now.Hour << 8) | now.Minute;
-        
-        _memory.WriteWord(DATETIME, (ushort)dosDate);
-        _memory.WriteWord(DATETIME + 2, (ushort)dosTime);
-        
-        _logger.LogDebug("ProDOS emulation initialized");
-    }
-
-    /// <summary>
-    /// Handles a ProDOS MLI call
-    /// </summary>
-    public byte HandleMliCall(byte command, int parameterList)
-    {
-        _logger.LogDebug("ProDOS MLI call: ${Command:X2} params at ${Params:X4}", command, parameterList);
-
-        return command switch
-        {
-            GET_FILE_INFO => HandleGetFileInfo(parameterList),
-            ONLINE => HandleOnline(parameterList),
-            GET_PREFIX => HandleGetPrefix(parameterList),
-            _ => 0x01 // Bad MLI call number
-        };
-    }
-
-    private byte HandleGetFileInfo(int parameterList)
-    {
-        // Return "file not found" for simplicity
-        return 0x46;
-    }
-
-    private byte HandleOnline(int parameterList)
-    {
-        // Return volume name
-        int bufferAddr = _memory.ReadWord(parameterList + 1);
-        
-        // Write a simple volume name
-        byte[] volumeName = { 0x06, (byte)'V', (byte)'O', (byte)'L', (byte)'U', (byte)'M', (byte)'E' };
-        for (int i = 0; i < volumeName.Length; i++)
-        {
-            _memory.Write(bufferAddr + i, volumeName[i]);
-        }
-        
-        return 0; // Success
-    }
-
-    private byte HandleGetPrefix(int parameterList)
-    {
-        int bufferAddr = _memory.ReadWord(parameterList + 1);
-        
-        // Write a default prefix
-        byte[] prefix = { 0x07, (byte)'/', (byte)'V', (byte)'O', (byte)'L', (byte)'U', (byte)'M', (byte)'E' };
-        for (int i = 0; i < prefix.Length; i++)
-        {
-            _memory.Write(bufferAddr + i, prefix[i]);
-        }
-        
-        return 0; // Success
     }
 }

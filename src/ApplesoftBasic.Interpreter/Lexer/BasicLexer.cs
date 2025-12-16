@@ -1,10 +1,14 @@
-using ApplesoftBasic.Interpreter.Tokens;
-using Microsoft.Extensions.Logging;
+// <copyright file="BasicLexer.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Lexer;
 
+using Tokens;
+using Microsoft.Extensions.Logging;
+
 /// <summary>
-/// Tokenizer for Applesoft BASIC source code
+/// Tokenizer for Applesoft BASIC source code.
 /// </summary>
 public class BasicLexer : ILexer
 {
@@ -27,7 +31,7 @@ public class BasicLexer : ILexer
         { "FN", TokenType.FN },
         { "END", TokenType.END },
         { "STOP", TokenType.STOP },
-        
+
         // Flow Control
         { "GOTO", TokenType.GOTO },
         { "GO TO", TokenType.GOTO },
@@ -41,7 +45,7 @@ public class BasicLexer : ILexer
         { "TO", TokenType.TO },
         { "STEP", TokenType.STEP },
         { "NEXT", TokenType.NEXT },
-        
+
         // I/O
         { "PRINT", TokenType.PRINT },
         { "INPUT", TokenType.INPUT },
@@ -49,7 +53,7 @@ public class BasicLexer : ILexer
         { "DATA", TokenType.DATA },
         { "READ", TokenType.READ },
         { "RESTORE", TokenType.RESTORE },
-        
+
         // Graphics (stubbed)
         { "GR", TokenType.GR },
         { "HGR", TokenType.HGR },
@@ -67,7 +71,7 @@ public class BasicLexer : ILexer
         { "INVERSE", TokenType.INVERSE },
         { "FLASH", TokenType.FLASH },
         { "NORMAL", TokenType.NORMAL },
-        
+
         // Memory/System
         { "PEEK", TokenType.PEEK },
         { "POKE", TokenType.POKE },
@@ -79,7 +83,7 @@ public class BasicLexer : ILexer
         { "RUN", TokenType.RUN },
         { "LIST", TokenType.LIST },
         { "CONT", TokenType.CONT },
-        
+
         // String Functions
         { "MID$", TokenType.MID_S },
         { "LEFT$", TokenType.LEFT_S },
@@ -89,7 +93,7 @@ public class BasicLexer : ILexer
         { "STR$", TokenType.STR_S },
         { "CHR$", TokenType.CHR_S },
         { "ASC", TokenType.ASC },
-        
+
         // Math Functions
         { "ABS", TokenType.ABS },
         { "ATN", TokenType.ATN },
@@ -102,27 +106,27 @@ public class BasicLexer : ILexer
         { "SIN", TokenType.SIN },
         { "SQR", TokenType.SQR },
         { "TAN", TokenType.TAN },
-        
+
         // Utility Functions
         { "FRE", TokenType.FRE },
         { "POS", TokenType.POS },
         { "SCRN", TokenType.SCRN },
         { "PDL", TokenType.PDL },
         { "USR", TokenType.USR },
-        
+
         // Other
         { "TAB", TokenType.TAB },
         { "SPC", TokenType.SPC },
         { "NOT", TokenType.NOT },
         { "AND", TokenType.AND },
         { "OR", TokenType.OR },
-        
+
         // File I/O
         { "OPEN", TokenType.OPEN },
         { "CLOSE", TokenType.CLOSE },
         { "ONERR", TokenType.ONERR },
         { "RESUME", TokenType.RESUME },
-        
+
         // Custom extension
         { "SLEEP", TokenType.SLEEP }
     };
@@ -151,9 +155,9 @@ public class BasicLexer : ILexer
         }
 
         _tokens.Add(new Token(TokenType.EOF, "", null, _line, _column));
-        
+
         _logger.LogDebug("Tokenization complete. Generated {Count} tokens", _tokens.Count);
-        
+
         return _tokens;
     }
 
@@ -176,9 +180,9 @@ public class BasicLexer : ILexer
             case '#': AddToken(TokenType.Hash); break;
             case '@': AddToken(TokenType.At); break;
             case '?': AddToken(TokenType.PRINT); break; // ? is shorthand for PRINT
-            
+
             case '=': AddToken(TokenType.Equal); break;
-            
+
             case '<':
                 if (Match('='))
                     AddToken(TokenType.LessOrEqual);
@@ -187,7 +191,7 @@ public class BasicLexer : ILexer
                 else
                     AddToken(TokenType.LessThan);
                 break;
-                
+
             case '>':
                 if (Match('='))
                     AddToken(TokenType.GreaterOrEqual);
@@ -255,7 +259,7 @@ public class BasicLexer : ILexer
     {
         // Handle numbers starting with decimal point
         bool hasDecimal = _source[_start] == '.';
-        
+
         while (IsDigit(Peek()))
         {
             Advance();

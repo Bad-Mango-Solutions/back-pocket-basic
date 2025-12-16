@@ -1,12 +1,16 @@
-using ApplesoftBasic.Interpreter.AST;
-using ApplesoftBasic.Interpreter.Lexer;
-using ApplesoftBasic.Interpreter.Tokens;
-using Microsoft.Extensions.Logging;
+// <copyright file="BasicParser.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
 
 namespace ApplesoftBasic.Interpreter.Parser;
 
+using AST;
+using Lexer;
+using Tokens;
+using Microsoft.Extensions.Logging;
+
 /// <summary>
-/// Parser for Applesoft BASIC
+/// Parser for Applesoft BASIC.
 /// </summary>
 public class BasicParser : IParser
 {
@@ -27,7 +31,7 @@ public class BasicParser : IParser
         _current = 0;
 
         var program = new ProgramNode();
-        
+
         _logger.LogDebug("Starting parse of {Count} tokens", _tokens.Count);
 
         while (!IsAtEnd())
@@ -44,7 +48,7 @@ public class BasicParser : IParser
             if (line != null)
             {
                 program.Lines.Add(line);
-                
+
                 // Collect DATA values
                 foreach (var stmt in line.Statements)
                 {
@@ -58,7 +62,7 @@ public class BasicParser : IParser
 
         // Sort lines by line number
         program.Lines.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
-        
+
         _logger.LogDebug("Parse complete. {Count} lines parsed", program.Lines.Count);
 
         return program;
@@ -342,7 +346,7 @@ public class BasicParser : IParser
     private RemStatement ParseRem()
     {
         Advance(); // consume REM
-        
+
         // Collect the rest of the line as comment
         int start = _current;
         while (!Check(TokenType.Newline) && !IsAtEnd())
@@ -370,7 +374,7 @@ public class BasicParser : IParser
                 Consume(TokenType.LeftParen, "Expected '(' after TAB/SPC");
                 var arg = ParseExpression();
                 Consume(TokenType.RightParen, "Expected ')' after TAB/SPC argument");
-                
+
                 var funcExpr = new FunctionCallExpression(funcType);
                 funcExpr.Arguments.Add(arg);
                 stmt.Expressions.Add(funcExpr);
@@ -392,7 +396,7 @@ public class BasicParser : IParser
                 var expr = ParseExpression();
                 stmt.Expressions.Add(expr);
                 stmt.EndsWithSeparator = false;
-                
+
                 // Add None separator after expression if more items follow
                 if (stmt.Separators.Count < stmt.Expressions.Count - 1)
                 {
@@ -467,7 +471,7 @@ public class BasicParser : IParser
     {
         Advance(); // consume IF
         var condition = ParseExpression();
-        
+
         Consume(TokenType.THEN, "Expected THEN after IF condition");
 
         var stmt = new IfStatement(condition);
@@ -488,7 +492,7 @@ public class BasicParser : IParser
                 {
                     stmt.ThenBranch.Add(thenStmt);
                 }
-                
+
                 if (Check(TokenType.Colon))
                 {
                     Advance();
@@ -722,7 +726,7 @@ public class BasicParser : IParser
     {
         Advance(); // consume DEF
         Consume(TokenType.FN, "Expected FN after DEF");
-        
+
         var funcName = Consume(TokenType.Identifier, "Expected function name").Lexeme;
         Consume(TokenType.LeftParen, "Expected '(' after function name");
         var param = Consume(TokenType.Identifier, "Expected parameter name").Lexeme;

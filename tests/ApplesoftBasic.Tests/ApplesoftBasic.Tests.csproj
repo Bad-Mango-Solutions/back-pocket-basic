@@ -33,4 +33,10 @@
     <ProjectReference Include="..\..\src\ApplesoftBasic.Interpreter\ApplesoftBasic.Interpreter.csproj" />
   </ItemGroup>
 
+
+
+	<ItemGroup>
+		<AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
+	</ItemGroup>
+
 </Project>

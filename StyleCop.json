@@ -1,0 +1,26 @@
+{
+    "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+    "settings": {
+        "documentationRules": {
+            "companyName": "Josh Pactor",
+            "copyrightText": "Copyright (c) {companyName}. All rights reserved.",
+            "documentInterfaces": true,
+            "documentExposedElements": true,
+            "documentInternalElements": false,
+            "documentPrivateElements": false,
+            "documentPrivateFields": false
+        },
+        "orderingRules": {
+            "usingDirectivesPlacement": "outsideNamespace",
+            "systemUsingDirectivesFirst": true
+        },
+        "namingRules": {
+            "allowCommonHungarianPrefixes": true,
+            "allowedHungarianPrefixes": []
+        },
+        "layoutRules": {
+            "newlineAtEndOfFile": "require"
+        },
+        "maintainabilityRules": {}
+    }
+}

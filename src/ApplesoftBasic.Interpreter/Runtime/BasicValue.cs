@@ -1,7 +1,11 @@
+// <copyright file="BasicValue.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
+
 namespace ApplesoftBasic.Interpreter.Runtime;
 
 /// <summary>
-/// Represents a BASIC value (number or string)
+/// Represents a BASIC value (number or string).
 /// </summary>
 public readonly struct BasicValue
 {
@@ -10,6 +14,7 @@ public readonly struct BasicValue
     private readonly bool _isString;
 
     public bool IsString => _isString;
+
     public bool IsNumeric => !_isString;
 
     private BasicValue(double numericValue)
@@ -27,8 +32,11 @@ public readonly struct BasicValue
     }
 
     public static BasicValue FromNumber(double value) => new(value);
+
     public static BasicValue FromString(string value) => new(value);
+
     public static BasicValue Zero => new(0);
+
     public static BasicValue Empty => new(string.Empty);
 
     public double AsNumber()
@@ -47,20 +55,20 @@ public readonly struct BasicValue
         {
             return _stringValue ?? string.Empty;
         }
-        
+
         // Format number like Applesoft
         if (_numericValue == 0) return "0";
         if (_numericValue == Math.Floor(_numericValue) && Math.Abs(_numericValue) < 1e10)
         {
             return ((long)_numericValue).ToString();
         }
-        
+
         // Use E notation for very large/small numbers
         if (Math.Abs(_numericValue) >= 1e10 || (Math.Abs(_numericValue) < 0.01 && _numericValue != 0))
         {
             return _numericValue.ToString("E8").TrimEnd('0').TrimEnd('.');
         }
-        
+
         return _numericValue.ToString("G9");
     }
 
@@ -83,7 +91,9 @@ public readonly struct BasicValue
     public override string ToString() => AsString();
 
     public static implicit operator BasicValue(double value) => FromNumber(value);
+
     public static implicit operator BasicValue(int value) => FromNumber(value);
+
     public static implicit operator BasicValue(string value) => FromString(value);
 
     public static BasicValue operator +(BasicValue a, BasicValue b)
@@ -147,8 +157,10 @@ public readonly struct BasicValue
     }
 
     public static bool operator <=(BasicValue a, BasicValue b) => !(a > b);
+
     public static bool operator >=(BasicValue a, BasicValue b) => !(a < b);
 
     public override bool Equals(object? obj) => obj is BasicValue other && this == other;
+
     public override int GetHashCode() => _isString ? _stringValue?.GetHashCode() ?? 0 : _numericValue.GetHashCode();
 }

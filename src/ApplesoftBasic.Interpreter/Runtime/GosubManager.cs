@@ -1,48 +1,11 @@
+// <copyright file="GosubManager.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
+
 namespace ApplesoftBasic.Interpreter.Runtime;
 
 /// <summary>
-/// Manages GOSUB/RETURN stack
-/// </summary>
-public interface IGosubManager
-{
-    /// <summary>
-    /// Pushes a return address onto the stack
-    /// </summary>
-    void Push(GosubReturnAddress address);
-    
-    /// <summary>
-    /// Pops and returns the last return address
-    /// </summary>
-    GosubReturnAddress Pop();
-    
-    /// <summary>
-    /// Clears the stack
-    /// </summary>
-    void Clear();
-    
-    /// <summary>
-    /// Gets the current stack depth
-    /// </summary>
-    int Depth { get; }
-}
-
-/// <summary>
-/// Represents a GOSUB return address
-/// </summary>
-public class GosubReturnAddress
-{
-    public int LineIndex { get; }
-    public int StatementIndex { get; }
-
-    public GosubReturnAddress(int lineIndex, int statementIndex)
-    {
-        LineIndex = lineIndex;
-        StatementIndex = statementIndex;
-    }
-}
-
-/// <summary>
-/// Default implementation of GOSUB manager
+/// Default implementation of GOSUB manager.
 /// </summary>
 public class GosubManager : IGosubManager
 {

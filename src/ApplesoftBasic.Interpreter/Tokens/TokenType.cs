@@ -1,7 +1,11 @@
+// <copyright file="TokenType.cs" company="Josh Pactor">
+// Copyright (c) Josh Pactor. All rights reserved.
+// </copyright>
+
 namespace ApplesoftBasic.Interpreter.Tokens;
 
 /// <summary>
-/// Represents all token types in Applesoft BASIC
+/// Represents all token types in Applesoft BASIC.
 /// </summary>
 public enum TokenType
 {
@@ -9,7 +13,7 @@ public enum TokenType
     Number,
     String,
     Identifier,
-    
+
     // Keywords - Program Control
     REM,
     LET,
@@ -18,7 +22,7 @@ public enum TokenType
     FN,
     END,
     STOP,
-    
+
     // Keywords - Flow Control
     GOTO,
     GOSUB,
@@ -31,7 +35,7 @@ public enum TokenType
     TO,
     STEP,
     NEXT,
-    
+
     // Keywords - I/O
     PRINT,
     INPUT,
@@ -39,7 +43,7 @@ public enum TokenType
     DATA,
     READ,
     RESTORE,
-    
+
     // Keywords - Graphics (stubbed)
     GR,
     HGR,
@@ -57,10 +61,10 @@ public enum TokenType
     INVERSE,
     FLASH,
     NORMAL,
-    
+
     // Keywords - Sound
     // (Apple II didn't have dedicated sound commands in Applesoft)
-    
+
     // Keywords - Memory/System
     PEEK,
     POKE,
@@ -72,7 +76,7 @@ public enum TokenType
     RUN,
     LIST,
     CONT,
-    
+
     // Keywords - String/Array
     MID_S,      // MID$
     LEFT_S,     // LEFT$
@@ -82,7 +86,7 @@ public enum TokenType
     STR_S,      // STR$
     CHR_S,      // CHR$
     ASC,
-    
+
     // Keywords - Math Functions
     ABS,
     ATN,
@@ -95,33 +99,33 @@ public enum TokenType
     SIN,
     SQR,
     TAN,
-    
+
     // Keywords - Utility Functions
     FRE,
     POS,
     SCRN,
     PDL,
     USR,
-    
+
     // Keywords - Other
     TAB,
     SPC,
     NOT,
     AND,
     OR,
-    
+
     // Keywords - Disk/File (ProDOS)
     OPEN,
     CLOSE,
-    PRINT_FILE,  // PRINT# 
+    PRINT_FILE,  // PRINT#
     INPUT_FILE,  // INPUT#
     GET_FILE,    // GET#
     ONERR,
     RESUME,
-    
+
     // Custom extension
     SLEEP,
-    
+
     // Operators
     Plus,           // +
     Minus,          // -
@@ -134,7 +138,7 @@ public enum TokenType
     GreaterThan,    // >
     LessOrEqual,    // <=
     GreaterOrEqual, // >=
-    
+
     // Punctuation
     LeftParen,      // (
     RightParen,     // )
@@ -146,7 +150,7 @@ public enum TokenType
     Hash,           // # (for file numbers)
     Question,       // ? (shorthand for PRINT)
     At,             // @ (for AT in PRINT)
-    
+
     // Special
     Newline,
     EOF,
