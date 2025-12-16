@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11205.157 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -12,6 +12,15 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplesoftBasic.Tests", "tests\ApplesoftBasic.Tests\ApplesoftBasic.Tests.csproj", "{84DB2249-1C99-4FB0-B01A-210D5688D97F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5FF29C34-C3D8-4111-BE77-36A3B3AB9EB7}"
+	ProjectSection(SolutionItems) = preProject
+		samples\demo.bas = samples\demo.bas
+		samples\fibonacci.bas = samples\fibonacci.bas
+		samples\memory.bas = samples\memory.bas
+		samples\primes.bas = samples\primes.bas
+		samples\sleep.bas = samples\sleep.bas
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,5 +76,8 @@ Global
 		{41802445-C5BF-4660-9CA5-5AB0F9ED440C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{CDDAFE24-9562-4850-8973-E2E21530146E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{84DB2249-1C99-4FB0-B01A-210D5688D97F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {75321D9C-9307-4B8A-8D1E-32DF09B8B363}
 	EndGlobalSection
 EndGlobal
