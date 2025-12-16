@@ -11,62 +11,133 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public class Cpu6502 : ICpu
 {
-    private readonly ILogger<Cpu6502> _logger;
-    private bool _halted;
-    private int _cycles;
+    private readonly ILogger<Cpu6502> logger;
+    private bool halted;
+    private int cycles;
 
-    public CpuRegisters Registers { get; }
-
-    public IMemory Memory { get; }
-
-    public bool Halted => _halted;
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Cpu6502"/> class.
+    /// </summary>
+    /// <param name="memory">The memory interface used by the CPU emulator.</param>
+    /// <param name="logger">The logger instance for logging CPU-related operations.</param>
     public Cpu6502(IMemory memory, ILogger<Cpu6502> logger)
     {
         Memory = memory;
-        _logger = logger;
-        Registers = new CpuRegisters();
+        this.logger = logger;
+        Registers = new();
     }
 
+    /// <summary>
+    /// Gets the CPU registers for the 6502 CPU emulator.
+    /// </summary>
+    /// <remarks>
+    /// The <see cref="Cpu6502Registers"/> class represents the internal registers of the 6502 CPU,
+    /// including the accumulator, index registers, stack pointer, program counter, and processor status.
+    /// </remarks>
+    public Cpu6502Registers Registers { get; }
+
+    /// <summary>
+    /// Gets the memory interface used by the 6502 CPU for reading and writing data.
+    /// </summary>
+    /// <remarks>
+    /// The <see cref="IMemory"/> implementation provides access to the memory space
+    /// required for the CPU's operation, including fetching instructions and accessing data.
+    /// </remarks>
+    public IMemory Memory { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the CPU is currently halted.
+    /// </summary>
+    /// <remarks>
+    /// When the CPU is halted, it ceases execution of instructions until it is reset or resumed.
+    /// This property reflects the internal state of the CPU emulator.
+    /// </remarks>
+    public bool Halted => halted;
+
+    /// <summary>
+    /// Resets the CPU to its initial state.
+    /// </summary>
+    /// <remarks>
+    /// This method resets the CPU registers to their default values and sets the program counter (PC)
+    /// to the address specified by the reset vector located at memory address <c>0xFFFC</c>.
+    /// Additionally, it clears the halted state of the CPU.
+    /// </remarks>
+    /// <example>
+    /// The following example demonstrates how to reset the CPU:
+    /// <code>
+    /// var cpu = new Cpu6502(memory, logger);
+    /// cpu.Reset();
+    /// </code>
+    /// </example>
     public void Reset()
     {
         Registers.Reset();
+
         // Load reset vector
         Registers.PC = Memory.ReadWord(0xFFFC);
-        _halted = false;
-        _logger.LogDebug("CPU reset, PC=${PC:X4}", Registers.PC);
+        halted = false;
+        logger.LogDebug("CPU reset, PC=${PC:X4}", Registers.PC);
     }
 
+    /// <summary>
+    /// Executes instructions starting from the specified memory address.
+    /// </summary>
+    /// <param name="startAddress">The memory address from which execution begins.</param>
+    /// <remarks>
+    /// This method sets the program counter to the specified start address and begins
+    /// executing instructions until the CPU is halted. It logs the starting address
+    /// and processes instructions in a loop by repeatedly invoking the <see cref="Step"/> method.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the CPU is in an invalid state that prevents execution.
+    /// </exception>
     public void Execute(int startAddress)
     {
         Registers.PC = (ushort)startAddress;
-        _halted = false;
+        halted = false;
 
-        _logger.LogDebug("Starting execution at ${Address:X4}", startAddress);
+        logger.LogDebug("Starting execution at ${Address:X4}", startAddress);
 
-        while (!_halted)
+        while (!halted)
         {
             Step();
         }
     }
 
+    /// <summary>
+    /// Executes a single instruction at the current program counter and updates the CPU state.
+    /// </summary>
+    /// <returns>
+    /// The number of cycles taken to execute the instruction.
+    /// </returns>
+    /// <remarks>
+    /// This method fetches the opcode at the current program counter, decodes it, and executes
+    /// the corresponding instruction. It also increments the program counter and updates the
+    /// cycle count based on the executed instruction.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the CPU is in a halted state when this method is called.
+    /// </exception>
     public int Step()
     {
-        if (_halted) return 0;
+        if (halted)
+        {
+            return 0;
+        }
 
-        _cycles = 0;
+        cycles = 0;
         byte opcode = FetchByte();
 
         ExecuteOpcode(opcode);
 
-        return _cycles;
+        return cycles;
     }
 
     private byte FetchByte()
     {
         byte value = Memory.Read(Registers.PC);
         Registers.PC++;
-        _cycles++;
+        cycles++;
         return value;
     }
 
@@ -345,7 +416,7 @@ public class Cpu6502 : ICpu
             case 0xF8: Registers.Decimal = true; break;
 
             default:
-                _logger.LogWarning("Unknown opcode ${Opcode:X2} at ${PC:X4}", opcode, Registers.PC - 1);
+                logger.LogWarning("Unknown opcode ${Opcode:X2} at ${PC:X4}", opcode, Registers.PC - 1);
                 break;
         }
     }
@@ -405,6 +476,7 @@ public class Cpu6502 : ICpu
     private int Indirect()
     {
         int addr = FetchWord();
+
         // 6502 indirect jump bug - doesn't cross page boundary
         if ((addr & 0xFF) == 0xFF)
         {
@@ -412,6 +484,7 @@ public class Cpu6502 : ICpu
             byte high = Memory.Read(addr & 0xFF00);
             return low | (high << 8);
         }
+
         return Memory.ReadWord(addr);
     }
 
@@ -426,7 +499,7 @@ public class Cpu6502 : ICpu
         PushByte((byte)(Registers.P | 0x10)); // Set break flag
         Registers.InterruptDisabled = true;
         Registers.PC = Memory.ReadWord(0xFFFE);
-        _halted = true; // Stop execution for BASIC interpreter
+        halted = true; // Stop execution for BASIC interpreter
     }
 
     private void ORA(int address)
@@ -574,7 +647,7 @@ public class Cpu6502 : ICpu
         if (condition)
         {
             Registers.PC = (ushort)(Registers.PC + offset);
-            _cycles++;
+            cycles++;
         }
     }
 
@@ -593,7 +666,7 @@ public class Cpu6502 : ICpu
     private void RTS()
     {
         Registers.PC = (ushort)(PopWord() + 1);
-        _halted = true; // Stop execution for BASIC interpreter
+        halted = true; // Stop execution for BASIC interpreter
     }
 
     private void RTI()

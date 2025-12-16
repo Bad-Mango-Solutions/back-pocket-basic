@@ -9,36 +9,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-using ApplesoftBasic.Interpreter.AST;
-using ApplesoftBasic.Interpreter.Emulation;
-using ApplesoftBasic.Interpreter.IO;
-using ApplesoftBasic.Interpreter.Parser;
-using ApplesoftBasic.Interpreter.Runtime;
-using ApplesoftBasic.Interpreter.Tokens;
-
+using AST;
+using Emulation;
+using IO;
 using Microsoft.Extensions.Logging;
+using Parser;
+using Runtime;
+using Tokens;
 
 /// <summary>
 /// Applesoft BASIC interpreter that executes parsed BASIC programs.
 /// </summary>
 public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
 {
-    private readonly IParser _parser;
-    private readonly IBasicIO _io;
-    private readonly IVariableManager _variables;
-    private readonly IFunctionManager _functions;
-    private readonly IDataManager _data;
-    private readonly ILoopManager _loops;
-    private readonly IGosubManager _gosub;
-    private readonly ILogger<BasicInterpreter> _logger;
-    private Random _random;
+    private readonly IParser parser;
+    private readonly IBasicIO io;
+    private readonly IVariableManager variables;
+    private readonly IFunctionManager functions;
+    private readonly IDataManager data;
+    private readonly ILoopManager loops;
+    private readonly IGosubManager gosub;
+    private readonly ILogger<BasicInterpreter> logger;
+    private readonly Dictionary<int, int> lineNumberIndex = [];
 
-    private ProgramNode? _program;
-    private Dictionary<int, int> _lineNumberIndex = new();
-    private int _currentLineIndex;
-    private int _currentStatementIndex;
-    private bool _running;
-    private bool _shouldStop;
+    private Random random;
+    private ProgramNode? program;
+    private int currentLineIndex;
+    private int currentStatementIndex;
+    private bool running;
+    private bool shouldStop;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BasicInterpreter"/> class.
@@ -63,16 +62,16 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         IAppleSystem appleSystem,
         ILogger<BasicInterpreter> logger)
     {
-        _parser = parser;
-        _io = io;
-        _variables = variables;
-        _functions = functions;
-        _data = data;
-        _loops = loops;
-        _gosub = gosub;
+        this.parser = parser;
+        this.io = io;
+        this.variables = variables;
+        this.functions = functions;
+        this.data = data;
+        this.loops = loops;
+        this.gosub = gosub;
         AppleSystem = appleSystem;
-        _logger = logger;
-        _random = new Random();
+        this.logger = logger;
+        random = new();
     }
 
     /// <inheritdoc/>
@@ -81,66 +80,66 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public void Run(string source)
     {
-        _logger.LogInformation("Starting BASIC program execution");
+        logger.LogInformation("Starting BASIC program execution");
 
         try
         {
             // Parse the program
-            _program = _parser.Parse(source);
+            program = parser.Parse(source);
 
             // Build line number index
-            _lineNumberIndex.Clear();
-            for (int i = 0; i < _program.Lines.Count; i++)
+            lineNumberIndex.Clear();
+            for (int i = 0; i < program.Lines.Count; i++)
             {
-                _lineNumberIndex[_program.Lines[i].LineNumber] = i;
+                lineNumberIndex[program.Lines[i].LineNumber] = i;
             }
 
             // Initialize runtime
-            _variables.Clear();
-            _functions.Clear();
-            _loops.Clear();
-            _gosub.Clear();
-            _data.Initialize(_program.DataValues);
+            variables.Clear();
+            functions.Clear();
+            loops.Clear();
+            gosub.Clear();
+            data.Initialize(program.DataValues);
 
             // Start execution
-            _currentLineIndex = 0;
-            _currentStatementIndex = 0;
-            _running = true;
-            _shouldStop = false;
+            currentLineIndex = 0;
+            currentStatementIndex = 0;
+            running = true;
+            shouldStop = false;
 
             Execute();
         }
         catch (ProgramEndException)
         {
-            _logger.LogInformation("Program ended normally");
+            logger.LogInformation("Program ended normally");
         }
         catch (ProgramStopException ex)
         {
-            _io.WriteLine();
-            _io.WriteLine(ex.Message);
+            io.WriteLine();
+            io.WriteLine(ex.Message);
         }
         catch (BasicRuntimeException ex)
         {
-            _io.WriteLine();
-            _io.WriteLine(ex.Message);
-            _logger.LogError(ex, "Runtime error");
+            io.WriteLine();
+            io.WriteLine(ex.Message);
+            logger.LogError(ex, "Runtime error");
         }
         catch (ParseException ex)
         {
-            _io.WriteLine();
-            _io.WriteLine("?SYNTAX ERROR");
-            _logger.LogError(ex, "Parse error");
+            io.WriteLine();
+            io.WriteLine("?SYNTAX ERROR");
+            logger.LogError(ex, "Parse error");
         }
         finally
         {
-            _running = false;
+            running = false;
         }
     }
 
     /// <inheritdoc/>
     public void Stop()
     {
-        _shouldStop = true;
+        shouldStop = true;
     }
 
     /// <inheritdoc/>
@@ -174,10 +173,10 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                 if (func.Function == TokenType.TAB)
                 {
                     int col = func.Arguments[0].Accept(this).AsInteger();
-                    int currentCol = _io.GetCursorColumn();
+                    int currentCol = io.GetCursorColumn();
                     if (col > currentCol)
                     {
-                        _io.Write(new string(' ', col - currentCol));
+                        io.Write(new(' ', col - currentCol));
                     }
 
                     continue;
@@ -185,7 +184,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                 else if (func.Function == TokenType.SPC)
                 {
                     int spaces = func.Arguments[0].Accept(this).AsInteger();
-                    _io.Write(new string(' ', Math.Max(0, spaces)));
+                    io.Write(new(' ', Math.Max(0, spaces)));
                     continue;
                 }
             }
@@ -199,7 +198,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                 output = " " + output;
             }
 
-            _io.Write(output);
+            io.Write(output);
 
             // Handle separators
             if (i < node.Separators.Count)
@@ -208,9 +207,9 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                 {
                     case PrintSeparator.Comma:
                         // Tab to next 16-column zone
-                        int col = _io.GetCursorColumn();
+                        int col = io.GetCursorColumn();
                         int nextTab = ((col / 16) + 1) * 16;
-                        _io.Write(new string(' ', nextTab - col));
+                        io.Write(new(' ', nextTab - col));
                         break;
                     case PrintSeparator.Semicolon:
                         // No space
@@ -219,7 +218,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                         // Space between items
                         if (value.IsNumeric)
                         {
-                            _io.Write(" ");
+                            io.Write(" ");
                         }
 
                         break;
@@ -230,7 +229,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         // Print newline unless ends with separator
         if (!node.EndsWithSeparator)
         {
-            _io.WriteLine();
+            io.WriteLine();
         }
 
         return BasicValue.Zero;
@@ -248,12 +247,12 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         bool valid = false;
         while (!valid)
         {
-            string input = _io.ReadLine(prompt + " ");
+            string input = io.ReadLine(prompt + " ");
             string[] parts = input.Split(',');
 
             if (parts.Length < node.Variables.Count)
             {
-                _io.WriteLine("??REDO FROM START");
+                io.WriteLine("??REDO FROM START");
                 continue;
             }
 
@@ -265,17 +264,17 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
 
                 if (variable.IsString)
                 {
-                    _variables.SetVariable(variable.Name, BasicValue.FromString(value));
+                    variables.SetVariable(variable.Name, BasicValue.FromString(value));
                 }
                 else
                 {
                     if (double.TryParse(value, out double num))
                     {
-                        _variables.SetVariable(variable.Name, BasicValue.FromNumber(num));
+                        variables.SetVariable(variable.Name, BasicValue.FromNumber(num));
                     }
                     else
                     {
-                        _io.WriteLine("??REDO FROM START");
+                        io.WriteLine("??REDO FROM START");
                         valid = false;
                         break;
                     }
@@ -294,11 +293,11 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         if (node.ArrayIndices != null && node.ArrayIndices.Count > 0)
         {
             int[] indices = node.ArrayIndices.Select(e => e.Accept(this).AsInteger()).ToArray();
-            _variables.SetArrayElement(node.Variable.Name, indices, value);
+            variables.SetArrayElement(node.Variable.Name, indices, value);
         }
         else
         {
-            _variables.SetVariable(node.Variable.Name, value);
+            variables.SetVariable(node.Variable.Name, value);
         }
 
         return BasicValue.Zero;
@@ -335,22 +334,22 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitGosubStatement(GosubStatement node)
     {
         // Save return address
-        _gosub.Push(new GosubReturnAddress(_currentLineIndex, _currentStatementIndex + 1));
+        gosub.Push(new(currentLineIndex, currentStatementIndex + 1));
         throw new GotoException(node.LineNumber);
     }
 
     /// <inheritdoc/>
     public BasicValue VisitReturnStatement(ReturnStatement node)
     {
-        var returnAddr = _gosub.Pop();
-        _currentLineIndex = returnAddr.LineIndex;
-        _currentStatementIndex = returnAddr.StatementIndex;
+        var returnAddr = gosub.Pop();
+        currentLineIndex = returnAddr.LineIndex;
+        currentStatementIndex = returnAddr.StatementIndex;
 
         // Check if we need to advance to next line
-        if (_program != null && _currentStatementIndex >= _program.Lines[_currentLineIndex].Statements.Count)
+        if (program != null && currentStatementIndex >= program.Lines[currentLineIndex].Statements.Count)
         {
-            _currentLineIndex++;
-            _currentStatementIndex = 0;
+            currentLineIndex++;
+            currentStatementIndex = 0;
         }
 
         throw new NextIterationException();
@@ -364,15 +363,15 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         double step = node.Step?.Accept(this).AsNumber() ?? 1.0;
 
         // Set loop variable
-        _variables.SetVariable(node.Variable, start);
+        variables.SetVariable(node.Variable, start);
 
         // Push loop state
-        _loops.PushFor(new ForLoopState(
+        loops.PushFor(new(
             node.Variable,
             end.AsNumber(),
             step,
-            _currentLineIndex,
-            _currentStatementIndex + 1));
+            currentLineIndex,
+            currentStatementIndex + 1));
 
         return BasicValue.Zero;
     }
@@ -381,27 +380,27 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitNextStatement(NextStatement node)
     {
         // Handle multiple variables in NEXT
-        var variables = node.Variables.Count > 0 ? node.Variables : new List<string> { string.Empty };
+        var variables = node.Variables.Count > 0 ? node.Variables : [string.Empty];
 
         foreach (var varName in variables)
         {
-            var loopState = _loops.PopFor(string.IsNullOrEmpty(varName) ? null : varName);
+            var loopState = loops.PopFor(string.IsNullOrEmpty(varName) ? null : varName);
             if (loopState == null)
             {
                 throw new BasicRuntimeException("?NEXT WITHOUT FOR ERROR", GetCurrentLineNumber());
             }
 
             string variable = loopState.Variable;
-            double currentValue = _variables.GetVariable(variable).AsNumber();
+            double currentValue = this.variables.GetVariable(variable).AsNumber();
             currentValue += loopState.StepValue;
-            _variables.SetVariable(variable, BasicValue.FromNumber(currentValue));
+            this.variables.SetVariable(variable, BasicValue.FromNumber(currentValue));
 
             if (!loopState.IsComplete(currentValue))
             {
                 // Continue loop
-                _loops.PushFor(loopState);
-                _currentLineIndex = loopState.ReturnLineIndex;
-                _currentStatementIndex = loopState.ReturnStatementIndex;
+                loops.PushFor(loopState);
+                currentLineIndex = loopState.ReturnLineIndex;
+                currentStatementIndex = loopState.ReturnStatementIndex;
                 throw new NextIterationException();
             }
         }
@@ -415,7 +414,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         foreach (var array in node.Arrays)
         {
             int[] dims = array.Dimensions.Select(e => e.Accept(this).AsInteger()).ToArray();
-            _variables.DimArray(array.Name, dims);
+            variables.DimArray(array.Name, dims);
         }
 
         return BasicValue.Zero;
@@ -426,8 +425,8 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     {
         foreach (var variable in node.Variables)
         {
-            var value = _data.Read();
-            _variables.SetVariable(variable.Name, value);
+            var value = data.Read();
+            variables.SetVariable(variable.Name, value);
         }
 
         return BasicValue.Zero;
@@ -443,7 +442,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitRestoreStatement(RestoreStatement node)
     {
-        _data.Restore();
+        data.Restore();
         return BasicValue.Zero;
     }
 
@@ -487,8 +486,8 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitGetStatement(GetStatement node)
     {
-        char c = _io.ReadChar();
-        _variables.SetVariable(node.Variable.Name, BasicValue.FromString(c.ToString()));
+        char c = io.ReadChar();
+        variables.SetVariable(node.Variable.Name, BasicValue.FromString(c.ToString()));
         return BasicValue.Zero;
     }
 
@@ -513,7 +512,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
 
         if (index >= 1 && index <= node.LineNumbers.Count)
         {
-            _gosub.Push(new GosubReturnAddress(_currentLineIndex, _currentStatementIndex + 1));
+            gosub.Push(new(currentLineIndex, currentStatementIndex + 1));
             throw new GotoException(node.LineNumbers[index - 1]);
         }
 
@@ -523,14 +522,14 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitDefStatement(DefStatement node)
     {
-        _functions.DefineFunction(node.FunctionName, node.Parameter, node.Body);
+        functions.DefineFunction(node.FunctionName, node.Parameter, node.Body);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitHomeStatement(HomeStatement node)
     {
-        _io.ClearScreen();
+        io.ClearScreen();
         return BasicValue.Zero;
     }
 
@@ -538,7 +537,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitHtabStatement(HtabStatement node)
     {
         int col = node.Column.Accept(this).AsInteger();
-        _io.SetCursorPosition(col, _io.GetCursorRow() + 1);
+        io.SetCursorPosition(col, io.GetCursorRow() + 1);
         return BasicValue.Zero;
     }
 
@@ -546,28 +545,28 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitVtabStatement(VtabStatement node)
     {
         int row = node.Row.Accept(this).AsInteger();
-        _io.SetCursorPosition(_io.GetCursorColumn() + 1, row);
+        io.SetCursorPosition(io.GetCursorColumn() + 1, row);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitTextStatement(TextStatement node)
     {
-        _logger.LogDebug("TEXT mode activated (stubbed)");
+        logger.LogDebug("TEXT mode activated (stubbed)");
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitGrStatement(GrStatement node)
     {
-        _logger.LogDebug("GR mode activated (stubbed)");
+        logger.LogDebug("GR mode activated (stubbed)");
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitHgrStatement(HgrStatement node)
     {
-        _logger.LogDebug("HGR{Mode} mode activated (stubbed)", node.IsHgr2 ? "2" : string.Empty);
+        logger.LogDebug("HGR{Mode} mode activated (stubbed)", node.IsHgr2 ? "2" : string.Empty);
         return BasicValue.Zero;
     }
 
@@ -575,7 +574,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitColorStatement(ColorStatement node)
     {
         int color = node.Color.Accept(this).AsInteger();
-        _logger.LogDebug("COLOR set to {Color} (stubbed)", color);
+        logger.LogDebug("COLOR set to {Color} (stubbed)", color);
         return BasicValue.Zero;
     }
 
@@ -583,7 +582,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitHcolorStatement(HcolorStatement node)
     {
         int color = node.Color.Accept(this).AsInteger();
-        _logger.LogDebug("HCOLOR set to {Color} (stubbed)", color);
+        logger.LogDebug("HCOLOR set to {Color} (stubbed)", color);
         return BasicValue.Zero;
     }
 
@@ -592,7 +591,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     {
         int x = node.X.Accept(this).AsInteger();
         int y = node.Y.Accept(this).AsInteger();
-        _logger.LogDebug("PLOT {X},{Y} (stubbed)", x, y);
+        logger.LogDebug("PLOT {X},{Y} (stubbed)", x, y);
         return BasicValue.Zero;
     }
 
@@ -603,7 +602,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         {
             int x = point.X.Accept(this).AsInteger();
             int y = point.Y.Accept(this).AsInteger();
-            _logger.LogDebug("HPLOT {X},{Y} (stubbed)", x, y);
+            logger.LogDebug("HPLOT {X},{Y} (stubbed)", x, y);
         }
 
         return BasicValue.Zero;
@@ -613,7 +612,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitDrawStatement(DrawStatement node)
     {
         int shape = node.ShapeNumber.Accept(this).AsInteger();
-        _logger.LogDebug("DRAW {Shape} (stubbed)", shape);
+        logger.LogDebug("DRAW {Shape} (stubbed)", shape);
         return BasicValue.Zero;
     }
 
@@ -621,38 +620,38 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitXdrawStatement(XdrawStatement node)
     {
         int shape = node.ShapeNumber.Accept(this).AsInteger();
-        _logger.LogDebug("XDRAW {Shape} (stubbed)", shape);
+        logger.LogDebug("XDRAW {Shape} (stubbed)", shape);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitInverseStatement(InverseStatement node)
     {
-        _io.SetTextMode(TextMode.Inverse);
+        io.SetTextMode(TextMode.Inverse);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitFlashStatement(FlashStatement node)
     {
-        _io.SetTextMode(TextMode.Flash);
+        io.SetTextMode(TextMode.Flash);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitNormalStatement(NormalStatement node)
     {
-        _io.SetTextMode(TextMode.Normal);
+        io.SetTextMode(TextMode.Normal);
         return BasicValue.Zero;
     }
 
     /// <inheritdoc/>
     public BasicValue VisitClearStatement(ClearStatement node)
     {
-        _variables.Clear();
-        _functions.Clear();
-        _loops.Clear();
-        _gosub.Clear();
+        variables.Clear();
+        functions.Clear();
+        loops.Clear();
+        gosub.Clear();
         return BasicValue.Zero;
     }
 
@@ -695,7 +694,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     /// <inheritdoc/>
     public BasicValue VisitVariableExpression(VariableExpression node)
     {
-        return _variables.GetVariable(node.Name);
+        return variables.GetVariable(node.Name);
     }
 
     /// <inheritdoc/>
@@ -768,28 +767,28 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     public BasicValue VisitArrayAccessExpression(ArrayAccessExpression node)
     {
         int[] indices = node.Indices.Select(e => e.Accept(this).AsInteger()).ToArray();
-        return _variables.GetArrayElement(node.ArrayName, indices);
+        return variables.GetArrayElement(node.ArrayName, indices);
     }
 
     /// <inheritdoc/>
     public BasicValue VisitUserFunctionExpression(UserFunctionExpression node)
     {
-        var function = _functions.GetFunction(node.FunctionName);
+        var function = functions.GetFunction(node.FunctionName);
         if (function == null)
         {
-            throw new BasicRuntimeException("?UNDEF'D FUNCTION ERROR", GetCurrentLineNumber());
+            throw new BasicRuntimeException("?UNDEF'DP FUNCTION ERROR", GetCurrentLineNumber());
         }
 
         // Save current parameter value
-        var savedValue = _variables.VariableExists(function.Parameter)
-            ? _variables.GetVariable(function.Parameter)
+        var savedValue = variables.VariableExists(function.Parameter)
+            ? variables.GetVariable(function.Parameter)
             : (BasicValue?)null;
 
         try
         {
             // Set parameter to argument value
             var argValue = node.Argument.Accept(this);
-            _variables.SetVariable(function.Parameter, argValue);
+            variables.SetVariable(function.Parameter, argValue);
 
             // Evaluate function body
             return function.Body.Accept(this);
@@ -799,7 +798,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
             // Restore parameter value
             if (savedValue.HasValue)
             {
-                _variables.SetVariable(function.Parameter, savedValue.Value);
+                variables.SetVariable(function.Parameter, savedValue.Value);
             }
         }
     }
@@ -848,23 +847,23 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
 
     private void Execute()
     {
-        while (_running && !_shouldStop && _program != null)
+        while (running && !shouldStop && program != null)
         {
-            if (_currentLineIndex >= _program.Lines.Count)
+            if (currentLineIndex >= program.Lines.Count)
             {
                 break;
             }
 
-            var line = _program.Lines[_currentLineIndex];
+            var line = program.Lines[currentLineIndex];
 
-            while (_currentStatementIndex < line.Statements.Count)
+            while (currentStatementIndex < line.Statements.Count)
             {
-                if (_shouldStop)
+                if (shouldStop)
                 {
                     break;
                 }
 
-                var statement = line.Statements[_currentStatementIndex];
+                var statement = line.Statements[currentStatementIndex];
 
                 try
                 {
@@ -881,34 +880,34 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
                     break;
                 }
 
-                _currentStatementIndex++;
+                currentStatementIndex++;
             }
 
             // Move to next line
-            if (_currentStatementIndex >= line.Statements.Count)
+            if (currentStatementIndex >= line.Statements.Count)
             {
-                _currentLineIndex++;
-                _currentStatementIndex = 0;
+                currentLineIndex++;
+                currentStatementIndex = 0;
             }
         }
     }
 
     private void JumpToLine(int lineNumber)
     {
-        if (!_lineNumberIndex.TryGetValue(lineNumber, out int index))
+        if (!lineNumberIndex.TryGetValue(lineNumber, out int index))
         {
-            throw new BasicRuntimeException("?UNDEF'D STATEMENT ERROR", GetCurrentLineNumber());
+            throw new BasicRuntimeException("?UNDEF'DP STATEMENT ERROR", GetCurrentLineNumber());
         }
 
-        _currentLineIndex = index;
-        _currentStatementIndex = 0;
+        currentLineIndex = index;
+        currentStatementIndex = 0;
     }
 
     private int GetCurrentLineNumber()
     {
-        if (_program != null && _currentLineIndex < _program.Lines.Count)
+        if (program != null && currentLineIndex < program.Lines.Count)
         {
-            return _program.Lines[_currentLineIndex].LineNumber;
+            return program.Lines[currentLineIndex].LineNumber;
         }
 
         return 0;
@@ -944,7 +943,7 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
             // Utility functions
             TokenType.PEEK => BasicValue.FromNumber(AppleSystem.Peek(args[0].Accept(this).AsInteger())),
             TokenType.FRE => BasicValue.FromNumber(32768),
-            TokenType.POS => BasicValue.FromNumber(_io.GetCursorColumn()),
+            TokenType.POS => BasicValue.FromNumber(io.GetCursorColumn()),
             TokenType.SCRN => BasicValue.FromNumber(0),
             TokenType.PDL => BasicValue.FromNumber(128),
             TokenType.USR => BasicValue.FromNumber(0),
@@ -971,10 +970,10 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
         if (n < 0)
         {
             // Negative: seed the generator and return consistent value
-            _random = new Random((int)(n * 1000));
+            random = new((int)(n * 1000));
         }
 
-        return BasicValue.FromNumber(_random.NextDouble());
+        return BasicValue.FromNumber(random.NextDouble());
     }
 
     private BasicValue EvaluateSqr(IExpression arg)

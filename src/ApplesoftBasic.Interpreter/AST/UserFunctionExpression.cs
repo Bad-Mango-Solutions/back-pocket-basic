@@ -9,15 +9,27 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class UserFunctionExpression : IExpression
 {
-    public string FunctionName { get; }
-
-    public IExpression Argument { get; }
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UserFunctionExpression"/> class.
+    /// </summary>
+    /// <param name="functionName">The name of the user-defined function.</param>
+    /// <param name="argument">The argument expression for the function.</param>
     public UserFunctionExpression(string functionName, IExpression argument)
     {
         FunctionName = functionName;
         Argument = argument;
     }
 
+    /// <summary>
+    /// Gets the name of the user-defined function.
+    /// </summary>
+    public string FunctionName { get; }
+
+    /// <summary>
+    /// Gets the argument expression for the function.
+    /// </summary>
+    public IExpression Argument { get; }
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitUserFunctionExpression(this);
 }

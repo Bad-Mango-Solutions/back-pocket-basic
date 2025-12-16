@@ -9,14 +9,12 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class ForStatement : IStatement
 {
-    public string Variable { get; }
-
-    public IExpression Start { get; }
-
-    public IExpression End { get; }
-
-    public IExpression? Step { get; set; }
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ForStatement"/> class.
+    /// </summary>
+    /// <param name="variable">The loop variable name.</param>
+    /// <param name="start">The start expression.</param>
+    /// <param name="end">The end expression.</param>
     public ForStatement(string variable, IExpression start, IExpression end)
     {
         Variable = variable;
@@ -24,5 +22,26 @@ public class ForStatement : IStatement
         End = end;
     }
 
+    /// <summary>
+    /// Gets the loop variable name.
+    /// </summary>
+    public string Variable { get; }
+
+    /// <summary>
+    /// Gets the start expression.
+    /// </summary>
+    public IExpression Start { get; }
+
+    /// <summary>
+    /// Gets the end expression.
+    /// </summary>
+    public IExpression End { get; }
+
+    /// <summary>
+    /// Gets or sets the step expression.
+    /// </summary>
+    public IExpression? Step { get; set; }
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitForStatement(this);
 }

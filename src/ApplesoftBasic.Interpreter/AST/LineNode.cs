@@ -9,14 +9,25 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class LineNode : IAstNode
 {
-    public int LineNumber { get; }
-
-    public List<IStatement> Statements { get; } = new();
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LineNode"/> class.
+    /// </summary>
+    /// <param name="lineNumber">The line number of this program line.</param>
     public LineNode(int lineNumber)
     {
         LineNumber = lineNumber;
     }
 
+    /// <summary>
+    /// Gets the line number of this program line.
+    /// </summary>
+    public int LineNumber { get; }
+
+    /// <summary>
+    /// Gets the list of statements in this program line.
+    /// </summary>
+    public List<IStatement> Statements { get; } = [];
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitLine(this);
 }

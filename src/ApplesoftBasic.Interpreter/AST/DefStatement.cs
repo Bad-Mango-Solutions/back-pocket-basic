@@ -7,20 +7,23 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// DEF FN statement for user-defined functions.
 /// </summary>
-public class DefStatement : IStatement
+public class DefStatement(string functionName, string parameter, IExpression body) : IStatement
 {
-    public string FunctionName { get; }
+    /// <summary>
+    /// Gets the name of the user-defined function.
+    /// </summary>
+    public string FunctionName { get; } = functionName;
 
-    public string Parameter { get; }
+    /// <summary>
+    /// Gets the parameter name for the user-defined function.
+    /// </summary>
+    public string Parameter { get; } = parameter;
 
-    public IExpression Body { get; }
+    /// <summary>
+    /// Gets the body expression of the user-defined function.
+    /// </summary>
+    public IExpression Body { get; } = body;
 
-    public DefStatement(string functionName, string parameter, IExpression body)
-    {
-        FunctionName = functionName;
-        Parameter = parameter;
-        Body = body;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitDefStatement(this);
 }

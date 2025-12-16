@@ -3,15 +3,10 @@
     "settings": {
         "documentationRules": {
             "companyName": "Josh Pactor",
-            "copyrightText": "Copyright (c) {companyName}. All rights reserved.",
-            "documentInterfaces": true,
-            "documentExposedElements": true,
-            "documentInternalElements": false,
-            "documentPrivateElements": false,
-            "documentPrivateFields": false
+            "copyrightText": "Copyright (c) {companyName}. All rights reserved."
         },
         "orderingRules": {
-            "usingDirectivesPlacement": "outsideNamespace",
+            "usingDirectivesPlacement": "insideNamespace",
             "systemUsingDirectivesFirst": true
         },
         "namingRules": {
@@ -19,7 +14,7 @@
             "allowedHungarianPrefixes": []
         },
         "layoutRules": {
-            "newlineAtEndOfFile": "require"
+            "newlineAtEndOfFile": "omit"
         },
         "maintainabilityRules": {}
     }

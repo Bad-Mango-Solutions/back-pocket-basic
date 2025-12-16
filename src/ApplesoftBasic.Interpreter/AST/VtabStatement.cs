@@ -7,14 +7,18 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// VTAB statement - vertical tab.
 /// </summary>
-public class VtabStatement : IStatement
+public class VtabStatement(IExpression row) : IStatement
 {
-    public IExpression Row { get; }
+    /// <summary>
+    /// Gets the row expression for the VTAB statement.
+    /// </summary>
+    public IExpression Row { get; } = row;
 
-    public VtabStatement(IExpression row)
-    {
-        Row = row;
-    }
-
+    /// <summary>
+    /// Accepts a visitor for this AST node.
+    /// </summary>
+    /// <typeparam name="T">The return type of the visitor.</typeparam>
+    /// <param name="visitor">The visitor instance.</param>
+    /// <returns>The result of visiting this node.</returns>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitVtabStatement(this);
 }

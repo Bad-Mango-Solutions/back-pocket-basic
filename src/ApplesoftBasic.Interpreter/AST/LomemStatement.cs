@@ -7,14 +7,13 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// LOMEM: statement - sets bottom of variable memory.
 /// </summary>
-public class LomemStatement : IStatement
+public class LomemStatement(IExpression address) : IStatement
 {
-    public IExpression Address { get; }
+    /// <summary>
+    /// Gets the address expression for the LOMEM statement.
+    /// </summary>
+    public IExpression Address { get; } = address;
 
-    public LomemStatement(IExpression address)
-    {
-        Address = address;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitLomemStatement(this);
 }

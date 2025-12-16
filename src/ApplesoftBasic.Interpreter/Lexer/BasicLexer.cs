@@ -4,23 +4,20 @@
 
 namespace ApplesoftBasic.Interpreter.Lexer;
 
-using Tokens;
 using Microsoft.Extensions.Logging;
+
+using Tokens;
 
 /// <summary>
 /// Tokenizer for Applesoft BASIC source code.
 /// </summary>
 public class BasicLexer : ILexer
 {
-    private readonly ILogger<BasicLexer> _logger;
-    private string _source = string.Empty;
-    private readonly List<Token> _tokens = new();
-    private int _start;
-    private int _current;
-    private int _line;
-    private int _column;
-    private int _startColumn;
-
+    /// <summary>
+    /// A dictionary containing the mapping of Applesoft BASIC keywords to their corresponding
+    /// <see cref="TokenType"/> values. This dictionary is case-insensitive and is used by the lexer
+    /// to identify and tokenize keywords in Applesoft BASIC source code.
+    /// </summary>
     private static readonly Dictionary<string, TokenType> Keywords = new(StringComparer.OrdinalIgnoreCase)
     {
         // Program Control
@@ -128,38 +125,77 @@ public class BasicLexer : ILexer
         { "RESUME", TokenType.RESUME },
 
         // Custom extension
-        { "SLEEP", TokenType.SLEEP }
+        { "SLEEP", TokenType.SLEEP },
     };
 
+    private readonly ILogger<BasicLexer> logger;
+    private readonly List<Token> tokens = [];
+    private string source = string.Empty;
+    private int start;
+    private int current;
+    private int line;
+    private int column;
+    private int startColumn;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BasicLexer"/> class.
+    /// </summary>
+    /// <param name="logger">
+    /// The logger instance used for logging diagnostic and runtime information.
+    /// </param>
     public BasicLexer(ILogger<BasicLexer> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
 
+    /// <summary>
+    /// Tokenizes the provided Applesoft BASIC source code into a list of tokens.
+    /// </summary>
+    /// <param name="source">The source code to tokenize.</param>
+    /// <returns>A list of <see cref="Token"/> objects representing the tokens in the source code.</returns>
+    /// <remarks>
+    /// This method processes the provided source code, breaking it down into individual tokens
+    /// that can be used for further parsing or interpretation. It ensures that an EOF token
+    /// is always added at the end of the token list.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown if the <paramref name="source"/> is <c>null</c>.</exception>
+    /// <example>
+    /// Example usage:
+    /// <code>
+    /// var lexer = new BasicLexer();
+    /// var tokens = lexer.Tokenize("10 PRINT \"HELLO\"");
+    /// </code>
+    /// </example>
     public List<Token> Tokenize(string source)
     {
-        _source = source;
-        _tokens.Clear();
-        _start = 0;
-        _current = 0;
-        _line = 1;
-        _column = 1;
+        this.source = source;
+        tokens.Clear();
+        start = 0;
+        current = 0;
+        line = 1;
+        column = 1;
 
-        _logger.LogDebug("Starting tokenization of {Length} characters", source.Length);
+        logger.LogDebug("Starting tokenization of {Length} characters", source.Length);
 
         while (!IsAtEnd())
         {
-            _start = _current;
-            _startColumn = _column;
+            start = current;
+            startColumn = column;
             ScanToken();
         }
 
-        _tokens.Add(new Token(TokenType.EOF, "", null, _line, _column));
+        tokens.Add(new(TokenType.EOF, string.Empty, null, line, column));
 
-        _logger.LogDebug("Tokenization complete. Generated {Count} tokens", _tokens.Count);
+        logger.LogDebug("Tokenization complete. Generated {Count} tokens", tokens.Count);
 
-        return _tokens;
+        return tokens;
     }
+
+    private static bool IsDigit(char c) => c >= '0' && c <= '9';
+
+    private static bool IsAlpha(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+
+    private static bool IsAlphaNumeric(char c) => IsAlpha(c) || IsDigit(c);
 
     private void ScanToken()
     {
@@ -185,20 +221,34 @@ public class BasicLexer : ILexer
 
             case '<':
                 if (Match('='))
+                {
                     AddToken(TokenType.LessOrEqual);
+                }
                 else if (Match('>'))
+                {
                     AddToken(TokenType.NotEqual);
+                }
                 else
+                {
                     AddToken(TokenType.LessThan);
+                }
+
                 break;
 
             case '>':
                 if (Match('='))
+                {
                     AddToken(TokenType.GreaterOrEqual);
+                }
                 else if (Match('<'))
+                {
                     AddToken(TokenType.NotEqual);
+                }
                 else
+                {
                     AddToken(TokenType.GreaterThan);
+                }
+
                 break;
 
             case '"': ScanString(); break;
@@ -211,8 +261,8 @@ public class BasicLexer : ILexer
 
             case '\n':
                 AddToken(TokenType.Newline);
-                _line++;
-                _column = 1;
+                line++;
+                column = 1;
                 break;
 
             default:
@@ -226,9 +276,10 @@ public class BasicLexer : ILexer
                 }
                 else
                 {
-                    _logger.LogWarning("Unexpected character '{Char}' at line {Line}, column {Column}", c, _line, _startColumn);
+                    logger.LogWarning("Unexpected character '{Char}' at line {Line}, column {Column}", c, line, startColumn);
                     AddToken(TokenType.Unknown);
                 }
+
                 break;
         }
     }
@@ -242,8 +293,8 @@ public class BasicLexer : ILexer
 
         if (IsAtEnd() || Peek() == '\n')
         {
-            _logger.LogWarning("Unterminated string at line {Line}", _line);
-            AddToken(TokenType.String, _source.Substring(_start + 1, _current - _start - 1));
+            logger.LogWarning("Unterminated string at line {Line}", line);
+            AddToken(TokenType.String, source.Substring(start + 1, current - start - 1));
             return;
         }
 
@@ -251,14 +302,14 @@ public class BasicLexer : ILexer
         Advance();
 
         // Extract the string value (without quotes)
-        string value = _source.Substring(_start + 1, _current - _start - 2);
+        string value = source.Substring(start + 1, current - start - 2);
         AddToken(TokenType.String, value);
     }
 
     private void ScanNumber()
     {
         // Handle numbers starting with decimal point
-        bool hasDecimal = _source[_start] == '.';
+        bool hasDecimal = source[start] == '.';
 
         while (IsDigit(Peek()))
         {
@@ -283,20 +334,21 @@ public class BasicLexer : ILexer
             {
                 Advance();
             }
+
             while (IsDigit(Peek()))
             {
                 Advance();
             }
         }
 
-        string text = _source.Substring(_start, _current - _start);
+        string text = source.Substring(start, current - start);
         if (double.TryParse(text, out double value))
         {
             AddToken(TokenType.Number, value);
         }
         else
         {
-            _logger.LogError("Failed to parse number: {Text}", text);
+            logger.LogError("Failed to parse number: {Text}", text);
             AddToken(TokenType.Unknown);
         }
     }
@@ -316,13 +368,14 @@ public class BasicLexer : ILexer
             Advance();
         }
 
-        string text = _source.Substring(_start, _current - _start);
+        string text = source.Substring(start, current - start);
 
         // Check if it's a keyword (but not if it ends with $ or %)
         if (!text.EndsWith('$') && !text.EndsWith('%') && Keywords.TryGetValue(text, out TokenType type))
         {
             AddToken(type);
         }
+
         // Special handling for string function keywords that end with $
         else if (text.EndsWith('$'))
         {
@@ -343,37 +396,38 @@ public class BasicLexer : ILexer
         }
     }
 
-    private bool IsAtEnd() => _current >= _source.Length;
+    private bool IsAtEnd() => current >= source.Length;
 
     private char Advance()
     {
-        _column++;
-        return _source[_current++];
+        column++;
+        return source[current++];
     }
 
-    private char Peek() => IsAtEnd() ? '\0' : _source[_current];
+    private char Peek() => IsAtEnd() ? '\0' : source[current];
 
-    private char PeekNext() => _current + 1 >= _source.Length ? '\0' : _source[_current + 1];
+    private char PeekNext() => current + 1 >= source.Length ? '\0' : source[current + 1];
 
     private bool Match(char expected)
     {
-        if (IsAtEnd()) return false;
-        if (_source[_current] != expected) return false;
+        if (IsAtEnd())
+        {
+            return false;
+        }
 
-        _current++;
-        _column++;
+        if (source[current] != expected)
+        {
+            return false;
+        }
+
+        current++;
+        column++;
         return true;
     }
 
     private void AddToken(TokenType type, object? value = null)
     {
-        string text = _source.Substring(_start, _current - _start);
-        _tokens.Add(new Token(type, text, value, _line, _startColumn));
+        string text = source.Substring(start, current - start);
+        tokens.Add(new(type, text, value, line, startColumn));
     }
-
-    private static bool IsDigit(char c) => c >= '0' && c <= '9';
-
-    private static bool IsAlpha(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-
-    private static bool IsAlphaNumeric(char c) => IsAlpha(c) || IsDigit(c);
 }

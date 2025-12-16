@@ -9,20 +9,23 @@ using Tokens;
 /// <summary>
 /// Binary operation (e.g., 1 + 2, A * B).
 /// </summary>
-public class BinaryExpression : IExpression
+public class BinaryExpression(IExpression left, TokenType op, IExpression right) : IExpression
 {
-    public IExpression Left { get; }
+    /// <summary>
+    /// Gets the left operand of the binary expression.
+    /// </summary>
+    public IExpression Left { get; } = left;
 
-    public TokenType Operator { get; }
+    /// <summary>
+    /// Gets the operator of the binary expression.
+    /// </summary>
+    public TokenType Operator { get; } = op;
 
-    public IExpression Right { get; }
+    /// <summary>
+    /// Gets the right operand of the binary expression.
+    /// </summary>
+    public IExpression Right { get; } = right;
 
-    public BinaryExpression(IExpression left, TokenType op, IExpression right)
-    {
-        Left = left;
-        Operator = op;
-        Right = right;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitBinaryExpression(this);
 }

@@ -9,17 +9,18 @@ using Tokens;
 /// <summary>
 /// Unary operation (e.g., -X, NOT flag).
 /// </summary>
-public class UnaryExpression : IExpression
+public class UnaryExpression(TokenType op, IExpression operand) : IExpression
 {
-    public TokenType Operator { get; }
+    /// <summary>
+    /// Gets the unary operator token type.
+    /// </summary>
+    public TokenType Operator { get; } = op;
 
-    public IExpression Operand { get; }
+    /// <summary>
+    /// Gets the operand expression.
+    /// </summary>
+    public IExpression Operand { get; } = operand;
 
-    public UnaryExpression(TokenType op, IExpression operand)
-    {
-        Operator = op;
-        Operand = operand;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitUnaryExpression(this);
 }

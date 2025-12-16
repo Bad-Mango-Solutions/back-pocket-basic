@@ -9,47 +9,121 @@ namespace ApplesoftBasic.Interpreter.Emulation;
 /// </summary>
 internal class WaveOutAudioOutput : IAudioOutput
 {
-    private readonly int _sampleRate;
-    private readonly int _bitsPerSample;
-    private readonly int _channels;
-    private readonly Stream? _waveStream;
-    private readonly BinaryWriter? _writer;
-    private bool _disposed;
+    private readonly int sampleRate;
+    private readonly int bitsPerSample;
+    private readonly int channels;
 
     // Simple ring buffer for audio output
-    private readonly Queue<byte[]> _audioQueue = new();
-    private readonly Thread _playbackThread;
-    private readonly ManualResetEventSlim _audioAvailable = new(false);
-    private readonly CancellationTokenSource _cts = new();
+    private readonly Queue<byte[]> audioQueue = new();
+    private readonly Thread playbackThread;
+    private readonly ManualResetEventSlim audioAvailable = new(false);
+    private readonly CancellationTokenSource cts = new();
 
+    private bool disposed;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WaveOutAudioOutput"/> class with the specified audio configuration.
+    /// </summary>
+    /// <param name="sampleRate">The sample rate of the audio output, in samples per second.</param>
+    /// <param name="bitsPerSample">The number of bits per audio sample (e.g., 16 for 16-bit audio).</param>
+    /// <param name="channels">The number of audio channels (e.g., 1 for mono, 2 for stereo).</param>
+    /// <remarks>
+    /// This constructor sets up the audio output configuration and starts a background thread
+    /// for audio playback. The <see cref="WaveOutAudioOutput"/> class provides a cross-platform
+    /// implementation for audio output using raw wave APIs.
+    /// </remarks>
     public WaveOutAudioOutput(int sampleRate, int bitsPerSample, int channels)
     {
-        _sampleRate = sampleRate;
-        _bitsPerSample = bitsPerSample;
-        _channels = channels;
+        this.sampleRate = sampleRate;
+        this.bitsPerSample = bitsPerSample;
+        this.channels = channels;
 
         // Start playback thread
-        _playbackThread = new Thread(PlaybackLoop)
+        playbackThread = new(PlaybackLoop)
         {
             IsBackground = true,
-            Name = "AppleSpeaker-Playback"
+            Name = "AppleSpeaker-Playback",
         };
-        _playbackThread.Start();
+        playbackThread.Start();
     }
 
+    /// <summary>
+    /// Plays the specified audio samples through the audio output.
+    /// </summary>
+    /// <param name="samples">
+    /// An array of audio samples to be played. Each sample is represented as a 16-bit signed integer.
+    /// </param>
+    /// <remarks>
+    /// This method converts the provided audio samples into a byte array and enqueues them for playback.
+    /// If the audio output has been disposed or the samples array is empty, the method returns without performing any action.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// Thrown if the method is called after the audio output has been disposed.
+    /// </exception>
     public void Play(short[] samples)
     {
-        if (_disposed || samples.Length == 0) return;
+        if (disposed || samples.Length == 0)
+        {
+            return;
+        }
 
         // Convert samples to bytes
         var bytes = new byte[samples.Length * 2];
         Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
 
-        lock (_audioQueue)
+        lock (audioQueue)
         {
-            _audioQueue.Enqueue(bytes);
-            _audioAvailable.Set();
+            audioQueue.Enqueue(bytes);
+            audioAvailable.Set();
         }
+    }
+
+    /// <summary>
+    /// Releases all resources used by the <see cref="WaveOutAudioOutput"/> instance.
+    /// </summary>
+    /// <remarks>
+    /// This method ensures proper cleanup of resources, including stopping the playback thread,
+    /// releasing any queued audio data, and disposing of managed resources such as
+    /// <see cref="CancellationTokenSource"/> and <see cref="ManualResetEventSlim"/>.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// Thrown if the method is called on an already disposed instance.
+    /// </exception>
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+
+        cts.Cancel();
+        audioAvailable.Set(); // Wake up thread
+        playbackThread.Join(1000);
+
+        cts.Dispose();
+        audioAvailable.Dispose();
+    }
+
+    private static void PlayWavStream(MemoryStream wavStream)
+    {
+        // Use System.Media.SoundPlayer on Windows
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                using var player = new System.Media.SoundPlayer(wavStream);
+                player.PlaySync();
+            }
+            catch
+            {
+                // Fallback: ignore if SoundPlayer not available
+            }
+        }
+
+        // On other platforms, we could use other audio APIs
+        // For now, non-Windows platforms will be silent
     }
 
     private void PlaybackLoop()
@@ -58,24 +132,26 @@ internal class WaveOutAudioOutput : IAudioOutput
         {
             // Use System.Media.SoundPlayer alternative - write to temp WAV and play
             // For better cross-platform support, we'll use a simple approach
-            while (!_cts.Token.IsCancellationRequested)
+            while (!cts.Token.IsCancellationRequested)
             {
-                _audioAvailable.Wait(_cts.Token);
+                audioAvailable.Wait(cts.Token);
 
                 byte[]? audioData = null;
-                lock (_audioQueue)
+                lock (audioQueue)
                 {
-                    if (_audioQueue.Count > 0)
+                    if (audioQueue.Count > 0)
                     {
                         // Combine all queued audio
                         var allBytes = new List<byte>();
-                        while (_audioQueue.Count > 0)
+                        while (audioQueue.Count > 0)
                         {
-                            allBytes.AddRange(_audioQueue.Dequeue());
+                            allBytes.AddRange(audioQueue.Dequeue());
                         }
+
                         audioData = allBytes.ToArray();
                     }
-                    _audioAvailable.Reset();
+
+                    audioAvailable.Reset();
                 }
 
                 if (audioData != null && audioData.Length > 0)
@@ -108,11 +184,11 @@ internal class WaveOutAudioOutput : IAudioOutput
             writer.Write("fmt "u8.ToArray());
             writer.Write(16); // Subchunk1Size (16 for PCM)
             writer.Write((short)1); // AudioFormat (1 = PCM)
-            writer.Write((short)_channels);
-            writer.Write(_sampleRate);
-            writer.Write(_sampleRate * _channels * _bitsPerSample / 8); // ByteRate
-            writer.Write((short)(_channels * _bitsPerSample / 8)); // BlockAlign
-            writer.Write((short)_bitsPerSample);
+            writer.Write((short)channels);
+            writer.Write(sampleRate);
+            writer.Write(sampleRate * channels * bitsPerSample / 8); // ByteRate
+            writer.Write((short)(channels * bitsPerSample / 8)); // BlockAlign
+            writer.Write((short)bitsPerSample);
             writer.Write("data"u8.ToArray());
             writer.Write(dataSize);
             writer.Write(pcmData);
@@ -126,37 +202,5 @@ internal class WaveOutAudioOutput : IAudioOutput
         {
             // Silently ignore playback errors
         }
-    }
-
-    private static void PlayWavStream(MemoryStream wavStream)
-    {
-        // Use System.Media.SoundPlayer on Windows
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                using var player = new System.Media.SoundPlayer(wavStream);
-                player.PlaySync();
-            }
-            catch
-            {
-                // Fallback: ignore if SoundPlayer not available
-            }
-        }
-        // On other platforms, we could use other audio APIs
-        // For now, non-Windows platforms will be silent
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-
-        _cts.Cancel();
-        _audioAvailable.Set(); // Wake up thread
-        _playbackThread.Join(1000);
-
-        _cts.Dispose();
-        _audioAvailable.Dispose();
     }
 }

@@ -5,34 +5,53 @@
 namespace ApplesoftBasic.Interpreter.Parser;
 
 using AST;
+
 using Lexer;
-using Tokens;
+
 using Microsoft.Extensions.Logging;
+
+using Tokens;
 
 /// <summary>
 /// Parser for Applesoft BASIC.
 /// </summary>
 public class BasicParser : IParser
 {
-    private readonly ILexer _lexer;
-    private readonly ILogger<BasicParser> _logger;
-    private List<Token> _tokens = new();
-    private int _current;
+    private readonly ILexer lexer;
+    private readonly ILogger<BasicParser> logger;
+    private List<Token> tokens = [];
+    private int current;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BasicParser"/> class.
+    /// </summary>
+    /// <param name="lexer">The lexer used to tokenize the Applesoft BASIC source code.</param>
+    /// <param name="logger">The logger used for logging parser-related activities.</param>
     public BasicParser(ILexer lexer, ILogger<BasicParser> logger)
     {
-        _lexer = lexer;
-        _logger = logger;
+        this.lexer = lexer;
+        this.logger = logger;
     }
 
+    /// <summary>
+    /// Parses the provided Applesoft BASIC source code and constructs an abstract syntax tree (AST) representation.
+    /// </summary>
+    /// <param name="source">The Applesoft BASIC source code to parse.</param>
+    /// <returns>
+    /// A <see cref="ProgramNode"/> representing the parsed program, including its lines, statements, and data values.
+    /// </returns>
+    /// <remarks>
+    /// This method tokenizes the source code, processes each line, and organizes the resulting statements into a
+    /// structured program. Empty lines are skipped, and lines are sorted by their line numbers in ascending order.
+    /// </remarks>
     public ProgramNode Parse(string source)
     {
-        _tokens = _lexer.Tokenize(source);
-        _current = 0;
+        tokens = lexer.Tokenize(source);
+        current = 0;
 
         var program = new ProgramNode();
 
-        _logger.LogDebug("Starting parse of {Count} tokens", _tokens.Count);
+        logger.LogDebug("Starting parse of {Count} tokens", tokens.Count);
 
         while (!IsAtEnd())
         {
@@ -42,7 +61,10 @@ public class BasicParser : IParser
                 Advance();
             }
 
-            if (IsAtEnd()) break;
+            if (IsAtEnd())
+            {
+                break;
+            }
 
             var line = ParseLine();
             if (line != null)
@@ -63,9 +85,31 @@ public class BasicParser : IParser
         // Sort lines by line number
         program.Lines.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
 
-        _logger.LogDebug("Parse complete. {Count} lines parsed", program.Lines.Count);
+        logger.LogDebug("Parse complete. {Count} lines parsed", program.Lines.Count);
 
         return program;
+    }
+
+    private static bool IsBuiltInFunction(TokenType type)
+    {
+        return type switch
+        {
+            // Math functions
+            TokenType.ABS or TokenType.ATN or TokenType.COS or TokenType.EXP or
+                TokenType.INT or TokenType.LOG or TokenType.RND or TokenType.SGN or
+                TokenType.SIN or TokenType.SQR or TokenType.TAN or
+
+            // String functions
+                TokenType.LEN or TokenType.VAL or TokenType.ASC or
+                TokenType.MID_S or TokenType.LEFT_S or TokenType.RIGHT_S or
+                TokenType.STR_S or TokenType.CHR_S or
+
+            // Utility functions
+                TokenType.PEEK or TokenType.FRE or TokenType.POS or
+                TokenType.SCRN or TokenType.PDL or TokenType.USR or
+                TokenType.TAB or TokenType.SPC => true,
+            _ => false,
+        };
     }
 
     private LineNode? ParseLine()
@@ -336,7 +380,7 @@ public class BasicParser : IParser
         // Skip unknown tokens
         if (!Check(TokenType.Newline) && !Check(TokenType.Colon) && !IsAtEnd())
         {
-            _logger.LogWarning("Unexpected token: {Token}", Current());
+            logger.LogWarning("Unexpected token: {Token}", Current());
             Advance();
         }
 
@@ -348,15 +392,15 @@ public class BasicParser : IParser
         Advance(); // consume REM
 
         // Collect the rest of the line as comment
-        int start = _current;
+        int start = current;
         while (!Check(TokenType.Newline) && !IsAtEnd())
         {
             Advance();
         }
 
         // Build comment from tokens
-        var comment = string.Join("", _tokens.Skip(start).Take(_current - start).Select(t => t.Lexeme));
-        return new RemStatement(comment.Trim());
+        var comment = string.Join(string.Empty, tokens.Skip(start).Take(current - start).Select(t => t.Lexeme));
+        return new(comment.Trim());
     }
 
     private PrintStatement ParsePrint()
@@ -432,7 +476,7 @@ public class BasicParser : IParser
             }
 
             var varName = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-            stmt.Variables.Add(new VariableExpression(varName));
+            stmt.Variables.Add(new(varName));
         }
         while (Check(TokenType.Comma));
 
@@ -449,21 +493,20 @@ public class BasicParser : IParser
         if (Check(TokenType.LeftParen))
         {
             Advance();
-            indices = new List<IExpression>();
-            indices.Add(ParseExpression());
+            indices = [ParseExpression()];
             while (Check(TokenType.Comma))
             {
                 Advance();
                 indices.Add(ParseExpression());
             }
+
             Consume(TokenType.RightParen, "Expected ')' after array subscript");
         }
 
         Consume(TokenType.Equal, "Expected '=' in assignment");
         var value = ParseExpression();
 
-        var stmt = new LetStatement(new VariableExpression(varName), value);
-        stmt.ArrayIndices = indices;
+        var stmt = new LetStatement(new(varName), value) { ArrayIndices = indices };
         return stmt;
     }
 
@@ -507,14 +550,14 @@ public class BasicParser : IParser
     {
         Advance(); // consume GOTO
         var lineNum = (int)(double)Consume(TokenType.Number, "Expected line number after GOTO").Value!;
-        return new GotoStatement(lineNum);
+        return new(lineNum);
     }
 
     private GosubStatement ParseGosub()
     {
         Advance(); // consume GOSUB
         var lineNum = (int)(double)Consume(TokenType.Number, "Expected line number after GOSUB").Value!;
-        return new GosubStatement(lineNum);
+        return new(lineNum);
     }
 
     private ForStatement ParseFor()
@@ -578,6 +621,7 @@ public class BasicParser : IParser
                 Advance();
                 decl.Dimensions.Add(ParseExpression());
             }
+
             Consume(TokenType.RightParen, "Expected ')' after dimensions");
 
             stmt.Arrays.Add(decl);
@@ -600,7 +644,7 @@ public class BasicParser : IParser
             }
 
             var varName = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-            stmt.Variables.Add(new VariableExpression(varName));
+            stmt.Variables.Add(new(varName));
         }
         while (Check(TokenType.Comma));
 
@@ -670,21 +714,21 @@ public class BasicParser : IParser
         var address = ParseExpression();
         Consume(TokenType.Comma, "Expected ',' in POKE statement");
         var value = ParseExpression();
-        return new PokeStatement(address, value);
+        return new(address, value);
     }
 
     private CallStatement ParseCall()
     {
         Advance(); // consume CALL
         var address = ParseExpression();
-        return new CallStatement(address);
+        return new(address);
     }
 
     private GetStatement ParseGet()
     {
         Advance(); // consume GET
         var varName = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-        return new GetStatement(new VariableExpression(varName));
+        return new(new(varName));
     }
 
     private IStatement ParseOn()
@@ -698,7 +742,11 @@ public class BasicParser : IParser
             var stmt = new OnGotoStatement(expr);
             do
             {
-                if (Check(TokenType.Comma)) Advance();
+                if (Check(TokenType.Comma))
+                {
+                    Advance();
+                }
+
                 var lineNum = (int)(double)Consume(TokenType.Number, "Expected line number").Value!;
                 stmt.LineNumbers.Add(lineNum);
             }
@@ -711,7 +759,11 @@ public class BasicParser : IParser
             var stmt = new OnGosubStatement(expr);
             do
             {
-                if (Check(TokenType.Comma)) Advance();
+                if (Check(TokenType.Comma))
+                {
+                    Advance();
+                }
+
                 var lineNum = (int)(double)Consume(TokenType.Number, "Expected line number").Value!;
                 stmt.LineNumbers.Add(lineNum);
             }
@@ -734,38 +786,46 @@ public class BasicParser : IParser
         Consume(TokenType.Equal, "Expected '=' in function definition");
         var body = ParseExpression();
 
-        return new DefStatement(funcName, param, body);
+        return new(funcName, param, body);
     }
 
     private HtabStatement ParseHtab()
     {
         Advance(); // consume HTAB
         var column = ParseExpression();
-        return new HtabStatement(column);
+        return new(column);
     }
 
     private VtabStatement ParseVtab()
     {
         Advance(); // consume VTAB
         var row = ParseExpression();
-        return new VtabStatement(row);
+        return new(row);
     }
 
     private ColorStatement ParseColor()
     {
-        Advance(); // consume COLOR
-        // COLOR can be followed by = sign
-        if (Check(TokenType.Equal)) Advance();
+        Advance(); // consume COLOR; it can be followed by = sign
+
+        if (Check(TokenType.Equal))
+        {
+            Advance();
+        }
+
         var color = ParseExpression();
-        return new ColorStatement(color);
+        return new(color);
     }
 
     private HcolorStatement ParseHcolor()
     {
         Advance(); // consume HCOLOR
-        if (Check(TokenType.Equal)) Advance();
+        if (Check(TokenType.Equal))
+        {
+            Advance();
+        }
+
         var color = ParseExpression();
-        return new HcolorStatement(color);
+        return new(color);
     }
 
     private PlotStatement ParsePlot()
@@ -774,7 +834,7 @@ public class BasicParser : IParser
         var x = ParseExpression();
         Consume(TokenType.Comma, "Expected ',' in PLOT statement");
         var y = ParseExpression();
-        return new PlotStatement(x, y);
+        return new(x, y);
     }
 
     private HplotStatement ParseHplot()
@@ -838,23 +898,31 @@ public class BasicParser : IParser
     {
         Advance(); // consume SLEEP
         var ms = ParseExpression();
-        return new SleepStatement(ms);
+        return new(ms);
     }
 
     private HimemStatement ParseHimem()
     {
         Advance(); // consume HIMEM
-        if (Check(TokenType.Colon)) Advance(); // HIMEM:
+        if (Check(TokenType.Colon))
+        {
+            Advance(); // HIMEM:
+        }
+
         var address = ParseExpression();
-        return new HimemStatement(address);
+        return new(address);
     }
 
     private LomemStatement ParseLomem()
     {
         Advance(); // consume LOMEM
-        if (Check(TokenType.Colon)) Advance(); // LOMEM:
+        if (Check(TokenType.Colon))
+        {
+            Advance(); // LOMEM:
+        }
+
         var address = ParseExpression();
-        return new LomemStatement(address);
+        return new(address);
     }
 
     #region Expression Parsing
@@ -1036,6 +1104,7 @@ public class BasicParser : IParser
                     Advance();
                     arrayAccess.Indices.Add(ParseExpression());
                 }
+
                 Consume(TokenType.RightParen, "Expected ')' after array subscript");
                 return arrayAccess;
             }
@@ -1068,51 +1137,43 @@ public class BasicParser : IParser
         return func;
     }
 
-    private static bool IsBuiltInFunction(TokenType type)
-    {
-        return type switch
-        {
-            // Math functions
-            TokenType.ABS or TokenType.ATN or TokenType.COS or TokenType.EXP or
-            TokenType.INT or TokenType.LOG or TokenType.RND or TokenType.SGN or
-            TokenType.SIN or TokenType.SQR or TokenType.TAN or
-            // String functions
-            TokenType.LEN or TokenType.VAL or TokenType.ASC or
-            TokenType.MID_S or TokenType.LEFT_S or TokenType.RIGHT_S or
-            TokenType.STR_S or TokenType.CHR_S or
-            // Utility functions
-            TokenType.PEEK or TokenType.FRE or TokenType.POS or
-            TokenType.SCRN or TokenType.PDL or TokenType.USR or
-            TokenType.TAB or TokenType.SPC => true,
-            _ => false
-        };
-    }
-
     #endregion
 
     #region Helper Methods
 
     private bool Check(TokenType type)
     {
-        if (IsAtEnd()) return false;
+        if (IsAtEnd())
+        {
+            return false;
+        }
+
         return Current().Type == type;
     }
 
     private Token Advance()
     {
-        if (!IsAtEnd()) _current++;
+        if (!IsAtEnd())
+        {
+            current++;
+        }
+
         return Previous();
     }
 
     private bool IsAtEnd() => Current().Type == TokenType.EOF;
 
-    private Token Current() => _tokens[_current];
+    private Token Current() => tokens[current];
 
-    private Token Previous() => _tokens[_current - 1];
+    private Token Previous() => tokens[current - 1];
 
     private Token Consume(TokenType type, string message)
     {
-        if (Check(type)) return Advance();
+        if (Check(type))
+        {
+            return Advance();
+        }
+
         throw new ParseException(message, Current().Line, Current().Column);
     }
 

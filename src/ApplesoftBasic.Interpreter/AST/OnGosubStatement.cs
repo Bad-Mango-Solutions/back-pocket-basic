@@ -9,14 +9,25 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class OnGosubStatement : IStatement
 {
-    public IExpression Expression { get; }
-
-    public List<int> LineNumbers { get; } = new();
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OnGosubStatement"/> class.
+    /// </summary>
+    /// <param name="expression">The expression to evaluate for ON ... GOSUB.</param>
     public OnGosubStatement(IExpression expression)
     {
         Expression = expression;
     }
 
+    /// <summary>
+    /// Gets the expression to evaluate for ON ... GOSUB.
+    /// </summary>
+    public IExpression Expression { get; }
+
+    /// <summary>
+    /// Gets the list of line numbers for GOSUB targets.
+    /// </summary>
+    public List<int> LineNumbers { get; } = [];
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitOnGosubStatement(this);
 }

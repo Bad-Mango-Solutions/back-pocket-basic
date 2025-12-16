@@ -5,6 +5,14 @@
 namespace ApplesoftBasic.Interpreter.Execution;
 
 /// <summary>
-/// Exception used to signal loop continuation.
+/// Represents an exception that is thrown to signal the continuation of a loop iteration
+/// within the Applesoft BASIC interpreter.
 /// </summary>
-internal class NextIterationException : Exception { }
+/// <remarks>
+/// This exception is used internally by the interpreter to manage control flow for
+/// constructs such as FOR loops. It is caught and handled to resume execution
+/// at the appropriate point in the loop.
+/// </remarks>
+internal class NextIterationException : Exception
+{
+}

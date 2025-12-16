@@ -9,12 +9,20 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class RemStatement : IStatement
 {
-    public string Comment { get; }
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RemStatement"/> class.
+    /// </summary>
+    /// <param name="comment">The comment text for the REM statement.</param>
     public RemStatement(string comment)
     {
         Comment = comment;
     }
 
+    /// <summary>
+    /// Gets the comment text for the REM statement.
+    /// </summary>
+    public string Comment { get; }
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitRemStatement(this);
 }

@@ -24,7 +24,7 @@ public class ArrayAccessExpression : IExpression
     /// <summary>
     /// Gets the list of index expressions used to access the array element.
     /// </summary>
-    public List<IExpression> Indices { get; } = new();
+    public List<IExpression> Indices { get; } = [];
 
     /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitArrayAccessExpression(this);

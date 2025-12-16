@@ -9,12 +9,17 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class HtabStatement : IStatement
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="HtabStatement"/> class.
+    /// </summary>
+    /// <param name="column">The column expression for the horizontal tab.</param>
+    public HtabStatement(IExpression column) => Column = column;
+
+    /// <summary>
+    /// Gets the column expression for the horizontal tab.
+    /// </summary>
     public IExpression Column { get; }
 
-    public HtabStatement(IExpression column)
-    {
-        Column = column;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitHtabStatement(this);
 }

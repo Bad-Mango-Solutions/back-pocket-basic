@@ -7,18 +7,23 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// XDRAW statement - XOR draws a shape.
 /// </summary>
-public class XdrawStatement : IStatement
+public class XdrawStatement(IExpression shapeNumber) : IStatement
 {
-    public IExpression ShapeNumber { get; }
+    /// <summary>
+    /// Gets the shape number expression.
+    /// </summary>
+    public IExpression ShapeNumber { get; } = shapeNumber;
 
+    /// <summary>
+    /// Gets or sets the X coordinate expression.
+    /// </summary>
     public IExpression? AtX { get; set; }
 
+    /// <summary>
+    /// Gets or sets the Y coordinate expression.
+    /// </summary>
     public IExpression? AtY { get; set; }
 
-    public XdrawStatement(IExpression shapeNumber)
-    {
-        ShapeNumber = shapeNumber;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitXdrawStatement(this);
 }

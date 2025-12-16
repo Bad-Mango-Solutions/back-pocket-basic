@@ -7,14 +7,13 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// CALL statement.
 /// </summary>
-public class CallStatement : IStatement
+public class CallStatement(IExpression address) : IStatement
 {
-    public IExpression Address { get; }
+    /// <summary>
+    /// Gets the address expression for the CALL statement.
+    /// </summary>
+    public IExpression Address { get; } = address;
 
-    public CallStatement(IExpression address)
-    {
-        Address = address;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitCallStatement(this);
 }

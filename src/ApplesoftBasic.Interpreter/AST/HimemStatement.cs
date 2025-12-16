@@ -7,14 +7,13 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// HIMEM: statement - sets top of memory.
 /// </summary>
-public class HimemStatement : IStatement
+public class HimemStatement(IExpression address) : IStatement
 {
-    public IExpression Address { get; }
+    /// <summary>
+    /// Gets the address expression for the HIMEM statement.
+    /// </summary>
+    public IExpression Address { get; } = address;
 
-    public HimemStatement(IExpression address)
-    {
-        Address = address;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitHimemStatement(this);
 }

@@ -9,12 +9,17 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// </summary>
 public class StringLiteral : IExpression
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StringLiteral"/> class.
+    /// </summary>
+    /// <param name="value">The string value.</param>
+    public StringLiteral(string value) => Value = value;
+
+    /// <summary>
+    /// Gets the string value.
+    /// </summary>
     public string Value { get; }
 
-    public StringLiteral(string value)
-    {
-        Value = value;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitStringLiteral(this);
 }

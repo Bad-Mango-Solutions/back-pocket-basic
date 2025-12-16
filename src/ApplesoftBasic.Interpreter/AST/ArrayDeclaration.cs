@@ -26,5 +26,5 @@ public class ArrayDeclaration
     /// <summary>
     /// Gets the list of dimension expressions for the array.
     /// </summary>
-    public List<IExpression> Dimensions { get; } = new();
+    public List<IExpression> Dimensions { get; } = [];
 }

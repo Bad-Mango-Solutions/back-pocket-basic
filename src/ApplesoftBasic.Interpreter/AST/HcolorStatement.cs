@@ -7,14 +7,13 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// HCOLOR= statement - sets hi-res color.
 /// </summary>
-public class HcolorStatement : IStatement
+public class HcolorStatement(IExpression color) : IStatement
 {
-    public IExpression Color { get; }
+    /// <summary>
+    /// Gets the color expression for the HCOLOR statement.
+    /// </summary>
+    public IExpression Color { get; } = color;
 
-    public HcolorStatement(IExpression color)
-    {
-        Color = color;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitHcolorStatement(this);
 }

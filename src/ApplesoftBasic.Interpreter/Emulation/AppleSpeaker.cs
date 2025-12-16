@@ -15,9 +15,6 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public class AppleSpeaker : IAppleSpeaker
 {
-    private readonly ILogger<AppleSpeaker> _logger;
-    private readonly object _lock = new();
-
     // Audio configuration
     private const int SampleRate = 44100;
     private const int BitsPerSample = 16;
@@ -32,44 +29,37 @@ public class AppleSpeaker : IAppleSpeaker
     private const int BeepFrequency = 800;
     private const double BeepDuration = 0.15;
 
+    private readonly ILogger<AppleSpeaker> logger;
+    private readonly Lock @lock = new();
+
     // Audio buffer for accumulating clicks
-    private readonly List<short> _audioBuffer = new();
-    private readonly System.Timers.Timer _flushTimer;
-    private bool _speakerState; // Current speaker cone position (in/out)
-    private DateTime _lastClickTime = DateTime.MinValue;
-    private bool _disposed;
+    private readonly List<short> audioBuffer = [];
+    private readonly System.Timers.Timer flushTimer;
+    private bool speakerState; // Current speaker cone position (in/out)
+    private DateTime lastClickTime = DateTime.MinValue;
+    private bool disposed;
 
     // Platform audio output
-    private IAudioOutput? _audioOutput;
+    private IAudioOutput? audioOutput;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AppleSpeaker"/> class.
+    /// </summary>
+    /// <param name="logger">The logger to use for diagnostic output.</param>
     public AppleSpeaker(ILogger<AppleSpeaker> logger)
     {
-        _logger = logger;
+        this.logger = logger;
 
         // Set up a timer to flush audio buffer periodically
-        _flushTimer = new System.Timers.Timer(50); // 50ms intervals
-        _flushTimer.Elapsed += (s, e) => Flush();
-        _flushTimer.AutoReset = true;
-        _flushTimer.Start();
+        flushTimer = new(50); // 50ms intervals
+        flushTimer.Elapsed += (s, e) => Flush();
+        flushTimer.AutoReset = true;
+        flushTimer.Start();
 
         // Initialize audio output
         InitializeAudioOutput();
 
-        _logger.LogDebug("Apple II speaker emulation initialized (SampleRate={SampleRate}Hz)", SampleRate);
-    }
-
-    private void InitializeAudioOutput()
-    {
-        try
-        {
-            _audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
-            _logger.LogDebug("Audio output initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to initialize audio output - speaker emulation will be silent");
-            _audioOutput = new NullAudioOutput();
-        }
+        this.logger.LogDebug("Apple II speaker emulation initialized (SampleRate={SampleRate}Hz)", SampleRate);
     }
 
     /// <summary>
@@ -78,17 +68,20 @@ public class AppleSpeaker : IAppleSpeaker
     /// </summary>
     public void Click()
     {
-        if (_disposed) return;
+        if (disposed)
+        {
+            return;
+        }
 
-        lock (_lock)
+        lock (@lock)
         {
             // Toggle speaker state
-            _speakerState = !_speakerState;
+            speakerState = !speakerState;
 
             // Calculate time since last click to determine sample gap
             var now = DateTime.UtcNow;
-            var timeSinceLastClick = now - _lastClickTime;
-            _lastClickTime = now;
+            var timeSinceLastClick = now - lastClickTime;
+            lastClickTime = now;
 
             // Add silence between clicks if there was a gap
             if (timeSinceLastClick.TotalMilliseconds > 1 && timeSinceLastClick.TotalMilliseconds < 100)
@@ -98,22 +91,28 @@ public class AppleSpeaker : IAppleSpeaker
 
                 for (int i = 0; i < silenceSamples; i++)
                 {
-                    _audioBuffer.Add(0);
+                    audioBuffer.Add(0);
                 }
             }
 
             // Generate click waveform (sharp transition)
-            short amplitude = _speakerState ? short.MaxValue : short.MinValue;
+            short amplitude = speakerState ? short.MaxValue : short.MinValue;
 
             // Create a brief pulse with attack/decay to reduce harshness
             for (int i = 0; i < ClickSamples; i++)
             {
                 // Apply simple envelope to smooth the click
                 double envelope = 1.0;
-                if (i < 8) envelope = i / 8.0; // Attack
-                else if (i > ClickSamples - 8) envelope = (ClickSamples - i) / 8.0; // Decay
+                if (i < 8)
+                {
+                    envelope = i / 8.0; // Attack
+                }
+                else if (i > ClickSamples - 8)
+                {
+                    envelope = (ClickSamples - i) / 8.0; // Decay
+                }
 
-                _audioBuffer.Add((short)(amplitude * envelope));
+                audioBuffer.Add((short)(amplitude * envelope));
             }
         }
     }
@@ -124,9 +123,12 @@ public class AppleSpeaker : IAppleSpeaker
     /// </summary>
     public void Beep()
     {
-        if (_disposed) return;
+        if (disposed)
+        {
+            return;
+        }
 
-        lock (_lock)
+        lock (@lock)
         {
             // Flush any pending clicks first
             FlushInternal();
@@ -148,19 +150,23 @@ public class AppleSpeaker : IAppleSpeaker
                 int releaseSamples = SampleRate / 100; // 10ms release
 
                 if (i < attackSamples)
+                {
                     envelope = (double)i / attackSamples;
+                }
                 else if (i > totalSamples - releaseSamples)
+                {
                     envelope = (double)(totalSamples - i) / releaseSamples;
+                }
 
                 short amplitude = (short)(short.MaxValue * 0.5 * envelope); // 50% volume
                 beepBuffer[i] = high ? amplitude : (short)(-amplitude);
             }
 
             // Play beep directly
-            _audioOutput?.Play(beepBuffer);
+            audioOutput?.Play(beepBuffer);
         }
 
-        _logger.LogTrace("Beep played ({Frequency}Hz, {Duration}s)", BeepFrequency, BeepDuration);
+        logger.LogTrace("Beep played ({Frequency}Hz, {Duration}s)", BeepFrequency, BeepDuration);
     }
 
     /// <summary>
@@ -168,45 +174,77 @@ public class AppleSpeaker : IAppleSpeaker
     /// </summary>
     public void Flush()
     {
-        if (_disposed) return;
+        if (disposed)
+        {
+            return;
+        }
 
-        lock (_lock)
+        lock (@lock)
         {
             FlushInternal();
+        }
+    }
+
+    /// <summary>
+    /// Releases all resources used by the <see cref="AppleSpeaker"/> instance.
+    /// </summary>
+    /// <remarks>
+    /// This method ensures that any allocated resources, such as timers and audio output devices,
+    /// are properly disposed of to prevent resource leaks. After calling this method, the instance
+    /// should no longer be used.
+    /// </remarks>
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+
+        flushTimer.Stop();
+        flushTimer.Dispose();
+
+        lock (@lock)
+        {
+            FlushInternal();
+        }
+
+        audioOutput?.Dispose();
+        logger.LogDebug("Apple II speaker emulation disposed");
+    }
+
+    private void InitializeAudioOutput()
+    {
+        try
+        {
+            audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
+            logger.LogDebug("Audio output initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to initialize audio output - speaker emulation will be silent");
+            audioOutput = new NullAudioOutput();
         }
     }
 
     private void FlushInternal()
     {
-        if (_audioBuffer.Count == 0) return;
+        if (audioBuffer.Count == 0)
+        {
+            return;
+        }
 
         try
         {
-            var samples = _audioBuffer.ToArray();
-            _audioBuffer.Clear();
-            _audioOutput?.Play(samples);
+            var samples = audioBuffer.ToArray();
+            audioBuffer.Clear();
+            audioOutput?.Play(samples);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to play audio buffer");
-            _audioBuffer.Clear();
+            logger.LogWarning(ex, "Failed to play audio buffer");
+            audioBuffer.Clear();
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-
-        _flushTimer.Stop();
-        _flushTimer.Dispose();
-
-        lock (_lock)
-        {
-            FlushInternal();
-        }
-
-        _audioOutput?.Dispose();
-        _logger.LogDebug("Apple II speaker emulation disposed");
     }
 }

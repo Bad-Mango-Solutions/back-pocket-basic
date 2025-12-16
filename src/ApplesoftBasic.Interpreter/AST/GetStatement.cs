@@ -7,14 +7,13 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// GET statement (single character input).
 /// </summary>
-public class GetStatement : IStatement
+public class GetStatement(VariableExpression variable) : IStatement
 {
-    public VariableExpression Variable { get; }
+    /// <summary>
+    /// Gets the variable to store the input character.
+    /// </summary>
+    public VariableExpression Variable { get; } = variable;
 
-    public GetStatement(VariableExpression variable)
-    {
-        Variable = variable;
-    }
-
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitGetStatement(this);
 }

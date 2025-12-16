@@ -11,14 +11,25 @@ using Tokens;
 /// </summary>
 public class FunctionCallExpression : IExpression
 {
-    public TokenType Function { get; }
-
-    public List<IExpression> Arguments { get; } = new();
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FunctionCallExpression"/> class.
+    /// </summary>
+    /// <param name="function">The function token type.</param>
     public FunctionCallExpression(TokenType function)
     {
         Function = function;
     }
 
+    /// <summary>
+    /// Gets the function token type.
+    /// </summary>
+    public TokenType Function { get; }
+
+    /// <summary>
+    /// Gets the list of argument expressions.
+    /// </summary>
+    public List<IExpression> Arguments { get; } = [];
+
+    /// <inheritdoc/>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitFunctionCallExpression(this);
 }

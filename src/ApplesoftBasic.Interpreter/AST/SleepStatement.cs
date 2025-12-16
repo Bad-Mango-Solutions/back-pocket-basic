@@ -7,14 +7,18 @@ namespace ApplesoftBasic.Interpreter.AST;
 /// <summary>
 /// SLEEP statement (custom extension) - pauses execution.
 /// </summary>
-public class SleepStatement : IStatement
+public class SleepStatement(IExpression milliseconds) : IStatement
 {
-    public IExpression Milliseconds { get; }
+    /// <summary>
+    /// Gets the expression representing the number of milliseconds to sleep.
+    /// </summary>
+    public IExpression Milliseconds { get; } = milliseconds;
 
-    public SleepStatement(IExpression milliseconds)
-    {
-        Milliseconds = milliseconds;
-    }
-
+    /// <summary>
+    /// Accepts a visitor that processes this sleep statement.
+    /// </summary>
+    /// <typeparam name="T">The return type of the visitor.</typeparam>
+    /// <param name="visitor">The visitor instance.</param>
+    /// <returns>The result of visiting this node.</returns>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitSleepStatement(this);
 }
