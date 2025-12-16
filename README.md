@@ -236,7 +236,18 @@ Logs are written to:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+
+- How to set up your development environment
+- Coding standards and guidelines
+- How to submit pull requests
+- Reporting bugs and requesting features
+
+### Quick Links
+
+- **[Contributing Guide](CONTRIBUTING.md)** - Comprehensive contribution guidelines
+- **[Setup Guide](SETUP_GUIDE.md)** - Repository configuration and branch protection setup
+- **[Security Policy](.github/SECURITY.md)** - How to report security vulnerabilities
 
 ## License
 

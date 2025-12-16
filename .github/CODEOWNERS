@@ -1,0 +1,31 @@
+# Code Owners for applesoft-basic
+# 
+# These owners will be automatically requested for review when
+# someone opens a pull request.
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @jpactor
+
+# Core interpreter components
+/src/ApplesoftBasic.Interpreter/ @jpactor
+
+# Console application
+/src/ApplesoftBasic.Console/ @jpactor
+
+# Tests
+/tests/ @jpactor
+
+# Documentation
+*.md @jpactor
+/samples/ @jpactor
+
+# Configuration files
+*.sln @jpactor
+*.csproj @jpactor
+.gitignore @jpactor
+.gitattributes @jpactor
+
+# GitHub configuration
+/.github/ @jpactor
