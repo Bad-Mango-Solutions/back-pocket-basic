@@ -83,7 +83,7 @@ public class BasicIntegerTests
     {
         Assert.Throws<OverflowException>(() =>
         {
-            BasicInteger value = 32768;
+            _ = (BasicInteger)32768;
         });
     }
 
@@ -95,7 +95,7 @@ public class BasicIntegerTests
     {
         Assert.Throws<OverflowException>(() =>
         {
-            BasicInteger value = -32769;
+            _ = (BasicInteger)(-32769);
         });
     }
 

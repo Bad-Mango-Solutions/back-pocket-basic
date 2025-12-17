@@ -393,10 +393,11 @@ public class MbfTests
         MBF mbf = MBF.FromDouble(42.0);
         object obj = MBF.FromDouble(42.0);
         object notMbf = "not an MBF";
+        object? nullObj = null;
 
         Assert.That(mbf.Equals(obj), Is.True);
         Assert.That(mbf.Equals(notMbf), Is.False);
-        Assert.That(mbf.Equals(null), Is.False);
+        Assert.That(mbf.Equals(nullObj), Is.False);
     }
 
     /// <summary>

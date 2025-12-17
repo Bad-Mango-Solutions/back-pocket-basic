@@ -573,7 +573,7 @@ public class BasicStringTests
         BasicString value = "HELLO";
         byte[] destination = new byte[10];
 
-        bool result = value.TryCopyTo(destination);
+        bool result = value.TryCopyTo(destination.AsSpan());
 
         Assert.That(result, Is.True);
         Assert.That(destination[0], Is.EqualTo(0x48)); // 'H'

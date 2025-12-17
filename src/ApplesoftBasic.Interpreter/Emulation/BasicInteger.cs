@@ -245,7 +245,7 @@ public readonly struct BasicInteger : IEquatable<BasicInteger>
     public override bool Equals(object? obj) => obj is BasicInteger other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode() => value.GetHashCode();
+    public override int GetHashCode() => value;
 
     /// <inheritdoc/>
     public override string ToString() => value.ToString();
