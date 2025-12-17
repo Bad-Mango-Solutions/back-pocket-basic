@@ -380,6 +380,71 @@ MBF result = FacConverter.ReadMbfFromMemory(memory, FAC1);
 double value = FacConverter.MbfToDouble(result);
 ```
 
+### BasicInteger Struct
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicInteger.cs`
+
+**Purpose**: Represents a 16-bit signed integer as stored in Applesoft BASIC (variables with % suffix).
+
+**Format** (2 bytes):
+- 16-bit signed two's complement
+- Little-endian byte order in memory
+- Range: -32768 to 32767
+
+**Key Features**:
+- Implicit conversion to/from `int` and `short`
+- Explicit methods: `FromInt()`, `FromDouble()`, `FromBytes()`, `ToBytes()`
+- `ToMbf()` for conversion to floating-point format
+- Overflow detection with `OverflowException`
+
+**Example Usage**:
+```csharp
+// Create BasicInteger
+BasicInteger value = 42;
+
+// Get raw bytes (little-endian)
+byte[] bytes = value.ToBytes();
+
+// Create from bytes
+BasicInteger restored = BasicInteger.FromBytes(bytes);
+
+// Convert to MBF for FAC operations
+MBF mbf = value.ToMbf();
+```
+
+### BasicString Struct
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicString.cs`
+
+**Purpose**: Represents a string value as stored on the Apple II using 7-bit ASCII.
+
+**Format**:
+- 7-bit ASCII encoding (characters 0-127)
+- Maximum length: 255 characters
+- Characters outside 7-bit range are masked
+
+**Key Features**:
+- Implicit conversion to/from .NET `string`
+- Explicit methods: `FromString()`, `FromBytes()`, `FromRawBytes()`, `ToBytes()`
+- String operations: `Substring()`, `Concat()`
+- Helper methods: `CharToAppleAscii()`, `AppleAsciiToChar()`
+
+**Example Usage**:
+```csharp
+// Create BasicString
+BasicString value = "HELLO WORLD";
+
+// Get raw 7-bit ASCII bytes
+byte[] bytes = value.ToBytes();
+
+// Create from bytes (from emulated memory)
+BasicString restored = BasicString.FromBytes(bytes);
+
+// String operations
+BasicString sub = value.Substring(0, 5); // "HELLO"
+BasicString concat = sub.Concat(" APPLE II");
+```
+
 ---
 
 ## Usage in BASIC

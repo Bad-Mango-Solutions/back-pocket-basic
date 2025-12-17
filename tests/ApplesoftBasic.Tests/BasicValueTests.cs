@@ -4,6 +4,7 @@
 
 namespace ApplesoftBasic.Tests;
 
+using Interpreter.Emulation;
 using Interpreter.Runtime;
 
 /// <summary>
@@ -665,4 +666,119 @@ public class BasicValueTests
 
         Assert.That(a.ApproximatelyEquals(b), Is.True); // Both within epsilon of 0
     }
+
+    #region MBF Conversion Tests
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.AsMbf"/> correctly converts a positive numeric value to MBF.
+    /// </summary>
+    [Test]
+    public void AsMbf_PositiveNumber_ConvertsMbfCorrectly()
+    {
+        var value = BasicValue.FromNumber(42.5);
+        var mbf = value.AsMbf();
+
+        Assert.That(mbf.IsZero, Is.False);
+        Assert.That(mbf.IsNegative, Is.False);
+        Assert.That(mbf.ToDouble(), Is.EqualTo(42.5).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.AsMbf"/> correctly converts a negative numeric value to MBF.
+    /// </summary>
+    [Test]
+    public void AsMbf_NegativeNumber_ConvertsMbfCorrectly()
+    {
+        var value = BasicValue.FromNumber(-42.5);
+        var mbf = value.AsMbf();
+
+        Assert.That(mbf.IsZero, Is.False);
+        Assert.That(mbf.IsNegative, Is.True);
+        Assert.That(mbf.ToDouble(), Is.EqualTo(-42.5).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.AsMbf"/> correctly converts zero to MBF.
+    /// </summary>
+    [Test]
+    public void AsMbf_Zero_ReturnsZeroMbf()
+    {
+        var value = BasicValue.FromNumber(0);
+        var mbf = value.AsMbf();
+
+        Assert.That(mbf.IsZero, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.AsMbf"/> on a string value parses and converts correctly.
+    /// </summary>
+    [Test]
+    public void AsMbf_NumericString_ConvertsCorrectly()
+    {
+        var value = BasicValue.FromString("42.5");
+        var mbf = value.AsMbf();
+
+        Assert.That(mbf.ToDouble(), Is.EqualTo(42.5).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.AsMbf"/> on a non-numeric string returns zero MBF.
+    /// </summary>
+    [Test]
+    public void AsMbf_NonNumericString_ReturnsZeroMbf()
+    {
+        var value = BasicValue.FromString("HELLO");
+        var mbf = value.AsMbf();
+
+        Assert.That(mbf.IsZero, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.FromMbf"/> correctly creates a BasicValue from MBF.
+    /// </summary>
+    [Test]
+    public void FromMbf_ValidMbf_CreatesCorrectValue()
+    {
+        var mbf = MBF.FromDouble(3.14159);
+        var value = BasicValue.FromMbf(mbf);
+
+        Assert.That(value.IsNumeric, Is.True);
+        Assert.That(value.AsNumber(), Is.EqualTo(3.14159).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="BasicValue.FromMbf"/> with zero MBF creates zero BasicValue.
+    /// </summary>
+    [Test]
+    public void FromMbf_ZeroMbf_CreatesZeroValue()
+    {
+        var mbf = MBF.Zero;
+        var value = BasicValue.FromMbf(mbf);
+
+        Assert.That(value.IsNumeric, Is.True);
+        Assert.That(value.AsNumber(), Is.EqualTo(0.0));
+    }
+
+    /// <summary>
+    /// Verifies round-trip conversion from BasicValue to MBF and back.
+    /// </summary>
+    /// <param name="originalValue">The original value to test.</param>
+    [TestCase(0.0)]
+    [TestCase(1.0)]
+    [TestCase(-1.0)]
+    [TestCase(42.5)]
+    [TestCase(-42.5)]
+    [TestCase(3.14159)]
+    [TestCase(1000000.0)]
+    [TestCase(0.001)]
+    public void MbfRoundTrip_PreservesValue(double originalValue)
+    {
+        var value = BasicValue.FromNumber(originalValue);
+        var mbf = value.AsMbf();
+        var restored = BasicValue.FromMbf(mbf);
+
+        Assert.That(restored.AsNumber(), Is.EqualTo(originalValue).Within(1e-6 * Math.Max(1, Math.Abs(originalValue))));
+    }
+
+    #endregion
 }

@@ -160,8 +160,9 @@ Output: PrintStatement(StringLiteral("HELLO"))
 
 **`BasicValue`**:
 - Represents values (numbers, strings, integers)
-- Type conversions
+- Type conversions (including MBF, BasicInteger, BasicString)
 - Operator implementations
+- `AsMbf()`, `AsBasicInteger()`, `AsBasicString()` for authentic Apple II representations
 
 **`DataManager`**:
 - Manages DATA statements
@@ -177,6 +178,11 @@ Output: PrintStatement(StringLiteral("HELLO"))
 - Variable storage
 - Scope management
 - Type checking
+
+**Apple II Storage Types** (in `Emulation` namespace):
+- `MBF` - Microsoft Binary Format (5-byte floating-point)
+- `BasicInteger` - 16-bit signed integer (2-byte, little-endian)
+- `BasicString` - 7-bit ASCII string (max 255 chars)
 
 ---
 
