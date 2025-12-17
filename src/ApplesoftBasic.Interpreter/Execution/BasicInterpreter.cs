@@ -664,6 +664,16 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     }
 
     /// <inheritdoc/>
+    public BasicValue VisitAmpersandStatement(AmpersandStatement node)
+    {
+        // The ampersand operator performs a JSR to $03F5
+        // This allows user-provided machine language routines to be called
+        logger.LogDebug("Executing & operator (JSR to $03F5)");
+        AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.AMPERV);
+        return BasicValue.Zero;
+    }
+
+    /// <inheritdoc/>
     public BasicValue VisitHimemStatement(HimemStatement node)
     {
         int address = node.Address.Accept(this).AsInteger();
@@ -946,10 +956,62 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
             TokenType.POS => BasicValue.FromNumber(io.GetCursorColumn()),
             TokenType.SCRN => BasicValue.FromNumber(0),
             TokenType.PDL => BasicValue.FromNumber(128),
-            TokenType.USR => BasicValue.FromNumber(0),
+            TokenType.USR => EvaluateUsr(args[0]),
 
             _ => throw new BasicRuntimeException("?ILLEGAL QUANTITY ERROR", GetCurrentLineNumber()),
         };
+    }
+
+    private BasicValue EvaluateUsr(IExpression arg)
+    {
+        // Evaluate the parameter expression and get the numeric value
+        double value = arg.Accept(this).AsNumber();
+
+        // Store the value in FAC1 at $009D (using simplified format for emulation)
+        // In real Apple II, FAC1 is a 5-byte floating-point format
+        // For our emulation, we'll store the value as a 4-byte float and sign byte
+        WriteFloatToFac1(value);
+
+        // Execute the machine language routine at $000A (USR vector)
+        // The user should have placed a JMP instruction there pointing to their ML code
+        logger.LogDebug("Executing USR function (JMP to $000A) with value {Value}", value);
+        AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.USRADR);
+
+        // Read the result from FAC1 after the ML routine returns
+        return BasicValue.FromNumber(ReadFloatFromFac1());
+    }
+
+    private void WriteFloatToFac1(double value)
+    {
+        // Simplified floating-point storage for emulation purposes
+        // Apple II uses a 5-byte floating-point format:
+        // Byte 0: Exponent (biased by 128)
+        // Bytes 1-4: Mantissa (normalized with implicit leading 1)
+        // For our emulation, we'll store the value in a simplified form
+        // that can be easily read back
+
+        // Store the double value as bytes in memory at FAC1 ($009D)
+        byte[] bytes = BitConverter.GetBytes((float)value);
+        for (int i = 0; i < 4; i++)
+        {
+            AppleSystem.Memory.Write(Emulation.AppleSystem.MemoryLocations.FAC1 + i, bytes[i]);
+        }
+
+        // Store sign byte
+        byte sign = value < 0 ? (byte)0xFF : (byte)0x00;
+        AppleSystem.Memory.Write(Emulation.AppleSystem.MemoryLocations.FAC1SIGN, sign);
+    }
+
+    private double ReadFloatFromFac1()
+    {
+        // Read back the float value from FAC1
+        byte[] bytes = new byte[4];
+        for (int i = 0; i < 4; i++)
+        {
+            bytes[i] = AppleSystem.Memory.Read(Emulation.AppleSystem.MemoryLocations.FAC1 + i);
+        }
+
+        return BitConverter.ToSingle(bytes, 0);
     }
 
     private BasicValue EvaluateLog(IExpression arg)

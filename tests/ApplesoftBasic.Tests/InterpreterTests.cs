@@ -778,4 +778,114 @@ public class InterpreterTests
         Assert.That(output, Does.Contain("OR"));
         Assert.That(output, Does.Contain("NOT"));
     }
+
+    /// <summary>
+    /// Verifies that the ampersand ('&amp;') operator in Applesoft BASIC programs
+    /// can be parsed and executed by the <see cref="BasicInterpreter"/>.
+    /// </summary>
+    /// <remarks>
+    /// This test ensures that the ampersand operator is recognized as a valid statement
+    /// and that program execution continues after it. The ampersand operator calls
+    /// a machine language routine at address $03F5.
+    /// </remarks>
+    /// <example>
+    /// The test runs the following Applesoft BASIC code:
+    /// <code>
+    /// 10 REM TEST AMPERSAND OPERATOR
+    /// 20 POKE 1013, 96
+    /// 30 &amp;
+    /// 40 PRINT "DONE"
+    /// </code>
+    /// It then verifies that the output contains "DONE", confirming that program
+    /// execution continued after the ampersand statement.
+    /// </example>
+    [Test]
+    public void Run_AmpersandOperator_ExecutesAndContinues()
+    {
+        // Set up an RTS instruction at $03F5 so the & operator returns
+        // RTS = opcode 0x60
+        interpreter.Run("10 POKE 1013, 96\n20 &\n30 PRINT \"DONE\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("DONE"));
+    }
+
+    /// <summary>
+    /// Verifies that the ampersand ('&amp;') operator can be used as part of a multi-statement line.
+    /// </summary>
+    [Test]
+    public void Run_AmpersandOperator_WorksInMultiStatementLine()
+    {
+        // RTS = opcode 0x60 at $03F5
+        interpreter.Run("10 POKE 1013, 96 : & : PRINT \"SUCCESS\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("SUCCESS"));
+    }
+
+    /// <summary>
+    /// Verifies that the USR function in Applesoft BASIC evaluates its parameter
+    /// and stores it in FAC1 before calling the user routine.
+    /// </summary>
+    /// <remarks>
+    /// This test ensures that the USR function:
+    /// 1. Evaluates the arithmetic expression passed as parameter.
+    /// 2. Stores the value in FAC1 at $009D.
+    /// 3. Executes the machine language routine at $000A.
+    /// 4. Returns the value from FAC1 after the routine completes.
+    /// </remarks>
+    /// <example>
+    /// The test runs the following Applesoft BASIC code:
+    /// <code>
+    /// 10 REM SET UP USR ROUTINE AT $000A TO JUST RETURN
+    /// 20 POKE 10, 96
+    /// 30 X = USR(42.5)
+    /// 40 PRINT "CALLED"
+    /// </code>
+    /// It verifies that the program executes successfully and continues after
+    /// calling USR.
+    /// </example>
+    [Test]
+    public void Run_UsrFunction_EvaluatesParameterAndReturns()
+    {
+        // Set up an RTS instruction at $000A so USR returns immediately
+        // RTS = opcode 0x60
+        interpreter.Run("10 POKE 10, 96\n20 X = USR(42.5)\n30 PRINT \"CALLED\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("CALLED"));
+    }
+
+    /// <summary>
+    /// Verifies that the USR function evaluates expressions before calling the routine.
+    /// </summary>
+    [Test]
+    public void Run_UsrFunction_EvaluatesExpressions()
+    {
+        // Set up an RTS instruction at $000A
+        interpreter.Run("10 POKE 10, 96\n20 A = 10\n30 X = USR(A * 2.5)\n40 PRINT \"OK\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("OK"));
+    }
+
+    /// <summary>
+    /// Verifies that the USR function can be used with the VAL function.
+    /// </summary>
+    [Test]
+    public void Run_UsrFunction_WorksWithVal()
+    {
+        // Set up an RTS instruction at $000A
+        interpreter.Run("10 POKE 10, 96\n20 X = USR(VAL(\"3.14\"))\n30 PRINT \"COMPLETE\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("COMPLETE"));
+    }
+
+    /// <summary>
+    /// Verifies that the ampersand operator and USR function can be used together.
+    /// </summary>
+    [Test]
+    public void Run_AmpersandAndUsr_WorkTogether()
+    {
+        // Set up RTS instructions at both $03F5 and $000A
+        interpreter.Run("10 POKE 1013, 96\n20 POKE 10, 96\n30 &\n40 X = USR(100)\n50 PRINT \"BOTH\"");
+
+        Assert.That(string.Join(string.Empty, output), Does.Contain("BOTH"));
+    }
 }

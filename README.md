@@ -12,7 +12,7 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 - **Program Control**: `REM`, `LET`, `DIM`, `DEF FN`, `END`, `STOP`, `CLEAR`
 - **Flow Control**: `GOTO`, `GOSUB`/`RETURN`, `ON...GOTO`, `ON...GOSUB`, `IF...THEN`, `FOR...TO...STEP...NEXT`
 - **I/O**: `PRINT`, `INPUT`, `GET`, `DATA`, `READ`, `RESTORE`
-- **Memory/System**: `PEEK`, `POKE`, `CALL`, `HIMEM:`, `LOMEM:`
+- **Memory/System**: `PEEK`, `POKE`, `CALL`, `HIMEM:`, `LOMEM:`, `&`, `USR`
 - **Text Display**: `HOME`, `HTAB`, `VTAB`, `INVERSE`, `FLASH`, `NORMAL`
 - **Graphics** (stubbed for future UI): `GR`, `HGR`, `HGR2`, `TEXT`, `COLOR=`, `HCOLOR=`, `PLOT`, `HPLOT`, `DRAW`, `XDRAW`
 
@@ -22,7 +22,7 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 |----------|-----------|
 | **Math** | `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN` |
 | **String** | `LEN`, `VAL`, `ASC`, `MID$`, `LEFT$`, `RIGHT$`, `STR$`, `CHR$` |
-| **Utility** | `PEEK`, `FRE`, `POS`, `SCRN`, `PDL`, `TAB`, `SPC` |
+| **Utility** | `PEEK`, `FRE`, `POS`, `SCRN`, `PDL`, `TAB`, `SPC`, `USR` |
 
 ### Custom Extensions
 
@@ -32,11 +32,31 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
   REM Pauses for 1 second
   ```
 
+### Machine Language Integration
+
+- **`&` (Ampersand)** - Calls a machine language routine at address $03F5 (1013)
+  ```basic
+  10 REM SET UP AN RTS AT $03F5
+  20 POKE 1013, 96
+  30 &
+  40 PRINT "RETURNED FROM ML"
+  ```
+
+- **`USR`** - Calls a user machine language routine with a floating-point parameter
+  ```basic
+  10 REM SET UP AN RTS AT $000A
+  20 POKE 10, 96
+  30 X = USR(3.14159)
+  40 PRINT "RESULT: "; X
+  ```
+  The parameter is evaluated and stored in FAC1 at $009D before the routine is called.
+  The routine should return its result in FAC1.
+
 ### 6502 Emulation
 
 - Full 6502 CPU instruction set implementation
 - 64KB emulated memory space matching Apple II memory map
-- `PEEK`, `POKE`, and `CALL` operate within the emulated memory with bounds checking
+- `PEEK`, `POKE`, `CALL`, `&`, and `USR` operate within the emulated memory with bounds checking
 - ProDOS system call emulation layer
 
 ## Getting Started

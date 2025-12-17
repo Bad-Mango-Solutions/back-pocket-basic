@@ -371,6 +371,12 @@ public class BasicParser : IParser
             return ParseLomem();
         }
 
+        if (Check(TokenType.AMPERSAND))
+        {
+            Advance();
+            return new AmpersandStatement();
+        }
+
         // Implicit LET (assignment without LET keyword)
         if (Check(TokenType.Identifier))
         {
