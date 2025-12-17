@@ -23,4 +23,3 @@ public class AmpersandStatement : IStatement
     /// <returns>The result of visiting this node.</returns>
     public T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitAmpersandStatement(this);
 }
-
