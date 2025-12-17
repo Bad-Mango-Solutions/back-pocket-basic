@@ -501,6 +501,19 @@ public interface IAstVisitor<out T>
     T VisitSleepStatement(SleepStatement node);
 
     /// <summary>
+    /// Visits an <see cref="AmpersandStatement"/> node in the Abstract Syntax Tree (AST).
+    /// </summary>
+    /// <param name="node">
+    /// The <see cref="AmpersandStatement"/> node representing the '&amp;' statement,
+    /// which calls a machine language routine at memory location $03F5.
+    /// </param>
+    /// <returns>
+    /// The result of processing the <see cref="AmpersandStatement"/> node,
+    /// typically a value of type <typeparamref name="T"/>.
+    /// </returns>
+    T VisitAmpersandStatement(AmpersandStatement node);
+
+    /// <summary>
     /// Visits a <see cref="HimemStatement"/> node in the Abstract Syntax Tree (AST).
     /// </summary>
     /// <param name="node">

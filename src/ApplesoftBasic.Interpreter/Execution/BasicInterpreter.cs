@@ -664,6 +664,16 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
     }
 
     /// <inheritdoc/>
+    public BasicValue VisitAmpersandStatement(AmpersandStatement node)
+    {
+        // The ampersand operator performs a JSR to $03F5
+        // This allows user-provided machine language routines to be called
+        logger.LogDebug("Executing & operator (JSR to $03F5)");
+        AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.AMPERV);
+        return BasicValue.Zero;
+    }
+
+    /// <inheritdoc/>
     public BasicValue VisitHimemStatement(HimemStatement node)
     {
         int address = node.Address.Accept(this).AsInteger();
@@ -946,10 +956,32 @@ public class BasicInterpreter : IBasicInterpreter, IAstVisitor<BasicValue>
             TokenType.POS => BasicValue.FromNumber(io.GetCursorColumn()),
             TokenType.SCRN => BasicValue.FromNumber(0),
             TokenType.PDL => BasicValue.FromNumber(128),
-            TokenType.USR => BasicValue.FromNumber(0),
+            TokenType.USR => EvaluateUsr(args[0]),
 
             _ => throw new BasicRuntimeException("?ILLEGAL QUANTITY ERROR", GetCurrentLineNumber()),
         };
+    }
+
+    private BasicValue EvaluateUsr(IExpression arg)
+    {
+        // Evaluate the parameter expression and get the numeric value
+        double value = arg.Accept(this).AsNumber();
+
+        // Store the value in FAC1 at $009D using the FacConverter utility
+        Emulation.FacConverter.WriteToMemory(
+            AppleSystem.Memory,
+            Emulation.AppleSystem.MemoryLocations.FAC1,
+            Emulation.AppleSystem.MemoryLocations.FAC1SIGN,
+            value);
+
+        // Execute the machine language routine at $000A (USR vector)
+        // The user should have placed a JMP instruction there pointing to their ML code
+        logger.LogDebug("Executing USR function (JMP to $000A) with value {Value}", value);
+        AppleSystem.Call(Emulation.AppleSystem.MemoryLocations.USRADR);
+
+        // Read the result from FAC1 after the ML routine returns
+        return BasicValue.FromNumber(
+            Emulation.FacConverter.ReadFromMemory(AppleSystem.Memory, Emulation.AppleSystem.MemoryLocations.FAC1));
     }
 
     private BasicValue EvaluateLog(IExpression arg)

@@ -279,6 +279,17 @@ public class AppleSystem : IAppleSystem
         public const int GPTS = 0x2C;      // Graphics point coordinates
         public const int PROMPT = 0x33;    // Input prompt character
 
+        // USR function vector (JMP instruction at $000A)
+        public const int USRADR = 0x000A;  // USR function jump address (3 bytes: JMP + address)
+
+        // Floating-point accumulator (FAC) locations
+        public const int FAC1 = 0x009D;    // FAC1 - Primary floating-point accumulator (5 bytes)
+        public const int FAC1SIGN = 0x00A2; // FAC1 sign byte
+        public const int FAC2 = 0x00A5;    // FAC2 - Secondary floating-point accumulator (5 bytes)
+
+        // Ampersand vector
+        public const int AMPERV = 0x03F5;  // Ampersand (&) vector address (JSR target)
+
         // BASIC variables
         public const int TXTTAB = 0x67;    // Start of BASIC program
         public const int VARTAB = 0x69;    // Start of simple variables

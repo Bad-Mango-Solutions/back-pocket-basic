@@ -216,6 +216,7 @@ public class BasicLexer : ILexer
             case '#': AddToken(TokenType.Hash); break;
             case '@': AddToken(TokenType.At); break;
             case '?': AddToken(TokenType.PRINT); break; // ? is shorthand for PRINT
+            case '&': AddToken(TokenType.AMPERSAND); break;
 
             case '=': AddToken(TokenType.Equal); break;
 
