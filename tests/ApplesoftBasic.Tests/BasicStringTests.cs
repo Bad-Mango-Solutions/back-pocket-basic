@@ -344,4 +344,267 @@ public class BasicStringTests
     }
 
     #endregion
+
+    #region Span and Range Tests
+
+    /// <summary>
+    /// Verifies that Range indexer returns correct substring.
+    /// </summary>
+    [Test]
+    public void RangeIndexer_ValidRange_ReturnsSubstring()
+    {
+        BasicString value = "HELLO WORLD";
+
+        Assert.That(value[0..5].ToString(), Is.EqualTo("HELLO"));
+        Assert.That(value[6..].ToString(), Is.EqualTo("WORLD"));
+        Assert.That(value[..5].ToString(), Is.EqualTo("HELLO"));
+    }
+
+    /// <summary>
+    /// Verifies that Range indexer works with end-relative indices.
+    /// </summary>
+    [Test]
+    public void RangeIndexer_EndRelative_ReturnsCorrectSubstring()
+    {
+        BasicString value = "HELLO WORLD";
+
+        Assert.That(value[^5..].ToString(), Is.EqualTo("WORLD"));
+        Assert.That(value[..^6].ToString(), Is.EqualTo("HELLO"));
+    }
+
+    /// <summary>
+    /// Verifies that AsSpan returns correct span.
+    /// </summary>
+    [Test]
+    public void AsSpan_ReturnsCorrectBytes()
+    {
+        BasicString value = "ABC";
+        ReadOnlySpan<byte> span = value.AsSpan();
+
+        Assert.That(span.Length, Is.EqualTo(3));
+        Assert.That(span[0], Is.EqualTo(0x41)); // 'A'
+        Assert.That(span[1], Is.EqualTo(0x42)); // 'B'
+        Assert.That(span[2], Is.EqualTo(0x43)); // 'C'
+    }
+
+    /// <summary>
+    /// Verifies that AsSpan with start returns correct span.
+    /// </summary>
+    [Test]
+    public void AsSpan_WithStart_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO";
+        ReadOnlySpan<byte> span = value.AsSpan(2);
+
+        Assert.That(span.Length, Is.EqualTo(3));
+        Assert.That(span[0], Is.EqualTo(0x4C)); // 'L'
+    }
+
+    /// <summary>
+    /// Verifies that AsSpan with start and length returns correct span.
+    /// </summary>
+    [Test]
+    public void AsSpan_WithStartAndLength_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO WORLD";
+        ReadOnlySpan<byte> span = value.AsSpan(6, 5);
+
+        Assert.That(span.Length, Is.EqualTo(5));
+        Assert.That(span[0], Is.EqualTo(0x57)); // 'W'
+    }
+
+    /// <summary>
+    /// Verifies that AsSpan with Range returns correct span.
+    /// </summary>
+    [Test]
+    public void AsSpan_WithRange_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO WORLD";
+        ReadOnlySpan<byte> span = value.AsSpan(6..);
+
+        Assert.That(span.Length, Is.EqualTo(5));
+        Assert.That(span[0], Is.EqualTo(0x57)); // 'W'
+    }
+
+    /// <summary>
+    /// Verifies that AsSpan on empty string returns empty span.
+    /// </summary>
+    [Test]
+    public void AsSpan_EmptyString_ReturnsEmptySpan()
+    {
+        BasicString value = BasicString.Empty;
+        ReadOnlySpan<byte> span = value.AsSpan();
+
+        Assert.That(span.IsEmpty, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that AsMemory returns correct memory.
+    /// </summary>
+    [Test]
+    public void AsMemory_ReturnsCorrectMemory()
+    {
+        BasicString value = "ABC";
+        ReadOnlyMemory<byte> memory = value.AsMemory();
+
+        Assert.That(memory.Length, Is.EqualTo(3));
+        Assert.That(memory.Span[0], Is.EqualTo(0x41)); // 'A'
+    }
+
+    /// <summary>
+    /// Verifies that AsMemory with start returns correct memory.
+    /// </summary>
+    [Test]
+    public void AsMemory_WithStart_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO";
+        ReadOnlyMemory<byte> memory = value.AsMemory(2);
+
+        Assert.That(memory.Length, Is.EqualTo(3));
+        Assert.That(memory.Span[0], Is.EqualTo(0x4C)); // 'L'
+    }
+
+    /// <summary>
+    /// Verifies that AsMemory with start and length returns correct memory.
+    /// </summary>
+    [Test]
+    public void AsMemory_WithStartAndLength_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO WORLD";
+        ReadOnlyMemory<byte> memory = value.AsMemory(6, 5);
+
+        Assert.That(memory.Length, Is.EqualTo(5));
+        Assert.That(memory.Span[0], Is.EqualTo(0x57)); // 'W'
+    }
+
+    /// <summary>
+    /// Verifies that AsMemory with Range returns correct memory.
+    /// </summary>
+    [Test]
+    public void AsMemory_WithRange_ReturnsCorrectSlice()
+    {
+        BasicString value = "HELLO WORLD";
+        ReadOnlyMemory<byte> memory = value.AsMemory(6..);
+
+        Assert.That(memory.Length, Is.EqualTo(5));
+        Assert.That(memory.Span[0], Is.EqualTo(0x57)); // 'W'
+    }
+
+    /// <summary>
+    /// Verifies that FromSpan creates BasicString correctly.
+    /// </summary>
+    [Test]
+    public void FromSpan_ValidSpan_CreatesCorrectString()
+    {
+        byte[] data = { 0x48, 0x45, 0x4C, 0x4C, 0x4F };
+        BasicString value = BasicString.FromSpan(data.AsSpan());
+
+        Assert.That(value.ToString(), Is.EqualTo("HELLO"));
+    }
+
+    /// <summary>
+    /// Verifies that FromSpan masks high bits.
+    /// </summary>
+    [Test]
+    public void FromSpan_HighBits_Masked()
+    {
+        byte[] data = { 0xC8, 0xC5, 0xCC, 0xCC, 0xCF }; // With high bits set
+        BasicString value = BasicString.FromSpan(data.AsSpan());
+
+        Assert.That(value.ToString(), Is.EqualTo("HELLO")); // Masked to 7-bit
+    }
+
+    /// <summary>
+    /// Verifies that FromSpan throws on too long span.
+    /// </summary>
+    [Test]
+    public void FromSpan_TooLong_ThrowsException()
+    {
+        byte[] tooLong = new byte[256];
+        Assert.Throws<ArgumentException>(() => BasicString.FromSpan(tooLong.AsSpan()));
+    }
+
+    /// <summary>
+    /// Verifies that FromRawSpan creates BasicString without masking.
+    /// </summary>
+    [Test]
+    public void FromRawSpan_PreservesHighBits()
+    {
+        byte[] data = { 0xC8, 0xC5, 0xCC, 0xCC, 0xCF }; // With high bits set
+        BasicString value = BasicString.FromRawSpan(data.AsSpan());
+        byte[] result = value.ToBytes();
+
+        Assert.That(result[0], Is.EqualTo(0xC8)); // High bits preserved
+    }
+
+    /// <summary>
+    /// Verifies that CopyTo copies bytes correctly.
+    /// </summary>
+    [Test]
+    public void CopyTo_ValidDestination_CopiesCorrectly()
+    {
+        BasicString value = "HELLO";
+        byte[] destination = new byte[10];
+
+        value.CopyTo(destination.AsSpan());
+
+        Assert.That(destination[0], Is.EqualTo(0x48)); // 'H'
+        Assert.That(destination[4], Is.EqualTo(0x4F)); // 'O'
+    }
+
+    /// <summary>
+    /// Verifies that CopyTo throws when destination is too small.
+    /// </summary>
+    [Test]
+    public void CopyTo_TooSmall_ThrowsException()
+    {
+        BasicString value = "HELLO";
+        byte[] destination = new byte[3];
+
+        Assert.Throws<ArgumentException>(() => value.CopyTo(destination.AsSpan()));
+    }
+
+    /// <summary>
+    /// Verifies that TryCopyTo returns true on success.
+    /// </summary>
+    [Test]
+    public void TryCopyTo_ValidDestination_ReturnsTrue()
+    {
+        BasicString value = "HELLO";
+        byte[] destination = new byte[10];
+
+        bool result = value.TryCopyTo(destination);
+
+        Assert.That(result, Is.True);
+        Assert.That(destination[0], Is.EqualTo(0x48)); // 'H'
+    }
+
+    /// <summary>
+    /// Verifies that TryCopyTo returns false when destination is too small.
+    /// </summary>
+    [Test]
+    public void TryCopyTo_TooSmall_ReturnsFalse()
+    {
+        BasicString value = "HELLO";
+        byte[] destination = new byte[3];
+
+        bool result = value.TryCopyTo(destination.AsSpan());
+
+        Assert.That(result, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies Span round-trip preserves data.
+    /// </summary>
+    [Test]
+    public void SpanRoundTrip_PreservesData()
+    {
+        BasicString original = "HELLO WORLD";
+        ReadOnlySpan<byte> span = original.AsSpan();
+        BasicString restored = BasicString.FromSpan(span);
+
+        Assert.That(restored.ToString(), Is.EqualTo(original.ToString()));
+    }
+
+    #endregion
 }

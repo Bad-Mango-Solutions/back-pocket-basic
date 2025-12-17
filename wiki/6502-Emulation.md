@@ -428,6 +428,9 @@ MBF mbf = value.ToMbf();
 - Explicit methods: `FromString()`, `FromBytes()`, `FromRawBytes()`, `ToBytes()`
 - String operations: `Substring()`, `Concat()`
 - Helper methods: `CharToAppleAscii()`, `AppleAsciiToChar()`
+- **Span/Memory support**: `AsSpan()`, `AsMemory()`, `FromSpan()`, `FromRawSpan()`
+- **Range indexer**: `str[0..5]`, `str[^5..]`
+- Copy operations: `CopyTo()`, `TryCopyTo()`
 
 **Example Usage**:
 ```csharp
@@ -443,6 +446,29 @@ BasicString restored = BasicString.FromBytes(bytes);
 // String operations
 BasicString sub = value.Substring(0, 5); // "HELLO"
 BasicString concat = sub.Concat(" APPLE II");
+
+// Range-based access (C# 8+)
+BasicString world = value[6..];     // "WORLD"
+BasicString hello = value[0..5];    // "HELLO"
+BasicString last5 = value[^5..];    // "WORLD"
+
+// Span-based access (allocation-free)
+ReadOnlySpan<byte> span = value.AsSpan();
+ReadOnlySpan<byte> slice = value.AsSpan(6..);
+ReadOnlyMemory<byte> memory = value.AsMemory();
+
+// Create from spans
+byte[] data = new byte[] { 0x48, 0x45, 0x4C, 0x4C, 0x4F };
+BasicString fromSpan = BasicString.FromSpan(data.AsSpan());
+
+// Copy to destination
+byte[] dest = new byte[20];
+value.CopyTo(dest.AsSpan());
+// or safely:
+if (value.TryCopyTo(dest.AsSpan()))
+{
+    // copy succeeded
+}
 ```
 
 ---

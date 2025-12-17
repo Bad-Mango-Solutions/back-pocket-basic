@@ -361,12 +361,28 @@ BasicInteger restored = BasicInteger.FromBytes(bytes);
 
 #### BasicString
 
-7-bit ASCII string (max 255 characters).
+7-bit ASCII string (max 255 characters) with Span/Memory support.
 
 ```csharp
-BasicString value = "HELLO";
+BasicString value = "HELLO WORLD";
 byte[] bytes = value.ToBytes();  // 7-bit ASCII
 BasicString restored = BasicString.FromBytes(bytes);
+
+// Range-based slicing
+BasicString sub = value[0..5];   // "HELLO"
+BasicString end = value[^5..];   // "WORLD"
+
+// Span-based access (allocation-free)
+ReadOnlySpan<byte> span = value.AsSpan();
+ReadOnlySpan<byte> slice = value.AsSpan(6..);
+ReadOnlyMemory<byte> memory = value.AsMemory();
+
+// Create from spans
+BasicString fromSpan = BasicString.FromSpan(data.AsSpan());
+
+// Copy operations
+value.CopyTo(destination);
+bool success = value.TryCopyTo(destination);
 ```
 
 ---

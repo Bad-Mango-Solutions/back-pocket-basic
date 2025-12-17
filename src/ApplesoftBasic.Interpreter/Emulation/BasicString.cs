@@ -104,6 +104,31 @@ public readonly struct BasicString : IEquatable<BasicString>
     }
 
     /// <summary>
+    /// Gets a substring using a Range.
+    /// </summary>
+    /// <param name="range">The range of characters to extract.</param>
+    /// <returns>A new BasicString containing the specified substring.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the range is out of bounds.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// BasicString str = "HELLO WORLD";
+    /// BasicString sub = str[6..];    // "WORLD"
+    /// BasicString mid = str[0..5];   // "HELLO"
+    /// BasicString last = str[^5..];  // "WORLD"
+    /// </code>
+    /// </example>
+    public BasicString this[Range range]
+    {
+        get
+        {
+            var (offset, length) = range.GetOffsetAndLength(Length);
+            return Substring(offset, length);
+        }
+    }
+
+    /// <summary>
     /// Implicitly converts a .NET string to a BasicString.
     /// </summary>
     /// <param name="value">The string to convert.</param>
@@ -252,6 +277,65 @@ public readonly struct BasicString : IEquatable<BasicString>
     public static char AppleAsciiToChar(byte b) => (char)(b & SevenBitMask);
 
     /// <summary>
+    /// Creates a BasicString from a <see cref="ReadOnlySpan{T}"/> of bytes.
+    /// </summary>
+    /// <param name="span">The span containing 7-bit ASCII bytes.</param>
+    /// <returns>A BasicString created from the span.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the span exceeds the maximum length of 255 bytes.
+    /// </exception>
+    /// <remarks>
+    /// Bytes are masked to 7-bit ASCII (0-127 range) for safety.
+    /// </remarks>
+    public static BasicString FromSpan(ReadOnlySpan<byte> span)
+    {
+        if (span.IsEmpty)
+        {
+            return Empty;
+        }
+
+        if (span.Length > MaxLength)
+        {
+            throw new ArgumentException($"Span length {span.Length} exceeds maximum BasicString length of {MaxLength}.", nameof(span));
+        }
+
+        byte[] maskedBytes = new byte[span.Length];
+        for (int i = 0; i < span.Length; i++)
+        {
+            maskedBytes[i] = (byte)(span[i] & SevenBitMask);
+        }
+
+        return new BasicString(maskedBytes);
+    }
+
+    /// <summary>
+    /// Creates a BasicString from a <see cref="ReadOnlySpan{T}"/> of bytes without masking.
+    /// </summary>
+    /// <param name="span">The span containing raw Apple II string bytes.</param>
+    /// <returns>A BasicString created from the raw span.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the span exceeds the maximum length of 255 bytes.
+    /// </exception>
+    /// <remarks>
+    /// Use this method when reading string data directly from emulated Apple II memory
+    /// where the bytes are already in the correct format. No masking is applied.
+    /// </remarks>
+    public static BasicString FromRawSpan(ReadOnlySpan<byte> span)
+    {
+        if (span.IsEmpty)
+        {
+            return Empty;
+        }
+
+        if (span.Length > MaxLength)
+        {
+            throw new ArgumentException($"Span length {span.Length} exceeds maximum BasicString length of {MaxLength}.", nameof(span));
+        }
+
+        return new BasicString(span.ToArray());
+    }
+
+    /// <summary>
     /// Returns the raw 7-bit ASCII bytes of this string.
     /// </summary>
     /// <returns>A byte array containing the 7-bit ASCII representation.</returns>
@@ -265,6 +349,228 @@ public readonly struct BasicString : IEquatable<BasicString>
         byte[] copy = new byte[bytes.Length];
         Array.Copy(bytes, copy, bytes.Length);
         return copy;
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlySpan{T}"/> view of the underlying bytes.
+    /// </summary>
+    /// <returns>A read-only span over the 7-bit ASCII bytes.</returns>
+    /// <remarks>
+    /// This method provides efficient, allocation-free access to the underlying
+    /// byte data for read operations.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// BasicString str = "HELLO";
+    /// ReadOnlySpan&lt;byte&gt; span = str.AsSpan();
+    /// byte firstByte = span[0]; // 0x48 ('H')
+    /// </code>
+    /// </example>
+    public ReadOnlySpan<byte> AsSpan()
+    {
+        return bytes ?? ReadOnlySpan<byte>.Empty;
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlySpan{T}"/> view of a portion of the underlying bytes.
+    /// </summary>
+    /// <param name="start">The zero-based starting position.</param>
+    /// <returns>A read-only span over the specified portion of the bytes.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when start is out of range.
+    /// </exception>
+    public ReadOnlySpan<byte> AsSpan(int start)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            if (start != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start), $"Start index {start} is out of range for empty string. Expected: 0.");
+            }
+
+            return ReadOnlySpan<byte>.Empty;
+        }
+
+        return bytes.AsSpan(start);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlySpan{T}"/> view of a portion of the underlying bytes.
+    /// </summary>
+    /// <param name="start">The zero-based starting position.</param>
+    /// <param name="length">The number of bytes to include.</param>
+    /// <returns>A read-only span over the specified portion of the bytes.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when start or length is out of range.
+    /// </exception>
+    public ReadOnlySpan<byte> AsSpan(int start, int length)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            if (start != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start), $"Start index {start} is out of range for empty string. Expected: 0.");
+            }
+
+            if (length != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length), $"Length {length} is out of range for empty string. Expected: 0.");
+            }
+
+            return ReadOnlySpan<byte>.Empty;
+        }
+
+        return bytes.AsSpan(start, length);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlySpan{T}"/> view using a Range.
+    /// </summary>
+    /// <param name="range">The range of bytes to include.</param>
+    /// <returns>A read-only span over the specified range of bytes.</returns>
+    /// <example>
+    /// <code>
+    /// BasicString str = "HELLO WORLD";
+    /// ReadOnlySpan&lt;byte&gt; span = str.AsSpan(6..);  // "WORLD" bytes
+    /// </code>
+    /// </example>
+    public ReadOnlySpan<byte> AsSpan(Range range)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            var (offset, length) = range.GetOffsetAndLength(0);
+            if (offset != 0 || length != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(range), "Cannot create span from empty string with non-empty range.");
+            }
+
+            return ReadOnlySpan<byte>.Empty;
+        }
+
+        return bytes.AsSpan(range);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlyMemory{T}"/> view of the underlying bytes.
+    /// </summary>
+    /// <returns>A read-only memory over the 7-bit ASCII bytes.</returns>
+    /// <remarks>
+    /// This method provides a memory view that can be used in async operations
+    /// or stored for later use, unlike Span which is stack-only.
+    /// </remarks>
+    public ReadOnlyMemory<byte> AsMemory()
+    {
+        return bytes ?? ReadOnlyMemory<byte>.Empty;
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlyMemory{T}"/> view of a portion of the underlying bytes.
+    /// </summary>
+    /// <param name="start">The zero-based starting position.</param>
+    /// <returns>A read-only memory over the specified portion of the bytes.</returns>
+    public ReadOnlyMemory<byte> AsMemory(int start)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            if (start != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start), $"Start index {start} is out of range for empty string. Expected: 0.");
+            }
+
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        return bytes.AsMemory(start);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlyMemory{T}"/> view of a portion of the underlying bytes.
+    /// </summary>
+    /// <param name="start">The zero-based starting position.</param>
+    /// <param name="length">The number of bytes to include.</param>
+    /// <returns>A read-only memory over the specified portion of the bytes.</returns>
+    public ReadOnlyMemory<byte> AsMemory(int start, int length)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            if (start != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start), $"Start index {start} is out of range for empty string. Expected: 0.");
+            }
+
+            if (length != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length), $"Length {length} is out of range for empty string. Expected: 0.");
+            }
+
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        return bytes.AsMemory(start, length);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ReadOnlyMemory{T}"/> view using a Range.
+    /// </summary>
+    /// <param name="range">The range of bytes to include.</param>
+    /// <returns>A read-only memory over the specified range of bytes.</returns>
+    public ReadOnlyMemory<byte> AsMemory(Range range)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            var (offset, length) = range.GetOffsetAndLength(0);
+            if (offset != 0 || length != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(range), "Cannot create memory from empty string with non-empty range.");
+            }
+
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        return bytes.AsMemory(range);
+    }
+
+    /// <summary>
+    /// Copies the bytes to a destination span.
+    /// </summary>
+    /// <param name="destination">The destination span to copy to.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the destination span is too small.
+    /// </exception>
+    public void CopyTo(Span<byte> destination)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            return;
+        }
+
+        if (destination.Length < bytes.Length)
+        {
+            throw new ArgumentException($"Destination span length {destination.Length} is smaller than source length {bytes.Length}.", nameof(destination));
+        }
+
+        bytes.CopyTo(destination);
+    }
+
+    /// <summary>
+    /// Tries to copy the bytes to a destination span.
+    /// </summary>
+    /// <param name="destination">The destination span to copy to.</param>
+    /// <returns><c>true</c> if the copy succeeded; otherwise, <c>false</c>.</returns>
+    public bool TryCopyTo(Span<byte> destination)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            return true;
+        }
+
+        if (destination.Length < bytes.Length)
+        {
+            return false;
+        }
+
+        bytes.CopyTo(destination);
+        return true;
     }
 
     /// <summary>
