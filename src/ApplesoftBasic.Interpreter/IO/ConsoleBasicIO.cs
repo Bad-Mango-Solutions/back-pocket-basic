@@ -4,8 +4,9 @@
 
 namespace ApplesoftBasic.Interpreter.IO;
 
-using Emulation;
 using System.Diagnostics.CodeAnalysis;
+
+using Emulation;
 
 /// <summary>
 /// Console-based I/O implementation.

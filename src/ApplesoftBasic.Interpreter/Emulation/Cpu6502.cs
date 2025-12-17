@@ -4,8 +4,9 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
-using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
+
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// 6502 CPU emulator.

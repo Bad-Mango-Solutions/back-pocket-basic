@@ -4,6 +4,8 @@
 
 namespace ApplesoftBasic.Interpreter;
 
+using System.Diagnostics.CodeAnalysis;
+
 using Autofac;
 using Emulation;
 using Execution;
@@ -11,7 +13,6 @@ using IO;
 using Lexer;
 using Parser;
 using Runtime;
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Autofac module for registering interpreter services.
