@@ -673,6 +673,16 @@ public enum TokenType
     /// </summary>
     RESUME,
 
+    /// <summary>
+    /// Represents the ampersand ('&amp;') operator token in the Applesoft BASIC interpreter.
+    /// </summary>
+    /// <remarks>
+    /// The ampersand operator in Applesoft BASIC is used to call machine language routines.
+    /// When executed, it performs a JSR instruction to memory location $03F5.
+    /// This is an original Applesoft BASIC feature, not a custom extension.
+    /// </remarks>
+    AMPERSAND,      // &
+
     // Custom extension
 
     /// <summary>
@@ -680,15 +690,6 @@ public enum TokenType
     /// This token is used to indicate a pause or delay in the execution of a program.
     /// </summary>
     SLEEP,
-
-    /// <summary>
-    /// Represents the ampersand ('&amp;') operator token in the Applesoft BASIC interpreter.
-    /// </summary>
-    /// <remarks>
-    /// The ampersand operator in Applesoft BASIC is used to call machine language routines.
-    /// When executed, it performs a JSR instruction to memory location $03F5.
-    /// </remarks>
-    AMPERSAND,      // &
 
     // Operators
 

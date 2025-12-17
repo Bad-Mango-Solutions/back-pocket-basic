@@ -35,6 +35,22 @@ public class FacConverterTests
     }
 
     /// <summary>
+    /// Verifies that converting negative zero produces the expected byte array with sign byte 0xFF.
+    /// </summary>
+    [Test]
+    public void DoubleToFacBytes_NegativeZero_ReturnsCorrectBytes()
+    {
+        byte[] result = FacConverter.DoubleToFacBytes(-0.0);
+
+        Assert.That(result.Length, Is.EqualTo(5));
+        Assert.That(result[4], Is.EqualTo(0xFF), "Sign byte should be 0xFF for negative zero");
+
+        // IEEE 754 representation of -0.0f has sign bit set
+        double converted = BitConverter.ToSingle(result, 0);
+        Assert.That(converted, Is.EqualTo(0.0)); // Value is still zero
+    }
+
+    /// <summary>
     /// Verifies that converting a positive integer produces correct results.
     /// </summary>
     [Test]
@@ -312,6 +328,15 @@ public class FacConverterTests
     public void GetSignByte_PositiveZero_ReturnsZero()
     {
         Assert.That(FacConverter.GetSignByte(0.0), Is.EqualTo(0x00));
+    }
+
+    /// <summary>
+    /// Verifies that negative zero returns sign byte 0xFF.
+    /// </summary>
+    [Test]
+    public void GetSignByte_NegativeZero_ReturnsFF()
+    {
+        Assert.That(FacConverter.GetSignByte(-0.0), Is.EqualTo(0xFF));
     }
 
     /// <summary>

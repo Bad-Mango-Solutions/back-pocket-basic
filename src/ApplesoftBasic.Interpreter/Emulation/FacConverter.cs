@@ -70,8 +70,9 @@ public static class FacConverter
         byte[] floatBytes = BitConverter.GetBytes((float)value);
         Array.Copy(floatBytes, 0, result, 0, 4);
 
-        // Set sign byte
-        result[4] = value < 0 ? (byte)0xFF : (byte)0x00;
+        // Set sign byte (treat negative zero as negative; NaN gets non-negative sign)
+        bool isNegative = double.IsNegative(value) && !double.IsNaN(value);
+        result[4] = isNegative ? (byte)0xFF : (byte)0x00;
 
         return result;
     }
@@ -122,13 +123,17 @@ public static class FacConverter
     /// Gets the sign byte for a given double value.
     /// </summary>
     /// <param name="value">The double value to get the sign for.</param>
-    /// <returns>0xFF for negative values, 0x00 for non-negative values (including positive zero).</returns>
+    /// <returns>0xFF for negative values (including negative zero), 0x00 for non-negative values.</returns>
     /// <remarks>
     /// Note that negative zero (-0.0) is considered negative and returns 0xFF.
+    /// NaN values are treated as non-negative and return 0x00.
     /// </remarks>
     public static byte GetSignByte(double value)
     {
-        return value < 0 ? (byte)0xFF : (byte)0x00;
+        // Use double.IsNegative to correctly handle negative zero (-0.0)
+        // NaN should return non-negative sign
+        bool isNegative = double.IsNegative(value) && !double.IsNaN(value);
+        return isNegative ? (byte)0xFF : (byte)0x00;
     }
 
     /// <summary>
@@ -229,10 +234,13 @@ public static class FacConverter
         double backToDouble = asFloat;
 
         // Check if the round-trip conversion preserves the value
-        // Use a relative tolerance for non-zero values
-        if (value == 0)
+        // Use an absolute tolerance for values near zero to avoid
+        // issues with relative error blowing up, and a relative
+        // tolerance for other values.
+        const double zeroTolerance = 1e-15;
+        if (Math.Abs(value) <= zeroTolerance)
         {
-            return backToDouble == 0;
+            return Math.Abs(backToDouble) <= zeroTolerance;
         }
 
         double relativeDiff = Math.Abs((value - backToDouble) / value);
