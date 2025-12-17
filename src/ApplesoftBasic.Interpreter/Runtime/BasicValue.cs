@@ -4,9 +4,24 @@
 
 namespace ApplesoftBasic.Interpreter.Runtime;
 
+using ApplesoftBasic.Interpreter.Emulation;
+
 /// <summary>
 /// Represents a BASIC value (number or string).
 /// </summary>
+/// <remarks>
+/// <para>
+/// Numeric values are stored internally as .NET doubles for computational efficiency,
+/// but can be converted to/from MBF (Microsoft Binary Format) for authentic Apple II
+/// emulator state representation.
+/// </para>
+/// <para>
+/// Use <see cref="AsMbf"/> to get the authentic Apple II MBF representation of a numeric value,
+/// and <see cref="FromMbf"/> to create a BasicValue from an MBF value. This enables accurate
+/// emulation of the Apple II's variable storage format while leveraging modern hardware for
+/// arithmetic operations.
+/// </para>
+/// </remarks>
 public readonly struct BasicValue
 {
     /// <summary>
@@ -307,6 +322,40 @@ public readonly struct BasicValue
     public static BasicValue FromNumber(double value) => new(value);
 
     /// <summary>
+    /// Creates a new instance of the <see cref="BasicValue"/> struct from an MBF value.
+    /// </summary>
+    /// <param name="mbf">The MBF value to convert.</param>
+    /// <returns>A <see cref="BasicValue"/> instance representing the specified MBF value.</returns>
+    /// <remarks>
+    /// This method converts the MBF value to a double for internal storage, preserving the
+    /// precision characteristics of the MBF format. Use this when loading values from
+    /// authentic Apple II memory or variable table representations.
+    /// </remarks>
+    public static BasicValue FromMbf(MBF mbf) => new(mbf.ToDouble());
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="BasicValue"/> struct from a BasicInteger value.
+    /// </summary>
+    /// <param name="value">The BasicInteger value to convert.</param>
+    /// <returns>A <see cref="BasicValue"/> instance representing the specified integer value.</returns>
+    /// <remarks>
+    /// This method converts the BasicInteger (16-bit signed) to a numeric BasicValue.
+    /// Use this when loading integer variables from authentic Apple II memory representation.
+    /// </remarks>
+    public static BasicValue FromBasicInteger(BasicInteger value) => new((double)value.Value);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="BasicValue"/> struct from a BasicString value.
+    /// </summary>
+    /// <param name="value">The BasicString value to convert.</param>
+    /// <returns>A <see cref="BasicValue"/> instance representing the specified string value.</returns>
+    /// <remarks>
+    /// This method converts the BasicString (7-bit ASCII) to a string BasicValue.
+    /// Use this when loading string variables from authentic Apple II memory representation.
+    /// </remarks>
+    public static BasicValue FromBasicString(BasicString value) => new(value.ToString());
+
+    /// <summary>
     /// Creates a new instance of the <see cref="BasicValue"/> struct from a string value.
     /// </summary>
     /// <param name="value">The string value to initialize the <see cref="BasicValue"/> instance with.</param>
@@ -331,6 +380,65 @@ public readonly struct BasicValue
 
         return numericValue;
     }
+
+    /// <summary>
+    /// Converts the current <see cref="BasicValue"/> instance to an MBF (Microsoft Binary Format) value.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="MBF"/> struct representing the numeric value in authentic Apple II format.
+    /// If the instance represents a string, it attempts to parse the string as a number first.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method provides the authentic Apple II representation of the numeric value,
+    /// suitable for writing to emulated memory or inspecting variable table state.
+    /// </para>
+    /// <para>
+    /// The MBF format uses 5 bytes: 1 exponent byte (biased by 128) and 4 mantissa bytes.
+    /// This matches how Applesoft BASIC stored floating-point values on the Apple II.
+    /// </para>
+    /// </remarks>
+    public MBF AsMbf() => MBF.FromDouble(AsNumber());
+
+    /// <summary>
+    /// Converts the current <see cref="BasicValue"/> instance to a BasicInteger (16-bit signed).
+    /// </summary>
+    /// <returns>
+    /// A <see cref="BasicInteger"/> representing the truncated integer value.
+    /// If the instance represents a string, it attempts to parse the string as a number first.
+    /// </returns>
+    /// <exception cref="OverflowException">
+    /// Thrown when the value is outside the range -32768 to 32767.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This method provides the authentic Apple II representation of an integer value,
+    /// suitable for writing to emulated memory or inspecting variable table state for
+    /// integer variables (those with the % suffix).
+    /// </para>
+    /// <para>
+    /// Values are truncated toward zero before conversion, matching Applesoft BASIC behavior.
+    /// </para>
+    /// </remarks>
+    public BasicInteger AsBasicInteger() => BasicInteger.FromDouble(AsNumber());
+
+    /// <summary>
+    /// Converts the current <see cref="BasicValue"/> instance to a BasicString (7-bit ASCII).
+    /// </summary>
+    /// <returns>
+    /// A <see cref="BasicString"/> representing the string value in Apple II format.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method provides the authentic Apple II representation of a string value,
+    /// using 7-bit ASCII encoding. Characters outside the 7-bit range are masked.
+    /// </para>
+    /// <para>
+    /// If the instance is numeric, it is first converted to its string representation
+    /// using Applesoft BASIC formatting rules.
+    /// </para>
+    /// </remarks>
+    public BasicString AsBasicString() => BasicString.FromString(AsString());
 
     /// <summary>
     /// Converts the current <see cref="BasicValue"/> instance to its string representation.

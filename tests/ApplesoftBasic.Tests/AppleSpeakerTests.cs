@@ -372,4 +372,3 @@ public class AppleSpeakerTests
         }
     }
 }
-

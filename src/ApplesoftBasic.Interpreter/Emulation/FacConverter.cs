@@ -10,20 +10,27 @@ namespace ApplesoftBasic.Interpreter.Emulation;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The Apple II uses a 5-byte floating-point format in the FAC registers:
+/// The Apple II uses a 5-byte Microsoft Binary Format (MBF) in the FAC registers:
 /// </para>
 /// <list type="bullet">
 /// <item><description>Byte 0: Exponent (biased by 128)</description></item>
 /// <item><description>Bytes 1-4: Mantissa (normalized with implicit leading 1)</description></item>
+/// <item><description>Sign: Stored in MSB of byte 1</description></item>
 /// </list>
 /// <para>
-/// This class provides a simplified implementation that stores .NET float values
-/// in a 4-byte IEEE 754 format plus a sign byte, enabling basic interoperability
-/// with machine language routines that read/write FAC1 and FAC2.
+/// This class provides two sets of methods:
 /// </para>
+/// <list type="bullet">
+/// <item><description>Legacy methods (<see cref="DoubleToFacBytes"/>, <see cref="FacBytesToDouble"/>):
+/// Use IEEE 754 format for backward compatibility with existing code.</description></item>
+/// <item><description>MBF methods (<see cref="DoubleToMbf"/>, <see cref="MbfToDouble"/>,
+/// <see cref="WriteMbfToMemory"/>, <see cref="ReadMbfFromMemory"/>):
+/// Use authentic Apple II MBF format for accurate emulation.</description></item>
+/// </list>
 /// <para>
-/// Note: This is a simplified implementation. For full Applesoft BASIC compatibility,
-/// a proper 5-byte Apple II floating-point format implementation would be needed.
+/// For new code requiring authentic Apple II floating-point behavior, use the MBF-based methods.
+/// The <see cref="MBF"/> struct provides type-safe representation of MBF values with implicit
+/// conversion operators for convenience.
 /// </para>
 /// </remarks>
 public static class FacConverter
@@ -245,5 +252,123 @@ public static class FacConverter
 
         double relativeDiff = Math.Abs((value - backToDouble) / value);
         return relativeDiff < 1e-6; // Allow for single-precision tolerance
+    }
+
+    /// <summary>
+    /// Converts a .NET double value to an MBF (Microsoft Binary Format) value.
+    /// </summary>
+    /// <param name="value">The double value to convert.</param>
+    /// <returns>An MBF struct representing the value in Apple II floating-point format.</returns>
+    /// <exception cref="OverflowException">
+    /// Thrown when the value is infinity, NaN, or too large to represent in MBF format.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This method converts a .NET double to the authentic 5-byte MBF format used by
+    /// the Apple II and Applesoft BASIC. Unlike <see cref="DoubleToFacBytes"/>, which
+    /// uses IEEE 754 format for compatibility, this method produces true MBF format.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// MBF mbfValue = FacConverter.DoubleToMbf(3.14159);
+    /// </code>
+    /// </example>
+    public static MBF DoubleToMbf(double value)
+    {
+        return MBF.FromDouble(value);
+    }
+
+    /// <summary>
+    /// Converts an MBF (Microsoft Binary Format) value to a .NET double.
+    /// </summary>
+    /// <param name="mbf">The MBF value to convert.</param>
+    /// <returns>The double value represented by the MBF.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method converts an MBF value back to a .NET double for use in calculations.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// MBF mbfValue = FacConverter.DoubleToMbf(3.14159);
+    /// double result = FacConverter.MbfToDouble(mbfValue);
+    /// </code>
+    /// </example>
+    public static double MbfToDouble(MBF mbf)
+    {
+        return mbf.ToDouble();
+    }
+
+    /// <summary>
+    /// Writes an MBF value to memory at the specified FAC location.
+    /// </summary>
+    /// <param name="memory">The memory interface to write to.</param>
+    /// <param name="facAddress">The starting address of the FAC register.</param>
+    /// <param name="mbf">The MBF value to write.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="memory"/> is null.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This method writes the 5-byte MBF representation directly to memory,
+    /// providing authentic Apple II floating-point format storage.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// MBF pi = FacConverter.DoubleToMbf(3.14159);
+    /// FacConverter.WriteMbfToMemory(memory, FAC1, pi);
+    /// </code>
+    /// </example>
+    public static void WriteMbfToMemory(IMemory memory, int facAddress, MBF mbf)
+    {
+        if (memory == null)
+        {
+            throw new ArgumentNullException(nameof(memory));
+        }
+
+        byte[] bytes = mbf.ToBytes();
+        for (int i = 0; i < MBF.ByteSize; i++)
+        {
+            memory.Write(facAddress + i, bytes[i]);
+        }
+    }
+
+    /// <summary>
+    /// Reads an MBF value from memory at the specified FAC location.
+    /// </summary>
+    /// <param name="memory">The memory interface to read from.</param>
+    /// <param name="facAddress">The starting address of the FAC register.</param>
+    /// <returns>The MBF value read from memory.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="memory"/> is null.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This method reads 5 bytes starting at <paramref name="facAddress"/> and
+    /// interprets them as an MBF floating-point value.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// MBF result = FacConverter.ReadMbfFromMemory(memory, FAC1);
+    /// double value = result.ToDouble();
+    /// </code>
+    /// </example>
+    public static MBF ReadMbfFromMemory(IMemory memory, int facAddress)
+    {
+        if (memory == null)
+        {
+            throw new ArgumentNullException(nameof(memory));
+        }
+
+        byte[] bytes = new byte[MBF.ByteSize];
+        for (int i = 0; i < MBF.ByteSize; i++)
+        {
+            bytes[i] = memory.Read(facAddress + i);
+        }
+
+        return MBF.FromBytes(bytes);
     }
 }

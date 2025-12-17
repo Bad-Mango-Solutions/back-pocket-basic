@@ -329,6 +329,148 @@ public void WriteRange(ushort address, byte[] data)
 - Toggles on read/write
 - Generates system beep (platform-dependent)
 
+### MBF Struct (Microsoft Binary Format)
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/MBF.cs`
+
+**Purpose**: Represents the 5-byte floating-point format used by Applesoft BASIC.
+
+**Format** (5 bytes total):
+- **Byte 0**: Exponent (biased by 128)
+- **Bytes 1-4**: Mantissa (normalized with implicit leading 1)
+- **Sign**: Stored in MSB of byte 1
+
+**Key Features**:
+- Implicit conversion to/from `double` and `float`
+- Explicit methods: `FromDouble()`, `ToDouble()`, `FromBytes()`, `ToBytes()`
+- Proper handling of special values (overflow, underflow, zero)
+- Infinity and NaN throw `OverflowException` (not supported by MBF)
+
+**Example Usage**:
+```csharp
+// Create MBF from double (implicit conversion)
+MBF value = 3.14159;
+
+// Convert back to double (implicit conversion)
+double result = value;
+
+// Explicit methods
+MBF pi = MBF.FromDouble(Math.PI);
+byte[] bytes = pi.ToBytes();
+```
+
+### FacConverter Class
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/FacConverter.cs`
+
+**Purpose**: Provides conversion between .NET floating-point types and FAC (Floating-point ACcumulator) memory format.
+
+**Methods**:
+- **Legacy (IEEE 754)**: `DoubleToFacBytes()`, `FacBytesToDouble()`, `WriteToMemory()`, `ReadFromMemory()`
+- **MBF (Authentic)**: `DoubleToMbf()`, `MbfToDouble()`, `WriteMbfToMemory()`, `ReadMbfFromMemory()`
+
+**Example Usage**:
+```csharp
+// Using MBF methods for authentic Apple II format
+MBF pi = FacConverter.DoubleToMbf(3.14159);
+FacConverter.WriteMbfToMemory(memory, FAC1, pi);
+
+// Read back
+MBF result = FacConverter.ReadMbfFromMemory(memory, FAC1);
+double value = FacConverter.MbfToDouble(result);
+```
+
+### BasicInteger Struct
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicInteger.cs`
+
+**Purpose**: Represents a 16-bit signed integer as stored in Applesoft BASIC (variables with % suffix).
+
+**Format** (2 bytes):
+- 16-bit signed two's complement
+- Little-endian byte order in memory
+- Range: -32768 to 32767
+
+**Key Features**:
+- Implicit conversion to/from `int` and `short`
+- Explicit methods: `FromInt()`, `FromDouble()`, `FromBytes()`, `ToBytes()`
+- `ToMbf()` for conversion to floating-point format
+- Overflow detection with `OverflowException`
+
+**Example Usage**:
+```csharp
+// Create BasicInteger
+BasicInteger value = 42;
+
+// Get raw bytes (little-endian)
+byte[] bytes = value.ToBytes();
+
+// Create from bytes
+BasicInteger restored = BasicInteger.FromBytes(bytes);
+
+// Convert to MBF for FAC operations
+MBF mbf = value.ToMbf();
+```
+
+### BasicString Struct
+
+**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicString.cs`
+
+**Purpose**: Represents a string value as stored on the Apple II using 7-bit ASCII.
+
+**Format**:
+- 7-bit ASCII encoding (characters 0-127)
+- Maximum length: 255 characters
+- Characters outside 7-bit range are masked
+
+**Key Features**:
+- Implicit conversion to/from .NET `string`
+- Explicit methods: `FromString()`, `FromBytes()`, `FromRawBytes()`, `ToBytes()`
+- String operations: `Substring()`, `Concat()`
+- Helper methods: `CharToAppleAscii()`, `AppleAsciiToChar()`
+- **Span/Memory support**: `AsSpan()`, `AsMemory()`, `FromSpan()`, `FromRawSpan()`
+- **Range indexer**: `str[0..5]`, `str[^5..]`
+- Copy operations: `CopyTo()`, `TryCopyTo()`
+
+**Example Usage**:
+```csharp
+// Create BasicString
+BasicString value = "HELLO WORLD";
+
+// Get raw 7-bit ASCII bytes
+byte[] bytes = value.ToBytes();
+
+// Create from bytes (from emulated memory)
+BasicString restored = BasicString.FromBytes(bytes);
+
+// String operations
+BasicString sub = value.Substring(0, 5); // "HELLO"
+BasicString concat = sub.Concat(" APPLE II");
+
+// Range-based access (C# 8+)
+BasicString world = value[6..];     // "WORLD"
+BasicString hello = value[0..5];    // "HELLO"
+BasicString last5 = value[^5..];    // "WORLD"
+
+// Span-based access (allocation-free)
+ReadOnlySpan<byte> span = value.AsSpan();
+ReadOnlySpan<byte> slice = value.AsSpan(6..);
+ReadOnlyMemory<byte> memory = value.AsMemory();
+
+// Create from spans
+byte[] data = new byte[] { 0x48, 0x45, 0x4C, 0x4C, 0x4F };
+BasicString fromSpan = BasicString.FromSpan(data.AsSpan());
+
+// Copy to destination
+byte[] dest = new byte[20];
+value.CopyTo(dest.AsSpan());
+// or safely:
+if (value.TryCopyTo(dest.AsSpan()))
+{
+    // copy succeeded
+}
+```
+
 ---
 
 ## Usage in BASIC

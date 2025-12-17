@@ -42,15 +42,28 @@ The first 256 bytes of memory. Called "Zero Page" because the high byte of the a
 |---------|------|-------|
 | $00-$02 | - | Monitor temps |
 | $06-$09 | - | User subroutine vectors |
+| $0A-$0C | USRADR | USR function jump vector (JMP instruction) |
 | $32-$33 | - | Monitor cursor position |
 | $67-$69 | TXTTAB | BASIC program start |
 | $6A-$6C | VARTAB | BASIC variables start |
 | $6D-$6F | ARYTAB | BASIC arrays start |
 | $70-$72 | STREND | End of array storage |
 | $73-$75 | FRETOP | Top of string storage |
+| $9D-$A1 | FAC1 | Primary floating-point accumulator (5 bytes, MBF format) |
+| $A2 | FAC1SIGN | FAC1 sign byte |
+| $A5-$A9 | FAC2 | Secondary floating-point accumulator (5 bytes, MBF format) |
 | $AF-$B0 | HIMEM | High memory limit |
 | $CA | - | Cursor column |
 | $E0-$E1 | LOMEM | Low memory limit |
+
+**Floating-Point Accumulator (FAC) Format:**
+
+The FAC registers use Microsoft Binary Format (MBF), a 5-byte representation:
+- **Byte 0**: Exponent (biased by 128)
+- **Bytes 1-4**: Mantissa (normalized with implicit leading 1)
+- **Sign**: Stored in MSB of byte 1
+
+See `MBF` struct and `FacConverter` class for programmatic access.
 
 **Usage Example:**
 ```basic

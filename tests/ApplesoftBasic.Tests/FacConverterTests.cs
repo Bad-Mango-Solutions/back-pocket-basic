@@ -617,4 +617,164 @@ public class FacConverterTests
     }
 
     #endregion
+
+    #region MBF Conversion Tests
+
+    /// <summary>
+    /// Verifies that DoubleToMbf converts a positive value correctly.
+    /// </summary>
+    [Test]
+    public void DoubleToMbf_PositiveValue_ConvertsCorrectly()
+    {
+        MBF result = FacConverter.DoubleToMbf(42.0);
+
+        Assert.That(result.IsZero, Is.False);
+        Assert.That(result.IsNegative, Is.False);
+        Assert.That(result.ToDouble(), Is.EqualTo(42.0).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that DoubleToMbf converts a negative value correctly.
+    /// </summary>
+    [Test]
+    public void DoubleToMbf_NegativeValue_ConvertsCorrectly()
+    {
+        MBF result = FacConverter.DoubleToMbf(-42.0);
+
+        Assert.That(result.IsZero, Is.False);
+        Assert.That(result.IsNegative, Is.True);
+        Assert.That(result.ToDouble(), Is.EqualTo(-42.0).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that DoubleToMbf converts zero correctly.
+    /// </summary>
+    [Test]
+    public void DoubleToMbf_Zero_ReturnsZeroMbf()
+    {
+        MBF result = FacConverter.DoubleToMbf(0.0);
+
+        Assert.That(result.IsZero, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that MbfToDouble converts correctly.
+    /// </summary>
+    [Test]
+    public void MbfToDouble_ValidMbf_ConvertsCorrectly()
+    {
+        MBF mbf = FacConverter.DoubleToMbf(3.14159);
+        double result = FacConverter.MbfToDouble(mbf);
+
+        Assert.That(result, Is.EqualTo(3.14159).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies round-trip through MBF conversion.
+    /// </summary>
+    /// <param name="value">The value to test.</param>
+    [TestCase(0.0)]
+    [TestCase(1.0)]
+    [TestCase(-1.0)]
+    [TestCase(42.0)]
+    [TestCase(-42.0)]
+    [TestCase(0.5)]
+    [TestCase(-0.5)]
+    [TestCase(100.0)]
+    public void MbfRoundTrip_PreservesValue(double value)
+    {
+        MBF mbf = FacConverter.DoubleToMbf(value);
+        double result = FacConverter.MbfToDouble(mbf);
+
+        Assert.That(result, Is.EqualTo(value).Within(1e-6 * Math.Max(1, Math.Abs(value))));
+    }
+
+    #endregion
+
+    #region MBF Memory Tests
+
+    /// <summary>
+    /// Verifies that WriteMbfToMemory writes correct bytes to memory.
+    /// </summary>
+    [Test]
+    public void WriteMbfToMemory_ValidMbf_WritesCorrectBytes()
+    {
+        var memoryLogger = new Mock<ILogger<AppleMemory>>();
+        var memory = new AppleMemory(memoryLogger.Object);
+        int facAddress = 0x009D;
+
+        MBF mbf = FacConverter.DoubleToMbf(42.0);
+        FacConverter.WriteMbfToMemory(memory, facAddress, mbf);
+
+        // Verify the bytes were written
+        byte[] expectedBytes = mbf.ToBytes();
+        for (int i = 0; i < 5; i++)
+        {
+            Assert.That(memory.Read(facAddress + i), Is.EqualTo(expectedBytes[i]));
+        }
+    }
+
+    /// <summary>
+    /// Verifies that WriteMbfToMemory throws ArgumentNullException for null memory.
+    /// </summary>
+    [Test]
+    public void WriteMbfToMemory_NullMemory_ThrowsArgumentNullException()
+    {
+        MBF mbf = FacConverter.DoubleToMbf(42.0);
+        Assert.Throws<ArgumentNullException>(() =>
+            FacConverter.WriteMbfToMemory(null!, 0x009D, mbf));
+    }
+
+    /// <summary>
+    /// Verifies that ReadMbfFromMemory reads correct value from memory.
+    /// </summary>
+    [Test]
+    public void ReadMbfFromMemory_ValidBytes_ReturnsCorrectMbf()
+    {
+        var memoryLogger = new Mock<ILogger<AppleMemory>>();
+        var memory = new AppleMemory(memoryLogger.Object);
+        int facAddress = 0x009D;
+
+        // Write MBF bytes to memory
+        MBF original = FacConverter.DoubleToMbf(42.0);
+        byte[] bytes = original.ToBytes();
+        for (int i = 0; i < 5; i++)
+        {
+            memory.Write(facAddress + i, bytes[i]);
+        }
+
+        // Read back and verify
+        MBF result = FacConverter.ReadMbfFromMemory(memory, facAddress);
+        Assert.That(result.ToDouble(), Is.EqualTo(42.0).Within(1e-6));
+    }
+
+    /// <summary>
+    /// Verifies that ReadMbfFromMemory throws ArgumentNullException for null memory.
+    /// </summary>
+    [Test]
+    public void ReadMbfFromMemory_NullMemory_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            FacConverter.ReadMbfFromMemory(null!, 0x009D));
+    }
+
+    /// <summary>
+    /// Verifies round-trip through memory using MBF methods.
+    /// </summary>
+    [Test]
+    public void MbfMemoryRoundTrip_PreservesValue()
+    {
+        var memoryLogger = new Mock<ILogger<AppleMemory>>();
+        var memory = new AppleMemory(memoryLogger.Object);
+        int facAddress = 0x009D;
+
+        double originalValue = 3.14159;
+        MBF originalMbf = FacConverter.DoubleToMbf(originalValue);
+        FacConverter.WriteMbfToMemory(memory, facAddress, originalMbf);
+        MBF resultMbf = FacConverter.ReadMbfFromMemory(memory, facAddress);
+
+        Assert.That(resultMbf.ToDouble(), Is.EqualTo(originalValue).Within(1e-6));
+    }
+
+    #endregion
 }

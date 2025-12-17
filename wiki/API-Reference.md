@@ -303,23 +303,86 @@ Represents runtime values (numbers, strings, integers).
 
 **Creation:**
 ```csharp
-var number = BasicValue.Number(42.5);
-var str = BasicValue.String("HELLO");
-var integer = BasicValue.Integer(100);
+var number = BasicValue.FromNumber(42.5);
+var str = BasicValue.FromString("HELLO");
+
+// From Apple II storage types
+var fromMbf = BasicValue.FromMbf(mbfValue);
+var fromInt = BasicValue.FromBasicInteger(intValue);
+var fromStr = BasicValue.FromBasicString(strValue);
 ```
 
 **Type Checking:**
 ```csharp
-if (value.IsNumber)
+if (value.IsNumeric)
 {
     double num = value.AsNumber();
 }
 ```
 
+**Apple II Storage Conversions:**
+```csharp
+// Get authentic Apple II representations
+MBF mbf = value.AsMbf();              // 5-byte floating-point
+BasicInteger bi = value.AsBasicInteger(); // 16-bit integer
+BasicString bs = value.AsBasicString();   // 7-bit ASCII string
+```
+
 **Operations:**
 ```csharp
-var sum = value1.Add(value2);
-var product = value1.Multiply(value2);
+var sum = a + b;
+var product = a * b;
+```
+
+---
+
+### Apple II Storage Types
+
+#### MBF (Microsoft Binary Format)
+
+5-byte floating-point format used by Applesoft BASIC.
+
+```csharp
+MBF value = 3.14159;          // Implicit conversion
+double d = value;             // Implicit conversion back
+byte[] bytes = value.ToBytes(); // Raw bytes
+MBF restored = MBF.FromBytes(bytes);
+```
+
+#### BasicInteger
+
+16-bit signed integer for integer variables (% suffix).
+
+```csharp
+BasicInteger value = 42;
+byte[] bytes = value.ToBytes();  // Little-endian
+BasicInteger restored = BasicInteger.FromBytes(bytes);
+```
+
+#### BasicString
+
+7-bit ASCII string (max 255 characters) with Span/Memory support.
+
+```csharp
+BasicString value = "HELLO WORLD";
+byte[] bytes = value.ToBytes();  // 7-bit ASCII
+BasicString restored = BasicString.FromBytes(bytes);
+
+// Range-based slicing
+BasicString sub = value[0..5];   // "HELLO"
+BasicString end = value[^5..];   // "WORLD"
+
+// Span-based access (allocation-free)
+ReadOnlySpan<byte> span = value.AsSpan();
+ReadOnlySpan<byte> slice = value.AsSpan(6..);
+ReadOnlyMemory<byte> memory = value.AsMemory();
+
+// Create from spans
+BasicString fromSpan = BasicString.FromSpan(data.AsSpan());
+
+// Copy operations
+value.CopyTo(destination);
+bool success = value.TryCopyTo(destination);
 ```
 
 ---
