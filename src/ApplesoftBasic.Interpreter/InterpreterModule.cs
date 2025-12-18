@@ -11,6 +11,7 @@ using Emulation;
 using Execution;
 using IO;
 using Lexer;
+using Microsoft.Extensions.Logging;
 using Parser;
 using Runtime;
 
@@ -52,6 +53,19 @@ public class InterpreterModule : Module
         builder.RegisterType<Cpu6502>().As<ICpu>().InstancePerLifetimeScope();
         builder.RegisterType<AppleSpeaker>().As<IAppleSpeaker>().InstancePerLifetimeScope();
         builder.RegisterType<AppleSystem>().As<IAppleSystem>().InstancePerLifetimeScope();
+
+        // BASIC Runtime Context (aggregates language runtime state)
+        builder.RegisterType<BasicRuntimeContext>()
+            .As<IBasicRuntimeContext>()
+            .InstancePerLifetimeScope();
+
+        // System Context (aggregates hardware/system services)
+        builder.Register(ctx => new SystemContext(
+                ctx.Resolve<IAppleSystem>(),
+                ctx.Resolve<IBasicIO>(),
+                ctx.Resolve<ILogger<BasicInterpreter>>()))
+            .As<ISystemContext>()
+            .InstancePerLifetimeScope();
 
         // Interpreter - with callback to wire up speaker to IO
         builder.RegisterType<BasicInterpreter>()

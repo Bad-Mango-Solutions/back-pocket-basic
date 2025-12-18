@@ -87,16 +87,11 @@ public class InterpreterTests
         mockIo.Setup(io => io.ReadLine(It.IsAny<string>())).Returns(string.Empty);
         mockIo.Setup(io => io.ClearScreen()).Callback(() => output.Add("[CLEAR]\n"));
 
-        interpreter = new(
-            parser,
-            mockIo.Object,
-            variables,
-            functions,
-            data,
-            loops,
-            gosub,
-            appleSystem,
-            interpreterLogger.Object);
+        // Create context objects
+        var runtime = new BasicRuntimeContext(variables, functions, data, loops, gosub);
+        var system = new SystemContext(appleSystem, mockIo.Object, interpreterLogger.Object);
+
+        interpreter = new(parser, runtime, system);
     }
 
     /// <summary>
