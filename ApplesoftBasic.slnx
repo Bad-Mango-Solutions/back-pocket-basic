@@ -10,6 +10,12 @@
     <File Path=".gitignore" />
     <File Path="StyleCop.json" />
   </Folder>
+  <Folder Name="/reference/">
+    <File Path="reference/Emulator Evolution Plan.md" />
+    <File Path="reference/WDC 65816 Emulator Implementation DotNet.md" />
+    <File Path="reference/WDC 65816 Emulator Reference.md" />
+    <File Path="reference/WDC 65816 Instruction Set Reference.md" />
+  </Folder>
   <Folder Name="/samples/">
     <File Path="samples/demo.bas" />
     <File Path="samples/fibonacci.bas" />
