@@ -119,6 +119,30 @@ public class BasicInterpreter : IBasicInterpreter
         shouldStop = true;
     }
 
+    /// <summary>
+    /// Parses and executes BASIC source code in a single operation.
+    /// </summary>
+    /// <param name="source">The BASIC source code to parse and execute.</param>
+    /// <remarks>
+    /// This is a convenience method that combines <see cref="LoadFromSource"/>
+    /// and <see cref="Run(ProgramNode)"/> into a single call, with proper error handling.
+    /// Parse errors and runtime errors are caught and displayed to the user.
+    /// </remarks>
+    public void RunFromSource(string source)
+    {
+        try
+        {
+            var program = LoadFromSource(source);
+            Run(program);
+        }
+        catch (ParseException ex)
+        {
+            system.IO.WriteLine();
+            system.IO.WriteLine("?SYNTAX ERROR");
+            logger.LogError(ex, "Parse error");
+        }
+    }
+
     private void Execute()
     {
         // Create execution visitor
@@ -131,13 +155,20 @@ public class BasicInterpreter : IBasicInterpreter
 
         while (running && !shouldStop && !context.IsAtEnd())
         {
+            // Normalize position: if statement index is past end of line, advance to next line
             var statement = context.GetCurrentStatement();
-            if (statement == null)
+            while (statement == null && !context.IsAtEnd())
             {
-                break;
+                // Current position is past end of current line, advance to next line
+                if (!context.AdvanceLine())
+                {
+                    break;
+                }
+
+                statement = context.GetCurrentStatement();
             }
 
-            if (shouldStop)
+            if (statement == null || shouldStop)
             {
                 break;
             }
