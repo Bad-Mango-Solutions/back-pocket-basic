@@ -4,8 +4,6 @@
 
 namespace ApplesoftBasic.Interpreter.Emulation;
 
-using System.Buffers;
-
 using Microsoft.Extensions.Logging;
 
 /// <summary>

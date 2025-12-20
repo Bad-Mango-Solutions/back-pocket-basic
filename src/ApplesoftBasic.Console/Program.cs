@@ -68,7 +68,9 @@ try
 
     Log.Information("Executing {SourceFile}", sourceFile);
 
-    interpreter.Run(source);
+    // Parse and execute the program
+    var program = interpreter.LoadFromSource(source);
+    interpreter.Run(program);
 
     Log.Information("Execution complete");
     return 0;

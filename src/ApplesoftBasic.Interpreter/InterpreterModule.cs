@@ -11,7 +11,7 @@ using Emulation;
 using Execution;
 using IO;
 using Lexer;
-using Microsoft.Extensions.Logging;
+
 using Parser;
 using Runtime;
 

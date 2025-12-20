@@ -95,7 +95,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests that the <see cref="BasicInterpreter.Run(string)"/> method correctly outputs a string
+    /// Tests that the <see cref="BasicInterpreter.RunFromSource"/> method correctly outputs a string
     /// when executing a BASIC program containing a <c>PRINT</c> statement with a string literal.
     /// </summary>
     /// <remarks>
@@ -113,13 +113,13 @@ public class InterpreterTests
     [Test]
     public void Run_PrintString_OutputsString()
     {
-        interpreter.Run("10 PRINT \"HELLO WORLD\"");
+        interpreter.RunFromSource("10 PRINT \"HELLO WORLD\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("HELLO WORLD"));
     }
 
     /// <summary>
-    /// Tests whether the <see cref="BasicInterpreter.Run(string)"/> method correctly outputs a number
+    /// Tests whether the <see cref="BasicInterpreter.RunFromSource"/> method correctly outputs a number
     /// when executing a BASIC program containing a <c>PRINT</c> statement with a numeric literal.
     /// </summary>
     /// <remarks>
@@ -132,7 +132,7 @@ public class InterpreterTests
     [Test]
     public void Run_PrintNumber_OutputsNumber()
     {
-        interpreter.Run("10 PRINT 42");
+        interpreter.RunFromSource("10 PRINT 42");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("42"));
     }
@@ -154,13 +154,13 @@ public class InterpreterTests
     [Test]
     public void Run_PrintExpression_ComputesResult()
     {
-        interpreter.Run("10 PRINT 2 + 3 * 4");
+        interpreter.RunFromSource("10 PRINT 2 + 3 * 4");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("14"));
     }
 
     /// <summary>
-    /// Tests that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles variable assignment
+    /// Tests that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles variable assignment
     /// and stores the assigned value in memory.
     /// </summary>
     /// <remarks>
@@ -178,13 +178,13 @@ public class InterpreterTests
     [Test]
     public void Run_Assignment_StoresValue()
     {
-        interpreter.Run("10 X = 5\n20 PRINT X");
+        interpreter.RunFromSource("10 X = 5\n20 PRINT X");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("5"));
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes a FOR loop
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes a FOR loop
     /// in an Applesoft BASIC program, iterating over the specified range and producing the expected output.
     /// </summary>
     /// <remarks>
@@ -208,7 +208,7 @@ public class InterpreterTests
     [Test]
     public void Run_ForLoop_Iterates()
     {
-        interpreter.Run("10 FOR I = 1 TO 3\n20 PRINT I\n30 NEXT I");
+        interpreter.RunFromSource("10 FOR I = 1 TO 3\n20 PRINT I\n30 NEXT I");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("1"));
@@ -237,7 +237,7 @@ public class InterpreterTests
     [Test]
     public void Run_ForLoopWithStep_UsesStep()
     {
-        interpreter.Run("10 FOR I = 2 TO 6 STEP 2\n20 PRINT I\n30 NEXT I");
+        interpreter.RunFromSource("10 FOR I = 2 TO 6 STEP 2\n20 PRINT I\n30 NEXT I");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("2"));
@@ -246,7 +246,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes
     /// the "THEN" branch of an Applesoft BASIC "IF" statement when the condition evaluates to true.
     /// </summary>
     /// <remarks>
@@ -264,13 +264,13 @@ public class InterpreterTests
     [Test]
     public void Run_IfTrue_ExecutesThenBranch()
     {
-        interpreter.Run("10 X = 10\n20 IF X > 5 THEN PRINT \"BIG\"");
+        interpreter.RunFromSource("10 X = 10\n20 IF X > 5 THEN PRINT \"BIG\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("BIG"));
     }
 
     /// <summary>
-    /// Tests the behavior of the <see cref="BasicInterpreter.Run(string)"/> method
+    /// Tests the behavior of the <see cref="BasicInterpreter.RunFromSource"/> method
     /// when evaluating an <c>IF</c> statement with a false condition.
     /// </summary>
     /// <remarks>
@@ -291,7 +291,7 @@ public class InterpreterTests
     [Test]
     public void Run_IfFalse_SkipsThenBranch()
     {
-        interpreter.Run("10 X = 1\n20 IF X > 5 THEN PRINT \"BIG\"\n30 PRINT \"END\"");
+        interpreter.RunFromSource("10 X = 1\n20 IF X > 5 THEN PRINT \"BIG\"\n30 PRINT \"END\"");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Not.Contain("BIG"));
@@ -299,7 +299,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles a GOTO statement
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles a GOTO statement
     /// by jumping to the specified line number in the Applesoft BASIC program.
     /// </summary>
     /// <remarks>
@@ -318,7 +318,7 @@ public class InterpreterTests
     [Test]
     public void Run_Goto_JumpsToLine()
     {
-        interpreter.Run("10 GOTO 30\n20 PRINT \"SKIP\"\n30 PRINT \"HERE\"");
+        interpreter.RunFromSource("10 GOTO 30\n20 PRINT \"SKIP\"\n30 PRINT \"HERE\"");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Not.Contain("SKIP"));
@@ -326,7 +326,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles
     /// the execution of a program containing GOSUB and RETURN statements.
     /// </summary>
     /// <remarks>
@@ -350,7 +350,7 @@ public class InterpreterTests
     [Test]
     public void Run_GosubReturn_WorksCorrectly()
     {
-        interpreter.Run("10 GOSUB 100\n20 PRINT \"BACK\"\n30 END\n100 PRINT \"SUB\"\n110 RETURN");
+        interpreter.RunFromSource("10 GOSUB 100\n20 PRINT \"BACK\"\n30 END\n100 PRINT \"SUB\"\n110 RETURN");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("SUB"));
@@ -358,7 +358,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Tests the <see cref="BasicInterpreter.Run(string)"/> method to ensure that it correctly reads values
+    /// Tests the <see cref="BasicInterpreter.RunFromSource"/> method to ensure that it correctly reads values
     /// from a DATA statement and assigns them to variables.
     /// </summary>
     /// <remarks>
@@ -377,7 +377,7 @@ public class InterpreterTests
     [Test]
     public void Run_DataRead_ReadsValues()
     {
-        interpreter.Run("10 READ X, Y\n20 PRINT X + Y\n30 DATA 10, 20");
+        interpreter.RunFromSource("10 READ X, Y\n20 PRINT X + Y\n30 DATA 10, 20");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("30"));
     }
@@ -402,13 +402,13 @@ public class InterpreterTests
     [Test]
     public void Run_DimAndArray_Works()
     {
-        interpreter.Run("10 DIM A(5)\n20 A(3) = 42\n30 PRINT A(3)");
+        interpreter.RunFromSource("10 DIM A(5)\n20 A(3) = 42\n30 PRINT A(3)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("42"));
     }
 
     /// <summary>
-    /// Tests the functionality of the <see cref="BasicInterpreter.Run(string)"/> method
+    /// Tests the functionality of the <see cref="BasicInterpreter.RunFromSource"/> method
     /// when defining and using a user-defined function in Applesoft BASIC.
     /// </summary>
     /// <remarks>
@@ -426,7 +426,7 @@ public class InterpreterTests
     [Test]
     public void Run_DefFn_DefinesFunction()
     {
-        interpreter.Run("10 DEF FN SQ(X) = X * X\n20 PRINT FN SQ(5)");
+        interpreter.RunFromSource("10 DEF FN SQ(X) = X * X\n20 PRINT FN SQ(5)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("25"));
     }
@@ -450,13 +450,13 @@ public class InterpreterTests
     [Test]
     public void Run_StringVariable_Works()
     {
-        interpreter.Run("10 A$ = \"HELLO\"\n20 PRINT A$");
+        interpreter.RunFromSource("10 A$ = \"HELLO\"\n20 PRINT A$");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("HELLO"));
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly handles string concatenation
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly handles string concatenation
     /// in Applesoft BASIC programs.
     /// </summary>
     /// <remarks>
@@ -474,7 +474,7 @@ public class InterpreterTests
     [Test]
     public void Run_StringConcatenation_Works()
     {
-        interpreter.Run("10 A$ = \"HELLO\" + \" WORLD\"\n20 PRINT A$");
+        interpreter.RunFromSource("10 A$ = \"HELLO\" + \" WORLD\"\n20 PRINT A$");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("HELLO WORLD"));
     }
@@ -495,7 +495,7 @@ public class InterpreterTests
     [Test]
     public void Run_AbsFunction_Works()
     {
-        interpreter.Run("10 PRINT ABS(-5)");
+        interpreter.RunFromSource("10 PRINT ABS(-5)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("5"));
     }
@@ -519,7 +519,7 @@ public class InterpreterTests
     [Test]
     public void Run_IntFunction_Works()
     {
-        interpreter.Run("10 PRINT INT(3.7)");
+        interpreter.RunFromSource("10 PRINT INT(3.7)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("3"));
     }
@@ -543,7 +543,7 @@ public class InterpreterTests
     [Test]
     public void Run_LenFunction_Works()
     {
-        interpreter.Run("10 PRINT LEN(\"HELLO\")");
+        interpreter.RunFromSource("10 PRINT LEN(\"HELLO\")");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("5"));
     }
@@ -568,7 +568,7 @@ public class InterpreterTests
     [Test]
     public void Run_MidFunction_Works()
     {
-        interpreter.Run("10 PRINT MID$(\"HELLO\", 2, 3)");
+        interpreter.RunFromSource("10 PRINT MID$(\"HELLO\", 2, 3)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("ELL"));
     }
@@ -592,7 +592,7 @@ public class InterpreterTests
     [Test]
     public void Run_LeftFunction_Works()
     {
-        interpreter.Run("10 PRINT LEFT$(\"HELLO\", 3)");
+        interpreter.RunFromSource("10 PRINT LEFT$(\"HELLO\", 3)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("HEL"));
     }
@@ -609,7 +609,7 @@ public class InterpreterTests
     [Test]
     public void Run_RightFunction_Works()
     {
-        interpreter.Run("10 PRINT RIGHT$(\"HELLO\", 3)");
+        interpreter.RunFromSource("10 PRINT RIGHT$(\"HELLO\", 3)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("LLO"));
     }
@@ -632,7 +632,7 @@ public class InterpreterTests
     [Test]
     public void Run_ChrFunction_Works()
     {
-        interpreter.Run("10 PRINT CHR$(65)");
+        interpreter.RunFromSource("10 PRINT CHR$(65)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("A"));
     }
@@ -657,7 +657,7 @@ public class InterpreterTests
     [Test]
     public void Run_AscFunction_Works()
     {
-        interpreter.Run("10 PRINT ASC(\"A\")");
+        interpreter.RunFromSource("10 PRINT ASC(\"A\")");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("65"));
     }
@@ -686,7 +686,7 @@ public class InterpreterTests
     [Test]
     public void Run_OnGoto_JumpsCorrectly()
     {
-        interpreter.Run("10 X = 2\n20 ON X GOTO 100, 200, 300\n100 PRINT \"ONE\"\n110 END\n200 PRINT \"TWO\"\n210 END\n300 PRINT \"THREE\"");
+        interpreter.RunFromSource("10 X = 2\n20 ON X GOTO 100, 200, 300\n100 PRINT \"ONE\"\n110 END\n200 PRINT \"TWO\"\n210 END\n300 PRINT \"THREE\"");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("TWO"));
@@ -705,13 +705,13 @@ public class InterpreterTests
     [Test]
     public void Run_PeekPoke_WorksWithMemory()
     {
-        interpreter.Run("10 POKE 768, 42\n20 PRINT PEEK(768)");
+        interpreter.RunFromSource("10 POKE 768, 42\n20 PRINT PEEK(768)");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("42"));
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes multiple statements on a single line of Applesoft BASIC code.
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes multiple statements on a single line of Applesoft BASIC code.
     /// </summary>
     /// <remarks>
     /// This test ensures that all statements on a single line are executed in sequence, and their effects are correctly reflected.
@@ -723,7 +723,7 @@ public class InterpreterTests
     [Test]
     public void Run_MultipleStatementsOnLine_ExecutesAll()
     {
-        interpreter.Run("10 X = 1 : Y = 2 : PRINT X + Y");
+        interpreter.RunFromSource("10 X = 1 : Y = 2 : PRINT X + Y");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("3"));
     }
@@ -751,7 +751,7 @@ public class InterpreterTests
     [Test]
     public void Run_NestedForLoops_WorkCorrectly()
     {
-        interpreter.Run("10 FOR I = 1 TO 2\n20 FOR J = 1 TO 2\n30 PRINT I * 10 + J\n40 NEXT J\n50 NEXT I");
+        interpreter.RunFromSource("10 FOR I = 1 TO 2\n20 FOR J = 1 TO 2\n30 PRINT I * 10 + J\n40 NEXT J\n50 NEXT I");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("11"));
@@ -781,9 +781,9 @@ public class InterpreterTests
     [Test]
     public void Run_LogicalOperators_WorkCorrectly()
     {
-        interpreter.Run("10 IF 1 AND 1 THEN PRINT \"AND\"");
-        interpreter.Run("10 IF 1 OR 0 THEN PRINT \"OR\"");
-        interpreter.Run("10 IF NOT 0 THEN PRINT \"NOT\"");
+        interpreter.RunFromSource("10 IF 1 AND 1 THEN PRINT \"AND\"");
+        interpreter.RunFromSource("10 IF 1 OR 0 THEN PRINT \"OR\"");
+        interpreter.RunFromSource("10 IF NOT 0 THEN PRINT \"NOT\"");
 
         var output = string.Join(string.Empty, this.output);
         Assert.That(output, Does.Contain("AND"));
@@ -816,7 +816,7 @@ public class InterpreterTests
     {
         // Set up an RTS instruction at $03F5 so the & operator returns
         // RTS = opcode 0x60
-        interpreter.Run("10 POKE 1013, 96\n20 &\n30 PRINT \"DONE\"");
+        interpreter.RunFromSource("10 POKE 1013, 96\n20 &\n30 PRINT \"DONE\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("DONE"));
     }
@@ -828,7 +828,7 @@ public class InterpreterTests
     public void Run_AmpersandOperator_WorksInMultiStatementLine()
     {
         // RTS = opcode 0x60 at $03F5
-        interpreter.Run("10 POKE 1013, 96 : & : PRINT \"SUCCESS\"");
+        interpreter.RunFromSource("10 POKE 1013, 96 : & : PRINT \"SUCCESS\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("SUCCESS"));
     }
@@ -860,7 +860,7 @@ public class InterpreterTests
     {
         // Set up an RTS instruction at $000A so USR returns immediately
         // RTS = opcode 0x60
-        interpreter.Run("10 POKE 10, 96\n20 X = USR(42.5)\n30 PRINT \"CALLED\"");
+        interpreter.RunFromSource("10 POKE 10, 96\n20 X = USR(42.5)\n30 PRINT \"CALLED\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("CALLED"));
     }
@@ -872,7 +872,7 @@ public class InterpreterTests
     public void Run_UsrFunction_EvaluatesExpressions()
     {
         // Set up an RTS instruction at $000A
-        interpreter.Run("10 POKE 10, 96\n20 A = 10\n30 X = USR(A * 2.5)\n40 PRINT \"OK\"");
+        interpreter.RunFromSource("10 POKE 10, 96\n20 A = 10\n30 X = USR(A * 2.5)\n40 PRINT \"OK\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("OK"));
     }
@@ -884,7 +884,7 @@ public class InterpreterTests
     public void Run_UsrFunction_WorksWithVal()
     {
         // Set up an RTS instruction at $000A
-        interpreter.Run("10 POKE 10, 96\n20 X = USR(VAL(\"3.14\"))\n30 PRINT \"COMPLETE\"");
+        interpreter.RunFromSource("10 POKE 10, 96\n20 X = USR(VAL(\"3.14\"))\n30 PRINT \"COMPLETE\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("COMPLETE"));
     }
@@ -896,7 +896,7 @@ public class InterpreterTests
     public void Run_AmpersandAndUsr_WorkTogether()
     {
         // Set up RTS instructions at both $03F5 and $000A
-        interpreter.Run("10 POKE 1013, 96\n20 POKE 10, 96\n30 &\n40 X = USR(100)\n50 PRINT \"BOTH\"");
+        interpreter.RunFromSource("10 POKE 1013, 96\n20 POKE 10, 96\n30 &\n40 X = USR(100)\n50 PRINT \"BOTH\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("BOTH"));
     }
@@ -907,7 +907,7 @@ public class InterpreterTests
     [Test]
     public void Run_Stop_PrintsBreakMessage()
     {
-        interpreter.Run("10 STOP");
+        interpreter.RunFromSource("10 STOP");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("BREAK IN 10"));
     }
@@ -918,7 +918,7 @@ public class InterpreterTests
     [Test]
     public void Run_SyntaxError_PrintsErrorMessage()
     {
-        interpreter.Run("10 PRINT +");
+        interpreter.RunFromSource("10 PRINT +");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("?SYNTAX ERROR"));
     }
@@ -929,7 +929,7 @@ public class InterpreterTests
     [Test]
     public void Run_ClearRestoreAndData_ReadsAgain()
     {
-        interpreter.Run("10 DATA 1,2\n20 READ A,B\n30 CLEAR\n40 RESTORE\n50 READ A,B\n60 PRINT A;B");
+        interpreter.RunFromSource("10 DATA 1,2\n20 READ A,B\n30 CLEAR\n40 RESTORE\n50 READ A,B\n60 PRINT A;B");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain(" 1 2"));
     }
@@ -949,7 +949,7 @@ public class InterpreterTests
                 cursorRow = r;
             });
 
-        interpreter.Run("10 HTAB 5: VTAB 4");
+        interpreter.RunFromSource("10 HTAB 5: VTAB 4");
 
         Assert.That(positions, Is.EqualTo(new List<(int, int)> { (5, 1), (6, 4) }));
     }
@@ -960,7 +960,7 @@ public class InterpreterTests
     [Test]
     public void Run_TextModes_SwitchesModes()
     {
-        interpreter.Run("10 INVERSE\n20 FLASH\n30 NORMAL");
+        interpreter.RunFromSource("10 INVERSE\n20 FLASH\n30 NORMAL");
 
         Assert.That(textMode, Is.EqualTo(TextMode.Normal));
     }
@@ -971,7 +971,7 @@ public class InterpreterTests
     [Test]
     public void Run_OnGoto_JumpsToCorrectLine()
     {
-        interpreter.Run("10 ON 1 GOTO 40,50\n20 PRINT \"MISS\"\n40 PRINT \"HIT\"\n50 END");
+        interpreter.RunFromSource("10 ON 1 GOTO 40,50\n20 PRINT \"MISS\"\n40 PRINT \"HIT\"\n50 END");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("HIT").And.Not.Contain("MISS"));
     }
@@ -982,7 +982,7 @@ public class InterpreterTests
     [Test]
     public void Run_OnGosub_ReturnsToCaller()
     {
-        interpreter.Run("10 ON 2 GOSUB 30,60\n20 PRINT \"AFTER\"\n30 PRINT \"ONE\": RETURN\n60 PRINT \"TWO\": RETURN");
+        interpreter.RunFromSource("10 ON 2 GOSUB 30,60\n20 PRINT \"AFTER\"\n30 PRINT \"ONE\": RETURN\n60 PRINT \"TWO\": RETURN");
 
         string combined = string.Join(string.Empty, output);
         Assert.That(combined, Does.Contain("TWO"));
@@ -995,7 +995,7 @@ public class InterpreterTests
     [Test]
     public void Run_GetAndPrint_UsesTabAndSpc()
     {
-        interpreter.Run("10 GET A$\n20 PRINT A$;TAB(3);\"X\";SPC(2);\"Y\"");
+        interpreter.RunFromSource("10 GET A$\n20 PRINT A$;TAB(3);\"X\";SPC(2);\"Y\"");
 
         string combined = string.Join(string.Empty, output);
         Assert.That(combined, Does.Contain("Z"));
@@ -1009,7 +1009,7 @@ public class InterpreterTests
     [Test]
     public void Run_MemoryStatements_UpdateMemory()
     {
-        interpreter.Run("10 HIMEM: 50000\n20 LOMEM: 2048\n30 POKE 4660,255\n40 PRINT PEEK(4660)");
+        interpreter.RunFromSource("10 HIMEM: 50000\n20 LOMEM: 2048\n30 POKE 4660,255\n40 PRINT PEEK(4660)");
 
         ushort himem = interpreter.AppleSystem.Memory.ReadWord(0x73);
         ushort lomem = interpreter.AppleSystem.Memory.ReadWord(0x69);
@@ -1024,7 +1024,7 @@ public class InterpreterTests
     [Test]
     public void Run_GraphicsStatements_DoNotThrow()
     {
-        Assert.DoesNotThrow(() => interpreter.Run(
+        Assert.DoesNotThrow(() => interpreter.RunFromSource(
             "10 TEXT: GR: HGR: HGR2\n" +
             "20 COLOR= 3: HCOLOR= 2\n" +
             "30 PLOT 1,2: HPLOT 1,2 TO 3,4\n" +
@@ -1042,7 +1042,7 @@ public class InterpreterTests
             .Returns("abc")
             .Returns("123,HELLO");
 
-        interpreter.Run("10 INPUT A,B$\n20 PRINT A;B$");
+        interpreter.RunFromSource("10 INPUT A,B$\n20 PRINT A;B$");
 
         string combined = string.Join(string.Empty, output);
         Assert.That(combined, Does.Contain("??REDO FROM START"));
@@ -1055,7 +1055,7 @@ public class InterpreterTests
     [Test]
     public void Run_PrintWithComma_UsesTabZones()
     {
-        interpreter.Run("10 PRINT 1,2");
+        interpreter.RunFromSource("10 PRINT 1,2");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain(" 1").And.Contain(" 2"));
     }
@@ -1066,7 +1066,7 @@ public class InterpreterTests
     [Test]
     public void Run_NextWithoutFor_ShowsError()
     {
-        interpreter.Run("10 NEXT I");
+        interpreter.RunFromSource("10 NEXT I");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("NEXT WITHOUT FOR"));
     }
@@ -1077,7 +1077,7 @@ public class InterpreterTests
     [Test]
     public void Run_Sleep_DoesNotThrow()
     {
-        Assert.DoesNotThrow(() => interpreter.Run("10 SLEEP 0"));
+        Assert.DoesNotThrow(() => interpreter.RunFromSource("10 SLEEP 0"));
     }
 
     /// <summary>
@@ -1086,7 +1086,7 @@ public class InterpreterTests
     [Test]
     public void Run_RemStatement_IsIgnored()
     {
-        interpreter.Run("10 REM COMMENT\n20 PRINT \"OK\"");
+        interpreter.RunFromSource("10 REM COMMENT\n20 PRINT \"OK\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("OK"));
     }
@@ -1097,7 +1097,7 @@ public class InterpreterTests
     [Test]
     public void Run_Call_InvokesAppleSystem()
     {
-        interpreter.Run("10 CALL 1234\n20 PRINT \"AFTER\"");
+        interpreter.RunFromSource("10 CALL 1234\n20 PRINT \"AFTER\"");
 
         Assert.That(string.Join(string.Empty, output), Does.Contain("AFTER"));
     }
