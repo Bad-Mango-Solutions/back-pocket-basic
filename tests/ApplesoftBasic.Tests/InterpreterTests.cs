@@ -711,7 +711,7 @@ public class InterpreterTests
     }
 
     /// <summary>
-    /// Verifies that the <see cref="BasicInterpreter.Run(string)"/> method correctly executes multiple statements on a single line of Applesoft BASIC code.
+    /// Verifies that the <see cref="BasicInterpreter.RunFromSource"/> method correctly executes multiple statements on a single line of Applesoft BASIC code.
     /// </summary>
     /// <remarks>
     /// This test ensures that all statements on a single line are executed in sequence, and their effects are correctly reflected.

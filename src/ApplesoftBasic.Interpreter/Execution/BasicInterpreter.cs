@@ -127,6 +127,9 @@ public class BasicInterpreter : IBasicInterpreter
     /// This is a convenience method that combines <see cref="LoadFromSource"/>
     /// and <see cref="Run(ProgramNode)"/> into a single call, with proper error handling.
     /// Parse errors and runtime errors are caught and displayed to the user.
+    /// This method is intentionally NOT part of the <see cref="IBasicInterpreter"/> interface
+    /// to keep the interface focused on the core two-step pattern (parse then execute).
+    /// Use this method when you don't need to separate parsing from execution.
     /// </remarks>
     public void RunFromSource(string source)
     {

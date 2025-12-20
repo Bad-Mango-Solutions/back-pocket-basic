@@ -31,10 +31,15 @@ public interface IBasicInterpreter
     /// Parses BASIC source code into an AST program representation.
     /// </summary>
     /// <param name="source">The source code of the Applesoft BASIC program to parse.</param>
-    /// <returns>The parsed program as an Abstract Syntax Tree.</returns>
+    /// <returns>
+    /// A <see cref="ProgramNode"/> containing the parsed program structure, including all lines,
+    /// statements, and expressions. The returned program can be executed using <see cref="Run"/>.
+    /// </returns>
+    /// <exception cref="Parser.ParseException">Thrown if the source code contains syntax errors.</exception>
     /// <remarks>
     /// This method only performs parsing and builds the line number index.
     /// It does not execute the program or modify the runtime state.
+    /// For convenience, use the <see cref="BasicInterpreter.RunFromSource"/> method to parse and execute in one call.
     /// </remarks>
     ProgramNode LoadFromSource(string source);
 
