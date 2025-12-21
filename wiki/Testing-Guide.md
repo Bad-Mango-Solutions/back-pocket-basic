@@ -4,7 +4,7 @@ Comprehensive guide for running and writing tests for the Applesoft BASIC Interp
 
 ## Overview
 
-The project uses NUnit for unit testing and Moq for mocking. All tests are in the `tests/ApplesoftBasic.Tests` project.
+The project uses NUnit for unit testing and Moq for mocking. All tests are in the `tests/BadMango.Basic.Tests` project.
 
 ## Running Tests
 
@@ -12,10 +12,10 @@ The project uses NUnit for unit testing and Moq for mocking. All tests are in th
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.slnx
+dotnet test BackPocketBasic.slnx
 
 # Run with verbose output
-dotnet test ApplesoftBasic.slnx --verbosity detailed
+dotnet test BackPocketBasic.slnx --verbosity detailed
 
 # Run specific test class
 dotnet test --filter FullyQualifiedName~BasicInterpreterTests
@@ -55,7 +55,7 @@ With .NET Core Test Explorer extension:
 ### Directory Structure
 
 ```
-tests/ApplesoftBasic.Tests/
+tests/BadMango.Basic.Tests/
 ├── InterpreterTests.cs      # High-level interpreter tests
 ├── LexerTests.cs            # Tokenization tests
 ├── ParserTests.cs           # Parsing tests
@@ -128,9 +128,9 @@ public void Parse_InvalidSyntax_ThrowsException() { }
 ```csharp
 using NUnit.Framework;
 using Moq;
-using ApplesoftBasic.Interpreter;
+using BadMango.Basic;
 
-namespace ApplesoftBasic.Tests
+namespace BadMango.Basic.Tests
 {
     [TestFixture]
     public class YourComponentTests
@@ -490,7 +490,7 @@ public void ExecuteProgram_Fibonacci_ProducesCorrectSequence()
 dotnet tool install -g dotnet-coverage
 
 # Run tests with coverage
-dotnet test ApplesoftBasic.slnx --collect:"XPlat Code Coverage"
+dotnet test BackPocketBasic.slnx --collect:"XPlat Code Coverage"
 
 # Coverage report will be in TestResults folder
 ```

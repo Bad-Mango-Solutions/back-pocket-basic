@@ -1,6 +1,6 @@
-# Contributing to Applesoft BASIC Interpreter
+# Contributing to BackPocketBASIC Interpreter
 
-Thank you for your interest in contributing to the Applesoft BASIC Interpreter! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the BackPocketBASIC Interpreter! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -67,17 +67,17 @@ This project is committed to providing a welcoming and inclusive environment for
 
 4. **Restore dependencies**:
    ```bash
-   dotnet restore ApplesoftBasic.slnx
+   dotnet restore BackPocketBasic.slnx
    ```
 
 5. **Build the solution**:
    ```bash
-   dotnet build ApplesoftBasic.slnx
+   dotnet build BackPocketBasic.slnx
    ```
 
 6. **Run tests**:
    ```bash
-   dotnet test ApplesoftBasic.slnx
+   dotnet test BackPocketBasic.slnx
    ```
 
 ## Development Workflow
@@ -106,13 +106,13 @@ git checkout -b fix/bug-description
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.slnx --verbosity normal
+dotnet test BackPocketBasic.slnx --verbosity normal
 
 # Build in Release mode
-dotnet build ApplesoftBasic.slnx --configuration Release
+dotnet build BackPocketBasic.slnx --configuration Release
 
 # Test manually with sample programs
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 ```
 
 ### 4. Commit Your Changes
@@ -197,7 +197,7 @@ public object EvaluateExpression(Expression expression)
 
 ### Unit Tests
 
-- Tests are in `tests/ApplesoftBasic.Tests/`
+- Tests are in `tests/BadMango.Basic.Tests/`
 - Use NUnit framework
 - Follow Arrange-Act-Assert pattern
 - One logical assertion per test when possible

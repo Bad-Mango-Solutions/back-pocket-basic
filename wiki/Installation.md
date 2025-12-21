@@ -29,7 +29,7 @@ cd applesoft-basic
 ### 2. Restore Dependencies
 
 ```bash
-dotnet restore ApplesoftBasic.slnx
+dotnet restore BackPocketBasic.slnx
 ```
 
 This will download all required NuGet packages:
@@ -42,7 +42,7 @@ This will download all required NuGet packages:
 ### 3. Build the Solution
 
 ```bash
-dotnet build ApplesoftBasic.slnx
+dotnet build BackPocketBasic.slnx
 ```
 
 **Expected Output:**
@@ -59,7 +59,7 @@ Build succeeded.
 Verify the installation by running the test suite:
 
 ```bash
-dotnet test ApplesoftBasic.slnx
+dotnet test BackPocketBasic.slnx
 ```
 
 **Expected Output:**
@@ -72,7 +72,7 @@ Passed! - Failed:     0, Passed:   103, Skipped:     0, Total:   103
 For better performance, build the release version:
 
 ```bash
-dotnet build ApplesoftBasic.slnx --configuration Release
+dotnet build BackPocketBasic.slnx --configuration Release
 ```
 
 ## Verifying Installation
@@ -80,7 +80,7 @@ dotnet build ApplesoftBasic.slnx --configuration Release
 Test your installation by running a sample program:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 ```
 
 You should see output from the demo program demonstrating various BASIC features.
@@ -92,12 +92,12 @@ After installation, your directory should look like this:
 ```
 applesoft-basic/
 ├── src/
-│   ├── ApplesoftBasic.Interpreter/    # Core interpreter library
-│   └── ApplesoftBasic.Console/        # Console application
+│   ├── BadMango.Basic/    # Core interpreter library
+│   └── BadMango.Basic.Console/        # Console application
 ├── tests/
-│   └── ApplesoftBasic.Tests/          # Unit tests
+│   └── BadMango.Basic.Tests/          # Unit tests
 ├── samples/                           # Sample BASIC programs
-├── ApplesoftBasic.slnx                 # Solution file
+├── BackPocketBasic.slnx                 # Solution file
 └── README.md
 ```
 
@@ -107,20 +107,20 @@ You can also build individual projects:
 
 ```bash
 # Build just the interpreter library
-dotnet build src/ApplesoftBasic.Interpreter/ApplesoftBasic.Interpreter.csproj
+dotnet build src/BadMango.Basic/BadMango.Basic.csproj
 
 # Build just the console application
-dotnet build src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
+dotnet build src/BadMango.Basic.Console/BadMango.Basic.Console.csproj
 
 # Build and run the console application
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj
 ```
 
 ## IDE Support
 
 ### Visual Studio
 
-1. Open `ApplesoftBasic.slnx` in Visual Studio 2022 or later
+1. Open `BackPocketBasic.slnx` in Visual Studio 2022 or later
 2. Ensure .NET 10.0 SDK is installed
 3. Build the solution (Ctrl+Shift+B)
 4. Run tests from Test Explorer
@@ -134,7 +134,7 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
 
 ### JetBrains Rider
 
-1. Open `ApplesoftBasic.slnx` in Rider
+1. Open `BackPocketBasic.slnx` in Rider
 2. Rider will automatically restore dependencies
 3. Build and run using the UI or Ctrl+F9
 
@@ -168,7 +168,7 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj
 dotnet nuget locals all --clear
 
 # Retry restore
-dotnet restore ApplesoftBasic.slnx
+dotnet restore BackPocketBasic.slnx
 ```
 
 ### Tests Fail

@@ -83,7 +83,7 @@ SLEEP milliseconds
 See `samples/sleep.bas` for a full demonstration:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/sleep.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/sleep.bas
 ```
 
 **samples/sleep.bas:**
@@ -203,8 +203,8 @@ If you're considering contributing an extension:
 ### SLEEP Implementation
 
 The SLEEP command is implemented in the interpreter at:
-- Command parsing: `src/ApplesoftBasic.Interpreter/Parser/BasicParser.cs`
-- Execution: `src/ApplesoftBasic.Interpreter/Execution/BasicInterpreter.cs`
+- Command parsing: `src/BadMango.Basic/Parser/BasicParser.cs`
+- Execution: `src/BadMango.Basic/Execution/BasicInterpreter.cs`
 
 The implementation uses `Thread.Sleep()` for cross-platform compatibility.
 
@@ -212,12 +212,12 @@ The implementation uses `Thread.Sleep()` for cross-platform compatibility.
 
 To add a new extension:
 
-1. **Add Token** in `src/ApplesoftBasic.Interpreter/Tokens/TokenType.cs`
-2. **Add AST Node** in `src/ApplesoftBasic.Interpreter/AST/`
-3. **Update Lexer** in `src/ApplesoftBasic.Interpreter/Lexer/BasicLexer.cs`
-4. **Update Parser** in `src/ApplesoftBasic.Interpreter/Parser/BasicParser.cs`
-5. **Implement Visitor** in `src/ApplesoftBasic.Interpreter/Execution/BasicInterpreter.cs`
-6. **Add Tests** in `tests/ApplesoftBasic.Tests/`
+1. **Add Token** in `src/BadMango.Basic/Tokens/TokenType.cs`
+2. **Add AST Node** in `src/BadMango.Basic/AST/`
+3. **Update Lexer** in `src/BadMango.Basic/Lexer/BasicLexer.cs`
+4. **Update Parser** in `src/BadMango.Basic/Parser/BasicParser.cs`
+5. **Implement Visitor** in `src/BadMango.Basic/Execution/BasicInterpreter.cs`
+6. **Add Tests** in `tests/BadMango.Basic.Tests/`
 7. **Update Documentation** in `README.md` and wiki
 
 See [Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md) for detailed steps.

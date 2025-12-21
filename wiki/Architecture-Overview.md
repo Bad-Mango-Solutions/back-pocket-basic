@@ -16,7 +16,7 @@ Comprehensive overview of the Applesoft BASIC Interpreter project structure and 
 ```
 applesoft-basic/
 ├── src/
-│   ├── ApplesoftBasic.Interpreter/    # Core interpreter library
+│   ├── BadMango.Basic/    # Core interpreter library
 │   │   ├── AST/                       # Abstract Syntax Tree nodes
 │   │   ├── Emulation/                 # 6502 CPU and Apple II emulation
 │   │   ├── Execution/                 # Interpreter implementation
@@ -25,11 +25,11 @@ applesoft-basic/
 │   │   ├── Parser/                    # Parsing (tokens → AST)
 │   │   ├── Runtime/                   # Runtime environment & state
 │   │   └── Tokens/                    # Token type definitions
-│   └── ApplesoftBasic.Console/        # Console application
+│   └── BadMango.Basic.Console/        # Console application
 ├── tests/
-│   └── ApplesoftBasic.Tests/          # Unit and integration tests
+│   └── BadMango.Basic.Tests/          # Unit and integration tests
 ├── samples/                           # Sample BASIC programs
-├── ApplesoftBasic.slnx                 # Visual Studio solution
+├── BackPocketBasic.slnx                 # Visual Studio solution
 ├── README.md                          # Project overview
 ├── CONTRIBUTING.md                    # Contribution guidelines
 └── SETUP_GUIDE.md                     # Setup instructions
@@ -41,7 +41,7 @@ applesoft-basic/
 
 **Purpose**: Converts BASIC source code into tokens.
 
-**Location**: `src/ApplesoftBasic.Interpreter/Lexer/`
+**Location**: `src/BadMango.Basic/Lexer/`
 
 **Responsibilities**:
 - Read source code character by character
@@ -66,7 +66,7 @@ Output: [LineNumber(10), Keyword(PRINT), String("HELLO")]
 
 **Purpose**: Converts token stream into Abstract Syntax Tree (AST).
 
-**Location**: `src/ApplesoftBasic.Interpreter/Parser/`
+**Location**: `src/BadMango.Basic/Parser/`
 
 **Responsibilities**:
 - Parse tokens according to grammar rules
@@ -90,7 +90,7 @@ Output: PrintStatement(StringLiteral("HELLO"))
 
 **Purpose**: Represents the program structure as a tree of nodes.
 
-**Location**: `src/ApplesoftBasic.Interpreter/AST/`
+**Location**: `src/BadMango.Basic/AST/`
 
 **Node Types**:
 
@@ -122,7 +122,7 @@ Output: PrintStatement(StringLiteral("HELLO"))
 
 **Purpose**: Executes the AST using the visitor pattern.
 
-**Location**: `src/ApplesoftBasic.Interpreter/Execution/`
+**Location**: `src/BadMango.Basic/Execution/`
 
 **Responsibilities**:
 - Traverse AST nodes
@@ -147,7 +147,7 @@ Output: PrintStatement(StringLiteral("HELLO"))
 
 **Purpose**: Manages program state during execution.
 
-**Location**: `src/ApplesoftBasic.Interpreter/Runtime/`
+**Location**: `src/BadMango.Basic/Runtime/`
 
 **Components**:
 
@@ -190,7 +190,7 @@ Output: PrintStatement(StringLiteral("HELLO"))
 
 **Purpose**: Emulates the Apple II's 6502 CPU and memory.
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/`
+**Location**: `src/BadMango.Basic/Emulation/`
 
 **Components**:
 
@@ -223,7 +223,7 @@ See [6502 Emulation](6502-Emulation) for details.
 
 **Purpose**: Abstracts input/output for testability.
 
-**Location**: `src/ApplesoftBasic.Interpreter/IO/`
+**Location**: `src/BadMango.Basic/IO/`
 
 **Interfaces**:
 
@@ -248,7 +248,7 @@ See [6502 Emulation](6502-Emulation) for details.
 
 **Purpose**: Command-line interface for running BASIC programs.
 
-**Location**: `src/ApplesoftBasic.Console/`
+**Location**: `src/BadMango.Basic.Console/`
 
 **Features**:
 - File loading
@@ -258,7 +258,7 @@ See [6502 Emulation](6502-Emulation) for details.
 
 **Usage**:
 ```bash
-ApplesoftBasic.Console <basic-file>
+bpbasic <basic-file>
 ```
 
 ---
@@ -462,14 +462,14 @@ public class BasicInterpreter
 ### Dependency Graph
 
 ```
-ApplesoftBasic.Console
-    └─> ApplesoftBasic.Interpreter
+BadMango.Basic.Console
+    └─> BadMango.Basic
             ├─> Microsoft.Extensions.Hosting
             ├─> Serilog
             └─> Autofac
 
-ApplesoftBasic.Tests
-    ├─> ApplesoftBasic.Interpreter
+BadMango.Basic.Tests
+    ├─> BadMango.Basic
     ├─> NUnit
     └─> Moq
 ```

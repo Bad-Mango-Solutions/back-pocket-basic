@@ -4,7 +4,7 @@ Documentation for developers integrating the Applesoft BASIC Interpreter library
 
 ## Overview
 
-The `ApplesoftBasic.Interpreter` library can be embedded in .NET applications to provide Applesoft BASIC scripting capabilities.
+The `BadMango.Basic` library can be embedded in .NET applications to provide Applesoft BASIC scripting capabilities.
 
 ## Installation
 
@@ -13,13 +13,13 @@ The `ApplesoftBasic.Interpreter` library can be embedded in .NET applications to
 **Option 1:** Add via .csproj:
 ```xml
 <ItemGroup>
-  <ProjectReference Include="path/to/ApplesoftBasic.Interpreter/ApplesoftBasic.Interpreter.csproj" />
+  <ProjectReference Include="path/to/BadMango.Basic/BadMango.Basic.csproj" />
 </ItemGroup>
 ```
 
 **Option 2:** Add via dotnet CLI (when published to NuGet):
 ```bash
-dotnet add package ApplesoftBasic.Interpreter
+dotnet add package BadMango.Basic
 ```
 
 ## Quick Start
@@ -27,8 +27,8 @@ dotnet add package ApplesoftBasic.Interpreter
 ### Basic Usage
 
 ```csharp
-using ApplesoftBasic.Interpreter;
-using ApplesoftBasic.Interpreter.IO;
+using BadMango.Basic;
+using BadMango.Basic.IO;
 
 // Create I/O handler
 var io = new ConsoleIO();
@@ -50,7 +50,7 @@ interpreter.Execute(program);
 
 ```csharp
 using Autofac;
-using ApplesoftBasic.Interpreter;
+using BadMango.Basic;
 
 // Register services
 var builder = new ContainerBuilder();
@@ -392,8 +392,8 @@ bool success = value.TryCopyTo(destination);
 ### Scenario 1: Simple Script Execution
 
 ```csharp
-using ApplesoftBasic.Interpreter;
-using ApplesoftBasic.Interpreter.IO;
+using BadMango.Basic;
+using BadMango.Basic.IO;
 
 public class SimpleExample
 {

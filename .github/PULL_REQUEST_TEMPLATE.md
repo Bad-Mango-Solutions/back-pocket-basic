@@ -34,8 +34,8 @@ Describe the tests you ran to verify your changes:
 ### Test Commands
 ```bash
 # Commands used to test
-dotnet build ApplesoftBasic.slnx
-dotnet test ApplesoftBasic.slnx
+dotnet build BackPocketBasic.slnx
+dotnet test BackPocketBasic.slnx
 ```
 
 ## BASIC Code Examples

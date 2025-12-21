@@ -11,13 +11,13 @@ The repository includes several sample programs that demonstrate various feature
 To run any sample program:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/<filename>.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/<filename>.bas
 ```
 
 Or with the built executable:
 
 ```bash
-./src/ApplesoftBasic.Console/bin/Debug/net10.0/ApplesoftBasic.Console samples/<filename>.bas
+./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/<filename>.bas
 ```
 
 ## Available Samples
