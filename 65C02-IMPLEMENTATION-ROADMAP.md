@@ -445,7 +445,7 @@ All branch instructions use **Relative addressing mode** (needs to be implemente
 
 3. **Indirect** - For JMP indirect
    - Reads 16-bit address from memory location
-   - Implements 6502 page wrap bug
+   - Note: 65C02 fixed the page wrap bug from the original 6502
    - Used by: JMP (0x6C)
 
 ---
