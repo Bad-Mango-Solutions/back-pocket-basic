@@ -100,6 +100,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         x = state.X;
         y = state.Y;
         p = state.P;
+        halted = state.Halted;
 
         return (int)(cycles - cyclesBefore);
     }
@@ -147,6 +148,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
                 PC = pc,
             },
             Cycles = cycles,
+            Halted = halted,
         };
     }
 
@@ -161,15 +163,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         p = state.P;
         pc = state.PC;
         cycles = state.Cycles;
-    }
-
-    /// <summary>
-    /// Halts CPU execution. Called by opcode handlers for BRK and illegal opcodes.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void Halt()
-    {
-        halted = true;
+        halted = state.Halted;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

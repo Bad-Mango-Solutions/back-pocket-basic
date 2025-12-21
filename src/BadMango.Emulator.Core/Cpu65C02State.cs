@@ -28,6 +28,11 @@ public struct Cpu65C02State
     public ulong Cycles { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the CPU is halted.
+    /// </summary>
+    public bool Halted { get; set; }
+
+    /// <summary>
     /// Gets or sets the Accumulator register (A).
     /// </summary>
     public byte A

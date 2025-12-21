@@ -96,9 +96,7 @@ public static class Cpu65C02OpcodeTableBuilder
         state.S = s;
         state.P = p;
         state.Cycles = cycles;
-
-        // For now, halt on BRK
-        cpu.Halt();
+        state.Halted = true; // Halt on BRK
     }
 
     /// <summary>
@@ -114,8 +112,7 @@ public static class Cpu65C02OpcodeTableBuilder
     /// </summary>
     private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
     {
-        // For illegal opcodes, halt execution
-        cpu.Halt();
+        state.Halted = true; // Halt on illegal opcode
     }
 
     // Compositional instruction handlers using shared AddressingModes and Instructions
