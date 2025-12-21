@@ -1,5 +1,5 @@
-// <copyright file="ReturnStatement.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="ReturnStatement.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Basic.AST;

@@ -1,5 +1,5 @@
-// <copyright file="BasicString.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="BasicString.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Basic.Emulation;

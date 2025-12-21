@@ -1,5 +1,5 @@
-// <copyright file="BasicLexer.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="BasicLexer.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Basic.Lexer;

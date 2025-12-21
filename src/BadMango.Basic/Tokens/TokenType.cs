@@ -1,5 +1,5 @@
-// <copyright file="TokenType.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="TokenType.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 // ReSharper disable InconsistentNaming

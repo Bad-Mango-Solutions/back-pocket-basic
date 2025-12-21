@@ -4,6 +4,10 @@
 
 This repository contains code to emulate an Applesoft BASIC interpreter, enhancing its capabilities and performance. The project is structured to facilitate contributions, maintainability, and adherence to coding standards.
 
+### Target Framework
+
+**This project uses .NET 10.0** as its target framework. All new code and projects must target `net10.0`. Do not question or suggest changes to the framework version - .NET 10.0 is the established standard for this repository as documented in the README and all project files.
+
 ## Development Guidelines
 
 ### Code Standards
@@ -60,6 +64,6 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 
 ## Dependencies and Libraries
 - **Well-maintained libraries.** Use libraries that are actively maintained and have a strong community support.
-- **Compatible with the target framework.** Ensure that all dependencies are compatible with the target framework of the project. Reject any packages that are not at least net6.0 or netstandard2.0 compatible.
+- **Compatible with the target framework.** Ensure that all dependencies are compatible with .NET 10.0 (net10.0). The project may also accept packages compatible with net6.0 or netstandard2.0 as they are compatible with net10.0, but prefer net10.0-specific packages when available.
 - **Properly licensed.** Verify that all third-party libraries comply with the project's licensing requirements. The repository in general should only use libraries that are licensed under permissive licenses (e.g., MIT, Apache 2.0). We use the MIT License for this repository, so any compatible license is acceptable.
 - **Necessary and not redundant.** Avoid adding unnecessary dependencies that bloat the project or duplicate existing functionality.

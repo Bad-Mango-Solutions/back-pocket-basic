@@ -1,5 +1,5 @@
-// <copyright file="MbfTests.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="MbfTests.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Basic.Tests;

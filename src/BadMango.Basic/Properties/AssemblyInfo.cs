@@ -1,5 +1,5 @@
-// <copyright file="AssemblyInfo.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="AssemblyInfo.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 using System.Runtime.CompilerServices;
