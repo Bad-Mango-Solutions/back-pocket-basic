@@ -35,7 +35,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.Implied(memory, ref state);
+        Addr address = AddressingModes.Implied(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0));
@@ -53,7 +53,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.Immediate(memory, ref state);
+        Addr address = AddressingModes.Immediate(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1000));
@@ -72,7 +72,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.ZeroPage(memory, ref state);
+        Addr address = AddressingModes.ZeroPage(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0042));
@@ -91,7 +91,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, X = 0x20, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.ZeroPageX(memory, ref state);
+        Addr address = AddressingModes.ZeroPageX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0xF0 + 0x20 = 0x110, wrapped to 0x10
@@ -110,7 +110,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x90, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.ZeroPageY(memory, ref state);
+        Addr address = AddressingModes.ZeroPageY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0x80 + 0x90 = 0x110, wrapped to 0x10
@@ -129,7 +129,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.Absolute(memory, ref state);
+        Addr address = AddressingModes.Absolute(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5678));
@@ -148,7 +148,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, X = 0x10, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteX(memory, ref state);
+        Addr address = AddressingModes.AbsoluteX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1244)); // 0x1234 + 0x10
@@ -167,7 +167,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, X = 0x02, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteX(memory, ref state);
+        Addr address = AddressingModes.AbsoluteX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1301)); // 0x12FF + 0x02
@@ -186,7 +186,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x50, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteY(memory, ref state);
+        Addr address = AddressingModes.AbsoluteY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2050)); // 0x2000 + 0x50
@@ -205,7 +205,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x20, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteY(memory, ref state);
+        Addr address = AddressingModes.AbsoluteY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2110)); // 0x20F0 + 0x20
@@ -225,7 +225,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, X = 0x05, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.IndirectX(memory, ref state);
+        Addr address = AddressingModes.IndirectX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3000));
@@ -245,7 +245,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x10, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.IndirectY(memory, ref state);
+        Addr address = AddressingModes.IndirectY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4010)); // 0x4000 + 0x10
@@ -265,7 +265,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x02, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.IndirectY(memory, ref state);
+        Addr address = AddressingModes.IndirectY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4101)); // 0x40FF + 0x02
@@ -284,7 +284,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, X = 0x10, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteXWrite(memory, ref state);
+        Addr address = AddressingModes.AbsoluteXWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2010));
@@ -303,7 +303,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x20, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.AbsoluteYWrite(memory, ref state);
+        Addr address = AddressingModes.AbsoluteYWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3020));
@@ -323,7 +323,7 @@ public class AddressingModesTests
         var state = new Cpu65C02State { PC = 0x1000, Y = 0x30, Cycles = 10 };
 
         // Act
-        ushort address = AddressingModes.IndirectYWrite(memory, ref state);
+        Addr address = AddressingModes.IndirectYWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5030));

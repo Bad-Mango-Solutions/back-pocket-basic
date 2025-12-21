@@ -37,7 +37,7 @@ public static class Instructions
     {
         return (cpu, memory, ref state) =>
         {
-            ushort address = addressingMode(memory, ref state);
+            Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
@@ -60,7 +60,7 @@ public static class Instructions
     {
         return (cpu, memory, ref state) =>
         {
-            ushort address = addressingMode(memory, ref state);
+            Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
@@ -83,7 +83,7 @@ public static class Instructions
     {
         return (cpu, memory, ref state) =>
         {
-            ushort address = addressingMode(memory, ref state);
+            Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
@@ -106,7 +106,7 @@ public static class Instructions
     {
         return (cpu, memory, ref state) =>
         {
-            ushort address = addressingMode(memory, ref state);
+            Addr address = addressingMode(memory, ref state);
             memory.Write(address, state.A);
             state.Cycles++; // Memory write cycle
         };
@@ -142,7 +142,7 @@ public static class Instructions
             // BRK causes a software interrupt
             // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
             ushort pc = state.PC;
-            byte s = state.S;
+            byte s = state.SP;
             byte p = state.P;
 
             pc++;
@@ -154,7 +154,7 @@ public static class Instructions
             state.Cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
 
             state.PC = pc;
-            state.S = s;
+            state.SP = s;
             state.P = p;
             state.Halted = true; // Halt on BRK
         };

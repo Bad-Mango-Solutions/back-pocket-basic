@@ -42,28 +42,28 @@ public class BasicMemory : IMemory
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte Read(int address)
+    public byte Read(Addr address)
     {
         return memory[address];
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write(int address, byte value)
+    public void Write(Addr address, byte value)
     {
         memory[address] = value;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ushort ReadWord(int address)
+    public Word ReadWord(Addr address)
     {
-        return (ushort)(memory[address] | (memory[address + 1] << 8));
+        return (Word)(memory[address] | (memory[address + 1] << 8));
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteWord(int address, ushort value)
+    public void WriteWord(Addr address, Word value)
     {
         memory[address] = (byte)(value & 0xFF);
         memory[address + 1] = (byte)(value >> 8);

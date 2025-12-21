@@ -14,7 +14,7 @@ using System.Runtime.InteropServices;
 /// Uses explicit layout for optimal memory packing.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct Cpu65C02Registers
+public struct Cpu65C02Registers : ICpuRegisters<byte, byte, byte, Word>
 {
     /// <summary>
     /// Gets or sets the Accumulator register (A).
@@ -32,9 +32,9 @@ public struct Cpu65C02Registers
     public byte Y { get; set; }
 
     /// <summary>
-    /// Gets or sets the Stack Pointer register (S).
+    /// Gets or sets the Stack Pointer register (SP).
     /// </summary>
-    public byte S { get; set; }
+    public byte SP { get; set; }
 
     /// <summary>
     /// Gets or sets the Processor Status register (P).
@@ -44,5 +44,5 @@ public struct Cpu65C02Registers
     /// <summary>
     /// Gets or sets the Program Counter (PC).
     /// </summary>
-    public ushort PC { get; set; }
+    public Word PC { get; set; }
 }

@@ -42,7 +42,7 @@ public class Cpu65C02Tests
         // Assert
         var state = cpu.GetState();
         Assert.That(state.PC, Is.EqualTo(0x1000));
-        Assert.That(state.S, Is.EqualTo(0xFD));
+        Assert.That(state.SP, Is.EqualTo(0xFD));
         Assert.That(state.A, Is.EqualTo(0));
         Assert.That(state.X, Is.EqualTo(0));
         Assert.That(state.Y, Is.EqualTo(0));
@@ -213,7 +213,7 @@ public class Cpu65C02Tests
             A = 0x42,
             X = 0x10,
             Y = 0x20,
-            S = 0xFF,
+            SP = 0xFF,
             P = 0x30,
             PC = 0x1234,
             Cycles = 100,
@@ -227,7 +227,7 @@ public class Cpu65C02Tests
         Assert.That(retrievedState.A, Is.EqualTo(originalState.A));
         Assert.That(retrievedState.X, Is.EqualTo(originalState.X));
         Assert.That(retrievedState.Y, Is.EqualTo(originalState.Y));
-        Assert.That(retrievedState.S, Is.EqualTo(originalState.S));
+        Assert.That(retrievedState.SP, Is.EqualTo(originalState.SP));
         Assert.That(retrievedState.P, Is.EqualTo(originalState.P));
         Assert.That(retrievedState.PC, Is.EqualTo(originalState.PC));
         Assert.That(retrievedState.Cycles, Is.EqualTo(originalState.Cycles));
@@ -295,7 +295,7 @@ public class Cpu65C02Tests
         // Assert
         Assert.That(registers.A, Is.EqualTo(0x42));
         Assert.That(registers.PC, Is.EqualTo(0x1002));
-        Assert.That(registers.S, Is.EqualTo(0xFD));
+        Assert.That(registers.SP, Is.EqualTo(0xFD));
 
         // Verify the registers struct doesn't have a Cycles property
         var registersType = typeof(Cpu65C02Registers);

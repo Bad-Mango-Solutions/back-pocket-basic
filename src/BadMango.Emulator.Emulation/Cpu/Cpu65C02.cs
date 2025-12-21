@@ -126,7 +126,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
             A = a,
             X = x,
             Y = y,
-            S = s,
+            SP = s,
             P = p,
             PC = pc,
         };
@@ -143,7 +143,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
                 A = a,
                 X = x,
                 Y = y,
-                S = s,
+                SP = s,
                 P = p,
                 PC = pc,
             },
@@ -159,7 +159,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         a = state.A;
         x = state.X;
         y = state.Y;
-        s = state.S;
+        s = state.SP;
         p = state.P;
         pc = state.PC;
         cycles = state.Cycles;

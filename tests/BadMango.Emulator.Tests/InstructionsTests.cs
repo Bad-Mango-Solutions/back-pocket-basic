@@ -238,7 +238,7 @@ public class InstructionsTests
             A = 0x42,
             X = 0x12,
             Y = 0x34,
-            S = 0xFD,
+            SP = 0xFD,
             P = FlagZ | FlagN,
             Cycles = 10,
         };
@@ -252,7 +252,7 @@ public class InstructionsTests
         Assert.That(state.A, Is.EqualTo(0x42), "A should not change");
         Assert.That(state.X, Is.EqualTo(0x12), "X should not change");
         Assert.That(state.Y, Is.EqualTo(0x34), "Y should not change");
-        Assert.That(state.S, Is.EqualTo(0xFD), "S should not change");
+        Assert.That(state.SP, Is.EqualTo(0xFD), "SP should not change");
         Assert.That(state.P, Is.EqualTo(FlagZ | FlagN), "Flags should not change");
         Assert.That(state.Cycles, Is.EqualTo(11), "Should consume 1 cycle");
     }

@@ -13,7 +13,7 @@ using BadMango.Emulator.Core;
 /// <param name="memory">The memory interface.</param>
 /// <param name="state">Reference to the CPU state.</param>
 /// <returns>The effective address computed by the addressing mode.</returns>
-public delegate ushort AddressingMode<TState>(IMemory memory, ref TState state)
+public delegate Addr AddressingMode<TState>(IMemory memory, ref TState state)
     where TState : struct;
 
 /// <summary>
@@ -35,7 +35,7 @@ public static class AddressingModes
     /// Returns zero as a placeholder address. Instructions using this mode
     /// typically operate only on registers or the stack (e.g., NOP, CLC, SEI).
     /// </remarks>
-    public static ushort Implied(IMemory memory, ref Cpu65C02State state)
+    public static Addr Implied(IMemory memory, ref Cpu65C02State state)
     {
         // No addressing needed, no PC increment, no cycles
         return 0;
@@ -47,7 +47,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface (not used for immediate addressing).</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The address of the immediate operand (current PC value).</returns>
-    public static ushort Immediate(IMemory memory, ref Cpu65C02State state)
+    public static Addr Immediate(IMemory memory, ref Cpu65C02State state)
     {
         ushort address = state.PC;
         state.PC++;
@@ -62,7 +62,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The zero page address (0x00-0xFF).</returns>
-    public static ushort ZeroPage(IMemory memory, ref Cpu65C02State state)
+    public static Addr ZeroPage(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = memory.Read(state.PC++);
         state.Cycles++; // 1 cycle to fetch the ZP address
@@ -77,7 +77,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective zero page address with X offset (wraps within zero page).</returns>
-    public static ushort ZeroPageX(IMemory memory, ref Cpu65C02State state)
+    public static Addr ZeroPageX(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
         state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
@@ -92,7 +92,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective zero page address with Y offset (wraps within zero page).</returns>
-    public static ushort ZeroPageY(IMemory memory, ref Cpu65C02State state)
+    public static Addr ZeroPageY(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.Y);
         state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
@@ -107,7 +107,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The 16-bit absolute address.</returns>
-    public static ushort Absolute(IMemory memory, ref Cpu65C02State state)
+    public static Addr Absolute(IMemory memory, ref Cpu65C02State state)
     {
         ushort address = memory.ReadWord(state.PC);
         state.PC += 2;
@@ -123,7 +123,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with X offset.</returns>
-    public static ushort AbsoluteX(IMemory memory, ref Cpu65C02State state)
+    public static Addr AbsoluteX(IMemory memory, ref Cpu65C02State state)
     {
         ushort baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
@@ -146,7 +146,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset.</returns>
-    public static ushort AbsoluteY(IMemory memory, ref Cpu65C02State state)
+    public static Addr AbsoluteY(IMemory memory, ref Cpu65C02State state)
     {
         ushort baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
@@ -169,7 +169,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address read from the X-indexed zero page pointer.</returns>
-    public static ushort IndirectX(IMemory memory, ref Cpu65C02State state)
+    public static Addr IndirectX(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
         ushort address = memory.ReadWord(zpAddr);
@@ -185,7 +185,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset applied to the zero page pointer.</returns>
-    public static ushort IndirectY(IMemory memory, ref Cpu65C02State state)
+    public static Addr IndirectY(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = memory.Read(state.PC++);
         ushort baseAddr = memory.ReadWord(zpAddr);
@@ -210,7 +210,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with X offset.</returns>
-    public static ushort AbsoluteXWrite(IMemory memory, ref Cpu65C02State state)
+    public static Addr AbsoluteXWrite(IMemory memory, ref Cpu65C02State state)
     {
         ushort baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
@@ -227,7 +227,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset.</returns>
-    public static ushort AbsoluteYWrite(IMemory memory, ref Cpu65C02State state)
+    public static Addr AbsoluteYWrite(IMemory memory, ref Cpu65C02State state)
     {
         ushort baseAddr = memory.ReadWord(state.PC);
         state.PC += 2;
@@ -244,7 +244,7 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset applied to the zero page pointer.</returns>
-    public static ushort IndirectYWrite(IMemory memory, ref Cpu65C02State state)
+    public static Addr IndirectYWrite(IMemory memory, ref Cpu65C02State state)
     {
         byte zpAddr = memory.Read(state.PC++);
         ushort baseAddr = memory.ReadWord(zpAddr);

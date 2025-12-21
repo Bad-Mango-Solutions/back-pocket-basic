@@ -23,7 +23,7 @@ public interface IMemory
     /// </summary>
     /// <param name="address">The memory address to read from.</param>
     /// <returns>The byte value at the specified address.</returns>
-    byte Read(int address);
+    byte Read(Addr address);
 
     /// <summary>
     /// Reads a byte from the specified memory address.
@@ -34,14 +34,14 @@ public interface IMemory
     /// This method is functionally identical to <see cref="Read"/> and is provided
     /// for future-proofing to support additional read methods (e.g., Read16, Read32).
     /// </remarks>
-    byte ReadByte(int address) => Read(address);
+    byte ReadByte(Addr address) => Read(address);
 
     /// <summary>
     /// Writes a byte to the specified memory address.
     /// </summary>
     /// <param name="address">The memory address to write to.</param>
     /// <param name="value">The byte value to write.</param>
-    void Write(int address, byte value);
+    void Write(Addr address, byte value);
 
     /// <summary>
     /// Writes a byte to the specified memory address.
@@ -52,21 +52,21 @@ public interface IMemory
     /// This method is functionally identical to <see cref="Write"/> and is provided
     /// for future-proofing to support additional write methods (e.g., Write16, Write32).
     /// </remarks>
-    void WriteByte(int address, byte value) => Write(address, value);
+    void WriteByte(Addr address, byte value) => Write(address, value);
 
     /// <summary>
     /// Reads a 16-bit word from the specified memory address.
     /// </summary>
     /// <param name="address">The starting address to read from.</param>
     /// <returns>The 16-bit word value (low byte first, high byte second).</returns>
-    ushort ReadWord(int address);
+    Word ReadWord(Addr address);
 
     /// <summary>
     /// Writes a 16-bit word to the specified memory address.
     /// </summary>
     /// <param name="address">The starting address to write to.</param>
     /// <param name="value">The 16-bit word value to write (low byte first, high byte second).</param>
-    void WriteWord(int address, ushort value);
+    void WriteWord(Addr address, Word value);
 
     /// <summary>
     /// Clears all memory, setting all bytes to zero.
@@ -81,7 +81,7 @@ public interface IMemory
     /// This method returns a non-copying, read-only view of the underlying memory buffer
     /// that can be used for debugging, serialization, or analysis without allowing direct
     /// modification through the returned instance. Changes made to the underlying memory
-    /// (for example, via <see cref="Write(int, byte)"/> or <see cref="WriteWord(int, ushort)"/>)
+    /// (for example, via <see cref="Write(Addr, byte)"/> or <see cref="WriteWord(Addr, Word)"/>)
     /// will be reflected in any previously obtained <see cref="ReadOnlyMemory{T}"/> views.
     /// </remarks>
     ReadOnlyMemory<byte> AsReadOnlyMemory();
