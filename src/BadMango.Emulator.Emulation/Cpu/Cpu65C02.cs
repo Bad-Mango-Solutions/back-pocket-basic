@@ -177,8 +177,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_Immediate()
     {
-        a = FetchByte();
-        SetZN(a);
+        byte value = AddressingModes.ReadImmediate(memory, ref pc, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -187,8 +187,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_ZeroPage()
     {
-        a = ReadZeroPage();
-        SetZN(a);
+        byte value = AddressingModes.ReadZeroPage(memory, ref pc, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -197,8 +197,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_ZeroPageX()
     {
-        a = ReadZeroPageX();
-        SetZN(a);
+        byte value = AddressingModes.ReadZeroPageX(memory, ref pc, x, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -207,8 +207,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_Absolute()
     {
-        a = ReadAbsolute();
-        SetZN(a);
+        byte value = AddressingModes.ReadAbsolute(memory, ref pc, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -217,8 +217,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_AbsoluteX()
     {
-        a = ReadAbsoluteX();
-        SetZN(a);
+        byte value = AddressingModes.ReadAbsoluteX(memory, ref pc, x, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -227,8 +227,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_AbsoluteY()
     {
-        a = ReadAbsoluteY();
-        SetZN(a);
+        byte value = AddressingModes.ReadAbsoluteY(memory, ref pc, y, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -237,8 +237,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_IndirectX()
     {
-        a = ReadIndirectX();
-        SetZN(a);
+        byte value = AddressingModes.ReadIndirectX(memory, ref pc, x, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -247,8 +247,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDA_IndirectY()
     {
-        a = ReadIndirectY();
-        SetZN(a);
+        byte value = AddressingModes.ReadIndirectY(memory, ref pc, y, ref cycles);
+        Instructions.LDA(value, ref a, ref p);
     }
 
     /// <summary>
@@ -257,8 +257,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDX_Immediate()
     {
-        x = FetchByte();
-        SetZN(x);
+        byte value = AddressingModes.ReadImmediate(memory, ref pc, ref cycles);
+        Instructions.LDX(value, ref x, ref p);
     }
 
     /// <summary>
@@ -267,8 +267,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void LDY_Immediate()
     {
-        y = FetchByte();
-        SetZN(y);
+        byte value = AddressingModes.ReadImmediate(memory, ref pc, ref cycles);
+        Instructions.LDY(value, ref y, ref p);
     }
 
     /// <summary>
@@ -277,7 +277,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_ZeroPage()
     {
-        WriteZeroPage(a);
+        AddressingModes.WriteZeroPage(memory, ref pc, a, ref cycles);
     }
 
     /// <summary>
@@ -286,7 +286,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_ZeroPageX()
     {
-        WriteZeroPageX(a);
+        AddressingModes.WriteZeroPageX(memory, ref pc, x, a, ref cycles);
     }
 
     /// <summary>
@@ -295,7 +295,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_Absolute()
     {
-        WriteAbsolute(a);
+        AddressingModes.WriteAbsolute(memory, ref pc, a, ref cycles);
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_AbsoluteX()
     {
-        WriteAbsoluteX(a);
+        AddressingModes.WriteAbsoluteX(memory, ref pc, x, a, ref cycles);
     }
 
     /// <summary>
@@ -313,7 +313,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_AbsoluteY()
     {
-        WriteAbsoluteY(a);
+        AddressingModes.WriteAbsoluteY(memory, ref pc, y, a, ref cycles);
     }
 
     /// <summary>
@@ -322,7 +322,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_IndirectX()
     {
-        WriteIndirectX(a);
+        AddressingModes.WriteIndirectX(memory, ref pc, x, a, ref cycles);
     }
 
     /// <summary>
@@ -331,7 +331,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void STA_IndirectY()
     {
-        WriteIndirectY(a);
+        AddressingModes.WriteIndirectY(memory, ref pc, y, a, ref cycles);
     }
 
     /// <summary>
