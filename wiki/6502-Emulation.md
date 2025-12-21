@@ -69,6 +69,8 @@ The 6502 has minimal registers:
 | **PC** | 16-bit | Program counter |
 | **P** | 8-bit | Processor status flags |
 
+**Note**: The emulator uses `SP` (Stack Pointer) consistently throughout the codebase for accuracy, not the sometimes-used abbreviation `S`.
+
 ### Processor Status Flags (P Register)
 
 ```
@@ -187,20 +189,22 @@ C = Carry flag
 
 #### System
 
-| Opcode | Instruction | Description |
-|--------|-------------|-------------|
-| BRK | Break | Trigger software interrupt |
-| NOP | No Operation | Do nothing |
-| CLC | Clear Carry | C = 0 |
-| SEC | Set Carry | C = 1 |
-| CLI | Clear Interrupt | I = 0 |
-| SEI | Set Interrupt | I = 1 |
-| CLV | Clear Overflow | V = 0 |
-| CLD | Clear Decimal | D = 0 |
-| SED | Set Decimal | D = 1 |
-| CMP | Compare Accumulator | Compare A with memory |
-| CPX | Compare X Register | Compare X with memory |
-| CPY | Compare Y Register | Compare Y with memory |
+| Opcode | Instruction | Description | Addressing | Implemented |
+|--------|-------------|-------------|------------|-------------|
+| **BRK** | **Break** | **Trigger software interrupt** | **Implied** | **✅** |
+| **NOP** | **No Operation** | **Do nothing** | **Implied** | **✅** |
+| **CLC** | **Clear Carry** | **C = 0** | **Implied** | **✅** |
+| **SEC** | **Set Carry** | **C = 1** | **Implied** | **✅** |
+| **CLI** | **Clear Interrupt** | **I = 0** | **Implied** | **✅** |
+| **SEI** | **Set Interrupt** | **I = 1** | **Implied** | **✅** |
+| **CLV** | **Clear Overflow** | **V = 0** | **Implied** | **✅** |
+| **CLD** | **Clear Decimal** | **D = 0** | **Implied** | **✅** |
+| **SED** | **Set Decimal** | **D = 1** | **Implied** | **✅** |
+| CMP | Compare Accumulator | Compare A with memory | Various | ⏳ |
+| CPX | Compare X Register | Compare X with memory | Various | ⏳ |
+| CPY | Compare Y Register | Compare Y with memory | Various | ⏳ |
+
+**Note**: All flag manipulation instructions (**CLC, SEC, CLI, SEI, CLV, CLD, SED**) use the **Implied** addressing mode and are implemented as compositional higher-order functions in `Instructions.cs`.
 
 ### Addressing Modes
 
@@ -208,19 +212,44 @@ The 6502 supports multiple addressing modes:
 
 | Mode | Syntax | Example | Description |
 |------|--------|---------|-------------|
-| Implied | - | `INX` | No operand needed |
+| **Implied** | - | `CLC`, `NOP` | No operand needed |
 | Accumulator | A | `ASL A` | Operate on A |
-| Immediate | #nn | `LDA #$42` | Use literal value |
-| Zero Page | nn | `LDA $20` | Address $00-$FF |
-| Zero Page,X | nn,X | `LDA $20,X` | ZP + X |
-| Zero Page,Y | nn,Y | `LDX $20,Y` | ZP + Y |
-| Absolute | nnnn | `LDA $1234` | Full 16-bit address |
-| Absolute,X | nnnn,X | `LDA $1234,X` | Address + X |
-| Absolute,Y | nnnn,Y | `LDA $1234,Y` | Address + Y |
+| **Immediate** | #nn | `LDA #$42` | Use literal value |
+| **Zero Page** | nn | `LDA $20` | Address $00-$FF |
+| **Zero Page,X** | nn,X | `LDA $20,X` | ZP + X |
+| **Zero Page,Y** | nn,Y | `LDX $20,Y` | ZP + Y |
+| **Absolute** | nnnn | `LDA $1234` | Full 16-bit address |
+| **Absolute,X** | nnnn,X | `LDA $1234,X` | Address + X |
+| **Absolute,Y** | nnnn,Y | `LDA $1234,Y` | Address + Y |
 | Indirect | (nnnn) | `JMP ($1234)` | Address at address |
-| Indirect,X | (nn,X) | `LDA ($20,X)` | Indexed indirect |
-| Indirect,Y | (nn),Y | `LDA ($20),Y` | Indirect indexed |
+| **Indirect,X** | (nn,X) | `LDA ($20,X)` | Indexed indirect |
+| **Indirect,Y** | (nn),Y | `LDA ($20),Y` | Indirect indexed |
 | Relative | offset | `BNE $10` | For branches |
+
+**Bold** indicates addressing modes with shared, reusable implementations in `AddressingModes.cs`.
+
+### Compositional Architecture
+
+The emulator uses a **compositional pattern** where:
+- **Addressing modes** are delegates that compute and return an address
+- **Instructions** are higher-order functions that accept an addressing mode delegate
+- This eliminates code duplication - one instruction implementation works with all addressing modes
+
+**Example:**
+```csharp
+// One LDA implementation works with all addressing modes
+handlers[0xA9] = Instructions.LDA(AddressingModes.Immediate);
+handlers[0xA5] = Instructions.LDA(AddressingModes.ZeroPage);
+handlers[0xB5] = Instructions.LDA(AddressingModes.ZeroPageX);
+handlers[0xBD] = Instructions.LDA(AddressingModes.AbsoluteX);
+```
+
+**Shared Addressing Modes (12 total):**
+- Implied, Immediate
+- ZeroPage, ZeroPageX, ZeroPageY
+- Absolute, AbsoluteX, AbsoluteY
+- IndirectX, IndirectY
+- AbsoluteXWrite, AbsoluteYWrite, IndirectYWrite (for store instructions)
 
 ---
 
