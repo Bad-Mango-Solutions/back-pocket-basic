@@ -1,6 +1,6 @@
 # Installation
 
-This guide will help you get the Applesoft BASIC Interpreter up and running on your system.
+This guide will help you get BackPocketBASIC up and running on your system.
 
 ## Prerequisites
 

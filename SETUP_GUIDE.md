@@ -213,7 +213,7 @@ See [BRANCH_MIGRATION.md](BRANCH_MIGRATION.md) for detailed instructions and tro
    **Update Repository Details:**
    - Go to repository main page
    - Click gear icon next to "About"
-   - Add description: "Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
+   - Add description: "BackPocketBASIC - Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
    - Add topics: `applesoft-basic`, `apple-ii`, `6502`, `emulator`, `interpreter`, `dotnet`, `csharp`, `retro-computing`
    - Save changes
 

@@ -1,10 +1,10 @@
 # Development Setup
 
-Complete guide for setting up your development environment to contribute to the Applesoft BASIC Interpreter.
+Complete guide for setting up your development environment to contribute to BackPocketBASIC.
 
 ## Overview
 
-This guide covers everything you need to start developing on the project. For general contribution guidelines, see [CONTRIBUTING.md](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md).
+This guide covers everything you need to start developing on the project. For general contribution guidelines, see [CONTRIBUTING.md](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md).
 
 ## Prerequisites
 
@@ -189,7 +189,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 ## Project Structure
 
 ```
-applesoft-basic/
+back-pocket-basic/
 ├── .github/              # GitHub workflows and templates
 ├── src/
 │   ├── BadMango.Basic/
@@ -432,8 +432,8 @@ git rebase main
 
 ### Documentation
 
-- [CONTRIBUTING.md](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md) - Contribution guidelines
-- [SETUP_GUIDE.md](https://github.com/jpactor/applesoft-basic/blob/main/SETUP_GUIDE.md) - Repository setup
+- [CONTRIBUTING.md](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md) - Contribution guidelines
+- [SETUP_GUIDE.md](https://github.com/jpactor/back-pocket-basic/blob/main/SETUP_GUIDE.md) - Repository setup
 - [Testing Guide](Testing-Guide) - Writing tests
 - [Code Style](Code-Style) - Coding standards
 
@@ -446,8 +446,8 @@ git rebase main
 
 ## Getting Help
 
-- **Questions?** Open a [Discussion](https://github.com/jpactor/applesoft-basic/discussions)
-- **Found a bug?** Open an [Issue](https://github.com/jpactor/applesoft-basic/issues)
+- **Questions?** Open a [Discussion](https://github.com/jpactor/back-pocket-basic/discussions)
+- **Found a bug?** Open an [Issue](https://github.com/jpactor/back-pocket-basic/issues)
 - **Need clarification?** Comment on the relevant issue or PR
 
 ## Next Steps

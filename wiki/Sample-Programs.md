@@ -447,7 +447,7 @@ Demonstrates the Apple II speaker emulation with timed beeps.
 - **[Language Reference](Language-Reference)** - Learn all commands
 - **[Built-in Functions](Built-in-Functions)** - Explore functions
 - **[Custom Extensions](Custom-Extensions)** - Modern additions
-- **[Contributing](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)** - Share your programs
+- **[Contributing](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Share your programs
 
 ## External Resources
 

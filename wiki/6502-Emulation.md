@@ -4,7 +4,7 @@ Details about the 6502 CPU emulation and Apple II hardware emulation.
 
 ## Overview
 
-The Applesoft BASIC Interpreter includes a full 6502 CPU emulator and Apple II memory space emulation. This allows authentic execution of `PEEK`, `POKE`, and `CALL` commands as they would work on a real Apple II.
+BackPocketBASIC includes a full 6502 CPU emulator and Apple II memory space emulation. This allows authentic execution of `PEEK`, `POKE`, and `CALL` commands as they would work on a real Apple II.
 
 ## Table of Contents
 

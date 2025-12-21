@@ -1,6 +1,6 @@
 # Wiki Documentation
 
-This directory contains the wiki documentation for the Applesoft BASIC Interpreter project.
+This directory contains the wiki documentation for the BackPocketBASIC project.
 
 ## About This Wiki
 
@@ -49,10 +49,10 @@ To upload these files to the actual GitHub wiki:
 git clone https://github.com/jpactor/applesoft-basic.wiki.git
 
 # Copy files from this directory
-cp wiki/*.md applesoft-basic.wiki/
+cp wiki/*.md back-pocket-basic.wiki/
 
 # Commit and push
-cd applesoft-basic.wiki
+cd back-pocket-basic.wiki
 git add .
 git commit -m "Initialize wiki documentation"
 git push origin master
