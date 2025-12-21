@@ -254,4 +254,60 @@ public static class AddressingModes
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
     }
+
+    /// <summary>
+    /// Accumulator addressing - used for shift/rotate operations on the accumulator.
+    /// </summary>
+    /// <param name="memory">The memory interface (not used for accumulator addressing).</param>
+    /// <param name="state">Reference to the CPU state (not modified for accumulator addressing).</param>
+    /// <returns>Returns zero as a placeholder address since the operation is on the accumulator.</returns>
+    /// <remarks>
+    /// Returns zero as a placeholder address. Instructions using this mode operate directly
+    /// on the accumulator register (e.g., ASL A, LSR A, ROL A, ROR A).
+    /// </remarks>
+    public static Addr Accumulator(IMemory memory, ref Cpu65C02State state)
+    {
+        // No addressing needed, no PC increment, no cycles
+        return 0;
+    }
+
+    /// <summary>
+    /// Relative addressing - used for branch instructions.
+    /// </summary>
+    /// <param name="memory">The memory interface.</param>
+    /// <param name="state">Reference to the CPU state.</param>
+    /// <returns>The target address for the branch (PC + signed offset).</returns>
+    /// <remarks>
+    /// Reads a signed byte offset from PC and computes the branch target.
+    /// Branch instructions must handle the conditional logic and cycle counting.
+    /// </remarks>
+    public static Addr Relative(IMemory memory, ref Cpu65C02State state)
+    {
+        sbyte offset = (sbyte)memory.Read(state.PC++);
+        state.Cycles++; // 1 cycle to fetch the offset
+        Addr targetAddr = (Addr)(state.PC + offset);
+
+        // Branch instructions will add extra cycles if branch is taken
+        return targetAddr;
+    }
+
+    /// <summary>
+    /// Indirect addressing - reads a 16-bit address from memory location.
+    /// </summary>
+    /// <param name="memory">The memory interface.</param>
+    /// <param name="state">Reference to the CPU state.</param>
+    /// <returns>The address read from the indirect pointer.</returns>
+    /// <remarks>
+    /// Used by JMP (Indirect). The 65C02 fixed the page wrap bug from the original 6502.
+    /// </remarks>
+    public static Addr Indirect(IMemory memory, ref Cpu65C02State state)
+    {
+        Addr pointerAddr = memory.ReadWord(state.PC);
+        state.PC += 2;
+        Addr targetAddr = memory.ReadWord(pointerAddr);
+        state.Cycles += 4; // 2 cycles to fetch pointer address, 2 cycles to read target
+
+        // The instruction will add 1 more cycle for execution
+        return targetAddr;
+    }
 }

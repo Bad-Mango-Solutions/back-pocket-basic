@@ -270,6 +270,1259 @@ public static class Instructions
         };
     }
 
+    /// <summary>
+    /// STX - Store X Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes STX with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> STX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            memory.Write(address, state.X);
+            state.Cycles++; // Memory write cycle
+        };
+    }
+
+    /// <summary>
+    /// STY - Store Y Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes STY with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> STY(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            memory.Write(address, state.Y);
+            state.Cycles++; // Memory write cycle
+        };
+    }
+
+    #region Register Transfer Operations
+
+    /// <summary>
+    /// TAX - Transfer Accumulator to X instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TAX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TAX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.X = state.A;
+            byte p = state.P;
+            SetZN(state.X, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// TAY - Transfer Accumulator to Y instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TAY.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TAY(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.Y = state.A;
+            byte p = state.P;
+            SetZN(state.Y, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// TXA - Transfer X to Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TXA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TXA(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.A = state.X;
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// TYA - Transfer Y to Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TYA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TYA(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.A = state.Y;
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// TXS - Transfer X to Stack Pointer instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TXS.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TXS(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.SP = state.X;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// TSX - Transfer Stack Pointer to X instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TSX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> TSX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.X = state.SP;
+            byte p = state.P;
+            SetZN(state.X, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    #endregion
+
+    #region Stack Operations
+
+    /// <summary>
+    /// PHA - Push Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes PHA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> PHA(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            memory.Write((Word)(StackBase + state.SP--), state.A);
+            state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
+        };
+    }
+
+    /// <summary>
+    /// PHP - Push Processor Status instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes PHP.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> PHP(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            memory.Write((Word)(StackBase + state.SP--), (byte)(state.P | FlagB));
+            state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
+        };
+    }
+
+    /// <summary>
+    /// PLA - Pull Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes PLA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> PLA(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.A = memory.Read((Word)(StackBase + ++state.SP));
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+            state.Cycles += 3; // 4 cycles total (1 from fetch + 3 here)
+        };
+    }
+
+    /// <summary>
+    /// PLP - Pull Processor Status instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes PLP.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> PLP(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.P = memory.Read((Word)(StackBase + ++state.SP));
+            state.Cycles += 3; // 4 cycles total (1 from fetch + 3 here)
+        };
+    }
+
+    #endregion
+
+    #region Jump and Subroutine Operations
+
+    /// <summary>
+    /// JMP - Jump instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>
+    /// <returns>An opcode handler that executes JMP.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> JMP(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+            state.PC = (Word)targetAddr;
+
+            // No additional cycles - addressing mode handles it
+        };
+    }
+
+    /// <summary>
+    /// JSR - Jump to Subroutine instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Absolute).</param>
+    /// <returns>An opcode handler that executes JSR.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> JSR(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+            Word returnAddr = (Word)(state.PC - 1);
+            memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr >> 8));
+            memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr & 0xFF));
+            state.PC = (Word)targetAddr;
+            state.Cycles += 3; // 6 cycles total (1 from fetch + 2 from addressing + 3 here)
+        };
+    }
+
+    /// <summary>
+    /// RTS - Return from Subroutine instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes RTS.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> RTS(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte lo = memory.Read((Word)(StackBase + ++state.SP));
+            byte hi = memory.Read((Word)(StackBase + ++state.SP));
+            state.PC = (Word)((hi << 8) | lo);
+            state.PC++;
+            state.Cycles += 5; // 6 cycles total (1 from fetch + 5 here)
+        };
+    }
+
+    /// <summary>
+    /// RTI - Return from Interrupt instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes RTI.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> RTI(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.P = memory.Read((Word)(StackBase + ++state.SP));
+            byte lo = memory.Read((Word)(StackBase + ++state.SP));
+            byte hi = memory.Read((Word)(StackBase + ++state.SP));
+            state.PC = (Word)((hi << 8) | lo);
+            state.Cycles += 5; // 6 cycles total (1 from fetch + 5 here)
+        };
+    }
+
+    #endregion
+
+    #region Comparison Operations
+
+    /// <summary>
+    /// CMP - Compare Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes CMP with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> CMP(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte result = (byte)(state.A - value);
+            byte p = state.P;
+
+            // Set carry if A >= value
+            if (state.A >= value)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            SetZN(result, ref p);
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// CPX - Compare X Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes CPX with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> CPX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte result = (byte)(state.X - value);
+            byte p = state.P;
+
+            // Set carry if X >= value
+            if (state.X >= value)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            SetZN(result, ref p);
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// CPY - Compare Y Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes CPY with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> CPY(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte result = (byte)(state.Y - value);
+            byte p = state.P;
+
+            // Set carry if Y >= value
+            if (state.Y >= value)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            SetZN(result, ref p);
+            state.P = p;
+        };
+    }
+
+    #endregion
+
+    #region Branch Operations
+
+    /// <summary>
+    /// BCC - Branch if Carry Clear instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BCC.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BCC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagC) == 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BCS - Branch if Carry Set instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BCS.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BCS(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagC) != 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BEQ - Branch if Equal (Zero set) instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BEQ.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BEQ(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagZ) != 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BNE - Branch if Not Equal (Zero clear) instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BNE.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BNE(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagZ) == 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BMI - Branch if Minus (Negative set) instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BMI.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BMI(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagN) != 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BPL - Branch if Plus (Negative clear) instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BPL.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BPL(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagN) == 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BVC - Branch if Overflow Clear instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BVC.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BVC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagV) == 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// BVS - Branch if Overflow Set instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
+    /// <returns>An opcode handler that executes BVS.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BVS(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr targetAddr = addressingMode(memory, ref state);
+
+            if ((state.P & FlagV) != 0)
+            {
+                Word oldPC = state.PC;
+                state.PC = (Word)targetAddr;
+                state.Cycles++; // Add 1 cycle for branch taken
+
+                // Add 1 more cycle if page boundary crossed
+                if ((oldPC & 0xFF00) != (state.PC & 0xFF00))
+                {
+                    state.Cycles++;
+                }
+            }
+        };
+    }
+
+    #endregion
+
+    #region Arithmetic Operations
+
+    /// <summary>
+    /// ADC - Add with Carry instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes ADC with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ADC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte a = state.A;
+            byte p = state.P;
+            byte carry = (byte)((p & FlagC) != 0 ? 1 : 0);
+
+            if ((p & FlagD) != 0)
+            {
+                // Decimal mode
+                int al = (a & 0x0F) + (value & 0x0F) + carry;
+                if (al > 9)
+                {
+                    al += 6;
+                }
+
+                int ah = (a >> 4) + (value >> 4) + (al > 15 ? 1 : 0);
+                if (ah > 9)
+                {
+                    ah += 6;
+                }
+
+                byte result = (byte)(((ah << 4) | (al & 0x0F)) & 0xFF);
+
+                // Set carry
+                if (ah > 15)
+                {
+                    p |= FlagC;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagC);
+                }
+
+                // Set overflow (not affected in decimal mode on 65C02)
+                SetZN(result, ref p);
+                state.A = result;
+            }
+            else
+            {
+                // Binary mode
+                int result = a + value + carry;
+                byte result8 = (byte)(result & 0xFF);
+
+                // Set carry
+                if (result > 0xFF)
+                {
+                    p |= FlagC;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagC);
+                }
+
+                // Set overflow: (A^result) & (value^result) & 0x80
+                if (((a ^ result8) & (value ^ result8) & 0x80) != 0)
+                {
+                    p |= FlagV;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagV);
+                }
+
+                SetZN(result8, ref p);
+                state.A = result8;
+            }
+
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// SBC - Subtract with Carry instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes SBC with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> SBC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte a = state.A;
+            byte p = state.P;
+            byte carry = (byte)((p & FlagC) != 0 ? 0 : 1); // Borrow is inverted carry
+
+            if ((p & FlagD) != 0)
+            {
+                // Decimal mode
+                int al = (a & 0x0F) - (value & 0x0F) - carry;
+                if (al < 0)
+                {
+                    al -= 6;
+                }
+
+                int ah = (a >> 4) - (value >> 4) - (al < 0 ? 1 : 0);
+                if (ah < 0)
+                {
+                    ah -= 6;
+                }
+
+                byte result = (byte)(((ah << 4) | (al & 0x0F)) & 0xFF);
+
+                // Set carry (inverted borrow)
+                if (ah >= 0)
+                {
+                    p |= FlagC;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagC);
+                }
+
+                SetZN(result, ref p);
+                state.A = result;
+            }
+            else
+            {
+                // Binary mode
+                int result = a - value - carry;
+                byte result8 = (byte)(result & 0xFF);
+
+                // Set carry (inverted borrow)
+                if (result >= 0)
+                {
+                    p |= FlagC;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagC);
+                }
+
+                // Set overflow: (A^value) & (A^result) & 0x80
+                if (((a ^ value) & (a ^ result8) & 0x80) != 0)
+                {
+                    p |= FlagV;
+                }
+                else
+                {
+                    p &= unchecked((byte)~FlagV);
+                }
+
+                SetZN(result8, ref p);
+                state.A = result8;
+            }
+
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// INC - Increment Memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes INC with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> INC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            value++;
+            memory.Write(address, value);
+            state.Cycles++; // Memory write cycle
+
+            byte p = state.P;
+            SetZN(value, ref p);
+            state.P = p;
+
+            state.Cycles++; // Extra cycle for read-modify-write
+        };
+    }
+
+    /// <summary>
+    /// DEC - Decrement Memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes DEC with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> DEC(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            value--;
+            memory.Write(address, value);
+            state.Cycles++; // Memory write cycle
+
+            byte p = state.P;
+            SetZN(value, ref p);
+            state.P = p;
+
+            state.Cycles++; // Extra cycle for read-modify-write
+        };
+    }
+
+    /// <summary>
+    /// INX - Increment X Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes INX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> INX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.X++;
+            byte p = state.P;
+            SetZN(state.X, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// INY - Increment Y Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes INY.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> INY(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.Y++;
+            byte p = state.P;
+            SetZN(state.Y, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// DEX - Decrement X Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes DEX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> DEX(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.X--;
+            byte p = state.P;
+            SetZN(state.X, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// DEY - Decrement Y Register instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes DEY.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> DEY(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.Y--;
+            byte p = state.P;
+            SetZN(state.Y, ref p);
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    #endregion
+
+    #region Logical Operations
+
+    /// <summary>
+    /// AND - Logical AND instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes AND with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> AND(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            state.A &= value;
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// ORA - Logical OR instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes ORA with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ORA(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            state.A |= value;
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// EOR - Exclusive OR instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes EOR with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> EOR(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            state.A ^= value;
+            byte p = state.P;
+            SetZN(state.A, ref p);
+            state.P = p;
+        };
+    }
+
+    /// <summary>
+    /// BIT - Bit Test instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes BIT with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> BIT(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
+
+            byte p = state.P;
+            byte result = (byte)(state.A & value);
+
+            // Set Z flag based on result
+            if (result == 0)
+            {
+                p |= FlagZ;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagZ);
+            }
+
+            // Set N flag from bit 7 of memory value
+            if ((value & 0x80) != 0)
+            {
+                p |= FlagN;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagN);
+            }
+
+            // Set V flag from bit 6 of memory value
+            if ((value & 0x40) != 0)
+            {
+                p |= FlagV;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagV);
+            }
+
+            state.P = p;
+        };
+    }
+
+    #endregion
+
+    #region Shift and Rotate Operations
+
+    /// <summary>
+    /// ASL - Arithmetic Shift Left instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
+    /// <returns>An opcode handler that executes ASL with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ASL(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                // Accumulator mode
+                value = state.A;
+                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+            }
+            else
+            {
+                // Memory mode
+                value = memory.Read(address);
+                state.Cycles++; // Memory read cycle
+            }
+
+            byte p = state.P;
+
+            // Set carry from bit 7
+            if ((value & 0x80) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value <<= 1;
+            SetZN(value, ref p);
+            state.P = p;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                state.A = value;
+            }
+            else
+            {
+                memory.Write(address, value);
+                state.Cycles += 2; // Memory write cycle + extra cycle
+            }
+        };
+    }
+
+    /// <summary>
+    /// LSR - Logical Shift Right instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
+    /// <returns>An opcode handler that executes LSR with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> LSR(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                // Accumulator mode
+                value = state.A;
+                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+            }
+            else
+            {
+                // Memory mode
+                value = memory.Read(address);
+                state.Cycles++; // Memory read cycle
+            }
+
+            byte p = state.P;
+
+            // Set carry from bit 0
+            if ((value & 0x01) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value >>= 1;
+            SetZN(value, ref p);
+            state.P = p;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                state.A = value;
+            }
+            else
+            {
+                memory.Write(address, value);
+                state.Cycles += 2; // Memory write cycle + extra cycle
+            }
+        };
+    }
+
+    /// <summary>
+    /// ROL - Rotate Left instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
+    /// <returns>An opcode handler that executes ROL with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ROL(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                // Accumulator mode
+                value = state.A;
+                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+            }
+            else
+            {
+                // Memory mode
+                value = memory.Read(address);
+                state.Cycles++; // Memory read cycle
+            }
+
+            byte p = state.P;
+            byte oldCarry = (byte)((p & FlagC) != 0 ? 1 : 0);
+
+            // Set carry from bit 7
+            if ((value & 0x80) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value = (byte)((value << 1) | oldCarry);
+            SetZN(value, ref p);
+            state.P = p;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                state.A = value;
+            }
+            else
+            {
+                memory.Write(address, value);
+                state.Cycles += 2; // Memory write cycle + extra cycle
+            }
+        };
+    }
+
+    /// <summary>
+    /// ROR - Rotate Right instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
+    /// <returns>An opcode handler that executes ROR with the given addressing mode.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ROR(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            Addr address = addressingMode(memory, ref state);
+            byte value;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                // Accumulator mode
+                value = state.A;
+                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+            }
+            else
+            {
+                // Memory mode
+                value = memory.Read(address);
+                state.Cycles++; // Memory read cycle
+            }
+
+            byte p = state.P;
+            byte oldCarry = (byte)((p & FlagC) != 0 ? 0x80 : 0);
+
+            // Set carry from bit 0
+            if ((value & 0x01) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value = (byte)((value >> 1) | oldCarry);
+            SetZN(value, ref p);
+            state.P = p;
+
+            if (address == 0 && addressingMode == AddressingModes.Accumulator)
+            {
+                state.A = value;
+            }
+            else
+            {
+                memory.Write(address, value);
+                state.Cycles += 2; // Memory write cycle + extra cycle
+            }
+        };
+    }
+
+    #endregion
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SetZN(byte value, ref byte p)
     {
