@@ -16,6 +16,13 @@
     <Product>BackPocketBASIC</Product>
     <Description>Command-line interpreter for BackPocketBASIC - A fully-featured Applesoft BASIC interpreter</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
+
+    <!-- NuGet Package Metadata -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>applesoft;basic;interpreter;console;apple2;cli</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
