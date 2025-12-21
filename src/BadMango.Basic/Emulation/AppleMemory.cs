@@ -1,5 +1,5 @@
-// <copyright file="AppleMemory.cs" company="Josh Pactor">
-// Copyright (c) Josh Pactor. All rights reserved.
+// <copyright file="AppleMemory.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 // Move all public members before private members to comply with SA1202
