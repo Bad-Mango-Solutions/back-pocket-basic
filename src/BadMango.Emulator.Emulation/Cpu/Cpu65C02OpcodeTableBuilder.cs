@@ -29,16 +29,11 @@ public static class Cpu65C02OpcodeTableBuilder
         // Initialize all opcodes to illegal opcode handler
         for (int i = 0; i < 256; i++)
         {
-            handlers[i] = (cpu, memory, ref state) => cpu.IllegalOpcode();
+            handlers[i] = IllegalOpcode;
         }
 
         // BRK - Force Break
-        handlers[0x00] = (cpu, memory, ref state) =>
-        {
-            cpu.SetState(state);
-            cpu.BRK();
-            state = cpu.GetState();
-        };
+        handlers[0x00] = BRK;
 
         // LDA - Load Accumulator (compositional pattern with shared addressing modes and instruction logic)
         handlers[0xA9] = LDA_Immediate;
@@ -66,14 +61,61 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xA0] = LDY_Immediate;
 
         // NOP - No Operation
-        handlers[0xEA] = (cpu, memory, ref state) =>
-        {
-            cpu.SetState(state);
-            cpu.NOP();
-            state = cpu.GetState();
-        };
+        handlers[0xEA] = NOP;
 
         return new OpcodeTable<Cpu65C02, Cpu65C02State>(handlers);
+    }
+
+    // Utility instruction handlers
+
+    /// <summary>
+    /// BRK - Force Break instruction. Causes a software interrupt.
+    /// </summary>
+    private static void BRK(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
+    {
+        const byte FlagB = 0x10;
+        const byte FlagI = 0x04;
+        const ushort StackBase = 0x0100;
+
+        // BRK causes a software interrupt
+        // Total 7 cycles: 1 (opcode fetch) + 1 (PC increment) + 2 (push PC) + 1 (push P) + 2 (read IRQ vector)
+        ushort pc = state.PC;
+        byte s = state.S;
+        byte p = state.P;
+        ulong cycles = state.Cycles;
+
+        pc++;
+        memory.Write((ushort)(StackBase + s--), (byte)(pc >> 8));
+        memory.Write((ushort)(StackBase + s--), (byte)(pc & 0xFF));
+        memory.Write((ushort)(StackBase + s--), (byte)(p | FlagB));
+        p |= FlagI;
+        pc = memory.ReadWord(0xFFFE);
+        cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
+
+        state.PC = pc;
+        state.S = s;
+        state.P = p;
+        state.Cycles = cycles;
+
+        // For now, halt on BRK
+        cpu.Halt();
+    }
+
+    /// <summary>
+    /// NOP - No Operation instruction.
+    /// </summary>
+    private static void NOP(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
+    {
+        state.Cycles++; // Total 2 cycles (1 from FetchByte + 1 here)
+    }
+
+    /// <summary>
+    /// Handles illegal/undefined opcodes by halting execution.
+    /// </summary>
+    private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
+    {
+        // For illegal opcodes, halt execution
+        cpu.Halt();
     }
 
     // Compositional instruction handlers using shared AddressingModes and Instructions
