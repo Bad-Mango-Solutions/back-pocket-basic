@@ -225,25 +225,25 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x2C] = Instructions.BIT(AddressingModes.Absolute);
 
         // Shift and Rotate Operations
-        handlers[0x0A] = Instructions.ASL(AddressingModes.Accumulator);
+        handlers[0x0A] = Instructions.ASLa(AddressingModes.Accumulator);
         handlers[0x06] = Instructions.ASL(AddressingModes.ZeroPage);
         handlers[0x16] = Instructions.ASL(AddressingModes.ZeroPageX);
         handlers[0x0E] = Instructions.ASL(AddressingModes.Absolute);
         handlers[0x1E] = Instructions.ASL(AddressingModes.AbsoluteX);
 
-        handlers[0x4A] = Instructions.LSR(AddressingModes.Accumulator);
+        handlers[0x4A] = Instructions.LSRa(AddressingModes.Accumulator);
         handlers[0x46] = Instructions.LSR(AddressingModes.ZeroPage);
         handlers[0x56] = Instructions.LSR(AddressingModes.ZeroPageX);
         handlers[0x4E] = Instructions.LSR(AddressingModes.Absolute);
         handlers[0x5E] = Instructions.LSR(AddressingModes.AbsoluteX);
 
-        handlers[0x2A] = Instructions.ROL(AddressingModes.Accumulator);
+        handlers[0x2A] = Instructions.ROLa(AddressingModes.Accumulator);
         handlers[0x26] = Instructions.ROL(AddressingModes.ZeroPage);
         handlers[0x36] = Instructions.ROL(AddressingModes.ZeroPageX);
         handlers[0x2E] = Instructions.ROL(AddressingModes.Absolute);
         handlers[0x3E] = Instructions.ROL(AddressingModes.AbsoluteX);
 
-        handlers[0x6A] = Instructions.ROR(AddressingModes.Accumulator);
+        handlers[0x6A] = Instructions.RORa(AddressingModes.Accumulator);
         handlers[0x66] = Instructions.ROR(AddressingModes.ZeroPage);
         handlers[0x76] = Instructions.ROR(AddressingModes.ZeroPageX);
         handlers[0x6E] = Instructions.ROR(AddressingModes.Absolute);

@@ -659,7 +659,7 @@ public class NewInstructionsTests
         var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = 0x00, Cycles = 10 };
 
         // Act
-        var handler = Instructions.ASL(AddressingModes.Accumulator);
+        var handler = Instructions.ASLa(AddressingModes.Accumulator);
         handler(cpu, memory, ref state);
 
         // Assert
@@ -677,7 +677,7 @@ public class NewInstructionsTests
         var state = new Cpu65C02State { PC = 0x1000, A = 0x80, P = 0x00, Cycles = 10 };
 
         // Act
-        var handler = Instructions.ASL(AddressingModes.Accumulator);
+        var handler = Instructions.ASLa(AddressingModes.Accumulator);
         handler(cpu, memory, ref state);
 
         // Assert
@@ -696,7 +696,7 @@ public class NewInstructionsTests
         var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = 0x00, Cycles = 10 };
 
         // Act
-        var handler = Instructions.LSR(AddressingModes.Accumulator);
+        var handler = Instructions.LSRa(AddressingModes.Accumulator);
         handler(cpu, memory, ref state);
 
         // Assert
@@ -714,7 +714,7 @@ public class NewInstructionsTests
         var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = FlagC, Cycles = 10 };
 
         // Act
-        var handler = Instructions.ROL(AddressingModes.Accumulator);
+        var handler = Instructions.ROLa(AddressingModes.Accumulator);
         handler(cpu, memory, ref state);
 
         // Assert
@@ -732,7 +732,7 @@ public class NewInstructionsTests
         var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = FlagC, Cycles = 10 };
 
         // Act
-        var handler = Instructions.ROR(AddressingModes.Accumulator);
+        var handler = Instructions.RORa(AddressingModes.Accumulator);
         handler(cpu, memory, ref state);
 
         // Assert

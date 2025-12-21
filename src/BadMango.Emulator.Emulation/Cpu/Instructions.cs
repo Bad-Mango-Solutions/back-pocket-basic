@@ -1544,30 +1544,50 @@ public static class Instructions
     #region Shift and Rotate Operations
 
     /// <summary>
-    /// ASL - Arithmetic Shift Left instruction.
+    /// ASLa - Arithmetic Shift Left Accumulator instruction.
     /// </summary>
-    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
-    /// <returns>An opcode handler that executes ASL with the given addressing mode.</returns>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes ASL on the accumulator.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ASLa(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte value = state.A;
+            byte p = state.P;
+
+            // Set carry from bit 7
+            if ((value & 0x80) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value <<= 1;
+            SetZN(value, ref p);
+            state.A = value;
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// ASL - Arithmetic Shift Left memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes ASL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> ASL(AddressingMode<Cpu65C02State> addressingMode)
     {
         return (cpu, memory, ref state) =>
         {
             Addr address = addressingMode(memory, ref state);
-            byte value;
-
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                // Accumulator mode
-                value = state.A;
-                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
-            }
-            else
-            {
-                // Memory mode
-                value = memory.Read(address);
-                state.Cycles++; // Memory read cycle
-            }
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
 
             byte p = state.P;
 
@@ -1585,43 +1605,56 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                state.A = value;
-            }
-            else
-            {
-                memory.Write(address, value);
-                state.Cycles += 2; // Memory write cycle + extra cycle
-            }
+            memory.Write(address, value);
+            state.Cycles += 2; // Memory write cycle + extra cycle
         };
     }
 
     /// <summary>
-    /// LSR - Logical Shift Right instruction.
+    /// LSRa - Logical Shift Right Accumulator instruction.
     /// </summary>
-    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
-    /// <returns>An opcode handler that executes LSR with the given addressing mode.</returns>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes LSR on the accumulator.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> LSRa(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte value = state.A;
+            byte p = state.P;
+
+            // Set carry from bit 0
+            if ((value & 0x01) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value >>= 1;
+            SetZN(value, ref p);
+            state.A = value;
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// LSR - Logical Shift Right memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes LSR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> LSR(AddressingMode<Cpu65C02State> addressingMode)
     {
         return (cpu, memory, ref state) =>
         {
             Addr address = addressingMode(memory, ref state);
-            byte value;
-
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                // Accumulator mode
-                value = state.A;
-                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
-            }
-            else
-            {
-                // Memory mode
-                value = memory.Read(address);
-                state.Cycles++; // Memory read cycle
-            }
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
 
             byte p = state.P;
 
@@ -1639,43 +1672,57 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                state.A = value;
-            }
-            else
-            {
-                memory.Write(address, value);
-                state.Cycles += 2; // Memory write cycle + extra cycle
-            }
+            memory.Write(address, value);
+            state.Cycles += 2; // Memory write cycle + extra cycle
         };
     }
 
     /// <summary>
-    /// ROL - Rotate Left instruction.
+    /// ROLa - Rotate Left Accumulator instruction.
     /// </summary>
-    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
-    /// <returns>An opcode handler that executes ROL with the given addressing mode.</returns>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes ROL on the accumulator.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> ROLa(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte value = state.A;
+            byte p = state.P;
+            byte oldCarry = (byte)((p & FlagC) != 0 ? 1 : 0);
+
+            // Set carry from bit 7
+            if ((value & 0x80) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value = (byte)((value << 1) | oldCarry);
+            SetZN(value, ref p);
+            state.A = value;
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// ROL - Rotate Left memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes ROL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> ROL(AddressingMode<Cpu65C02State> addressingMode)
     {
         return (cpu, memory, ref state) =>
         {
             Addr address = addressingMode(memory, ref state);
-            byte value;
-
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                // Accumulator mode
-                value = state.A;
-                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
-            }
-            else
-            {
-                // Memory mode
-                value = memory.Read(address);
-                state.Cycles++; // Memory read cycle
-            }
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
 
             byte p = state.P;
             byte oldCarry = (byte)((p & FlagC) != 0 ? 1 : 0);
@@ -1694,43 +1741,57 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                state.A = value;
-            }
-            else
-            {
-                memory.Write(address, value);
-                state.Cycles += 2; // Memory write cycle + extra cycle
-            }
+            memory.Write(address, value);
+            state.Cycles += 2; // Memory write cycle + extra cycle
         };
     }
 
     /// <summary>
-    /// ROR - Rotate Right instruction.
+    /// RORa - Rotate Right Accumulator instruction.
     /// </summary>
-    /// <param name="addressingMode">The addressing mode function to use (Accumulator or memory).</param>
-    /// <returns>An opcode handler that executes ROR with the given addressing mode.</returns>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes ROR on the accumulator.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler<Cpu65C02, Cpu65C02State> RORa(AddressingMode<Cpu65C02State> addressingMode)
+    {
+        return (cpu, memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte value = state.A;
+            byte p = state.P;
+            byte oldCarry = (byte)((p & FlagC) != 0 ? 0x80 : 0);
+
+            // Set carry from bit 0
+            if ((value & 0x01) != 0)
+            {
+                p |= FlagC;
+            }
+            else
+            {
+                p &= unchecked((byte)~FlagC);
+            }
+
+            value = (byte)((value >> 1) | oldCarry);
+            SetZN(value, ref p);
+            state.A = value;
+            state.P = p;
+            state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
+        };
+    }
+
+    /// <summary>
+    /// ROR - Rotate Right memory instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use.</param>
+    /// <returns>An opcode handler that executes ROR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler<Cpu65C02, Cpu65C02State> ROR(AddressingMode<Cpu65C02State> addressingMode)
     {
         return (cpu, memory, ref state) =>
         {
             Addr address = addressingMode(memory, ref state);
-            byte value;
-
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                // Accumulator mode
-                value = state.A;
-                state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
-            }
-            else
-            {
-                // Memory mode
-                value = memory.Read(address);
-                state.Cycles++; // Memory read cycle
-            }
+            byte value = memory.Read(address);
+            state.Cycles++; // Memory read cycle
 
             byte p = state.P;
             byte oldCarry = (byte)((p & FlagC) != 0 ? 0x80 : 0);
@@ -1749,15 +1810,8 @@ public static class Instructions
             SetZN(value, ref p);
             state.P = p;
 
-            if (address == 0 && addressingMode == AddressingModes.Accumulator)
-            {
-                state.A = value;
-            }
-            else
-            {
-                memory.Write(address, value);
-                state.Cycles += 2; // Memory write cycle + extra cycle
-            }
+            memory.Write(address, value);
+            state.Cycles += 2; // Memory write cycle + extra cycle
         };
     }
 
