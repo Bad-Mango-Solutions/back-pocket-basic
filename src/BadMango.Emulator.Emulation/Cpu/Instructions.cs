@@ -42,11 +42,10 @@ public static class Instructions
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
-            byte a = value;
             byte p = state.P;
             SetZN(value, ref p);
 
-            state.A = a;
+            state.A = value;
             state.P = p;
         };
     }
@@ -65,11 +64,10 @@ public static class Instructions
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
-            byte x = value;
             byte p = state.P;
             SetZN(value, ref p);
 
-            state.X = x;
+            state.X = value;
             state.P = p;
         };
     }
@@ -88,11 +86,10 @@ public static class Instructions
             byte value = memory.Read(address);
             state.Cycles++; // Memory read cycle
 
-            byte y = value;
             byte p = state.P;
             SetZN(value, ref p);
 
-            state.Y = y;
+            state.Y = value;
             state.P = p;
         };
     }

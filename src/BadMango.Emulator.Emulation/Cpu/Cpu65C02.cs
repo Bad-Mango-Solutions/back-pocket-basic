@@ -99,6 +99,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         a = state.A;
         x = state.X;
         y = state.Y;
+        s = state.SP;
         p = state.P;
         halted = state.Halted;
 

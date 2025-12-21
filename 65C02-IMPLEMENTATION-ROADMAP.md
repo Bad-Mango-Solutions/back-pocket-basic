@@ -351,7 +351,7 @@ All branch instructions use **Relative addressing mode** (needs to be implemente
 
 **Implementation Notes:**
 - Need **Indirect** addressing mode (reads 16-bit address from memory)
-- 6502 bug: if low byte of indirect address is 0xFF, wraps within page
+- 6502 bug: if low byte of indirect address is 0xFF, wraps within page (65C02 fixed this)
 - Simply sets PC to target address
 
 #### JSR - Jump to Subroutine

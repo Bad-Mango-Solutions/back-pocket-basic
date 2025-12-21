@@ -548,4 +548,119 @@ public class InstructionsTests
     }
 
     #endregion
+
+    #region BRK Instruction Tests
+
+    /// <summary>
+    /// Test that BRK pushes correct values to the stack.
+    /// </summary>
+    [Test]
+    public void BRK_PushesCorrectValuesToStack()
+    {
+        // Arrange
+        var memory = new BasicMemory();
+        var cpu = new Cpu65C02(memory);
+
+        // Set up interrupt vector at 0xFFFE
+        memory.WriteWord(0xFFFE, 0x8000);
+
+        // Write BRK instruction
+        memory.Write(0x1000, 0x00); // BRK
+
+        // Set initial state
+        cpu.Reset();
+        var state = cpu.GetState();
+        state.PC = 0x1000;
+        state.SP = 0xFD; // Stack pointer starts at 0xFD
+        state.P = 0x24; // Some flags set
+        cpu.SetState(state);
+
+        // Act
+        cpu.Step();
+
+        // Assert
+        state = cpu.GetState();
+
+        // Check stack pointer decremented by 3
+        Assert.That(state.SP, Is.EqualTo(0xFA), "SP should be decremented by 3");
+
+        // Check pushed values on stack
+        // BRK pushes PC+1 (0x1002 since BRK increments PC), then P with B flag set
+        const byte FlagB = 0x10; // Break flag
+        Assert.That(memory.Read(0x01FD), Is.EqualTo(0x10), "High byte of return address should be on stack");
+        Assert.That(memory.Read(0x01FC), Is.EqualTo(0x02), "Low byte of return address should be on stack");
+        Assert.That(memory.Read(0x01FB) & FlagB, Is.EqualTo(FlagB), "B flag should be set in pushed P register");
+
+        // Check PC set to interrupt vector
+        Assert.That(state.PC, Is.EqualTo(0x8000), "PC should be set to IRQ vector");
+
+        // Check I flag set
+        Assert.That(state.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
+
+        // Check halted
+        Assert.That(state.Halted, Is.True, "CPU should be halted after BRK");
+    }
+
+    /// <summary>
+    /// Test that BRK sets the interrupt disable flag.
+    /// </summary>
+    [Test]
+    public void BRK_SetsInterruptDisableFlag()
+    {
+        // Arrange
+        var memory = new BasicMemory();
+        var cpu = new Cpu65C02(memory);
+
+        memory.WriteWord(0xFFFE, 0x9000);
+        memory.Write(0x1000, 0x00); // BRK
+
+        cpu.Reset();
+        var state = cpu.GetState();
+        state.PC = 0x1000;
+        state.SP = 0xFF;
+        state.P = 0x00; // I flag clear initially
+        cpu.SetState(state);
+
+        // Act
+        cpu.Step();
+
+        // Assert
+        state = cpu.GetState();
+        Assert.That(state.P & FlagI, Is.EqualTo(FlagI), "I flag should be set");
+    }
+
+    /// <summary>
+    /// Integration test for BRK instruction.
+    /// </summary>
+    [Test]
+    public void BRK_IntegrationTest()
+    {
+        // Arrange
+        var memory = new BasicMemory();
+        var cpu = new Cpu65C02(memory);
+
+        // Set up interrupt vector
+        memory.WriteWord(0xFFFE, 0xA000);
+
+        // Write BRK instruction
+        memory.Write(0x2000, 0x00); // BRK
+
+        cpu.Reset();
+        var state = cpu.GetState();
+        state.PC = 0x2000;
+        state.SP = 0xFD;
+        state.P = 0x20;
+        cpu.SetState(state);
+
+        // Act
+        cpu.Step();
+
+        // Assert
+        state = cpu.GetState();
+        Assert.That(state.PC, Is.EqualTo(0xA000), "Should jump to interrupt vector");
+        Assert.That(state.Halted, Is.True, "Should be halted");
+        Assert.That(state.SP, Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");
+    }
+
+    #endregion
 }
