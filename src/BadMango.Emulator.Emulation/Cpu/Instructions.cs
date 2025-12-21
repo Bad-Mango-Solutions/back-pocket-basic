@@ -19,15 +19,6 @@ using BadMango.Emulator.Core;
 /// </remarks>
 public static class Instructions
 {
-    private const byte FlagC = 0x01; // Carry flag
-    private const byte FlagZ = 0x02; // Zero flag
-    private const byte FlagI = 0x04; // Interrupt disable flag
-    private const byte FlagD = 0x08; // Decimal mode flag
-    private const byte FlagB = 0x10; // Break flag
-    private const byte FlagV = 0x40; // Overflow flag
-    private const byte FlagN = 0x80; // Negative flag
-    private const Word StackBase = 0x0100;
-
     /// <summary>
     /// LDA - Load Accumulator instruction.
     /// </summary>
@@ -144,10 +135,10 @@ public static class Instructions
             byte p = state.P;
 
             pc++;
-            memory.Write((Word)(StackBase + s--), (byte)(pc >> 8));
-            memory.Write((Word)(StackBase + s--), (byte)(pc & 0xFF));
-            memory.Write((Word)(StackBase + s--), (byte)(p | FlagB));
-            p |= FlagI;
+            memory.Write((Word)(Cpu65C02Constants.StackBase + s--), (byte)(pc >> 8));
+            memory.Write((Word)(Cpu65C02Constants.StackBase + s--), (byte)(pc & 0xFF));
+            memory.Write((Word)(Cpu65C02Constants.StackBase + s--), (byte)(p | Cpu65C02Constants.FlagB));
+            p |= Cpu65C02Constants.FlagI;
             pc = memory.ReadWord(0xFFFE);
             state.Cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
 
@@ -169,7 +160,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P &= unchecked((byte)~FlagC); // Clear carry flag
+            state.P &= unchecked((byte)~Cpu65C02Constants.FlagC); // Clear carry flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -185,7 +176,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P |= FlagC; // Set carry flag
+            state.P |= Cpu65C02Constants.FlagC; // Set carry flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -201,7 +192,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P &= unchecked((byte)~FlagI); // Clear interrupt disable flag
+            state.P &= unchecked((byte)~Cpu65C02Constants.FlagI); // Clear interrupt disable flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -217,7 +208,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P |= FlagI; // Set interrupt disable flag
+            state.P |= Cpu65C02Constants.FlagI; // Set interrupt disable flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -233,7 +224,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P &= unchecked((byte)~FlagD); // Clear decimal mode flag
+            state.P &= unchecked((byte)~Cpu65C02Constants.FlagD); // Clear decimal mode flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -249,7 +240,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P |= FlagD; // Set decimal mode flag
+            state.P |= Cpu65C02Constants.FlagD; // Set decimal mode flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -265,7 +256,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P &= unchecked((byte)~FlagV); // Clear overflow flag
+            state.P &= unchecked((byte)~Cpu65C02Constants.FlagV); // Clear overflow flag
             state.Cycles++; // 2 cycles total (1 from fetch + 1 here)
         };
     }
@@ -430,7 +421,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            memory.Write((Word)(StackBase + state.SP--), state.A);
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), state.A);
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
@@ -446,7 +437,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            memory.Write((Word)(StackBase + state.SP--), (byte)(state.P | FlagB));
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.P | Cpu65C02Constants.FlagB));
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
@@ -462,7 +453,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.A = memory.Read((Word)(StackBase + ++state.SP));
+            state.A = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             byte p = state.P;
             SetZN(state.A, ref p);
             state.P = p;
@@ -481,7 +472,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P = memory.Read((Word)(StackBase + ++state.SP));
+            state.P = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             state.Cycles += 3; // 4 cycles total (1 from fetch + 3 here)
         };
     }
@@ -497,7 +488,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            memory.Write((Word)(StackBase + state.SP--), state.X);
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), state.X);
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
@@ -513,7 +504,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.X = memory.Read((Word)(StackBase + ++state.SP));
+            state.X = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             byte p = state.P;
             SetZN(state.X, ref p);
             state.P = p;
@@ -532,7 +523,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            memory.Write((Word)(StackBase + state.SP--), state.Y);
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), state.Y);
             state.Cycles += 2; // 3 cycles total (1 from fetch + 2 here)
         };
     }
@@ -548,7 +539,7 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.Y = memory.Read((Word)(StackBase + ++state.SP));
+            state.Y = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             byte p = state.P;
             SetZN(state.Y, ref p);
             state.P = p;
@@ -599,11 +590,11 @@ public static class Instructions
             // Set Z flag based on A AND M
             if ((state.A & value) == 0)
             {
-                p |= FlagZ;
+                p |= Cpu65C02Constants.FlagZ;
             }
             else
             {
-                p &= unchecked((byte)~FlagZ);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagZ);
             }
 
             state.P = p;
@@ -638,11 +629,11 @@ public static class Instructions
             // Set Z flag based on A AND M
             if ((state.A & value) == 0)
             {
-                p |= FlagZ;
+                p |= Cpu65C02Constants.FlagZ;
             }
             else
             {
-                p &= unchecked((byte)~FlagZ);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagZ);
             }
 
             state.P = p;
@@ -730,8 +721,8 @@ public static class Instructions
             // JSR pushes PC - 1 to the stack (6502 behavior)
             // This is because RTS increments the pulled address before setting PC
             Word returnAddr = (Word)(state.PC - 1);
-            memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr >> 8));
-            memory.Write((Word)(StackBase + state.SP--), (byte)(returnAddr & 0xFF));
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(returnAddr >> 8));
+            memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(returnAddr & 0xFF));
             state.PC = (Word)targetAddr;
             state.Cycles += 3; // 6 cycles total (1 from fetch + 2 from addressing + 3 here)
         };
@@ -748,8 +739,8 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            byte lo = memory.Read((Word)(StackBase + ++state.SP));
-            byte hi = memory.Read((Word)(StackBase + ++state.SP));
+            byte lo = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
+            byte hi = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             state.PC = (Word)((hi << 8) | lo);
             state.PC++;
             state.Cycles += 5; // 6 cycles total (1 from fetch + 5 here)
@@ -767,10 +758,11 @@ public static class Instructions
         return (cpu, memory, ref state) =>
         {
             addressingMode(memory, ref state);
-            state.P = memory.Read((Word)(StackBase + ++state.SP));
-            byte lo = memory.Read((Word)(StackBase + ++state.SP));
-            byte hi = memory.Read((Word)(StackBase + ++state.SP));
+            state.P = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
+            byte lo = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
+            byte hi = memory.Read((Word)(Cpu65C02Constants.StackBase + ++state.SP));
             state.PC = (Word)((hi << 8) | lo);
+            state.HaltReason = HaltState.None; // Clear halt state when returning from interrupt
             state.Cycles += 5; // 6 cycles total (1 from fetch + 5 here)
         };
     }
@@ -799,11 +791,11 @@ public static class Instructions
             // Set carry if A >= value
             if (state.A >= value)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             SetZN(result, ref p);
@@ -831,11 +823,11 @@ public static class Instructions
             // Set carry if X >= value
             if (state.X >= value)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             SetZN(result, ref p);
@@ -863,11 +855,11 @@ public static class Instructions
             // Set carry if Y >= value
             if (state.Y >= value)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             SetZN(result, ref p);
@@ -891,7 +883,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagC) == 0)
+            if ((state.P & Cpu65C02Constants.FlagC) == 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -918,7 +910,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagC) != 0)
+            if ((state.P & Cpu65C02Constants.FlagC) != 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -945,7 +937,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagZ) != 0)
+            if ((state.P & Cpu65C02Constants.FlagZ) != 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -972,7 +964,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagZ) == 0)
+            if ((state.P & Cpu65C02Constants.FlagZ) == 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -999,7 +991,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagN) != 0)
+            if ((state.P & Cpu65C02Constants.FlagN) != 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -1026,7 +1018,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagN) == 0)
+            if ((state.P & Cpu65C02Constants.FlagN) == 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -1053,7 +1045,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagV) == 0)
+            if ((state.P & Cpu65C02Constants.FlagV) == 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -1080,7 +1072,7 @@ public static class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
 
-            if ((state.P & FlagV) != 0)
+            if ((state.P & Cpu65C02Constants.FlagV) != 0)
             {
                 Word oldPC = state.PC;
                 state.PC = (Word)targetAddr;
@@ -1142,9 +1134,9 @@ public static class Instructions
 
             byte a = state.A;
             byte p = state.P;
-            byte carry = (byte)((p & FlagC) != 0 ? 1 : 0);
+            byte carry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 1 : 0);
 
-            if ((p & FlagD) != 0)
+            if ((p & Cpu65C02Constants.FlagD) != 0)
             {
                 // Decimal mode
                 int al = (a & 0x0F) + (value & 0x0F) + carry;
@@ -1164,11 +1156,11 @@ public static class Instructions
                 // Set carry
                 if (ah > 15)
                 {
-                    p |= FlagC;
+                    p |= Cpu65C02Constants.FlagC;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagC);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagC);
                 }
 
                 // Set overflow (not affected in decimal mode on 65C02)
@@ -1184,21 +1176,21 @@ public static class Instructions
                 // Set carry
                 if (result > 0xFF)
                 {
-                    p |= FlagC;
+                    p |= Cpu65C02Constants.FlagC;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagC);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagC);
                 }
 
                 // Set overflow: (A^result) & (value^result) & 0x80
                 if (((a ^ result8) & (value ^ result8) & 0x80) != 0)
                 {
-                    p |= FlagV;
+                    p |= Cpu65C02Constants.FlagV;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagV);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagV);
                 }
 
                 SetZN(result8, ref p);
@@ -1225,9 +1217,9 @@ public static class Instructions
 
             byte a = state.A;
             byte p = state.P;
-            byte carry = (byte)((p & FlagC) != 0 ? 0 : 1); // Borrow is inverted carry
+            byte carry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 0 : 1); // Borrow is inverted carry
 
-            if ((p & FlagD) != 0)
+            if ((p & Cpu65C02Constants.FlagD) != 0)
             {
                 // Decimal mode
                 int al = (a & 0x0F) - (value & 0x0F) - carry;
@@ -1247,11 +1239,11 @@ public static class Instructions
                 // Set carry (inverted borrow)
                 if (ah >= 0)
                 {
-                    p |= FlagC;
+                    p |= Cpu65C02Constants.FlagC;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagC);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagC);
                 }
 
                 SetZN(result, ref p);
@@ -1266,21 +1258,21 @@ public static class Instructions
                 // Set carry (inverted borrow)
                 if (result >= 0)
                 {
-                    p |= FlagC;
+                    p |= Cpu65C02Constants.FlagC;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagC);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagC);
                 }
 
                 // Set overflow: (A^value) & (A^result) & 0x80
                 if (((a ^ value) & (a ^ result8) & 0x80) != 0)
                 {
-                    p |= FlagV;
+                    p |= Cpu65C02Constants.FlagV;
                 }
                 else
                 {
-                    p &= unchecked((byte)~FlagV);
+                    p &= unchecked((byte)~Cpu65C02Constants.FlagV);
                 }
 
                 SetZN(result8, ref p);
@@ -1508,31 +1500,31 @@ public static class Instructions
             // Set Z flag based on result
             if (result == 0)
             {
-                p |= FlagZ;
+                p |= Cpu65C02Constants.FlagZ;
             }
             else
             {
-                p &= unchecked((byte)~FlagZ);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagZ);
             }
 
             // Set N flag from bit 7 of memory value
             if ((value & 0x80) != 0)
             {
-                p |= FlagN;
+                p |= Cpu65C02Constants.FlagN;
             }
             else
             {
-                p &= unchecked((byte)~FlagN);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagN);
             }
 
             // Set V flag from bit 6 of memory value
             if ((value & 0x40) != 0)
             {
-                p |= FlagV;
+                p |= Cpu65C02Constants.FlagV;
             }
             else
             {
-                p &= unchecked((byte)~FlagV);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagV);
             }
 
             state.P = p;
@@ -1560,11 +1552,11 @@ public static class Instructions
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value <<= 1;
@@ -1594,11 +1586,11 @@ public static class Instructions
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value <<= 1;
@@ -1627,11 +1619,11 @@ public static class Instructions
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value >>= 1;
@@ -1661,11 +1653,11 @@ public static class Instructions
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value >>= 1;
@@ -1690,16 +1682,16 @@ public static class Instructions
             addressingMode(memory, ref state);
             byte value = state.A;
             byte p = state.P;
-            byte oldCarry = (byte)((p & FlagC) != 0 ? 1 : 0);
+            byte oldCarry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 1 : 0);
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value = (byte)((value << 1) | oldCarry);
@@ -1725,16 +1717,16 @@ public static class Instructions
             state.Cycles++; // Memory read cycle
 
             byte p = state.P;
-            byte oldCarry = (byte)((p & FlagC) != 0 ? 1 : 0);
+            byte oldCarry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 1 : 0);
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value = (byte)((value << 1) | oldCarry);
@@ -1759,16 +1751,16 @@ public static class Instructions
             addressingMode(memory, ref state);
             byte value = state.A;
             byte p = state.P;
-            byte oldCarry = (byte)((p & FlagC) != 0 ? 0x80 : 0);
+            byte oldCarry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 0x80 : 0);
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value = (byte)((value >> 1) | oldCarry);
@@ -1794,16 +1786,16 @@ public static class Instructions
             state.Cycles++; // Memory read cycle
 
             byte p = state.P;
-            byte oldCarry = (byte)((p & FlagC) != 0 ? 0x80 : 0);
+            byte oldCarry = (byte)((p & Cpu65C02Constants.FlagC) != 0 ? 0x80 : 0);
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
             {
-                p |= FlagC;
+                p |= Cpu65C02Constants.FlagC;
             }
             else
             {
-                p &= unchecked((byte)~FlagC);
+                p &= unchecked((byte)~Cpu65C02Constants.FlagC);
             }
 
             value = (byte)((value >> 1) | oldCarry);
@@ -1822,20 +1814,20 @@ public static class Instructions
     {
         if (value == 0)
         {
-            p |= FlagZ;
+            p |= Cpu65C02Constants.FlagZ;
         }
         else
         {
-            p &= unchecked((byte)~FlagZ);
+            p &= unchecked((byte)~Cpu65C02Constants.FlagZ);
         }
 
         if ((value & 0x80) != 0)
         {
-            p |= FlagN;
+            p |= Cpu65C02Constants.FlagN;
         }
         else
         {
-            p &= unchecked((byte)~FlagN);
+            p &= unchecked((byte)~Cpu65C02Constants.FlagN);
         }
     }
 }

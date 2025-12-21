@@ -19,24 +19,6 @@ using BadMango.Emulator.Core;
 /// </remarks>
 public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
 {
-    // Processor status flags
-    private const byte FlagC = 0x01; // Carry
-    private const byte FlagZ = 0x02; // Zero
-    private const byte FlagI = 0x04; // Interrupt Disable
-    private const byte FlagD = 0x08; // Decimal Mode
-    private const byte FlagB = 0x10; // Break
-    private const byte FlagU = 0x20; // Unused (always 1)
-    private const byte FlagV = 0x40; // Overflow
-    private const byte FlagN = 0x80; // Negative
-
-    // Interrupt vectors
-    private const Word NmiVector = 0xFFFA;
-    private const Word ResetVector = 0xFFFC;
-    private const Word IrqVector = 0xFFFE;
-
-    // Stack base address
-    private const Word StackBase = 0x0100;
-
     private readonly IMemory memory;
     private readonly OpcodeTable<Cpu65C02, Cpu65C02State> opcodeTable;
 
@@ -72,8 +54,8 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
                 X = 0,
                 Y = 0,
                 SP = 0xFD,
-                P = (byte)(FlagU | FlagI), // Unused flag always set, interrupts disabled
-                PC = memory.ReadWord(ResetVector),
+                P = (byte)(Cpu65C02Constants.FlagU | Cpu65C02Constants.FlagI), // Unused flag always set, interrupts disabled
+                PC = memory.ReadWord(Cpu65C02Constants.ResetVector),
             },
             Cycles = 0,
             HaltReason = HaltState.None,
@@ -191,12 +173,12 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
                 state.HaltReason = HaltState.None;
             }
 
-            ProcessInterrupt(NmiVector);
+            ProcessInterrupt(Cpu65C02Constants.NmiVector);
             return true;
         }
 
         // Check for IRQ (maskable by I flag)
-        if (irqPending && (state.P & FlagI) == 0)
+        if (irqPending && (state.P & Cpu65C02Constants.FlagI) == 0)
         {
             irqPending = false;
 
@@ -206,7 +188,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
                 state.HaltReason = HaltState.None;
             }
 
-            ProcessInterrupt(IrqVector);
+            ProcessInterrupt(Cpu65C02Constants.IrqVector);
             return true;
         }
 
@@ -227,17 +209,17 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// Total: 7 cycles (handled by caller).
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ProcessInterrupt(Word vector)
+    private void ProcessInterrupt(Addr vector)
     {
         // Push PC to stack (high byte first)
-        memory.Write((Word)(StackBase + state.SP--), (byte)(state.PC >> 8));
-        memory.Write((Word)(StackBase + state.SP--), (byte)(state.PC & 0xFF));
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC >> 8));
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC & 0xFF));
 
         // Push processor status (with B flag clear for hardware interrupts)
-        memory.Write((Word)(StackBase + state.SP--), (byte)(state.P & ~FlagB));
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.P & ~Cpu65C02Constants.FlagB));
 
         // Set I flag to disable further IRQs
-        state.P |= FlagI;
+        state.P |= Cpu65C02Constants.FlagI;
 
         // Load PC from interrupt vector
         state.PC = memory.ReadWord(vector);
