@@ -22,7 +22,7 @@ Create a new file called `hello.bas`:
 Run it:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- hello.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- hello.bas
 ```
 
 **Output:**
@@ -35,19 +35,19 @@ HELLO, WORLD!
 The general syntax is:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- <basic-file>
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- <basic-file>
 ```
 
 Or after building, use the executable directly:
 
 ```bash
-./src/ApplesoftBasic.Console/bin/Debug/net10.0/ApplesoftBasic.Console <basic-file>
+./src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console <basic-file>
 ```
 
 For the release build:
 
 ```bash
-./src/ApplesoftBasic.Console/bin/Release/net10.0/ApplesoftBasic.Console <basic-file>
+./src/BadMango.Basic.Console/bin/Release/net10.0/BadMango.Basic.Console <basic-file>
 ```
 
 ## Try the Sample Programs
@@ -59,31 +59,31 @@ The `samples/` directory includes several example programs:
 A comprehensive demonstration of language features:
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 ```
 
 ### Prime Number Finder
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/primes.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/primes.bas
 ```
 
 ### Fibonacci Sequence
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/fibonacci.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/fibonacci.bas
 ```
 
 ### Memory Operations (PEEK/POKE)
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/memory.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/memory.bas
 ```
 
 ### SLEEP Command Demo
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/sleep.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/sleep.bas
 ```
 
 ## Basic BASIC Concepts

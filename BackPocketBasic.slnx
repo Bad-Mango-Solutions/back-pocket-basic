@@ -1,0 +1,53 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/config/">
+    <File Path=".editorconfig" />
+    <File Path=".github/copilot-instructions.md" />
+    <File Path=".gitignore" />
+    <File Path="StyleCop.json" />
+  </Folder>
+  <Folder Name="/reference/">
+    <File Path="reference/Emulator Evolution Plan.md" />
+    <File Path="reference/WDC 65816 Emulator Implementation DotNet.md" />
+    <File Path="reference/WDC 65816 Emulator Reference.md" />
+    <File Path="reference/WDC 65816 Instruction Set Reference.md" />
+  </Folder>
+  <Folder Name="/samples/">
+    <File Path="samples/demo.bas" />
+    <File Path="samples/fibonacci.bas" />
+    <File Path="samples/memory.bas" />
+    <File Path="samples/primes.bas" />
+    <File Path="samples/sleep.bas" />
+    <File Path="samples/speaker.bas" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
+    <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BadMango.Basic.Tests/BadMango.Basic.Tests.csproj" />
+  </Folder>
+  <Folder Name="/wiki/">
+    <File Path="wiki/6502-Emulation.md" />
+    <File Path="wiki/API-Reference.md" />
+    <File Path="wiki/Architecture-Overview.md" />
+    <File Path="wiki/Built-in-Functions.md" />
+    <File Path="wiki/Code-Style.md" />
+    <File Path="wiki/Custom-Extensions.md" />
+    <File Path="wiki/Development-Setup.md" />
+    <File Path="wiki/Home.md" />
+    <File Path="wiki/Installation.md" />
+    <File Path="wiki/Language-Reference.md" />
+    <File Path="wiki/Memory-Map.md" />
+    <File Path="wiki/Quick-Start.md" />
+    <File Path="wiki/README.md" />
+    <File Path="wiki/Sample-Programs.md" />
+    <File Path="wiki/Testing-Guide.md" />
+    <File Path="wiki/_Footer.md" />
+    <File Path="wiki/_Sidebar.md" />
+  </Folder>
+</Solution>

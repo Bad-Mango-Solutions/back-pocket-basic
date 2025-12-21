@@ -271,7 +271,7 @@ The Apple II used memory-mapped I/O. Reading or writing certain addresses contro
 
 ### AppleSystem Class
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/AppleSystem.cs`
+**Location**: `src/BadMango.Basic/Emulation/AppleSystem.cs`
 
 **Purpose**: Coordinates CPU and memory emulation.
 
@@ -292,7 +292,7 @@ public AppleSystem()
 
 ### Cpu6502 Class
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/Cpu6502.cs`
+**Location**: `src/BadMango.Basic/Emulation/Cpu6502.cs`
 
 **Key Methods**:
 - `Reset()` - Initialize CPU state
@@ -303,7 +303,7 @@ public AppleSystem()
 
 ### AppleMemory Class
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/AppleMemory.cs`
+**Location**: `src/BadMango.Basic/Emulation/AppleMemory.cs`
 
 **Features**:
 - 64KB byte array
@@ -320,7 +320,7 @@ public void WriteRange(ushort address, byte[] data)
 
 ### AppleSpeaker Class
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/AppleSpeaker.cs`
+**Location**: `src/BadMango.Basic/Emulation/AppleSpeaker.cs`
 
 **Purpose**: Emulates the Apple II speaker.
 
@@ -331,7 +331,7 @@ public void WriteRange(ushort address, byte[] data)
 
 ### MBF Struct (Microsoft Binary Format)
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/MBF.cs`
+**Location**: `src/BadMango.Basic/Emulation/MBF.cs`
 
 **Purpose**: Represents the 5-byte floating-point format used by Applesoft BASIC.
 
@@ -361,7 +361,7 @@ byte[] bytes = pi.ToBytes();
 
 ### FacConverter Class
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/FacConverter.cs`
+**Location**: `src/BadMango.Basic/Emulation/FacConverter.cs`
 
 **Purpose**: Provides conversion between .NET floating-point types and FAC (Floating-point ACcumulator) memory format.
 
@@ -382,7 +382,7 @@ double value = FacConverter.MbfToDouble(result);
 
 ### BasicInteger Struct
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicInteger.cs`
+**Location**: `src/BadMango.Basic/Emulation/BasicInteger.cs`
 
 **Purpose**: Represents a 16-bit signed integer as stored in Applesoft BASIC (variables with % suffix).
 
@@ -414,7 +414,7 @@ MBF mbf = value.ToMbf();
 
 ### BasicString Struct
 
-**Location**: `src/ApplesoftBasic.Interpreter/Emulation/BasicString.cs`
+**Location**: `src/BadMango.Basic/Emulation/BasicString.cs`
 
 **Purpose**: Represents a string value as stored on the Apple II using 7-bit ASCII.
 
@@ -586,7 +586,7 @@ public void Call(int address)
 
 ### Testing the Emulator
 
-**Unit Tests**: `tests/ApplesoftBasic.Tests/EmulationTests.cs`
+**Unit Tests**: `tests/BadMango.Basic.Tests/EmulationTests.cs`
 
 **Example Test**:
 ```csharp

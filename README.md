@@ -1,4 +1,4 @@
-# Applesoft BASIC Interpreter
+# BackPocket BASIC Interpreter
 
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
@@ -73,25 +73,25 @@ git clone https://github.com/jpactor/applesoft-basic.git
 cd applesoft-basic
 
 # Build the solution
-dotnet build ApplesoftBasic.slnx
+dotnet build BackPocketBasic.slnx
 
 # Run tests
-dotnet test ApplesoftBasic.slnx
+dotnet test BackPocketBasic.slnx
 
 # Run tests with statement coverage
-dotnet test ApplesoftBasic.slnx --collect "XPlat Code Coverage"
+dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
 ```
 
 ### Running a BASIC Program
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- <path-to-basic-file>
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- <path-to-basic-file>
 ```
 
 Or after building:
 
 ```bash
-./src/ApplesoftBasic.Console/bin/Debug/net10.0/ApplesoftBasic.Console samples/demo.bas
+./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/demo.bas
 ```
 
 ## Sample Programs
@@ -155,7 +155,7 @@ Several sample programs are included in the `samples/` directory:
 ```
 applesoft-basic/
 ??? src/
-?   ??? ApplesoftBasic.Interpreter/    # Core interpreter library
+?   ??? BadMango.Basic/    # Core interpreter library (namespace: BadMango.Basic)
 ?   ?   ??? AST/                       # Abstract Syntax Tree nodes
 ?   ?   ??? Emulation/                 # 6502 CPU and Apple II emulation
 ?   ?   ??? Execution/                 # Interpreter implementation
@@ -164,11 +164,11 @@ applesoft-basic/
 ?   ?   ??? Parser/                    # Parser
 ?   ?   ??? Runtime/                   # Runtime environment
 ?   ?   ??? Tokens/                    # Token definitions
-?   ??? ApplesoftBasic.Console/        # Console application
+?   ??? BadMango.Basic.Console/        # Console application (assembly: bpbasic)
 ??? tests/
-?   ??? ApplesoftBasic.Tests/          # Unit tests
+?   ??? BadMango.Basic.Tests/          # Unit tests
 ??? samples/                           # Sample BASIC programs
-??? ApplesoftBasic.slnx                # Solution file
+??? BackPocketBasic.slnx                # Solution file
 ```
 
 ### Technologies Used

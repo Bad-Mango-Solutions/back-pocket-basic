@@ -269,11 +269,11 @@ public class BasicInterpreter
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ApplesoftBasic.Interpreter.AST;
+using BadMango.Basic.AST;
 using Microsoft.Extensions.Logging;
 
 // 2. Namespace
-namespace ApplesoftBasic.Interpreter.Execution
+namespace BadMango.Basic.Execution
 {
     // 3. Class/Interface
     public class BasicInterpreter : IBasicInterpreter

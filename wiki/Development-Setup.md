@@ -59,13 +59,13 @@ upstream  https://github.com/jpactor/applesoft-basic.git (push)
 ### 3. Restore Dependencies
 
 ```bash
-dotnet restore ApplesoftBasic.slnx
+dotnet restore BackPocketBasic.slnx
 ```
 
 ### 4. Build the Solution
 
 ```bash
-dotnet build ApplesoftBasic.slnx
+dotnet build BackPocketBasic.slnx
 ```
 
 **Expected:**
@@ -78,7 +78,7 @@ Build succeeded.
 ### 5. Run Tests
 
 ```bash
-dotnet test ApplesoftBasic.slnx --verbosity normal
+dotnet test BackPocketBasic.slnx --verbosity normal
 ```
 
 **Expected:**
@@ -89,7 +89,7 @@ Passed! - Failed:     0, Passed:   103, Skipped:     0, Total:   103
 ### 6. Verify Installation
 
 ```bash
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 ```
 
 Should execute the demo program successfully.
@@ -100,7 +100,7 @@ Should execute the demo program successfully.
 
 #### Setup
 
-1. Open `ApplesoftBasic.slnx`
+1. Open `BackPocketBasic.slnx`
 2. Visual Studio will restore NuGet packages automatically
 3. Build: **Ctrl+Shift+B**
 4. Run tests: **Test → Run All Tests**
@@ -158,14 +158,14 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
       "label": "build",
       "command": "dotnet",
       "type": "process",
-      "args": ["build", "ApplesoftBasic.slnx"],
+      "args": ["build", "BackPocketBasic.slnx"],
       "problemMatcher": "$msCompile"
     },
     {
       "label": "test",
       "command": "dotnet",
       "type": "process",
-      "args": ["test", "ApplesoftBasic.slnx"],
+      "args": ["test", "BackPocketBasic.slnx"],
       "problemMatcher": "$msCompile"
     }
   ]
@@ -176,7 +176,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 #### Setup
 
-1. Open `ApplesoftBasic.slnx`
+1. Open `BackPocketBasic.slnx`
 2. Rider will restore packages automatically
 3. Build: **Ctrl+F9** (Windows/Linux) or **Cmd+F9** (Mac)
 4. Run tests: **Alt+Shift+T** or use Test Explorer
@@ -192,7 +192,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 applesoft-basic/
 ├── .github/              # GitHub workflows and templates
 ├── src/
-│   ├── ApplesoftBasic.Interpreter/
+│   ├── BadMango.Basic/
 │   │   ├── AST/          # Abstract Syntax Tree
 │   │   ├── Emulation/    # 6502 and hardware emulation
 │   │   ├── Execution/    # Interpreter
@@ -201,13 +201,13 @@ applesoft-basic/
 │   │   ├── Parser/       # Parsing
 │   │   ├── Runtime/      # Runtime state
 │   │   └── Tokens/       # Token definitions
-│   └── ApplesoftBasic.Console/  # CLI application
+│   └── BadMango.Basic.Console/  # CLI application
 ├── tests/
-│   └── ApplesoftBasic.Tests/    # Unit tests
+│   └── BadMango.Basic.Tests/    # Unit tests
 ├── samples/              # Sample BASIC programs
 ├── .editorconfig         # Code style configuration
 ├── StyleCop.json         # StyleCop rules
-└── ApplesoftBasic.slnx    # Solution file
+└── BackPocketBasic.slnx    # Solution file
 ```
 
 ## Development Workflow
@@ -229,11 +229,11 @@ git checkout -b feature/your-feature-name
 2. **Add/update tests** - See [Testing Guide](Testing-Guide)
 3. **Build** to check for errors:
    ```bash
-   dotnet build ApplesoftBasic.slnx
+   dotnet build BackPocketBasic.slnx
    ```
 4. **Run tests** to verify:
    ```bash
-   dotnet test ApplesoftBasic.slnx
+   dotnet test BackPocketBasic.slnx
    ```
 
 ### Committing Changes
@@ -264,27 +264,27 @@ git push origin feature/your-feature-name
 
 ```bash
 # Debug build
-dotnet build ApplesoftBasic.slnx
+dotnet build BackPocketBasic.slnx
 
 # Release build
-dotnet build ApplesoftBasic.slnx --configuration Release
+dotnet build BackPocketBasic.slnx --configuration Release
 
 # Clean build
-dotnet clean ApplesoftBasic.slnx
-dotnet build ApplesoftBasic.slnx
+dotnet clean BackPocketBasic.slnx
+dotnet build BackPocketBasic.slnx
 
 # Build specific project
-dotnet build src/ApplesoftBasic.Interpreter/ApplesoftBasic.Interpreter.csproj
+dotnet build src/BadMango.Basic/BadMango.Basic.csproj
 ```
 
 ### Test Commands
 
 ```bash
 # Run all tests
-dotnet test ApplesoftBasic.slnx
+dotnet test BackPocketBasic.slnx
 
 # Run with detailed output
-dotnet test ApplesoftBasic.slnx --verbosity detailed
+dotnet test BackPocketBasic.slnx --verbosity detailed
 
 # Run specific test class
 dotnet test --filter FullyQualifiedName~BasicInterpreterTests
@@ -293,17 +293,17 @@ dotnet test --filter FullyQualifiedName~BasicInterpreterTests
 dotnet test --filter Name=Print_OutputsText
 
 # Run tests with coverage (if dotnet-coverage installed)
-dotnet test ApplesoftBasic.slnx --collect:"XPlat Code Coverage"
+dotnet test BackPocketBasic.slnx --collect:"XPlat Code Coverage"
 ```
 
 ### Running the Console App
 
 ```bash
 # Run with dotnet run
-dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 
 # Or run the built executable
-./src/ApplesoftBasic.Console/bin/Debug/net10.0/ApplesoftBasic.Console samples/demo.bas
+./src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console samples/demo.bas
 ```
 
 ## Code Quality Tools
@@ -312,10 +312,10 @@ dotnet run --project src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj --
 
 ```bash
 # Format code
-dotnet format ApplesoftBasic.slnx
+dotnet format BackPocketBasic.slnx
 
 # Check formatting without changes
-dotnet format ApplesoftBasic.slnx --verify-no-changes
+dotnet format BackPocketBasic.slnx --verify-no-changes
 ```
 
 ### Static Analysis
@@ -335,7 +335,7 @@ Project includes `.editorconfig` with code style rules:
 ### Console Application
 
 **Visual Studio:**
-1. Set `ApplesoftBasic.Console` as startup project
+1. Set `BadMango.Basic.Console` as startup project
 2. Right-click → **Properties → Debug**
 3. Set **Application arguments**: `samples/demo.bas`
 4. Press **F5** to debug
@@ -350,7 +350,7 @@ Project includes `.editorconfig` with code style rules:
       "name": "Debug Console App",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/ApplesoftBasic.Console/bin/Debug/net10.0/ApplesoftBasic.Console.dll",
+      "program": "${workspaceFolder}/src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console.dll",
       "args": ["samples/demo.bas"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false
@@ -389,7 +389,7 @@ dotnet --version
 ```bash
 # Clear NuGet cache
 dotnet nuget locals all --clear
-dotnet restore ApplesoftBasic.slnx
+dotnet restore BackPocketBasic.slnx
 ```
 
 ### Test Failures
