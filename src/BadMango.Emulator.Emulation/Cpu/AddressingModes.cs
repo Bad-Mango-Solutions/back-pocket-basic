@@ -1,338 +1,196 @@
-// <copyright file="AddressingModes.cs" company="Bad Mango Solutions">
+// <copyright file="AddressingModeNew.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Core;
 
 /// <summary>
-/// Provides reusable addressing mode implementations for 6502-family CPUs.
+/// Delegate representing an addressing mode that computes an effective address.
+/// </summary>
+/// <typeparam name="TState">The CPU state type.</typeparam>
+/// <param name="memory">The memory interface.</param>
+/// <param name="state">Reference to the CPU state.</param>
+/// <returns>The effective address computed by the addressing mode.</returns>
+public delegate ushort AddressingMode<TState>(IMemory memory, ref TState state)
+    where TState : struct;
+
+/// <summary>
+/// Provides addressing mode implementations for 6502-family CPUs.
 /// </summary>
 /// <remarks>
-/// This class contains static methods that implement common addressing modes
-/// shared across CPU variants (65C02, 65816, 65832). Each method is aggressively
-/// inlined for optimal performance in hot-path execution.
+/// Each addressing mode is a function that computes an effective address given memory and CPU state.
+/// This allows clean composition with instruction handlers.
 /// </remarks>
 public static class AddressingModes
 {
     /// <summary>
-    /// Reads a byte using Immediate addressing mode.
+    /// Immediate addressing - returns the address of the immediate operand (PC).
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the current PC address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadImmediate(IMemory memory, ref ushort pc, ref ulong cycles)
+    public static ushort Immediate(IMemory memory, ref Cpu65C02State state)
     {
-        byte value = memory.Read(pc++);
-        cycles++;
-        return value;
+        ushort address = state.PC;
+        state.PC++;
+        // Immediate mode: no extra cycles beyond the read that will happen
+        return address;
     }
 
     /// <summary>
-    /// Reads a byte using Zero Page addressing mode.
+    /// Zero Page addressing - reads zero page address from PC.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the zero page address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadZeroPage(IMemory memory, ref ushort pc, ref ulong cycles)
+    public static ushort ZeroPage(IMemory memory, ref Cpu65C02State state)
     {
-        byte address = memory.Read(pc++);
-        cycles += 2;
-        return memory.Read(address);
+        byte zpAddr = memory.Read(state.PC++);
+        state.Cycles++; // 1 cycle to fetch the ZP address
+        // The instruction will add 1 more cycle for the actual read
+        return zpAddr;
     }
 
     /// <summary>
-    /// Reads a byte using Zero Page,X addressing mode.
+    /// Zero Page,X addressing - reads zero page address and adds X register.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indexed zero page address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadZeroPageX(IMemory memory, ref ushort pc, byte x, ref ulong cycles)
+    public static ushort ZeroPageX(IMemory memory, ref Cpu65C02State state)
     {
-        byte address = (byte)(memory.Read(pc++) + x);
-        cycles += 3;
-        return memory.Read(address);
+        byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
+        state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+        // The instruction will add 1 more cycle for the actual read
+        return zpAddr;
     }
 
     /// <summary>
-    /// Reads a byte using Zero Page,Y addressing mode.
+    /// Zero Page,Y addressing - reads zero page address and adds Y register.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indexed zero page address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadZeroPageY(IMemory memory, ref ushort pc, byte y, ref ulong cycles)
+    public static ushort ZeroPageY(IMemory memory, ref Cpu65C02State state)
     {
-        byte address = (byte)(memory.Read(pc++) + y);
-        cycles += 3;
-        return memory.Read(address);
+        byte zpAddr = (byte)(memory.Read(state.PC++) + state.Y);
+        state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+        // The instruction will add 1 more cycle for the actual read
+        return zpAddr;
     }
 
     /// <summary>
-    /// Reads a byte using Absolute addressing mode.
+    /// Absolute addressing - reads 16-bit address from PC.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the absolute address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadAbsolute(IMemory memory, ref ushort pc, ref ulong cycles)
+    public static ushort Absolute(IMemory memory, ref Cpu65C02State state)
     {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        cycles++;
-        return memory.Read(address);
+        ushort address = memory.ReadWord(state.PC);
+        state.PC += 2;
+        state.Cycles += 2; // 2 cycles to fetch the 16-bit address
+        // The instruction will add 1 more cycle for the actual read
+        return address;
     }
 
     /// <summary>
-    /// Reads a byte using Absolute,X addressing mode.
+    /// Absolute,X addressing - reads 16-bit address and adds X register.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indexed absolute address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadAbsoluteX(IMemory memory, ref ushort pc, byte x, ref ulong cycles)
+    public static ushort AbsoluteX(IMemory memory, ref Cpu65C02State state)
     {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        ushort effectiveAddress = (ushort)(address + x);
-        cycles++;
-        if ((address & 0xFF00) != (effectiveAddress & 0xFF00))
+        ushort baseAddr = memory.ReadWord(state.PC);
+        state.PC += 2;
+        ushort effectiveAddr = (ushort)(baseAddr + state.X);
+        state.Cycles += 2; // 2 cycles to fetch the 16-bit address
+        
+        // Add extra cycle if page boundary crossed
+        if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
-            cycles++; // Page boundary crossed
+            state.Cycles++;
         }
 
-        return memory.Read(effectiveAddress);
+        // The instruction will add 1 more cycle for the actual read
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Reads a byte using Absolute,Y addressing mode.
+    /// Absolute,Y addressing - reads 16-bit address and adds Y register.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indexed absolute address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadAbsoluteY(IMemory memory, ref ushort pc, byte y, ref ulong cycles)
+    public static ushort AbsoluteY(IMemory memory, ref Cpu65C02State state)
     {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        ushort effectiveAddress = (ushort)(address + y);
-        cycles++;
-        if ((address & 0xFF00) != (effectiveAddress & 0xFF00))
+        ushort baseAddr = memory.ReadWord(state.PC);
+        state.PC += 2;
+        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        state.Cycles += 2; // 2 cycles to fetch the 16-bit address
+        
+        // Add extra cycle if page boundary crossed
+        if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
-            cycles++; // Page boundary crossed
+            state.Cycles++;
         }
 
-        return memory.Read(effectiveAddress);
+        // The instruction will add 1 more cycle for the actual read
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Reads a byte using Indexed Indirect (Indirect,X) addressing mode.
+    /// Indexed Indirect (Indirect,X) addressing - uses X-indexed zero page pointer.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indirectly addressed location.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadIndirectX(IMemory memory, ref ushort pc, byte x, ref ulong cycles)
+    public static ushort IndirectX(IMemory memory, ref Cpu65C02State state)
     {
-        byte zpAddress = (byte)(memory.Read(pc++) + x);
-        cycles += 2; // Opcode fetch + index addition
-        ushort address = memory.ReadWord(zpAddress);
-        cycles += 2; // Read word from zero page
-        byte value = memory.Read(address);
-        cycles++; // Final read
-        return value;
+        byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
+        ushort address = memory.ReadWord(zpAddr);
+        state.Cycles += 4; // 1 (fetch ZP), 1 (index), 2 (read pointer from ZP)
+        // The instruction will add 1 more cycle for the actual read
+        return address;
     }
 
     /// <summary>
-    /// Reads a byte using Indirect Indexed (Indirect),Y addressing mode.
+    /// Indirect Indexed (Indirect),Y addressing - uses zero page pointer indexed by Y.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    /// <returns>The byte value at the indirectly indexed location.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte ReadIndirectY(IMemory memory, ref ushort pc, byte y, ref ulong cycles)
+    public static ushort IndirectY(IMemory memory, ref Cpu65C02State state)
     {
-        byte zpAddress = memory.Read(pc++);
-        cycles++; // Fetch zero page address
-        ushort address = memory.ReadWord(zpAddress);
-        cycles += 2; // Read word from zero page
-        ushort effectiveAddress = (ushort)(address + y);
-        cycles++; // Base cycle for final read
-        if ((address & 0xFF00) != (effectiveAddress & 0xFF00))
+        byte zpAddr = memory.Read(state.PC++);
+        ushort baseAddr = memory.ReadWord(zpAddr);
+        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        state.Cycles += 3; // 1 (fetch ZP), 2 (read pointer from ZP)
+        
+        // Add extra cycle if page boundary crossed
+        if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
-            cycles++; // Page boundary crossed
+            state.Cycles++;
         }
 
-        return memory.Read(effectiveAddress);
+        // The instruction will add 1 more cycle for the actual read
+        return effectiveAddr;
+    }
+
+    // Write-specific addressing modes that always take the maximum cycles
+
+    /// <summary>
+    /// Absolute,X addressing for write operations - always takes maximum cycles.
+    /// </summary>
+    public static ushort AbsoluteXWrite(IMemory memory, ref Cpu65C02State state)
+    {
+        ushort baseAddr = memory.ReadWord(state.PC);
+        state.PC += 2;
+        ushort effectiveAddr = (ushort)(baseAddr + state.X);
+        state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
+        // The instruction will add 1 more cycle for the actual write
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Writes a byte using Zero Page addressing mode.
+    /// Absolute,Y addressing for write operations - always takes maximum cycles.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteZeroPage(IMemory memory, ref ushort pc, byte value, ref ulong cycles)
+    public static ushort AbsoluteYWrite(IMemory memory, ref Cpu65C02State state)
     {
-        byte address = memory.Read(pc++);
-        memory.Write(address, value);
-        cycles += 2;
+        ushort baseAddr = memory.ReadWord(state.PC);
+        state.PC += 2;
+        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
+        // The instruction will add 1 more cycle for the actual write
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Writes a byte using Zero Page,X addressing mode.
+    /// Indirect Indexed (Indirect),Y addressing for write operations - always takes maximum cycles.
     /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteZeroPageX(IMemory memory, ref ushort pc, byte x, byte value, ref ulong cycles)
+    public static ushort IndirectYWrite(IMemory memory, ref Cpu65C02State state)
     {
-        byte address = (byte)(memory.Read(pc++) + x);
-        memory.Write(address, value);
-        cycles += 3;
-    }
-
-    /// <summary>
-    /// Writes a byte using Zero Page,Y addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteZeroPageY(IMemory memory, ref ushort pc, byte y, byte value, ref ulong cycles)
-    {
-        byte address = (byte)(memory.Read(pc++) + y);
-        memory.Write(address, value);
-        cycles += 3;
-    }
-
-    /// <summary>
-    /// Writes a byte using Absolute addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteAbsolute(IMemory memory, ref ushort pc, byte value, ref ulong cycles)
-    {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        memory.Write(address, value);
-        cycles += 2;
-    }
-
-    /// <summary>
-    /// Writes a byte using Absolute,X addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteAbsoluteX(IMemory memory, ref ushort pc, byte x, byte value, ref ulong cycles)
-    {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        ushort effectiveAddress = (ushort)(address + x);
-        memory.Write(effectiveAddress, value);
-        cycles += 2; // Index addition + write
-    }
-
-    /// <summary>
-    /// Writes a byte using Absolute,Y addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteAbsoluteY(IMemory memory, ref ushort pc, byte y, byte value, ref ulong cycles)
-    {
-        ushort address = ReadWord(memory, ref pc, ref cycles);
-        ushort effectiveAddress = (ushort)(address + y);
-        memory.Write(effectiveAddress, value);
-        cycles += 2; // Index addition + write
-    }
-
-    /// <summary>
-    /// Writes a byte using Indexed Indirect (Indirect,X) addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="x">The X index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteIndirectX(IMemory memory, ref ushort pc, byte x, byte value, ref ulong cycles)
-    {
-        byte zpAddress = (byte)(memory.Read(pc++) + x);
-        cycles += 2; // Fetch + index addition
-        ushort address = memory.ReadWord(zpAddress);
-        cycles += 2; // Read word from zero page
-        memory.Write(address, value);
-        cycles++; // Final write
-    }
-
-    /// <summary>
-    /// Writes a byte using Indirect Indexed (Indirect),Y addressing mode.
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented).</param>
-    /// <param name="y">The Y index register value.</param>
-    /// <param name="value">The byte value to write.</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteIndirectY(IMemory memory, ref ushort pc, byte y, byte value, ref ulong cycles)
-    {
-        byte zpAddress = memory.Read(pc++);
-        cycles++; // Fetch zero page address
-        ushort address = memory.ReadWord(zpAddress);
-        cycles += 2; // Read word from zero page
-        ushort effectiveAddress = (ushort)(address + y);
-        cycles++; // Index addition
-        memory.Write(effectiveAddress, value);
-        cycles++; // Final write
-    }
-
-    /// <summary>
-    /// Reads a 16-bit word from memory (little-endian).
-    /// </summary>
-    /// <param name="memory">The memory interface.</param>
-    /// <param name="pc">Reference to the program counter (will be incremented by 2).</param>
-    /// <param name="cycles">Reference to the cycle counter (will be incremented by 2).</param>
-    /// <returns>The 16-bit word value.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ushort ReadWord(IMemory memory, ref ushort pc, ref ulong cycles)
-    {
-        ushort value = memory.ReadWord(pc);
-        pc += 2;
-        cycles += 2;
-        return value;
+        byte zpAddr = memory.Read(state.PC++);
+        ushort baseAddr = memory.ReadWord(zpAddr);
+        ushort effectiveAddr = (ushort)(baseAddr + state.Y);
+        state.Cycles += 4; // 1 (fetch ZP), 2 (read pointer), 1 extra for write
+        // The instruction will add 1 more cycle for the actual write
+        return effectiveAddr;
     }
 }
