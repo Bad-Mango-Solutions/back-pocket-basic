@@ -28,17 +28,13 @@ public struct Cpu65C02State : ICpuState<Cpu65C02Registers, byte, byte, byte, Wor
     public ulong Cycles { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the CPU is halted.
+    /// Gets a value indicating whether the CPU is halted.
     /// </summary>
     /// <remarks>
     /// This property returns true if the CPU is in any halt state (Brk, Wai, or Stp).
     /// For more granular halt state information, use <see cref="HaltReason"/>.
     /// </remarks>
-    public bool Halted
-    {
-        get => HaltReason != HaltState.None;
-        set => HaltReason = value ? HaltState.Brk : HaltState.None;
-    }
+    public readonly bool Halted => HaltReason != HaltState.None;
 
     /// <summary>
     /// Gets or sets the reason the CPU is halted.

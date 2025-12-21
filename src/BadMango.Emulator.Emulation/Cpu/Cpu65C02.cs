@@ -92,7 +92,12 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         // Check for pending interrupts at instruction boundary
         if (!halted)
         {
-            CheckInterrupts();
+            bool interruptProcessed = CheckInterrupts();
+            if (interruptProcessed)
+            {
+                // Interrupt was processed, return cycles consumed
+                return 7; // Interrupt processing takes 7 cycles
+            }
         }
 
         if (halted)
@@ -206,18 +211,19 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// <summary>
     /// Checks for pending interrupts and processes them if applicable.
     /// </summary>
+    /// <returns>True if an interrupt was processed, false otherwise.</returns>
     /// <remarks>
     /// NMI has priority over IRQ. IRQ is maskable via the I flag.
     /// If the CPU is in WAI state, interrupts will resume execution.
     /// STP state cannot be resumed by interrupts.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void CheckInterrupts()
+    private bool CheckInterrupts()
     {
         // STP cannot be resumed by interrupts
         if (haltReason == HaltState.Stp)
         {
-            return;
+            return false;
         }
 
         // Check for NMI (non-maskable, highest priority)
@@ -233,7 +239,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
             }
 
             ProcessInterrupt(NmiVector);
-            return;
+            return true;
         }
 
         // Check for IRQ (maskable by I flag)
@@ -249,7 +255,10 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
             }
 
             ProcessInterrupt(IrqVector);
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>
@@ -263,7 +272,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// 3. Push processor status (with B flag clear) to stack
     /// 4. Set I flag to disable interrupts
     /// 5. Load PC from interrupt vector
-    /// Total: 7 cycles.
+    /// Total: 7 cycles (handled by caller).
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessInterrupt(Word vector)
@@ -281,7 +290,6 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         // Load PC from interrupt vector
         pc = memory.ReadWord(vector);
 
-        // Account for 7 cycles for interrupt processing
-        cycles += 7;
+        // Note: Cycles are accounted for in Step(), not here
     }
 }
