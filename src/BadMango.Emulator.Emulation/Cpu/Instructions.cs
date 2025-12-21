@@ -139,7 +139,7 @@ public static class Instructions
             memory.Write((Word)(Cpu65C02Constants.StackBase + s--), (byte)(pc & 0xFF));
             memory.Write((Word)(Cpu65C02Constants.StackBase + s--), (byte)(p | Cpu65C02Constants.FlagB));
             p |= Cpu65C02Constants.FlagI;
-            pc = memory.ReadWord(0xFFFE);
+            pc = memory.ReadWord(Cpu65C02Constants.IrqVector);
             state.Cycles += 6; // 6 cycles in handler + 1 from opcode fetch in Step()
 
             state.PC = pc;
