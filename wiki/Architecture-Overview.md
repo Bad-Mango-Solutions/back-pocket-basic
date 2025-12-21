@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Comprehensive overview of the Applesoft BASIC Interpreter project structure and architecture.
+Comprehensive overview of the BackPocketBASIC project structure and architecture.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Comprehensive overview of the Applesoft BASIC Interpreter project structure and 
 ## Project Structure
 
 ```
-applesoft-basic/
+back-pocket-basic/
 ├── src/
 │   ├── BadMango.Basic/    # Core interpreter library
 │   │   ├── AST/                       # Abstract Syntax Tree nodes

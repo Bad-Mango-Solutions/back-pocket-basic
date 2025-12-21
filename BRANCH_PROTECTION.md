@@ -10,7 +10,7 @@ Branch protection rules help maintain code quality by requiring certain conditio
 
 ### Step 1: Access Branch Protection Settings
 
-1. Navigate to your repository on GitHub: https://github.com/jpactor/applesoft-basic
+1. Navigate to your repository on GitHub: https://github.com/Bad-Mango-Solutions/back-pocket-basic
 2. Click on **Settings** tab
 3. In the left sidebar, click **Branches**
 4. Under "Branch protection rules", click **Add rule** or **Add branch protection rule**

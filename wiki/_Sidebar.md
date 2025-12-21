@@ -20,9 +20,9 @@
 - [Development Setup](Development-Setup)
 - [Testing Guide](Testing-Guide)
 - [Code Style](Code-Style)
-- [Contributing Guide →](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)
+- [Contributing Guide →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)
 
 ## Resources
-- [GitHub Repo →](https://github.com/jpactor/applesoft-basic)
-- [Issues →](https://github.com/jpactor/applesoft-basic/issues)
-- [README →](https://github.com/jpactor/applesoft-basic/blob/main/README.md)
+- [GitHub Repo →](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
+- [Issues →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)
+- [README →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/README.md)

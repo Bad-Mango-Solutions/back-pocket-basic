@@ -1,4 +1,4 @@
-# BackPocketBASIC Interpreter
+# BackPocketBASIC
 
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
@@ -69,8 +69,8 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 
 ```bash
 # Clone the repository
-git clone https://github.com/jpactor/applesoft-basic.git
-cd applesoft-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
+cd back-pocket-basic
 
 # Build the solution
 dotnet build BackPocketBasic.slnx
@@ -153,7 +153,7 @@ Several sample programs are included in the `samples/` directory:
 ### Project Structure
 
 ```
-applesoft-basic/
+back-pocket-basic/
 ??? src/
 ?   ??? BadMango.Basic/    # Core interpreter library (namespace: BadMango.Basic)
 ?   ?   ??? AST/                       # Abstract Syntax Tree nodes
@@ -247,7 +247,7 @@ The emulated Apple II memory map:
 
 Logs are written to:
 - **Console**: Warnings and errors only
-- **File**: `logs/applesoft-<date>.log` with full debug information
+- **File**: `logs/backpocket-<date>.log` with full debug information
 
 ## Future Enhancements
 

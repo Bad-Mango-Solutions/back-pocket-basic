@@ -1,4 +1,4 @@
-# Welcome to the Applesoft BASIC Interpreter Wiki
+# Welcome to the BackPocketBASIC Wiki
 
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
@@ -52,12 +52,12 @@ Want to contribute? We'd love your help!
 
 ## Resources
 
-- **[GitHub Repository](https://github.com/jpactor/applesoft-basic)**
-- **[Issue Tracker](https://github.com/jpactor/applesoft-basic/issues)**
-- **[Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)**
+- **[GitHub Repository](https://github.com/Bad-Mango-Solutions/back-pocket-basic)**
+- **[Issue Tracker](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)**
+- **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)**
 
 ## About
 
 This project is an educational endeavor to preserve and modernize Applesoft BASIC. Apple II and Applesoft BASIC are trademarks of Apple Inc. This project is not affiliated with Apple Inc.
 
-**License**: MIT License - see the [LICENSE](https://github.com/jpactor/applesoft-basic/blob/main/LICENSE) file for details.
+**License**: MIT License - see the [LICENSE](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/LICENSE) file for details.

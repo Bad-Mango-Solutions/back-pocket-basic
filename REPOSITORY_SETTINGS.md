@@ -17,7 +17,7 @@ Proper access control ensures that only authorized users can modify code while m
 
 ### Step 1: Review Current Permissions
 
-1. Navigate to your repository: https://github.com/jpactor/applesoft-basic
+1. Navigate to your repository: https://github.com/Bad-Mango-Solutions/back-pocket-basic
 2. Click on **Settings** tab
 3. In the left sidebar, click **Collaborators and teams**
 4. Review existing access levels
@@ -108,7 +108,7 @@ If secrets are found:
 
 ### Step 2: Make Repository Public
 
-1. Navigate to your repository: https://github.com/jpactor/applesoft-basic
+1. Navigate to your repository: https://github.com/Bad-Mango-Solutions/back-pocket-basic
 2. Click on **Settings** tab
 3. Scroll down to the **Danger Zone** section
 4. Click **Change visibility**
@@ -154,7 +154,7 @@ Create `.github/PULL_REQUEST_TEMPLATE.md` to guide contributors
 
 1. Go to the repository main page
 2. Click the gear icon next to "About"
-3. Add a short description: "Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
+3. Add a short description: "BackPocketBASIC - Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
 4. Add topics/tags:
    - `applesoft-basic`
    - `apple-ii`

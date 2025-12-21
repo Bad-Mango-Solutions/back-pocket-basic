@@ -1,6 +1,6 @@
 # Testing Guide
 
-Comprehensive guide for running and writing tests for the Applesoft BASIC Interpreter.
+Comprehensive guide for running and writing tests for BackPocketBASIC.
 
 ## Overview
 
@@ -581,7 +581,7 @@ Tests that sometimes pass, sometimes fail:
 - **[Development Setup](Development-Setup)** - Environment setup
 - **[Code Style](Code-Style)** - Coding standards
 - **[Architecture Overview](Architecture-Overview)** - System design
-- **[Contributing](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)** - Contribution guidelines
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution guidelines
 
 ## External Resources
 

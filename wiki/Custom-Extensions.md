@@ -220,14 +220,14 @@ To add a new extension:
 6. **Add Tests** in `tests/BadMango.Basic.Tests/`
 7. **Update Documentation** in `README.md` and wiki
 
-See [Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md) for detailed steps.
+See [Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md) for detailed steps.
 
 ## Requesting Extensions
 
 Have an idea for an extension?
 
 1. **Check Compatibility**: Ensure it doesn't conflict with Applesoft BASIC
-2. **Open an Issue**: Use the [Feature Request template](https://github.com/jpactor/applesoft-basic/issues/new?template=feature_request.md)
+2. **Open an Issue**: Use the [Feature Request template](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues/new?template=feature_request.md)
 3. **Explain Use Case**: Describe why the extension would be valuable
 4. **Provide Examples**: Show how it would be used
 
@@ -279,4 +279,4 @@ This would allow testing programs for strict Applesoft BASIC compatibility.
 
 The interpreter includes carefully chosen extensions that enhance functionality while preserving the classic Applesoft BASIC experience. The SLEEP command demonstrates how modern capabilities can be added without compromising compatibility.
 
-For more information on contributing extensions, see the [Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md).
+For more information on contributing extensions, see the [Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md).

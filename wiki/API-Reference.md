@@ -1,6 +1,6 @@
 # API Reference
 
-Documentation for developers integrating the Applesoft BASIC Interpreter library into their applications.
+Documentation for developers integrating the BackPocketBASIC library into their applications.
 
 ## Overview
 
@@ -637,5 +637,5 @@ The interpreter requires:
 ## Support
 
 For issues or questions:
-- [GitHub Issues](https://github.com/jpactor/applesoft-basic/issues)
-- [Contributing Guide](https://github.com/jpactor/applesoft-basic/blob/main/CONTRIBUTING.md)
+- [GitHub Issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)
+- [Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)

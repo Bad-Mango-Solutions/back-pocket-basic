@@ -22,7 +22,7 @@ If you discover a security vulnerability in this project, please help us by repo
 Instead, please report security vulnerabilities through one of the following methods:
 
 1. **GitHub Security Advisory** (Preferred)
-   - Navigate to the [Security tab](https://github.com/jpactor/applesoft-basic/security/advisories)
+   - Navigate to the [Security tab](https://github.com/Bad-Mango-Solutions/back-pocket-basic/security/advisories)
    - Click "Report a vulnerability"
    - Provide detailed information about the vulnerability
 

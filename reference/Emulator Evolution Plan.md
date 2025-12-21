@@ -1,15 +1,15 @@
-I'll analyze the codebase thoroughly to create a comprehensive, staged implementation plan for evolving the Applesoft BASIC interpreter into a more capable Apple II/IIgs emulation platform.
+I'll analyze the codebase thoroughly to create a comprehensive, staged implementation plan for evolving the BackPocketBASIC into a more capable Apple II/IIgs emulation platform.
 Now let me look at the IAppleSystem interface and examine the existing test structure:
 Now I have a comprehensive understanding of the codebase. Let me create a detailed, staged implementation plan:
 Now let me provide a detailed breakdown of each stage as GitHub issues with comprehensive descriptions:
 
 ---
 
-# Detailed Implementation Plan for Applesoft BASIC Interpreter Evolution
+# Detailed Implementation Plan for BackPocketBASIC Evolution
 
 ## Executive Summary
 
-This plan transforms the Applesoft BASIC interpreter into a comprehensive Apple II/IIgs emulation platform through 11 logical stages. Each stage is designed to be a standalone GitHub issue that GitHub Copilot can act upon, with clear acceptance criteria and dependencies.
+This plan transforms the BackPocketBASIC into a comprehensive Apple II/IIgs emulation platform through 11 logical stages. Each stage is designed to be a standalone GitHub issue that GitHub Copilot can act upon, with clear acceptance criteria and dependencies.
 
 ---
 
@@ -52,11 +52,11 @@ public interface ISystemContext
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Runtime/ISystemContext.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Runtime/SystemContext.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Execution/BasicInterpreter.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/InterpreterModule.cs` (modify)
-- `tests/ApplesoftBasic.Tests/InterpreterTests.cs` (modify)
+- `src/BadMango.Basic/Runtime/ISystemContext.cs` (new)
+- `src/BadMango.Basic/Runtime/SystemContext.cs` (new)
+- `src/BadMango.Basic/Execution/BasicInterpreter.cs` (modify)
+- `src/BadMango.Basic/InterpreterModule.cs` (modify)
+- `tests/BadMango.Basic.Tests/InterpreterTests.cs` (modify)
 
 ### Acceptance Criteria
 - [ ] `ISystemContext` interface created with all current dependencies
@@ -103,20 +103,20 @@ public enum CpuMode
 ### Example Usage
 ```sh
 # Current (maintained for compatibility)
-ApplesoftBasic.Console demo.bas
+BadMango.Basic.Console demo.bas
 
 # New options
-ApplesoftBasic.Console demo.bas --cpu-mode 6502
-ApplesoftBasic.Console demo.bas --cpu-mode 65816-emulation --memory 1MB
-ApplesoftBasic.Console demo.bas --disk-slot6 games.dsk --verbose
-ApplesoftBasic.Console --help
+BadMango.Basic.Console demo.bas --cpu-mode 6502
+BadMango.Basic.Console demo.bas --cpu-mode 65816-emulation --memory 1MB
+BadMango.Basic.Console demo.bas --disk-slot6 games.dsk --verbose
+BadMango.Basic.Console --help
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Console/CommandLineOptions.cs` (new)
-- `src/ApplesoftBasic.Console/CpuMode.cs` (new)
-- `src/ApplesoftBasic.Console/Program.cs` (modify)
-- `src/ApplesoftBasic.Console/ApplesoftBasic.Console.csproj` (add package)
+- `src/BadMango.Basic.Console/CommandLineOptions.cs` (new)
+- `src/BadMango.Basic.Console/CpuMode.cs` (new)
+- `src/BadMango.Basic.Console/Program.cs` (modify)
+- `src/BadMango.Basic.Console/BadMango.Basic.Console.csproj` (add package)
 
 ### Dependencies
 - `System.CommandLine` NuGet package
@@ -161,12 +161,12 @@ ICpu (interface)
 5. **New Addressing Modes**: Stack relative, direct page indirect long
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/ICpuRegisters.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cpu6502.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cpu65816.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/CpuFactory.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/ICpu.cs` (modify)
-- `tests/ApplesoftBasic.Tests/Cpu65816Tests.cs` (new)
+- `src/BadMango.Basic/Emulation/ICpuRegisters.cs` (new)
+- `src/BadMango.Basic/Emulation/Cpu6502.cs` (modify)
+- `src/BadMango.Basic/Emulation/Cpu65816.cs` (new)
+- `src/BadMango.Basic/Emulation/CpuFactory.cs` (new)
+- `src/BadMango.Basic/Emulation/ICpu.cs` (modify)
+- `tests/BadMango.Basic.Tests/Cpu65816Tests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] `Cpu65816` class created extending `Cpu6502`
@@ -212,12 +212,12 @@ public class MemoryConfiguration
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/IMemoryBank.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/MemoryConfiguration.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/BankedMemory.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/MemoryMap.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/AppleMemory.cs` (modify)
-- `tests/ApplesoftBasic.Tests/BankedMemoryTests.cs` (new)
+- `src/BadMango.Basic/Emulation/IMemoryBank.cs` (new)
+- `src/BadMango.Basic/Emulation/MemoryConfiguration.cs` (new)
+- `src/BadMango.Basic/Emulation/BankedMemory.cs` (new)
+- `src/BadMango.Basic/Emulation/MemoryMap.cs` (new)
+- `src/BadMango.Basic/Emulation/AppleMemory.cs` (modify)
+- `tests/BadMango.Basic.Tests/BankedMemoryTests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] `MemoryConfiguration` class created
@@ -274,13 +274,13 @@ public class SlotManager
 - Slot 7: SmartPort/hard disk (alternate)
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/IExpansionCard.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/ExpansionSlot.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/SlotManager.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/NullCard.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/AppleMemory.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Emulation/AppleSystem.cs` (modify)
-- `tests/ApplesoftBasic.Tests/ExpansionSlotTests.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/IExpansionCard.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/ExpansionSlot.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/SlotManager.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/NullCard.cs` (new)
+- `src/BadMango.Basic/Emulation/AppleMemory.cs` (modify)
+- `src/BadMango.Basic/Emulation/AppleSystem.cs` (modify)
+- `tests/BadMango.Basic.Tests/ExpansionSlotTests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] `IExpansionCard` interface defined
@@ -327,12 +327,12 @@ public interface IDiskImage
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/IDiskController.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/IDiskImage.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/DiskImage.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/Disk525.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/DiskIICard.cs` (new)
-- `tests/ApplesoftBasic.Tests/DiskControllerTests.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/IDiskController.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/IDiskImage.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/DiskImage.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/Disk525.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/DiskIICard.cs` (new)
+- `tests/BadMango.Basic.Tests/DiskControllerTests.cs` (new)
 
 ### Supported Image Formats
 - `.dsk` - DOS-order sector images (140KB)
@@ -383,12 +383,12 @@ public class ProDosFileSystem : IFileSystem
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/FileSystem/IFileSystem.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/FileSystem/FileEntry.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/FileSystem/FileType.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/FileSystem/ProDosFileSystem.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/ProDosEmulator.cs` (modify)
-- `tests/ApplesoftBasic.Tests/ProDosFileSystemTests.cs` (new)
+- `src/BadMango.Basic/Emulation/FileSystem/IFileSystem.cs` (new)
+- `src/BadMango.Basic/Emulation/FileSystem/FileEntry.cs` (new)
+- `src/BadMango.Basic/Emulation/FileSystem/FileType.cs` (new)
+- `src/BadMango.Basic/Emulation/FileSystem/ProDosFileSystem.cs` (new)
+- `src/BadMango.Basic/Emulation/ProDosEmulator.cs` (modify)
+- `tests/BadMango.Basic.Tests/ProDosFileSystemTests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] Read volume directory
@@ -436,17 +436,17 @@ public class GetFileStatement : IStatement { ... }
 ```
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/AST/OpenStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/CloseStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/PrintFileStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/InputFileStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/GetFileStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/IAstVisitor.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Lexer/BasicLexer.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Parser/BasicParser.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Execution/BasicInterpreter.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Runtime/FileManager.cs` (new)
-- `tests/ApplesoftBasic.Tests/FileIOTests.cs` (new)
+- `src/BadMango.Basic/AST/OpenStatement.cs` (new)
+- `src/BadMango.Basic/AST/CloseStatement.cs` (new)
+- `src/BadMango.Basic/AST/PrintFileStatement.cs` (new)
+- `src/BadMango.Basic/AST/InputFileStatement.cs` (new)
+- `src/BadMango.Basic/AST/GetFileStatement.cs` (new)
+- `src/BadMango.Basic/AST/IAstVisitor.cs` (modify)
+- `src/BadMango.Basic/Lexer/BasicLexer.cs` (modify)
+- `src/BadMango.Basic/Parser/BasicParser.cs` (modify)
+- `src/BadMango.Basic/Execution/BasicInterpreter.cs` (modify)
+- `src/BadMango.Basic/Runtime/FileManager.cs` (new)
+- `tests/BadMango.Basic.Tests/FileIOTests.cs` (new)
 - `samples/fileio.bas` (new)
 
 ### Acceptance Criteria
@@ -478,10 +478,10 @@ SmartPort is Apple's block-level device protocol for hard disks, 3.5" drives, et
 - `.po` - ProDOS-order (reused from floppy)
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/IBlockDevice.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Disk/HardDiskImage.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Emulation/Cards/SmartPortCard.cs` (new)
-- `tests/ApplesoftBasic.Tests/HardDiskTests.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/IBlockDevice.cs` (new)
+- `src/BadMango.Basic/Emulation/Disk/HardDiskImage.cs` (new)
+- `src/BadMango.Basic/Emulation/Cards/SmartPortCard.cs` (new)
+- `tests/BadMango.Basic.Tests/HardDiskTests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] SmartPort protocol implemented
@@ -522,14 +522,14 @@ The `ONERR` and `RESUME` tokens exist but aren't implemented. Error handling is 
 - 133: Division by zero
 
 ### Files to Create/Modify
-- `src/ApplesoftBasic.Interpreter/AST/OnErrStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/AST/ResumeStatement.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Runtime/ErrorState.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Runtime/BasicErrorCode.cs` (new)
-- `src/ApplesoftBasic.Interpreter/Lexer/BasicLexer.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Parser/BasicParser.cs` (modify)
-- `src/ApplesoftBasic.Interpreter/Execution/BasicInterpreter.cs` (modify)
-- `tests/ApplesoftBasic.Tests/ErrorHandlingTests.cs` (new)
+- `src/BadMango.Basic/AST/OnErrStatement.cs` (new)
+- `src/BadMango.Basic/AST/ResumeStatement.cs` (new)
+- `src/BadMango.Basic/Runtime/ErrorState.cs` (new)
+- `src/BadMango.Basic/Runtime/BasicErrorCode.cs` (new)
+- `src/BadMango.Basic/Lexer/BasicLexer.cs` (modify)
+- `src/BadMango.Basic/Parser/BasicParser.cs` (modify)
+- `src/BadMango.Basic/Execution/BasicInterpreter.cs` (modify)
+- `tests/BadMango.Basic.Tests/ErrorHandlingTests.cs` (new)
 - `samples/error_handling.bas` (new)
 
 ### Acceptance Criteria
@@ -579,7 +579,7 @@ The `ONERR` and `RESUME` tokens exist but aren't implemented. Error handling is 
 - `wiki/CPU-Modes.md` (new)
 - `wiki/Disk-Emulation.md` (new)
 - `wiki/Command-Line-Reference.md` (new)
-- `tests/ApplesoftBasic.Tests/IntegrationTests.cs` (new)
+- `tests/BadMango.Basic.Tests/IntegrationTests.cs` (new)
 
 ### Acceptance Criteria
 - [ ] All sample programs run successfully
@@ -641,4 +641,4 @@ Stage 1 (SystemContext)
 
 ---
 
-This plan provides a clear roadmap for evolving the Applesoft BASIC interpreter into a comprehensive Apple II/IIgs emulation platform while maintaining backward compatibility and following best practices for extensibility.
+This plan provides a clear roadmap for evolving the BackPocketBASIC into a comprehensive Apple II/IIgs emulation platform while maintaining backward compatibility and following best practices for extensibility.

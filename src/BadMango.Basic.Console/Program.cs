@@ -23,18 +23,18 @@ Log.Logger = new LoggerConfiguration()
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
         restrictedToMinimumLevel: LogEventLevel.Warning)
     .WriteTo.File(
-        "logs/applesoft-.log",
+        "logs/backpocket-.log",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
 {
-    Log.Information("Starting Applesoft BASIC Interpreter");
+    Log.Information("Starting BackPocketBASIC Interpreter");
 
     if (args.Length == 0)
     {
-        Console.WriteLine("BackPocket BASIC Interpreter");
+        Console.WriteLine("BackPocketBASIC Interpreter");
         Console.WriteLine("Usage: bpbasic <source-file.bas>");
         Console.WriteLine();
         Console.WriteLine("Options:");

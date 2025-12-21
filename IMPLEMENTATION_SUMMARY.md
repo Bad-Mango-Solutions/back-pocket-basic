@@ -164,7 +164,7 @@ Result: ✅ All 103 tests pass
 ## Repository Structure
 
 ```
-applesoft-basic/
+back-pocket-basic/
 ├── .github/
 │   ├── workflows/
 │   │   └── ci.yml                    # CI/CD workflow

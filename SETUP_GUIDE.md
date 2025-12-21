@@ -45,7 +45,7 @@ Follow these steps in order:
 **Time Required:** 5-10 minutes
 
 1. **On GitHub:**
-   - Go to https://github.com/jpactor/applesoft-basic/settings/branches
+   - Go to https://github.com/Bad-Mango-Solutions/back-pocket-basic/settings/branches
    - Click the pencil icon next to the default branch
    - Rename to `main`
    - Confirm the action
@@ -70,7 +70,7 @@ Follow these steps in order:
 **Time Required:** 5-10 minutes
 
 1. **Navigate to Branch Protection Settings:**
-   - Go to https://github.com/jpactor/applesoft-basic/settings/branch_protection_rules/new
+   - Go to https://github.com/Bad-Mango-Solutions/back-pocket-basic/settings/branch_protection_rules/new
 
 2. **Configure the Protection Rule:**
    - **Branch name pattern:** `main`
@@ -144,8 +144,8 @@ git status                 # Should show clean working tree
 New clones will automatically use the `main` branch:
 
 ```bash
-git clone https://github.com/jpactor/applesoft-basic.git
-cd applesoft-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
+cd back-pocket-basic
 ```
 
 ### Need Help?
@@ -159,7 +159,7 @@ See [BRANCH_MIGRATION.md](BRANCH_MIGRATION.md) for detailed instructions and tro
 **Time Required:** 5 minutes
 
 1. **Review Current Access:**
-   - Go to https://github.com/jpactor/applesoft-basic/settings/access
+   - Go to https://github.com/Bad-Mango-Solutions/back-pocket-basic/settings/access
 
 2. **Configure Access Levels:**
    - **Owner (@jpactor):** Admin access (already set)
@@ -194,7 +194,7 @@ See [BRANCH_MIGRATION.md](BRANCH_MIGRATION.md) for detailed instructions and tro
    - ✅ CI/CD workflow added
 
 3. **Make Public:**
-   - Go to https://github.com/jpactor/applesoft-basic/settings
+   - Go to https://github.com/Bad-Mango-Solutions/back-pocket-basic/settings
    - Scroll to "Danger Zone"
    - Click "Change visibility"
    - Select "Make public"
@@ -204,7 +204,7 @@ See [BRANCH_MIGRATION.md](BRANCH_MIGRATION.md) for detailed instructions and tro
 4. **Post-Public Configuration:**
    
    **Enable Security Features:**
-   - Go to https://github.com/jpactor/applesoft-basic/settings/security_analysis
+   - Go to https://github.com/Bad-Mango-Solutions/back-pocket-basic/settings/security_analysis
    - ✅ Enable "Dependabot alerts"
    - ✅ Enable "Dependabot security updates"
    - ✅ Enable "Code scanning" (CodeQL)
@@ -213,7 +213,7 @@ See [BRANCH_MIGRATION.md](BRANCH_MIGRATION.md) for detailed instructions and tro
    **Update Repository Details:**
    - Go to repository main page
    - Click gear icon next to "About"
-   - Add description: "Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
+   - Add description: "BackPocketBASIC - Applesoft BASIC interpreter in .NET with 6502 CPU emulation"
    - Add topics: `applesoft-basic`, `apple-ii`, `6502`, `emulator`, `interpreter`, `dotnet`, `csharp`, `retro-computing`
    - Save changes
 
