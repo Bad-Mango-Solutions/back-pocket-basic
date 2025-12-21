@@ -559,4 +559,4 @@ Before submitting PR, verify:
 
 - **[Development Setup](Development-Setup)** - Environment configuration
 - **[Testing Guide](Testing-Guide)** - Writing tests
-- **[Contributing](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution process
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution process

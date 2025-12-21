@@ -351,8 +351,8 @@ Now that you know the basics:
 ## Getting Help
 
 - **[Language Reference](Language-Reference)** - Complete command documentation
-- **[GitHub Issues](https://github.com/jpactor/back-pocket-basic/issues)** - Report bugs or ask questions
-- **[Contributing Guide](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Learn how to contribute
+- **[GitHub Issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)** - Report bugs or ask questions
+- **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Learn how to contribute
 
 ## External Resources
 

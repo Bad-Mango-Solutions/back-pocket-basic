@@ -201,5 +201,5 @@ rm -rf applesoft-basic
 If you encounter issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section above
-2. Review [closed issues](https://github.com/jpactor/back-pocket-basic/issues?q=is%3Aissue+is%3Aclosed) on GitHub
-3. Open a [new issue](https://github.com/jpactor/back-pocket-basic/issues/new) with details about your problem
+2. Review [closed issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues?q=is%3Aissue+is%3Aclosed) on GitHub
+3. Open a [new issue](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues/new) with details about your problem

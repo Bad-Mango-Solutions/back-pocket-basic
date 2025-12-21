@@ -637,5 +637,5 @@ The interpreter requires:
 ## Support
 
 For issues or questions:
-- [GitHub Issues](https://github.com/jpactor/back-pocket-basic/issues)
-- [Contributing Guide](https://github.com/jpactor/back-pocket-basic/blob/main/CONTRIBUTING.md)
+- [GitHub Issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)
+- [Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)
