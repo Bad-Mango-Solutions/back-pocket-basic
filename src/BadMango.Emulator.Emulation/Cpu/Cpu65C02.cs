@@ -17,7 +17,7 @@ using BadMango.Emulator.Core;
 /// functional CPU core with basic instruction support.
 /// Optimized with aggressive inlining for maximum performance.
 /// </remarks>
-public class Cpu65C02 : ICpu
+public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
 {
     // Processor status flags
     private const byte FlagC = 0x01; // Carry
@@ -106,9 +106,9 @@ public class Cpu65C02 : ICpu
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public CpuState GetState()
+    public Cpu65C02Registers GetRegisters()
     {
-        return new CpuState
+        return new Cpu65C02Registers
         {
             A = a,
             X = x,
@@ -116,13 +116,31 @@ public class Cpu65C02 : ICpu
             S = s,
             P = p,
             PC = pc,
+        };
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Cpu65C02State GetState()
+    {
+        return new Cpu65C02State
+        {
+            Registers = new Cpu65C02Registers
+            {
+                A = a,
+                X = x,
+                Y = y,
+                S = s,
+                P = p,
+                PC = pc,
+            },
             Cycles = cycles,
         };
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetState(CpuState state)
+    public void SetState(Cpu65C02State state)
     {
         a = state.A;
         x = state.X;

@@ -208,7 +208,7 @@ public class Cpu65C02Tests
     public void GetState_SetState_WorkCorrectly()
     {
         // Arrange
-        var originalState = new CpuState
+        var originalState = new Cpu65C02State
         {
             A = 0x42,
             X = 0x10,
@@ -274,5 +274,31 @@ public class Cpu65C02Tests
         // Assert
         var state = cpu.GetState();
         Assert.That(state.Cycles, Is.EqualTo(2 + 2 + 3));
+    }
+
+    /// <summary>
+    /// Verifies that GetRegisters returns only register state without cycle count.
+    /// </summary>
+    [Test]
+    public void GetRegisters_ReturnsRegisterStateOnly()
+    {
+        // Arrange
+        memory.WriteWord(0xFFFC, 0x1000);
+        memory.Write(0x1000, 0xA9); // LDA #$42
+        memory.Write(0x1001, 0x42);
+        cpu.Reset();
+        cpu.Step();
+
+        // Act
+        var registers = cpu.GetRegisters();
+
+        // Assert
+        Assert.That(registers.A, Is.EqualTo(0x42));
+        Assert.That(registers.PC, Is.EqualTo(0x1002));
+        Assert.That(registers.S, Is.EqualTo(0xFD));
+
+        // Verify the registers struct doesn't have a Cycles property
+        var registersType = typeof(Cpu65C02Registers);
+        Assert.That(registersType.GetProperty("Cycles"), Is.Null);
     }
 }

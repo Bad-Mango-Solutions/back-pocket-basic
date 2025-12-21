@@ -1,4 +1,4 @@
-// <copyright file="CpuState.cs" company="Bad Mango Solutions">
+// <copyright file="Cpu65C02Registers.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -7,15 +7,14 @@ namespace BadMango.Emulator.Core;
 using System.Runtime.InteropServices;
 
 /// <summary>
-/// Represents the complete state of a 6502-family CPU.
+/// Represents the register state of a 65C02 CPU.
 /// </summary>
 /// <remarks>
-/// This structure captures all CPU registers and execution state for
-/// save states, debugging, and state inspection purposes.
+/// This structure contains only the CPU registers, separate from execution state like cycle count.
 /// Uses explicit layout for optimal memory packing.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct CpuState
+public struct Cpu65C02Registers
 {
     /// <summary>
     /// Gets or sets the Accumulator register (A).
@@ -46,9 +45,4 @@ public struct CpuState
     /// Gets or sets the Program Counter (PC).
     /// </summary>
     public ushort PC { get; set; }
-
-    /// <summary>
-    /// Gets or sets the total number of cycles executed.
-    /// </summary>
-    public ulong Cycles { get; set; }
 }

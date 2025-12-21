@@ -14,7 +14,7 @@ using BadMango.Emulator.Core;
 /// for backward compatibility with 6502 code. This will be the foundation for
 /// Apple IIgs system emulation.
 /// </remarks>
-public class Cpu65816 : ICpu
+public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
 {
     /// <inheritdoc/>
     public bool Halted => throw new NotImplementedException();
@@ -38,13 +38,19 @@ public class Cpu65816 : ICpu
     }
 
     /// <inheritdoc/>
-    public CpuState GetState()
+    public Cpu65816Registers GetRegisters()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public void SetState(CpuState state)
+    public Cpu65816State GetState()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SetState(Cpu65816State state)
     {
         throw new NotImplementedException();
     }
