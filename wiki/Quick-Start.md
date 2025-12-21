@@ -41,13 +41,13 @@ dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj --
 Or after building, use the executable directly:
 
 ```bash
-./src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console <basic-file>
+./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic <basic-file>
 ```
 
 For the release build:
 
 ```bash
-./src/BadMango.Basic.Console/bin/Release/net10.0/BadMango.Basic.Console <basic-file>
+./src/BadMango.Basic.Console/bin/Release/net10.0/bpbasic <basic-file>
 ```
 
 ## Try the Sample Programs

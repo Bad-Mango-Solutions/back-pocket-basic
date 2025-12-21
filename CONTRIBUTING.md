@@ -1,6 +1,6 @@
-# Contributing to BackPocket BASIC Interpreter
+# Contributing to BackPocketBASIC Interpreter
 
-Thank you for your interest in contributing to the BackPocket BASIC Interpreter! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the BackPocketBASIC Interpreter! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 

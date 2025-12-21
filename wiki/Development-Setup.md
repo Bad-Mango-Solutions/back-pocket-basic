@@ -303,7 +303,7 @@ dotnet test BackPocketBasic.slnx --collect:"XPlat Code Coverage"
 dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
 
 # Or run the built executable
-./src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console samples/demo.bas
+./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/demo.bas
 ```
 
 ## Code Quality Tools
@@ -350,7 +350,7 @@ Project includes `.editorconfig` with code style rules:
       "name": "Debug Console App",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/BadMango.Basic.Console/bin/Debug/net10.0/BadMango.Basic.Console.dll",
+      "program": "${workspaceFolder}/src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic.dll",
       "args": ["samples/demo.bas"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false

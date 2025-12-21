@@ -258,7 +258,7 @@ See [6502 Emulation](6502-Emulation) for details.
 
 **Usage**:
 ```bash
-BadMango.Basic.Console <basic-file>
+bpbasic <basic-file>
 ```
 
 ---
