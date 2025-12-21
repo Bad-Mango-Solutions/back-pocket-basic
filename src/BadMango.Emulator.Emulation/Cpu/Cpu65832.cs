@@ -14,7 +14,7 @@ using BadMango.Emulator.Core;
 /// exploring what a modern evolution of the 6502 family might look like
 /// while maintaining backward compatibility principles.
 /// </remarks>
-public class Cpu65832 : ICpu
+public class Cpu65832 : ICpu<Cpu65832Registers, Cpu65832State>
 {
     /// <inheritdoc/>
     public bool Halted => throw new NotImplementedException();
@@ -26,13 +26,31 @@ public class Cpu65832 : ICpu
     }
 
     /// <inheritdoc/>
-    public void Execute(int startAddress)
+    public void Execute(uint startAddress)
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
     public void Reset()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Cpu65832Registers GetRegisters()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Cpu65832State GetState()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SetState(Cpu65832State state)
     {
         throw new NotImplementedException();
     }
