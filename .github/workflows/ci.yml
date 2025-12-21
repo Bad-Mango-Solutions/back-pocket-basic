@@ -27,10 +27,10 @@ jobs:
         dotnet-version: '10.0.x'
         
     - name: Restore dependencies
-      run: dotnet restore ApplesoftBasic.slnx
+      run: dotnet restore BackPocketBasic.slnx
       
     - name: Build
-      run: dotnet build ApplesoftBasic.slnx --configuration Release --no-restore
+      run: dotnet build BackPocketBasic.slnx --configuration Release --no-restore
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -59,10 +59,10 @@ jobs:
         dotnet-version: '10.0.x'
         
     - name: Restore dependencies
-      run: dotnet restore ApplesoftBasic.slnx
+      run: dotnet restore BackPocketBasic.slnx
       
     - name: Run tests
-      run: dotnet test ApplesoftBasic.slnx --configuration Release --no-restore --verbosity normal --logger trx --results-directory ./test-results --collect "XPlat Code Coverage"
+      run: dotnet test BackPocketBasic.slnx --configuration Release --no-restore --verbosity normal --logger trx --results-directory ./test-results --collect "XPlat Code Coverage"
 
     - name: Upload test results
       if: always()
@@ -96,10 +96,10 @@ jobs:
         dotnet-version: '10.0.x'
         
     - name: Restore dependencies
-      run: dotnet restore ApplesoftBasic.slnx
+      run: dotnet restore BackPocketBasic.slnx
       
     - name: Build for analysis
-      run: dotnet build ApplesoftBasic.slnx --configuration Debug --no-restore
+      run: dotnet build BackPocketBasic.slnx --configuration Debug --no-restore
       
     # Add additional code quality tools here as needed
     # Examples: dotnet format, SonarCloud, etc.
