@@ -1029,7 +1029,7 @@ public class NewInstructionsTests
     public void WAI_HaltsProcessor()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Halted = false, P = 0x00, Cycles = 10 };
+        var state = new Cpu65C02State { PC = 0x1000, HaltReason = HaltState.None, P = 0x00, Cycles = 10 };
 
         // Act
         var handler = Instructions.WAI(AddressingModes.Implied);
@@ -1046,7 +1046,7 @@ public class NewInstructionsTests
     public void STP_HaltsProcessor()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Halted = false, P = 0x00, Cycles = 10 };
+        var state = new Cpu65C02State { PC = 0x1000, HaltReason = HaltState.None, P = 0x00, Cycles = 10 };
 
         // Act
         var handler = Instructions.STP(AddressingModes.Implied);

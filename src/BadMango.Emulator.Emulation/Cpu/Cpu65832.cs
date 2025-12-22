@@ -4,7 +4,9 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using BadMango.Emulator.Core;
+using System.Diagnostics.CodeAnalysis;
+
+using Core;
 
 /// <summary>
 /// Placeholder for hypothetical 65832 CPU emulator (32-bit extension).
@@ -14,6 +16,7 @@ using BadMango.Emulator.Core;
 /// exploring what a modern evolution of the 6502 family might look like
 /// while maintaining backward compatibility principles.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 public class Cpu65832 : ICpu<Cpu65832Registers, Cpu65832State>
 {
     /// <inheritdoc/>
@@ -51,6 +54,18 @@ public class Cpu65832 : ICpu<Cpu65832Registers, Cpu65832State>
 
     /// <inheritdoc/>
     public void SetState(Cpu65832State state)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SignalIRQ()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SignalNMI()
     {
         throw new NotImplementedException();
     }

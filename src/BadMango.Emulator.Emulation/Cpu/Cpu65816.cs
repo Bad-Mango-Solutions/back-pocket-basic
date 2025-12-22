@@ -4,7 +4,9 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using BadMango.Emulator.Core;
+using System.Diagnostics.CodeAnalysis;
+
+using Core;
 
 /// <summary>
 /// Placeholder for WDC 65816 CPU emulator (Apple IIgs processor).
@@ -14,6 +16,7 @@ using BadMango.Emulator.Core;
 /// for backward compatibility with 6502 code. This will be the foundation for
 /// Apple IIgs system emulation.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
 {
     /// <inheritdoc/>
@@ -51,6 +54,18 @@ public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
 
     /// <inheritdoc/>
     public void SetState(Cpu65816State state)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SignalIRQ()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SignalNMI()
     {
         throw new NotImplementedException();
     }

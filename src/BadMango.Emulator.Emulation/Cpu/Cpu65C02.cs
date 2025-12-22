@@ -6,7 +6,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution.
@@ -19,33 +19,12 @@ using BadMango.Emulator.Core;
 /// </remarks>
 public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
 {
-    // Processor status flags
-    private const byte FlagC = 0x01; // Carry
-    private const byte FlagZ = 0x02; // Zero
-    private const byte FlagI = 0x04; // Interrupt Disable
-    private const byte FlagD = 0x08; // Decimal Mode
-    private const byte FlagB = 0x10; // Break
-    private const byte FlagU = 0x20; // Unused (always 1)
-    private const byte FlagV = 0x40; // Overflow
-    private const byte FlagN = 0x80; // Negative
-
-    // Reset vector address
-    private const Word ResetVector = 0xFFFC;
-
-    // Stack base address
-    private const Word StackBase = 0x0100;
-
     private readonly IMemory memory;
     private readonly OpcodeTable<Cpu65C02, Cpu65C02State> opcodeTable;
 
-    private byte a;  // Accumulator
-    private byte x;  // X register
-    private byte y;  // Y register
-    private byte s;  // Stack pointer
-    private byte p;  // Processor status
-    private Word pc; // Program counter
-    private ulong cycles; // Total cycles executed
-    private bool halted;
+    private Cpu65C02State state; // CPU state including all registers, cycles, and halt state
+    private bool irqPending;
+    private bool nmiPending;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class.
@@ -61,58 +40,65 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     public bool Halted
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => halted;
+        get => state.Halted;
     }
 
     /// <inheritdoc/>
     public void Reset()
     {
-        a = 0;
-        x = 0;
-        y = 0;
-        s = 0xFD;
-        p = FlagU | FlagI; // Unused flag always set, interrupts disabled
-        pc = memory.ReadWord(ResetVector);
-        cycles = 0;
-        halted = false;
+        state = new Cpu65C02State
+        {
+            Registers = new Cpu65C02Registers
+            {
+                A = 0,
+                X = 0,
+                Y = 0,
+                SP = 0xFD,
+                P = (byte)(Cpu65C02Constants.FlagU | Cpu65C02Constants.FlagI), // Unused flag always set, interrupts disabled
+                PC = memory.ReadWord(Cpu65C02Constants.ResetVector),
+            },
+            Cycles = 0,
+            HaltReason = HaltState.None,
+        };
+        irqPending = false;
+        nmiPending = false;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Step()
     {
-        if (halted)
+        ulong cyclesBefore = state.Cycles;
+
+        // Check for pending interrupts at instruction boundary
+        // Note: We check even when halted because WAI can resume on interrupts
+        bool interruptProcessed = CheckInterrupts();
+        if (interruptProcessed)
+        {
+            // Interrupt was processed, cycles were updated by ProcessInterrupt
+            return (int)(state.Cycles - cyclesBefore);
+        }
+
+        if (Halted)
         {
             return 0;
         }
 
-        ulong cyclesBefore = cycles;
         byte opcode = FetchByte();
 
-        // Create state snapshot after opcode fetch
-        var state = GetState();
+        // Execute opcode with state
         opcodeTable.Execute(opcode, this, memory, ref state);
 
-        // Update CPU state from modified state structure
-        pc = state.PC;
-        cycles = state.Cycles;
-        a = state.A;
-        x = state.X;
-        y = state.Y;
-        s = state.SP;
-        p = state.P;
-        halted = state.Halted;
-
-        return (int)(cycles - cyclesBefore);
+        return (int)(state.Cycles - cyclesBefore);
     }
 
     /// <inheritdoc/>
     public void Execute(uint startAddress)
     {
-        pc = (Word)startAddress;
-        halted = false;
+        state.PC = (Word)startAddress;
+        state.HaltReason = HaltState.None;
 
-        while (!halted)
+        while (!Halted)
         {
             Step();
         }
@@ -122,56 +108,124 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Cpu65C02Registers GetRegisters()
     {
-        return new Cpu65C02Registers
-        {
-            A = a,
-            X = x,
-            Y = y,
-            SP = s,
-            P = p,
-            PC = pc,
-        };
+        return state.Registers;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Cpu65C02State GetState()
     {
-        return new Cpu65C02State
-        {
-            Registers = new Cpu65C02Registers
-            {
-                A = a,
-                X = x,
-                Y = y,
-                SP = s,
-                P = p,
-                PC = pc,
-            },
-            Cycles = cycles,
-            Halted = halted,
-        };
+        return state;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetState(Cpu65C02State state)
+    public void SetState(Cpu65C02State newState)
     {
-        a = state.A;
-        x = state.X;
-        y = state.Y;
-        s = state.SP;
-        p = state.P;
-        pc = state.PC;
-        cycles = state.Cycles;
-        halted = state.Halted;
+        state = newState;
+    }
+
+    /// <inheritdoc/>
+    public void SignalIRQ()
+    {
+        irqPending = true;
+    }
+
+    /// <inheritdoc/>
+    public void SignalNMI()
+    {
+        nmiPending = true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
-        byte value = memory.Read(pc++);
-        cycles++;
+        byte value = memory.Read(state.PC++);
+        state.Cycles++;
         return value;
+    }
+
+    /// <summary>
+    /// Checks for pending interrupts and processes them if applicable.
+    /// </summary>
+    /// <returns>True if an interrupt was processed, false otherwise.</returns>
+    /// <remarks>
+    /// NMI has priority over IRQ. IRQ is maskable via the I flag.
+    /// If the CPU is in WAI state, interrupts will resume execution.
+    /// STP state cannot be resumed by interrupts.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool CheckInterrupts()
+    {
+        // STP cannot be resumed by interrupts
+        if (state.HaltReason == HaltState.Stp)
+        {
+            return false;
+        }
+
+        // Check for NMI (non-maskable, highest priority)
+        if (nmiPending)
+        {
+            nmiPending = false;
+
+            // Resume from WAI if halted
+            if (state.HaltReason == HaltState.Wai)
+            {
+                state.HaltReason = HaltState.None;
+            }
+
+            ProcessInterrupt(Cpu65C02Constants.NmiVector);
+            return true;
+        }
+
+        // Check for IRQ (maskable by I flag)
+        if (irqPending && (state.P & Cpu65C02Constants.FlagI) == 0)
+        {
+            irqPending = false;
+
+            // Resume from WAI if halted
+            if (state.HaltReason == HaltState.Wai)
+            {
+                state.HaltReason = HaltState.None;
+            }
+
+            ProcessInterrupt(Cpu65C02Constants.IrqVector);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Processes an interrupt by pushing state to the stack and loading the interrupt vector.
+    /// </summary>
+    /// <param name="vector">The address of the interrupt vector to load.</param>
+    /// <remarks>
+    /// Interrupt processing:
+    /// 1. Push PC high byte to stack
+    /// 2. Push PC low byte to stack
+    /// 3. Push processor status (with B flag clear) to stack
+    /// 4. Set I flag to disable interrupts
+    /// 5. Load PC from interrupt vector
+    /// Total: 7 cycles (handled by caller).
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ProcessInterrupt(Addr vector)
+    {
+        // Push PC to stack (high byte first)
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC >> 8));
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC & 0xFF));
+
+        // Push processor status (with B flag clear for hardware interrupts)
+        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.P & ~Cpu65C02Constants.FlagB));
+
+        // Set I flag to disable further IRQs
+        state.P |= Cpu65C02Constants.FlagI;
+
+        // Load PC from interrupt vector
+        state.PC = memory.ReadWord(vector);
+
+        // Account for 7 cycles for interrupt processing
+        state.Cycles += 7;
     }
 }

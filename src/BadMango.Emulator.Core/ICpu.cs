@@ -62,4 +62,34 @@ public interface ICpu<TRegisters, TState>
     /// </summary>
     /// <param name="state">The state structure containing register values, cycle count, and other execution state to restore.</param>
     void SetState(TState state);
+
+    /// <summary>
+    /// Signals an IRQ (Interrupt Request) to the CPU.
+    /// </summary>
+    /// <remarks>
+    /// IRQ is a maskable interrupt that can be disabled by setting the I (Interrupt Disable) flag.
+    /// When an IRQ is signaled and the I flag is clear, the CPU will:
+    /// - Complete the current instruction
+    /// - Push PC and processor status to the stack
+    /// - Set the I flag to disable further interrupts
+    /// - Load PC from the IRQ vector at $FFFE-$FFFF
+    /// If the CPU is in WAI state, it will resume and process the interrupt.
+    /// IRQ has lower priority than NMI.
+    /// </remarks>
+    void SignalIRQ();
+
+    /// <summary>
+    /// Signals an NMI (Non-Maskable Interrupt) to the CPU.
+    /// </summary>
+    /// <remarks>
+    /// NMI is a non-maskable interrupt that cannot be disabled by the I flag.
+    /// When an NMI is signaled, the CPU will:
+    /// - Complete the current instruction
+    /// - Push PC and processor status to the stack
+    /// - Set the I flag to disable IRQ interrupts
+    /// - Load PC from the NMI vector at $FFFA-$FFFB
+    /// If the CPU is in WAI state, it will resume and process the interrupt.
+    /// NMI has higher priority than IRQ.
+    /// </remarks>
+    void SignalNMI();
 }

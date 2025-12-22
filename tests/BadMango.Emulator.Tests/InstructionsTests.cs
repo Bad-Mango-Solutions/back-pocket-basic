@@ -594,8 +594,8 @@ public class InstructionsTests
         // Check I flag set
         Assert.That(state.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
 
-        // Check halted
-        Assert.That(state.Halted, Is.True, "CPU should be halted after BRK");
+        // BRK does not halt - execution continues from interrupt vector
+        Assert.That(state.Halted, Is.False, "CPU should not be halted after BRK");
     }
 
     /// <summary>
@@ -649,7 +649,7 @@ public class InstructionsTests
         // Assert
         state = cpu.GetState();
         Assert.That(state.PC, Is.EqualTo(0xA000), "Should jump to interrupt vector");
-        Assert.That(state.Halted, Is.True, "Should be halted");
+        Assert.That(state.Halted, Is.False, "Should not be halted - execution continues from interrupt vector");
         Assert.That(state.SP, Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");
     }
 

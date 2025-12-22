@@ -26,9 +26,22 @@ public interface ICpuState<TRegisters, TAccumulator, TIndex, TStack, TProgram>
     ulong Cycles { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the CPU is halted.
+    /// Gets a value indicating whether the CPU is halted.
     /// </summary>
-    bool Halted { get; set; }
+    /// <remarks>
+    /// This property returns true if the CPU is in any halt state.
+    /// For more granular halt state information, use <see cref="HaltReason"/>.
+    /// </remarks>
+    bool Halted { get; }
+
+    /// <summary>
+    /// Gets or sets the reason the CPU is halted.
+    /// </summary>
+    /// <remarks>
+    /// Distinguishes between different halt states such as BRK, WAI, STP, or running (None).
+    /// This enables accurate emulation of hardware behavior for each halt condition.
+    /// </remarks>
+    HaltState HaltReason { get; set; }
 
     /// <summary>
     /// Gets or sets the Accumulator register (A).

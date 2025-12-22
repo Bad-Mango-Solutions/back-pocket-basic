@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// Builds the opcode table for the 65C02 CPU using compositional pattern.
@@ -257,6 +257,6 @@ public static class Cpu65C02OpcodeTableBuilder
     /// </summary>
     private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
     {
-        state.Halted = true; // Halt on illegal opcode
+        state.HaltReason = HaltState.Stp; // Halt on illegal opcode (stop execution)
     }
 }
