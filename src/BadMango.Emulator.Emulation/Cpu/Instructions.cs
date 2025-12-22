@@ -7,7 +7,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Runtime.CompilerServices;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// Provides instruction implementations that compose with addressing modes.

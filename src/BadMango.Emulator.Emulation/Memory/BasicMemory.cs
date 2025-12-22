@@ -6,7 +6,7 @@ namespace BadMango.Emulator.Emulation.Memory;
 
 using System.Runtime.CompilerServices;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// Simple memory implementation for emulated systems.

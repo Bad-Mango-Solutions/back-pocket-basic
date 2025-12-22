@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// Delegate representing an addressing mode that computes an effective address.
