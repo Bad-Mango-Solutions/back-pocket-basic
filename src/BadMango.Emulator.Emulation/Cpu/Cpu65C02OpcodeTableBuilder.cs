@@ -253,6 +253,243 @@ public static class Cpu65C02OpcodeTableBuilder
     }
 
     /// <summary>
+    /// Builds the opcode table for the 65C02 CPU using the new generic builder pattern.
+    /// </summary>
+    /// <returns>An <see cref="OpcodeTable{TCpu, TState}"/> configured for the 65C02 CPU.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method demonstrates using the new generic builder pattern (<see cref="GenericOpcodeTableBuilder{TCpu, TRegisters, TAccumulator, TIndex, TStack, TProgram, TState}"/>)
+    /// which provides a cleaner API and supports multiple CPU types.
+    /// </para>
+    /// <para>
+    /// Currently, only a subset of instructions are implemented in the generic system.
+    /// This method uses the generic implementations where available and falls back to
+    /// the original non-generic implementations for the rest, demonstrating both approaches
+    /// working together.
+    /// </para>
+    /// </remarks>
+    public static OpcodeTable<Cpu65C02, Cpu65C02State> BuildWithGenericPattern()
+    {
+        var handlers = new OpcodeHandler<Cpu65C02, Cpu65C02State>[256];
+
+        // Initialize all opcodes to illegal opcode handler
+        for (int i = 0; i < 256; i++)
+        {
+            handlers[i] = IllegalOpcode;
+        }
+
+        // Create the generic builder for clean API
+        var builder = OpcodeTableBuilders.ForCpu65C02();
+
+        // BRK - Force Break (using original implementation as it's not yet in generic)
+        handlers[0x00] = Instructions.BRK(AddressingModes.Implied);
+
+        // LDA - Load Accumulator (using NEW generic builder pattern!)
+        handlers[0xA9] = builder.Instructions.LDA(builder.AddressingModes.Immediate);
+        handlers[0xA5] = builder.Instructions.LDA(builder.AddressingModes.ZeroPage);
+        handlers[0xB5] = builder.Instructions.LDA(builder.AddressingModes.ZeroPageX);
+        handlers[0xAD] = builder.Instructions.LDA(builder.AddressingModes.Absolute);
+        handlers[0xBD] = builder.Instructions.LDA(builder.AddressingModes.AbsoluteX);
+        handlers[0xB9] = builder.Instructions.LDA(builder.AddressingModes.AbsoluteY);
+        handlers[0xA1] = builder.Instructions.LDA(builder.AddressingModes.IndirectX);
+        handlers[0xB1] = builder.Instructions.LDA(builder.AddressingModes.IndirectY);
+
+        // STA - Store Accumulator (using NEW generic builder pattern!)
+        handlers[0x85] = builder.Instructions.STA(builder.AddressingModes.ZeroPage);
+        handlers[0x95] = builder.Instructions.STA(builder.AddressingModes.ZeroPageX);
+        handlers[0x8D] = builder.Instructions.STA(builder.AddressingModes.Absolute);
+        handlers[0x9D] = builder.Instructions.STA(builder.AddressingModes.AbsoluteXWrite);
+        handlers[0x99] = builder.Instructions.STA(builder.AddressingModes.AbsoluteYWrite);
+        handlers[0x81] = builder.Instructions.STA(builder.AddressingModes.IndirectX);
+        handlers[0x91] = builder.Instructions.STA(builder.AddressingModes.IndirectYWrite);
+
+        // LDX - Load X Register (using NEW generic builder pattern!)
+        handlers[0xA2] = builder.Instructions.LDX(builder.AddressingModes.Immediate);
+        handlers[0xA6] = builder.Instructions.LDX(builder.AddressingModes.ZeroPage);
+        handlers[0xB6] = builder.Instructions.LDX(builder.AddressingModes.ZeroPageY);
+        handlers[0xAE] = builder.Instructions.LDX(builder.AddressingModes.Absolute);
+        handlers[0xBE] = builder.Instructions.LDX(builder.AddressingModes.AbsoluteY);
+
+        // LDY - Load Y Register (using NEW generic builder pattern!)
+        handlers[0xA0] = builder.Instructions.LDY(builder.AddressingModes.Immediate);
+        handlers[0xA4] = builder.Instructions.LDY(builder.AddressingModes.ZeroPage);
+        handlers[0xB4] = builder.Instructions.LDY(builder.AddressingModes.ZeroPageX);
+        handlers[0xAC] = builder.Instructions.LDY(builder.AddressingModes.Absolute);
+        handlers[0xBC] = builder.Instructions.LDY(builder.AddressingModes.AbsoluteX);
+
+        // STX - Store X Register (using NEW generic builder pattern!)
+        handlers[0x86] = builder.Instructions.STX(builder.AddressingModes.ZeroPage);
+        handlers[0x96] = builder.Instructions.STX(builder.AddressingModes.ZeroPageY);
+        handlers[0x8E] = builder.Instructions.STX(builder.AddressingModes.Absolute);
+
+        // STY - Store Y Register (using NEW generic builder pattern!)
+        handlers[0x84] = builder.Instructions.STY(builder.AddressingModes.ZeroPage);
+        handlers[0x94] = builder.Instructions.STY(builder.AddressingModes.ZeroPageX);
+        handlers[0x8C] = builder.Instructions.STY(builder.AddressingModes.Absolute);
+
+        // NOP - No Operation (using NEW generic builder pattern!)
+        handlers[0xEA] = builder.Instructions.NOP(builder.AddressingModes.Implied);
+
+        // Remaining instructions use the original non-generic implementations
+        // until they are ported to the generic system
+
+        // Flag manipulation instructions (all use Implied addressing)
+        handlers[0x18] = Instructions.CLC(AddressingModes.Implied); // Clear Carry
+        handlers[0x38] = Instructions.SEC(AddressingModes.Implied); // Set Carry
+        handlers[0x58] = Instructions.CLI(AddressingModes.Implied); // Clear Interrupt Disable
+        handlers[0x78] = Instructions.SEI(AddressingModes.Implied); // Set Interrupt Disable
+        handlers[0xD8] = Instructions.CLD(AddressingModes.Implied); // Clear Decimal
+        handlers[0xF8] = Instructions.SED(AddressingModes.Implied); // Set Decimal
+        handlers[0xB8] = Instructions.CLV(AddressingModes.Implied); // Clear Overflow
+
+        // Register Transfer Operations
+        handlers[0xAA] = Instructions.TAX(AddressingModes.Implied); // Transfer A to X
+        handlers[0xA8] = Instructions.TAY(AddressingModes.Implied); // Transfer A to Y
+        handlers[0x8A] = Instructions.TXA(AddressingModes.Implied); // Transfer X to A
+        handlers[0x98] = Instructions.TYA(AddressingModes.Implied); // Transfer Y to A
+        handlers[0xBA] = Instructions.TSX(AddressingModes.Implied); // Transfer SP to X
+        handlers[0x9A] = Instructions.TXS(AddressingModes.Implied); // Transfer X to SP
+
+        // Stack Operations
+        handlers[0x48] = Instructions.PHA(AddressingModes.Implied); // Push A
+        handlers[0x68] = Instructions.PLA(AddressingModes.Implied); // Pull A
+        handlers[0x08] = Instructions.PHP(AddressingModes.Implied); // Push P
+        handlers[0x28] = Instructions.PLP(AddressingModes.Implied); // Pull P
+
+        // Increment/Decrement
+        handlers[0xE8] = Instructions.INX(AddressingModes.Implied); // Increment X
+        handlers[0xC8] = Instructions.INY(AddressingModes.Implied); // Increment Y
+        handlers[0xCA] = Instructions.DEX(AddressingModes.Implied); // Decrement X
+        handlers[0x88] = Instructions.DEY(AddressingModes.Implied); // Decrement Y
+
+        handlers[0xE6] = Instructions.INC(AddressingModes.ZeroPage);
+        handlers[0xF6] = Instructions.INC(AddressingModes.ZeroPageX);
+        handlers[0xEE] = Instructions.INC(AddressingModes.Absolute);
+        handlers[0xFE] = Instructions.INC(AddressingModes.AbsoluteX);
+
+        handlers[0xC6] = Instructions.DEC(AddressingModes.ZeroPage);
+        handlers[0xD6] = Instructions.DEC(AddressingModes.ZeroPageX);
+        handlers[0xCE] = Instructions.DEC(AddressingModes.Absolute);
+        handlers[0xDE] = Instructions.DEC(AddressingModes.AbsoluteX);
+
+        // Arithmetic Operations
+        handlers[0x69] = Instructions.ADC(AddressingModes.Immediate);
+        handlers[0x65] = Instructions.ADC(AddressingModes.ZeroPage);
+        handlers[0x75] = Instructions.ADC(AddressingModes.ZeroPageX);
+        handlers[0x6D] = Instructions.ADC(AddressingModes.Absolute);
+        handlers[0x7D] = Instructions.ADC(AddressingModes.AbsoluteX);
+        handlers[0x79] = Instructions.ADC(AddressingModes.AbsoluteY);
+        handlers[0x61] = Instructions.ADC(AddressingModes.IndirectX);
+        handlers[0x71] = Instructions.ADC(AddressingModes.IndirectY);
+
+        handlers[0xE9] = Instructions.SBC(AddressingModes.Immediate);
+        handlers[0xE5] = Instructions.SBC(AddressingModes.ZeroPage);
+        handlers[0xF5] = Instructions.SBC(AddressingModes.ZeroPageX);
+        handlers[0xED] = Instructions.SBC(AddressingModes.Absolute);
+        handlers[0xFD] = Instructions.SBC(AddressingModes.AbsoluteX);
+        handlers[0xF9] = Instructions.SBC(AddressingModes.AbsoluteY);
+        handlers[0xE1] = Instructions.SBC(AddressingModes.IndirectX);
+        handlers[0xF1] = Instructions.SBC(AddressingModes.IndirectY);
+
+        // Logical Operations
+        handlers[0x29] = Instructions.AND(AddressingModes.Immediate);
+        handlers[0x25] = Instructions.AND(AddressingModes.ZeroPage);
+        handlers[0x35] = Instructions.AND(AddressingModes.ZeroPageX);
+        handlers[0x2D] = Instructions.AND(AddressingModes.Absolute);
+        handlers[0x3D] = Instructions.AND(AddressingModes.AbsoluteX);
+        handlers[0x39] = Instructions.AND(AddressingModes.AbsoluteY);
+        handlers[0x21] = Instructions.AND(AddressingModes.IndirectX);
+        handlers[0x31] = Instructions.AND(AddressingModes.IndirectY);
+
+        handlers[0x09] = Instructions.ORA(AddressingModes.Immediate);
+        handlers[0x05] = Instructions.ORA(AddressingModes.ZeroPage);
+        handlers[0x15] = Instructions.ORA(AddressingModes.ZeroPageX);
+        handlers[0x0D] = Instructions.ORA(AddressingModes.Absolute);
+        handlers[0x1D] = Instructions.ORA(AddressingModes.AbsoluteX);
+        handlers[0x19] = Instructions.ORA(AddressingModes.AbsoluteY);
+        handlers[0x01] = Instructions.ORA(AddressingModes.IndirectX);
+        handlers[0x11] = Instructions.ORA(AddressingModes.IndirectY);
+
+        handlers[0x49] = Instructions.EOR(AddressingModes.Immediate);
+        handlers[0x45] = Instructions.EOR(AddressingModes.ZeroPage);
+        handlers[0x55] = Instructions.EOR(AddressingModes.ZeroPageX);
+        handlers[0x4D] = Instructions.EOR(AddressingModes.Absolute);
+        handlers[0x5D] = Instructions.EOR(AddressingModes.AbsoluteX);
+        handlers[0x59] = Instructions.EOR(AddressingModes.AbsoluteY);
+        handlers[0x41] = Instructions.EOR(AddressingModes.IndirectX);
+        handlers[0x51] = Instructions.EOR(AddressingModes.IndirectY);
+
+        handlers[0x24] = Instructions.BIT(AddressingModes.ZeroPage);
+        handlers[0x2C] = Instructions.BIT(AddressingModes.Absolute);
+
+        // Comparison Operations
+        handlers[0xC9] = Instructions.CMP(AddressingModes.Immediate);
+        handlers[0xC5] = Instructions.CMP(AddressingModes.ZeroPage);
+        handlers[0xD5] = Instructions.CMP(AddressingModes.ZeroPageX);
+        handlers[0xCD] = Instructions.CMP(AddressingModes.Absolute);
+        handlers[0xDD] = Instructions.CMP(AddressingModes.AbsoluteX);
+        handlers[0xD9] = Instructions.CMP(AddressingModes.AbsoluteY);
+        handlers[0xC1] = Instructions.CMP(AddressingModes.IndirectX);
+        handlers[0xD1] = Instructions.CMP(AddressingModes.IndirectY);
+
+        handlers[0xE0] = Instructions.CPX(AddressingModes.Immediate);
+        handlers[0xE4] = Instructions.CPX(AddressingModes.ZeroPage);
+        handlers[0xEC] = Instructions.CPX(AddressingModes.Absolute);
+
+        handlers[0xC0] = Instructions.CPY(AddressingModes.Immediate);
+        handlers[0xC4] = Instructions.CPY(AddressingModes.ZeroPage);
+        handlers[0xCC] = Instructions.CPY(AddressingModes.Absolute);
+
+        // Branch Instructions
+        handlers[0x90] = Instructions.BCC(AddressingModes.Relative); // Branch if Carry Clear
+        handlers[0xB0] = Instructions.BCS(AddressingModes.Relative); // Branch if Carry Set
+        handlers[0xF0] = Instructions.BEQ(AddressingModes.Relative); // Branch if Equal (Zero Set)
+        handlers[0xD0] = Instructions.BNE(AddressingModes.Relative); // Branch if Not Equal (Zero Clear)
+        handlers[0x30] = Instructions.BMI(AddressingModes.Relative); // Branch if Minus (Negative Set)
+        handlers[0x10] = Instructions.BPL(AddressingModes.Relative); // Branch if Plus (Negative Clear)
+        handlers[0x50] = Instructions.BVC(AddressingModes.Relative); // Branch if Overflow Clear
+        handlers[0x70] = Instructions.BVS(AddressingModes.Relative); // Branch if Overflow Set
+
+        // Jump/Subroutine Instructions
+        handlers[0x4C] = Instructions.JMP(AddressingModes.Absolute);  // Jump Absolute
+        handlers[0x6C] = Instructions.JMP(AddressingModes.Indirect);  // Jump Indirect
+        handlers[0x20] = Instructions.JSR(AddressingModes.Absolute);  // Jump to Subroutine
+        handlers[0x60] = Instructions.RTS(AddressingModes.Implied);   // Return from Subroutine
+        handlers[0x40] = Instructions.RTI(AddressingModes.Implied);   // Return from Interrupt
+
+        // 65C02-specific: WAI and STP
+        handlers[0xCB] = Instructions.WAI(AddressingModes.Implied);   // Wait for Interrupt
+        handlers[0xDB] = Instructions.STP(AddressingModes.Implied);   // Stop Processor
+
+        // Shift and Rotate Operations
+        handlers[0x0A] = Instructions.ASLa(AddressingModes.Accumulator);
+        handlers[0x06] = Instructions.ASL(AddressingModes.ZeroPage);
+        handlers[0x16] = Instructions.ASL(AddressingModes.ZeroPageX);
+        handlers[0x0E] = Instructions.ASL(AddressingModes.Absolute);
+        handlers[0x1E] = Instructions.ASL(AddressingModes.AbsoluteX);
+
+        handlers[0x4A] = Instructions.LSRa(AddressingModes.Accumulator);
+        handlers[0x46] = Instructions.LSR(AddressingModes.ZeroPage);
+        handlers[0x56] = Instructions.LSR(AddressingModes.ZeroPageX);
+        handlers[0x4E] = Instructions.LSR(AddressingModes.Absolute);
+        handlers[0x5E] = Instructions.LSR(AddressingModes.AbsoluteX);
+
+        handlers[0x2A] = Instructions.ROLa(AddressingModes.Accumulator);
+        handlers[0x26] = Instructions.ROL(AddressingModes.ZeroPage);
+        handlers[0x36] = Instructions.ROL(AddressingModes.ZeroPageX);
+        handlers[0x2E] = Instructions.ROL(AddressingModes.Absolute);
+        handlers[0x3E] = Instructions.ROL(AddressingModes.AbsoluteX);
+
+        handlers[0x6A] = Instructions.RORa(AddressingModes.Accumulator);
+        handlers[0x66] = Instructions.ROR(AddressingModes.ZeroPage);
+        handlers[0x76] = Instructions.ROR(AddressingModes.ZeroPageX);
+        handlers[0x6E] = Instructions.ROR(AddressingModes.Absolute);
+        handlers[0x7E] = Instructions.ROR(AddressingModes.AbsoluteX);
+
+        return new OpcodeTable<Cpu65C02, Cpu65C02State>(handlers);
+    }
+
+    /// <summary>
     /// Handles illegal/undefined opcodes by halting execution.
     /// </summary>
     private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)

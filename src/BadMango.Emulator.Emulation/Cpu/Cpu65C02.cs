@@ -33,7 +33,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     public Cpu65C02(IMemory memory)
     {
         this.memory = memory ?? throw new ArgumentNullException(nameof(memory));
-        opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        opcodeTable = Cpu65C02OpcodeTableBuilder.BuildWithGenericPattern();
     }
 
     /// <inheritdoc/>
