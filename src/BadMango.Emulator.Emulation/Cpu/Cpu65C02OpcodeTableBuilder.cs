@@ -257,6 +257,6 @@ public static class Cpu65C02OpcodeTableBuilder
     /// </summary>
     private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
     {
-        state.HaltReason = HaltState.Brk; // Halt on illegal opcode (treat as BRK)
+        state.HaltReason = HaltState.Stp; // Halt on illegal opcode (stop execution)
     }
 }
