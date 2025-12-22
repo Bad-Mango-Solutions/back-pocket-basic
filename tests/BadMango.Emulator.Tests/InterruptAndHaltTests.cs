@@ -402,7 +402,6 @@ public class InterruptAndHaltTests
         cpu.Step(); // Execute CLI
         cpu.SignalIRQ(); // Signal IRQ
         cpu.Step(); // Process IRQ
-        var stateBeforeRTI = cpu.GetState();
         cpu.Step(); // Execute RTI
 
         // Assert
