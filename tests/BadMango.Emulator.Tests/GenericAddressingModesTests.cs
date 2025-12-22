@@ -113,7 +113,7 @@ public class GenericAddressingModesTests
         Addr address = AddressingModesFor<Cpu65C02Registers, byte, byte, byte, Word>.ZeroPageX(memory, ref state);
 
         // Assert
-        Assert.That(address, Is.EqualTo(0x0010)); // 0xF0 + 0x20 = 0x110, wrapped to 0x10
+        Assert.That(address, Is.EqualTo(0x0010)); // (0xF0 + 0x20) & 0xFF = 0x10 (zero page wrap)
         Assert.That(state.PC, Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles (fetch + index)
     }

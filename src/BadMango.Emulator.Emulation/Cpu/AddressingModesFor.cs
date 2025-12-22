@@ -366,7 +366,11 @@ public static class AddressingModesFor<TRegisters, TAccumulator, TIndex, TStack,
         sbyte offset = (sbyte)memory.Read(pc);
         state.PC++;
         state.Cycles++; // 1 cycle to fetch the offset
-        Addr targetAddr = (Addr)(int)(pc + 1 + offset);
+
+        // Calculate target: current PC (after increment) + signed offset
+        // Using uint arithmetic to handle the signed offset correctly
+        Addr currentPC = uint.CreateTruncating(state.PC);
+        Addr targetAddr = (Addr)((int)currentPC + offset);
 
         // Branch instructions will add extra cycles if branch is taken
         return targetAddr;
@@ -396,4 +400,5 @@ public static class AddressingModesFor<TRegisters, TAccumulator, TIndex, TStack,
         return targetAddr;
     }
 }
+
 

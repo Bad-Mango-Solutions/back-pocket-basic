@@ -56,7 +56,9 @@ public static class AddressingModesHelpers
         // Additional addressing modes can be added as needed following the same pattern
     }
 
-    // NOTE: Cpu65816 and Cpu65832 helpers can be added once their register types
-    // implement ICpuRegisters<TAccumulator, TIndex, TStack, TProgram>
+    // TODO: Cpu65816 and Cpu65832 helpers should be added once their register types
+    // implement ICpuState<TRegisters, TAccumulator, TIndex, TStack, TProgram>.
+    // See GitHub issue for tracking this enhancement.
 }
+
 
