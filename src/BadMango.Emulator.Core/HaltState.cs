@@ -10,7 +10,6 @@ namespace BadMango.Emulator.Core;
 /// <remarks>
 /// The 65C02 CPU has different halt states with different resume conditions:
 /// - None: CPU is running normally
-/// - Brk: CPU halted by BRK instruction (software interrupt) - immediately processes interrupt
 /// - Wai: CPU halted by WAI instruction - resumes on IRQ or NMI
 /// - Stp: CPU halted by STP instruction - resumes only on hardware RESET.
 /// </remarks>
@@ -22,22 +21,13 @@ public enum HaltState : byte
     None = 0,
 
     /// <summary>
-    /// CPU halted by BRK instruction (software interrupt).
-    /// </summary>
-    /// <remarks>
-    /// BRK causes an immediate software interrupt and is typically used as a breakpoint.
-    /// The CPU processes the interrupt vector and continues execution.
-    /// </remarks>
-    Brk = 1,
-
-    /// <summary>
     /// CPU halted by WAI (Wait for Interrupt) instruction.
     /// </summary>
     /// <remarks>
     /// WAI puts the processor into a low-power state until an interrupt occurs.
     /// Resumes execution on IRQ (if I flag is clear) or NMI.
     /// </remarks>
-    Wai = 2,
+    Wai = 1,
 
     /// <summary>
     /// CPU halted by STP (Stop) instruction.
@@ -46,5 +36,5 @@ public enum HaltState : byte
     /// STP stops the processor permanently until a hardware reset occurs.
     /// This is the deepest halt state and cannot be resumed by interrupts.
     /// </remarks>
-    Stp = 3,
+    Stp = 2,
 }

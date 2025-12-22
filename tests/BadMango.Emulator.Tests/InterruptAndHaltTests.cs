@@ -339,24 +339,26 @@ public class InterruptAndHaltTests
     #region BRK Tests
 
     /// <summary>
-    /// Verifies that BRK sets the correct halt state.
+    /// Verifies that BRK does not halt the CPU.
     /// </summary>
     [Test]
-    public void BRK_SetsCorrectHaltState()
+    public void BRK_DoesNotHaltCpu()
     {
         // Arrange
         memory.WriteWord(0xFFFC, 0x1000);
         memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
         memory.Write(0x1000, 0x00);       // BRK
+        memory.Write(0x2000, 0xEA);       // NOP at IRQ handler
         cpu.Reset();
 
         // Act
-        cpu.Step();
+        cpu.Step(); // Execute BRK - jumps to IRQ vector
 
-        // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted");
+        // Assert - BRK should not halt, PC should be at IRQ vector
         var state = cpu.GetState();
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.Brk), "Halt reason should be BRK");
+        Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
+        Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
+        Assert.That(state.PC, Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>

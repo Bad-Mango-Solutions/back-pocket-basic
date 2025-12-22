@@ -234,21 +234,25 @@ public class Cpu65C02Tests
     }
 
     /// <summary>
-    /// Verifies that BRK halts the CPU.
+    /// Verifies that BRK does not halt the CPU.
     /// </summary>
     [Test]
-    public void BRK_HaltsCpu()
+    public void BRK_DoesNotHaltCpu()
     {
         // Arrange
         memory.WriteWord(0xFFFC, 0x1000);
+        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
         memory.Write(0x1000, 0x00); // BRK
+        memory.Write(0x2000, 0xEA); // NOP at IRQ handler
         cpu.Reset();
 
         // Act
         cpu.Step();
 
-        // Assert
-        Assert.That(cpu.Halted, Is.True);
+        // Assert - BRK should not halt, execution continues from IRQ vector
+        var state = cpu.GetState();
+        Assert.That(cpu.Halted, Is.False);
+        Assert.That(state.PC, Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>
@@ -710,7 +714,7 @@ public class Cpu65C02Tests
         memory.Write(0x1002, 0xA2); // LDX #$10
         memory.Write(0x1003, 0x10);
         memory.Write(0x1004, 0xEA); // NOP
-        memory.Write(0x1005, 0x00); // BRK (halts CPU)
+        memory.Write(0x1005, 0xDB); // STP (halts CPU)
         cpu.Reset();
 
         // Act
@@ -731,10 +735,9 @@ public class Cpu65C02Tests
     {
         // Arrange
         uint startAddress = 0x8000; // High address that would be negative as int16
-        memory.WriteWord(0xFFFE, 0x0000); // Set IRQ vector for BRK
         memory.Write(0x8000, 0xA9); // LDA #$55
         memory.Write(0x8001, 0x55);
-        memory.Write(0x8002, 0x00); // BRK
+        memory.Write(0x8002, 0xDB); // STP (halts CPU)
         cpu.Reset();
 
         // Act

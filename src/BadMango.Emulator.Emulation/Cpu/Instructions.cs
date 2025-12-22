@@ -145,7 +145,8 @@ public static class Instructions
             state.PC = pc;
             state.SP = s;
             state.P = p;
-            state.HaltReason = HaltState.Brk; // Use HaltReason instead of Halted
+
+            // BRK does not halt the CPU - execution continues from the IRQ vector
         };
     }
 

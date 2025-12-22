@@ -68,13 +68,15 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Step()
     {
+        ulong cyclesBefore = state.Cycles;
+
         // Check for pending interrupts at instruction boundary
         // Note: We check even when halted because WAI can resume on interrupts
         bool interruptProcessed = CheckInterrupts();
         if (interruptProcessed)
         {
-            // Interrupt was processed, return cycles consumed
-            return 7; // Interrupt processing takes 7 cycles
+            // Interrupt was processed, cycles were updated by ProcessInterrupt
+            return (int)(state.Cycles - cyclesBefore);
         }
 
         if (Halted)
@@ -82,7 +84,6 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
             return 0;
         }
 
-        ulong cyclesBefore = state.Cycles;
         byte opcode = FetchByte();
 
         // Execute opcode with state
@@ -224,6 +225,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         // Load PC from interrupt vector
         state.PC = memory.ReadWord(vector);
 
-        // Note: Cycles are accounted for in Step(), not here
+        // Account for 7 cycles for interrupt processing
+        state.Cycles += 7;
     }
 }
