@@ -14,7 +14,7 @@ public static class RegisterHelpers
     #region Accumulator Register (A)
 
     /// <param name="a">The accumulator register.</param>
-    extension(RegisterAccumulator a)
+    extension(ref RegisterAccumulator a)
     {
         /// <summary>Gets the 8-bit value of the accumulator.</summary>
         /// <returns>The 8-bit value.</returns>
@@ -138,7 +138,7 @@ public static class RegisterHelpers
     #region Index Registers (X, Y)
 
     /// <param name="r">The index register.</param>
-    extension(RegisterIndex r)
+    extension(ref RegisterIndex r)
     {
         /// <summary>Gets the 8-bit value of the index register.</summary>
         /// <returns>The 8-bit value.</returns>
@@ -298,7 +298,7 @@ public static class RegisterHelpers
     }
 
     /// <param name="sp">The stack pointer register.</param>
-    extension(RegisterStackPointer sp)
+    extension(ref RegisterStackPointer sp)
     {
 
         /// <summary>
@@ -334,7 +334,7 @@ public static class RegisterHelpers
     #region Direct Page Register (D)
 
     /// <param name="dp">The direct page register.</param>
-    extension(RegisterDirectPage dp)
+    extension(ref RegisterDirectPage dp)
     {
         /// <summary>Calculates an effective address using direct page addressing.</summary>
         /// <param name="offset">The offset to add to the direct page base.</param>
@@ -365,7 +365,7 @@ public static class RegisterHelpers
     #region Program Counter Register (PC)
 
     /// <param name="pc">The program counter register.</param>
-    extension(RegisterProgramCounter pc)
+    extension(ref RegisterProgramCounter pc)
     {
         /// <summary>Gets the 32-bit value of the program counter.</summary>
         /// <returns>The 32-bit value.</returns>
@@ -404,7 +404,7 @@ public static class RegisterHelpers
     #region Registers Helpers
 
     /// <param name="registers">The CPU registers.</param>
-    extension(Registers registers)
+    extension(ref Registers registers)
     {
         /// <summary>Gets the current architectural mode based on CP and E flags.</summary>
         /// <returns>The architectural mode.</returns>
@@ -487,7 +487,7 @@ public static class RegisterHelpers
             registers.X = registers.X.Clear();
             registers.Y = registers.Y.Clear();
             registers.D = registers.D.Clear();
-            registers.SP.stack = 0x01FF; // Stack at $01FF in 6502 mode
+            registers.SP.stack = 0xFF; // Stack at $01FF in 6502 mode
             registers.PC = registers.PC.Reset();
             registers.P = ProcessorStatusFlags.Reset; // I, M, X set; others cleared
             registers.E = compat;  // Start in 6502 emulation mode

@@ -168,6 +168,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
         ulong cycles = 0)
     {
         var state = new CpuState { Cycles = cycles };
+        state.Registers.Reset(true);  // Initialize for 65C02 8-bit mode
         state.Registers.PC.SetWord(pc);
         state.Registers.A.SetByte(a);
         state.Registers.X.SetByte(x);

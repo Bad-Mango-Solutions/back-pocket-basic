@@ -47,7 +47,7 @@ public class Cpu65832 : ICpu
     }
 
     /// <inheritdoc/>
-    public CpuState GetState()
+    public ref CpuState GetState()
     {
         throw new NotImplementedException();
     }

@@ -51,7 +51,7 @@ public interface ICpu
     /// Gets the current complete CPU state including registers and execution state.
     /// </summary>
     /// <returns>RegisterAccumulator structure containing all register values, cycle count, and other execution state.</returns>
-    CpuState GetState();
+    ref CpuState GetState();
 
     /// <summary>
     /// Sets the complete CPU state including registers and execution state.

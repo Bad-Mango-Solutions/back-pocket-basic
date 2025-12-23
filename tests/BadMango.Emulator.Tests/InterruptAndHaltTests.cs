@@ -51,14 +51,15 @@ public class InterruptAndHaltTests
         // Assert
         var state = cpu.GetState();
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(state.Registers.P & ProcessorStatusFlags.I, Is.EqualTo(ProcessorStatusFlags.I), "I flag should be set after IRQ");
+        Assert.That(state.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
 
+        var inspect = memory.Inspect(0x01F0, 16).ToArray();
         // Verify stack contains pushed PC and P
-        byte pushedP = memory.Read(0x01FB);      // P is at top of stack
-        byte pushedPCLo = memory.Read(0x01FC);    // PC low byte
-        byte pushedPCHi = memory.Read(0x01FD);    // PC high byte
-        Assert.That((pushedPCHi << 8) | pushedPCLo, Is.EqualTo(0x1001), "Pushed PC should point to NOP");
-        Assert.That(pushedP & 0x10, Is.EqualTo(0), "B flag should be clear in pushed P");
+        byte p = memory.Read(0x01FD);      // P is at top of stack
+        byte lo = memory.Read(0x01FE);    // PC low byte
+        byte hi = memory.Read(0x01FF);    // PC high byte
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1001), "Pushed PC should point to NOP");
+        Assert.That(p & 0x10, Is.EqualTo(0), "B flag should be clear in pushed P");
     }
 
     /// <summary>

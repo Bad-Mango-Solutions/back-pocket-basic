@@ -105,9 +105,9 @@ public class Cpu65C02 : ICpu
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public CpuState GetState()
+    public ref CpuState GetState()
     {
-        return state;
+        return ref state;
     }
 
     /// <inheritdoc/>

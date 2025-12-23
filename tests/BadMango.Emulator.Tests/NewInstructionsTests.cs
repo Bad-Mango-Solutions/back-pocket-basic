@@ -80,7 +80,7 @@ public class NewInstructionsTests
     public void TXA_TransfersNegativeValue()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, a: 0x00, x: 0x80, p: 0, cycles: 10);
+        var state = CreateState(pc: 0x1000, a: 0x00, x: 0x80, p: 0, cycles: 10, compat: true);
 
         // Act
         var handler = Instructions.TXA(AddressingModes.Implied);
@@ -775,6 +775,7 @@ public class NewInstructionsTests
         // Act
         var handler = Instructions.JSR(AddressingModes.Absolute);
         handler(memory, ref state);
+        var inspect = memory.Inspect(0x01F0, 16);
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
@@ -810,18 +811,19 @@ public class NewInstructionsTests
     public void RTI_PullsStatusAndReturnAddress()
     {
         // Arrange
-        memory.Write(0x01FE, (byte)(FlagC | FlagZ));
-        memory.Write(0x01FF, 0x00);
-        memory.Write(0x0100, 0x20);
-        var state = CreateState(pc: 0x1000, sp: 0xFD, p: 0, cycles: 10);
+        memory.Write(0x01FD, (byte)(FlagC | FlagZ));
+        memory.Write(0x01FE, 0x00);
+        memory.Write(0x01FF, 0x20);
+        var state = CreateState(pc: 0x1000, sp: 0xFC, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.RTI(AddressingModes.Implied);
         handler(memory, ref state);
+        var inspect = memory.Inspect(0x01F0, 16);
 
         // Assert
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
-        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
         Assert.That(state.Registers.P, Is.EqualTo(FlagC | FlagZ));
     }
 
@@ -1069,9 +1071,11 @@ public class NewInstructionsTests
         byte sp = 0,
         ProcessorStatusFlags p = 0,
         ulong cycles = 0,
-        HaltState haltReason = HaltState.None)
+        HaltState haltReason = HaltState.None,
+        bool compat = true)
     {
         var state = new CpuState { Cycles = cycles, HaltReason = haltReason };
+        state.Registers.Reset(compat);
         state.Registers.PC.SetWord(pc);
         state.Registers.A.SetByte(a);
         state.Registers.X.SetByte(x);

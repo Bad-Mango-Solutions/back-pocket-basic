@@ -52,7 +52,7 @@ public static partial class Instructions
             var value = memory.ReadValue(address, size);
             state.Cycles++; // Memory read cycle
 
-            state.Registers.P.SetZeroAndNegative(value);
+            state.Registers.P.SetZeroAndNegative(value, size);
             state.Registers.A.SetValue(value, size);
         };
     }
@@ -72,7 +72,7 @@ public static partial class Instructions
             var value = memory.ReadValue(address, size);
             state.Cycles++; // Memory read cycle
 
-            state.Registers.P.SetZeroAndNegative(value);
+            state.Registers.P.SetZeroAndNegative(value, size);
             state.Registers.X.SetValue(value, size);
         };
     }
@@ -92,7 +92,7 @@ public static partial class Instructions
             var value = memory.ReadValue(address, size);
             state.Cycles++; // Memory read cycle
 
-            state.Registers.P.SetZeroAndNegative(value);
+            state.Registers.P.SetZeroAndNegative(value, size);
             state.Registers.Y.SetValue(value, size);
         };
     }
@@ -180,6 +180,9 @@ public static partial class Instructions
             state.Registers.PC.Advance();
 
             Word pc = state.Registers.PC.GetWord();
+            var hi = pc.HighByte();
+            var lo = pc.LowByte();
+
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P | ProcessorStatusFlags.B));

@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Tests;
 
+using System.Xml.Linq;
+
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Memory;
@@ -32,6 +34,7 @@ public class InstructionsTests
     {
         memory = new BasicMemory();
         cpu = new Cpu65C02(memory);
+        cpu.Reset();
     }
 
     #region LDA Tests
@@ -568,6 +571,7 @@ public class InstructionsTests
 
         // Assert
         state = cpu.GetState();
+        var inspect = memory.Inspect(0xf0, 16).ToArray();
 
         // Check stack pointer decremented by 3
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFA), "SP should be decremented by 3");
@@ -575,18 +579,21 @@ public class InstructionsTests
         // Check pushed values on stack
         // BRK pushes PC+1 (0x1002 since BRK increments PC), then P with B flag set
         const byte FlagB = 0x10; // Break flag
-        Assert.That(memory.Read(0x01FD), Is.EqualTo(0x10), "HighByte byte of return address should be on stack");
-        Assert.That(memory.Read(0x01FC), Is.EqualTo(0x02), "LowByte byte of return address should be on stack");
-        Assert.That(memory.Read(0x01FB) & FlagB, Is.EqualTo(FlagB), "B flag should be set in pushed P register");
+        Assert.Multiple(() =>
+        {
+            Assert.That(memory.Read(0x01FD), Is.EqualTo(0x10), "HighByte byte of return address should be on stack");
+            Assert.That(memory.Read(0x01FC), Is.EqualTo(0x02), "LowByte byte of return address should be on stack");
+            Assert.That(memory.Read(0x01FB) & FlagB, Is.EqualTo(FlagB), "B flag should be set in pushed P register");
 
-        // Check PC set to interrupt vector
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x8000), "PC should be set to IRQ vector");
+            // Check PC set to interrupt vector
+            Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x8000), "PC should be set to IRQ vector");
 
-        // Check I flag set
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
+            // Check I flag set
+            Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
 
-        // BRK does not halt - execution continues from interrupt vector
-        Assert.That(state.Halted, Is.False, "CPU should not be halted after BRK");
+            // BRK does not halt - execution continues from interrupt vector
+            Assert.That(state.Halted, Is.False, "CPU should not be halted after BRK");
+        });
     }
 
     /// <summary>
@@ -656,9 +663,11 @@ public class InstructionsTests
         byte y = 0,
         byte sp = 0,
         ProcessorStatusFlags p = 0,
-        ulong cycles = 0)
+        ulong cycles = 0,
+        bool compat = true)
     {
         var state = new CpuState { Cycles = cycles };
+        state.Registers.Reset(compat);
         state.Registers.PC.SetWord(pc);
         state.Registers.A.SetByte(a);
         state.Registers.X.SetByte(x);

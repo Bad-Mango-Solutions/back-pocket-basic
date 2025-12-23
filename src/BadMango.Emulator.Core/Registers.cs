@@ -166,7 +166,7 @@ public struct Registers
         P = ProcessorStatusFlags.Reset;
         CP = true;
         E = true;
-        SP.SetWord(0x01FF);
+        SP.SetByte(0xFF);
     }
 }
 

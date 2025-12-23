@@ -103,6 +103,13 @@ public class BasicMemory : IMemory
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlyMemory<byte> Inspect(int start, int length)
+    {
+        return new(memory, start, length);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<byte> AsMemory()
     {
         return new(memory);

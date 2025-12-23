@@ -172,6 +172,21 @@ public interface IMemory
     ReadOnlyMemory<byte> AsReadOnlyMemory();
 
     /// <summary>
+    /// Retrieves a segment of memory as a read-only block.
+    /// </summary>
+    /// <param name="start">The starting address of the memory segment to inspect.</param>
+    /// <param name="length">The length of the memory segment to inspect.</param>
+    /// <returns>A read-only memory block representing the specified memory segment.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown if the specified range (start and length) exceeds the bounds of the memory.
+    /// </exception>
+    /// <remarks>
+    /// This method allows inspection of a specific portion of memory without modifying its contents.
+    /// It is useful for debugging or analyzing memory state.
+    /// </remarks>
+    ReadOnlyMemory<byte> Inspect(int start, int length);
+
+    /// <summary>
     /// Gets a mutable view of the entire memory as a <see cref="Memory{T}"/>.
     /// </summary>
     /// <returns>RegisterAccumulator mutable view over the current memory contents.</returns>

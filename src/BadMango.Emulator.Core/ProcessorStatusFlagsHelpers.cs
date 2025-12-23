@@ -59,7 +59,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Zero Flag (Z)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Zero flag is set.</summary>
         /// <returns>True if the Zero flag is set, false otherwise.</returns>
@@ -80,7 +80,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Interrupt Disable Flag (I)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Interrupt Disable flag is set.</summary>
         /// <returns>True if the Interrupt Disable flag is set, false otherwise.</returns>
@@ -101,7 +101,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Decimal Mode Flag (D)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether Decimal mode is enabled.</summary>
         /// <returns>True if Decimal mode is enabled, false otherwise.</returns>
@@ -122,7 +122,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Index Register Size Flag (X) - 65816/65832 only
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Index registers (X/Y) are in 8-bit mode.</summary>
         /// <returns>True if X/Y are 8-bit, false if 16-bit.</returns>
@@ -145,7 +145,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Memory/Accumulator Size Flag (M) - 65816/65832 only
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Accumulator is in 8-bit mode.</summary>
         /// <returns>True if A is 8-bit, false if 16-bit.</returns>
@@ -168,7 +168,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Overflow Flag (V)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Overflow flag is set.</summary>
         /// <returns>True if the Overflow flag is set, false otherwise.</returns>
@@ -189,7 +189,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Negative Flag (N)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Negative flag is set.</summary>
         /// <returns>True if the Negative flag is set, false otherwise.</returns>
@@ -210,7 +210,7 @@ public static class ProcessorStatusFlagsHelpers
     #region Combined Operations
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Sets the Zero and Negative flags based on a byte value.</summary>
         /// <param name="value">The value to test.</param>
