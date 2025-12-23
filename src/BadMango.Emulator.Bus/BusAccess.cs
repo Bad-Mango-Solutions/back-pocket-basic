@@ -19,6 +19,11 @@ namespace BadMango.Emulator.Bus;
 /// (atomic vs decomposed, cross-page rules, tracing) without needing to understand
 /// CPU flag logic.
 /// </para>
+/// <para>
+/// The <see cref="PrivilegeLevel"/> field indicates the requestor's privilege ring.
+/// The bus may check this against the page entry's minimum privilege requirements.
+/// In compat mode, this defaults to Ring 0 (full access).
+/// </para>
 /// </remarks>
 /// <param name="Address">The memory address for the operation.</param>
 /// <param name="Value">The value for write operations; ignored for reads.</param>
@@ -29,6 +34,7 @@ namespace BadMango.Emulator.Bus;
 /// <param name="SourceId">Structural identifier of the access initiator (CPU, DMA channel, debugger).</param>
 /// <param name="Cycle">The current machine cycle for timing correlation.</param>
 /// <param name="Flags">Flags modifying access behavior (side effects, atomicity, endianness).</param>
+/// <param name="PrivilegeLevel">The requestor's privilege level. Defaults to Ring 0 for compat mode.</param>
 public readonly record struct BusAccess(
     Addr Address,
     DWord Value,
@@ -38,7 +44,8 @@ public readonly record struct BusAccess(
     AccessIntent Intent,
     int SourceId,
     ulong Cycle,
-    AccessFlags Flags)
+    AccessFlags Flags,
+    PrivilegeLevel PrivilegeLevel = PrivilegeLevel.Ring0)
 {
     /// <summary>
     /// Gets a value indicating whether this access should suppress side effects.

@@ -17,36 +17,33 @@ namespace BadMango.Emulator.Bus;
 /// the RAM's address space, not the CPU's address space. The bus is responsible for
 /// translating CPU addresses to physical addresses via the page table.
 /// </para>
+/// <para>
+/// <see cref="RamTarget"/> is a view into physical memory, not an owner. Create targets
+/// by slicing an <see cref="IPhysicalMemory"/> instance. Multiple targets can share
+/// overlapping or non-overlapping views of the same physical storage.
+/// </para>
 /// </remarks>
 public sealed class RamTarget : IBusTarget
 {
-    private readonly byte[] data;
+    private readonly Memory<byte> memory;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RamTarget"/> class with the specified size.
+    /// Initializes a new instance of the <see cref="RamTarget"/> class with a memory slice.
     /// </summary>
-    /// <param name="size">The size of the RAM in bytes.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when size is less than or equal to zero.</exception>
-    public RamTarget(int size)
+    /// <param name="memorySlice">
+    /// The memory slice to use for this RAM target. This is a view into physical memory,
+    /// not owned storage. Changes to this target are visible through the original
+    /// <see cref="IPhysicalMemory"/> instance.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when memorySlice is empty.</exception>
+    public RamTarget(Memory<byte> memorySlice)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
-        data = new byte[size];
-    }
+        if (memorySlice.IsEmpty)
+        {
+            throw new ArgumentException("Memory slice cannot be empty.", nameof(memorySlice));
+        }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RamTarget"/> class with initial data.
-    /// </summary>
-    /// <param name="initialData">The initial data to populate the RAM with.</param>
-    /// <exception cref="ArgumentNullException">Thrown when initialData is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="initialData"/> has a length that is less than or equal to zero.
-    /// </exception>
-    public RamTarget(byte[] initialData)
-    {
-        ArgumentNullException.ThrowIfNull(initialData);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialData.Length);
-        data = new byte[initialData.Length];
-        Array.Copy(initialData, data, initialData.Length);
+        memory = memorySlice;
     }
 
     /// <inheritdoc />
@@ -59,18 +56,18 @@ public sealed class RamTarget : IBusTarget
     /// <summary>
     /// Gets the size of the RAM in bytes.
     /// </summary>
-    public int Size => data.Length;
+    public int Size => memory.Length;
 
     /// <inheritdoc />
     public byte Read8(Addr physicalAddress, in BusAccess access)
     {
-        return data[physicalAddress];
+        return memory.Span[(int)physicalAddress];
     }
 
     /// <inheritdoc />
     public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
-        data[physicalAddress] = value;
+        memory.Span[(int)physicalAddress] = value;
     }
 
     /// <summary>
@@ -81,7 +78,9 @@ public sealed class RamTarget : IBusTarget
     /// <returns>The 16-bit value at the address (little-endian).</returns>
     public Word Read16(Addr physicalAddress, in BusAccess access)
     {
-        return (Word)(data[physicalAddress] | (data[physicalAddress + 1] << 8));
+        var span = memory.Span;
+        int index = (int)physicalAddress;
+        return (Word)(span[index] | (span[index + 1] << 8));
     }
 
     /// <summary>
@@ -92,8 +91,10 @@ public sealed class RamTarget : IBusTarget
     /// <param name="access">The access context.</param>
     public void Write16(Addr physicalAddress, Word value, in BusAccess access)
     {
-        data[physicalAddress] = (byte)value;
-        data[physicalAddress + 1] = (byte)(value >> 8);
+        var span = memory.Span;
+        int index = (int)physicalAddress;
+        span[index] = (byte)value;
+        span[index + 1] = (byte)(value >> 8);
     }
 
     /// <summary>
@@ -104,11 +105,13 @@ public sealed class RamTarget : IBusTarget
     /// <returns>The 32-bit value at the address (little-endian).</returns>
     public DWord Read32(Addr physicalAddress, in BusAccess access)
     {
+        var span = memory.Span;
+        int index = (int)physicalAddress;
         return (DWord)(
-            data[physicalAddress] |
-            (data[physicalAddress + 1] << 8) |
-            (data[physicalAddress + 2] << 16) |
-            (data[physicalAddress + 3] << 24));
+            span[index] |
+            (span[index + 1] << 8) |
+            (span[index + 2] << 16) |
+            (span[index + 3] << 24));
     }
 
     /// <summary>
@@ -119,38 +122,11 @@ public sealed class RamTarget : IBusTarget
     /// <param name="access">The access context.</param>
     public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
     {
-        data[physicalAddress] = (byte)value;
-        data[physicalAddress + 1] = (byte)(value >> 8);
-        data[physicalAddress + 2] = (byte)(value >> 16);
-        data[physicalAddress + 3] = (byte)(value >> 24);
+        var span = memory.Span;
+        int index = (int)physicalAddress;
+        span[index] = (byte)value;
+        span[index + 1] = (byte)(value >> 8);
+        span[index + 2] = (byte)(value >> 16);
+        span[index + 3] = (byte)(value >> 24);
     }
-
-    /// <summary>
-    /// Fills the entire RAM with the specified value.
-    /// </summary>
-    /// <param name="value">The byte value to fill with.</param>
-    public void Fill(byte value)
-    {
-        Array.Fill(data, value);
-    }
-
-    /// <summary>
-    /// Clears the entire RAM to zero.
-    /// </summary>
-    public void Clear()
-    {
-        Array.Clear(data);
-    }
-
-    /// <summary>
-    /// Gets a span over the RAM data for bulk operations.
-    /// </summary>
-    /// <returns>A span containing the RAM data.</returns>
-    public Span<byte> AsSpan() => data.AsSpan();
-
-    /// <summary>
-    /// Gets a read-only span over the RAM data.
-    /// </summary>
-    /// <returns>A read-only span containing the RAM data.</returns>
-    public ReadOnlySpan<byte> AsReadOnlySpan() => data.AsSpan();
 }

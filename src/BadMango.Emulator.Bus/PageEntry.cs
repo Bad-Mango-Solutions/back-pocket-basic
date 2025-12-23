@@ -22,6 +22,11 @@ namespace BadMango.Emulator.Bus;
 /// access would fault. NX is checked only for instruction fetch intent and is ignored
 /// in Compat mode.
 /// </para>
+/// <para>
+/// Privilege levels control access based on the requestor's ring. In compat mode,
+/// all pages default to Ring 0 access (no restrictions). Native mode machines may
+/// enforce privilege checking.
+/// </para>
 /// </remarks>
 /// <param name="DeviceId">Structural identifier of the device handling this page.</param>
 /// <param name="RegionTag">Classification of the memory region type.</param>
@@ -29,13 +34,21 @@ namespace BadMango.Emulator.Bus;
 /// <param name="Caps">Capability flags for the target device.</param>
 /// <param name="Target">The bus target implementation for this page.</param>
 /// <param name="PhysicalBase">The physical base address within the target's address space.</param>
+/// <param name="MinReadPrivilege">Minimum privilege level required for read access. Defaults to Ring 0.</param>
+/// <param name="MinWritePrivilege">Minimum privilege level required for write access. Defaults to Ring 0.</param>
+/// <param name="MinExecutePrivilege">Minimum privilege level required for execute access. Defaults to Ring 0.</param>
+/// <param name="IsSealed">When true, prevents modification of this entry from lower privilege levels.</param>
 public readonly record struct PageEntry(
     int DeviceId,
     RegionTag RegionTag,
     PagePerms Perms,
     TargetCaps Caps,
     IBusTarget Target,
-    Addr PhysicalBase)
+    Addr PhysicalBase,
+    PrivilegeLevel MinReadPrivilege = PrivilegeLevel.Ring0,
+    PrivilegeLevel MinWritePrivilege = PrivilegeLevel.Ring0,
+    PrivilegeLevel MinExecutePrivilege = PrivilegeLevel.Ring0,
+    bool IsSealed = false)
 {
     /// <summary>
     /// Gets a value indicating whether this page supports Peek (read without side effects).

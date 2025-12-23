@@ -223,4 +223,38 @@ public class BusAccessTests
             Assert.That(access1, Is.Not.EqualTo(access3));
         });
     }
+
+    /// <summary>
+    /// Verifies that PrivilegeLevel defaults to Ring0.
+    /// </summary>
+    [Test]
+    public void BusAccess_PrivilegeLevel_DefaultsToRing0()
+    {
+        var access = new BusAccess(0, 0, 8, CpuMode.Compat, true, AccessIntent.DataRead, 0, 0, AccessFlags.None);
+
+        Assert.That(access.PrivilegeLevel, Is.EqualTo(PrivilegeLevel.Ring0));
+    }
+
+    /// <summary>
+    /// Verifies that PrivilegeLevel can be explicitly set.
+    /// </summary>
+    [Test]
+    public void BusAccess_PrivilegeLevel_CanBeSet()
+    {
+        var access = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
+
+        Assert.That(access.PrivilegeLevel, Is.EqualTo(PrivilegeLevel.Ring3));
+    }
+
+    /// <summary>
+    /// Verifies that different privilege levels result in different access instances.
+    /// </summary>
+    [Test]
+    public void BusAccess_DifferentPrivilegeLevels_AreNotEqual()
+    {
+        var access1 = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring0);
+        var access2 = new BusAccess(0, 0, 8, CpuMode.Native, false, AccessIntent.DataRead, 0, 0, AccessFlags.None, PrivilegeLevel.Ring3);
+
+        Assert.That(access1, Is.Not.EqualTo(access2));
+    }
 }

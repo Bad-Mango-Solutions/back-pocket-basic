@@ -11,62 +11,36 @@ namespace BadMango.Emulator.Bus.Tests;
 public class RamTargetTests
 {
     /// <summary>
-    /// Verifies that RamTarget can be created with specified size.
+    /// Verifies that RamTarget can be created with a memory slice.
     /// </summary>
     [Test]
-    public void RamTarget_CanBeCreatedWithSize()
+    public void RamTarget_CanBeCreatedWithMemorySlice()
     {
-        var ram = new RamTarget(1024);
+        var physicalMemory = new PhysicalMemory(1024, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 1024));
 
         Assert.That(ram.Size, Is.EqualTo(1024));
     }
 
     /// <summary>
-    /// Verifies that RamTarget can be created with initial data.
+    /// Verifies that RamTarget can be created with a partial slice.
     /// </summary>
     [Test]
-    public void RamTarget_CanBeCreatedWithInitialData()
+    public void RamTarget_CanBeCreatedWithPartialSlice()
     {
-        var data = new byte[] { 0x00, 0x01, 0x02, 0x03 };
-        var ram = new RamTarget(data);
+        var physicalMemory = new PhysicalMemory(1024, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(100, 256));
 
-        Assert.That(ram.Size, Is.EqualTo(4));
+        Assert.That(ram.Size, Is.EqualTo(256));
     }
 
     /// <summary>
-    /// Verifies that constructor throws for zero size.
+    /// Verifies that constructor throws for empty memory slice.
     /// </summary>
     [Test]
-    public void RamTarget_Constructor_ThrowsForZeroSize()
+    public void RamTarget_Constructor_ThrowsForEmptySlice()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new RamTarget(0));
-    }
-
-    /// <summary>
-    /// Verifies that constructor throws for negative size.
-    /// </summary>
-    [Test]
-    public void RamTarget_Constructor_ThrowsForNegativeSize()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new RamTarget(-1));
-    }
-
-    /// <summary>
-    /// Verifies that constructor throws for null data.
-    /// </summary>
-    [Test]
-    public void RamTarget_Constructor_ThrowsForNullData()
-    {
-        Assert.Throws<ArgumentNullException>(() => new RamTarget((byte[])null!));
-    }
-
-    /// <summary>
-    /// Verifies that constructor throws for empty data array.
-    /// </summary>
-    [Test]
-    public void RamTarget_Constructor_ThrowsForEmptyData()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new RamTarget(Array.Empty<byte>()));
+        Assert.Throws<ArgumentException>(() => new RamTarget(Memory<byte>.Empty));
     }
 
     /// <summary>
@@ -75,7 +49,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Capabilities_IncludesExpectedFlags()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
 
         Assert.Multiple(() =>
         {
@@ -92,7 +67,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Read8_ReturnsWrittenValue()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write8(10, 0xAB, in access);
@@ -102,13 +78,14 @@ public class RamTargetTests
     }
 
     /// <summary>
-    /// Verifies that Read8 returns initial data value.
+    /// Verifies that Read8 returns initial data value from physical memory.
     /// </summary>
     [Test]
     public void RamTarget_Read8_ReturnsInitialDataValue()
     {
         var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
-        var ram = new RamTarget(data);
+        var physicalMemory = new PhysicalMemory(data, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         byte value = ram.Read8(2, in access);
@@ -117,21 +94,33 @@ public class RamTargetTests
     }
 
     /// <summary>
-    /// Verifies that initial data is copied (immutable).
+    /// Verifies that writes through RamTarget are visible in physical memory.
     /// </summary>
     [Test]
-    public void RamTarget_InitialData_IsCopied()
+    public void RamTarget_Write_IsVisibleInPhysicalMemory()
     {
-        var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
-        var ram = new RamTarget(data);
-
-        // Modify original data
-        data[0] = 0xFF;
-
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
-        byte value = ram.Read8(0, in access);
 
-        Assert.That(value, Is.EqualTo(0x11), "RAM should not be affected by changes to original array");
+        ram.Write8(0, 0xFF, in access);
+
+        Assert.That(physicalMemory.AsReadOnlySpan()[0], Is.EqualTo(0xFF), "Physical memory should reflect RAM writes");
+    }
+
+    /// <summary>
+    /// Verifies that writes to physical memory are visible through RamTarget.
+    /// </summary>
+    [Test]
+    public void RamTarget_PhysicalMemoryWrite_IsVisibleThroughRam()
+    {
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
+        var access = CreateDefaultAccess();
+
+        physicalMemory.AsSpan()[0] = 0xAA;
+
+        Assert.That(ram.Read8(0, in access), Is.EqualTo(0xAA), "RAM should see physical memory changes");
     }
 
     /// <summary>
@@ -140,7 +129,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Read16_ReturnsLittleEndianValue()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write8(0, 0x34, in access);
@@ -157,7 +147,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Write16_StoresLittleEndianValue()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write16(0, 0xABCD, in access);
@@ -175,7 +166,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Read32_ReturnsLittleEndianValue()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write8(0, 0x78, in access);
@@ -194,7 +186,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Write32_StoresLittleEndianValue()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write32(0, 0xDEADBEEFu, in access);
@@ -209,89 +202,13 @@ public class RamTargetTests
     }
 
     /// <summary>
-    /// Verifies that Fill sets all bytes to specified value.
-    /// </summary>
-    [Test]
-    public void RamTarget_Fill_SetsAllBytesToValue()
-    {
-        var ram = new RamTarget(16);
-        var access = CreateDefaultAccess();
-
-        ram.Fill(0xCC);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(ram.Read8(0, in access), Is.EqualTo(0xCC));
-            Assert.That(ram.Read8(7, in access), Is.EqualTo(0xCC));
-            Assert.That(ram.Read8(15, in access), Is.EqualTo(0xCC));
-        });
-    }
-
-    /// <summary>
-    /// Verifies that Clear sets all bytes to zero.
-    /// </summary>
-    [Test]
-    public void RamTarget_Clear_SetsAllBytesToZero()
-    {
-        var data = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF };
-        var ram = new RamTarget(data);
-        var access = CreateDefaultAccess();
-
-        ram.Clear();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(ram.Read8(0, in access), Is.EqualTo(0));
-            Assert.That(ram.Read8(1, in access), Is.EqualTo(0));
-            Assert.That(ram.Read8(2, in access), Is.EqualTo(0));
-            Assert.That(ram.Read8(3, in access), Is.EqualTo(0));
-        });
-    }
-
-    /// <summary>
-    /// Verifies that AsSpan returns writable span.
-    /// </summary>
-    [Test]
-    public void RamTarget_AsSpan_ReturnsWritableSpan()
-    {
-        var ram = new RamTarget(8);
-        var access = CreateDefaultAccess();
-
-        var span = ram.AsSpan();
-        span[0] = 0xAA;
-        span[7] = 0xBB;
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(ram.Read8(0, in access), Is.EqualTo(0xAA));
-            Assert.That(ram.Read8(7, in access), Is.EqualTo(0xBB));
-        });
-    }
-
-    /// <summary>
-    /// Verifies that AsReadOnlySpan returns readable span.
-    /// </summary>
-    [Test]
-    public void RamTarget_AsReadOnlySpan_ReturnsReadableSpan()
-    {
-        var data = new byte[] { 0x11, 0x22, 0x33 };
-        var ram = new RamTarget(data);
-
-        var span = ram.AsReadOnlySpan();
-
-        Assert.That(span.Length, Is.EqualTo(3));
-        Assert.That(span[0], Is.EqualTo(0x11));
-        Assert.That(span[1], Is.EqualTo(0x22));
-        Assert.That(span[2], Is.EqualTo(0x33));
-    }
-
-    /// <summary>
-    /// Verifies that new RAM is initialized to zero.
+    /// Verifies that new RAM slice is initialized to zero.
     /// </summary>
     [Test]
     public void RamTarget_NewRam_InitializedToZero()
     {
-        var ram = new RamTarget(4);
+        var physicalMemory = new PhysicalMemory(4, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         Assert.Multiple(() =>
@@ -309,7 +226,8 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Read16Write16_Roundtrip()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write16(10, 0xABCD, in access);
@@ -324,13 +242,34 @@ public class RamTargetTests
     [Test]
     public void RamTarget_Read32Write32_Roundtrip()
     {
-        var ram = new RamTarget(64);
+        var physicalMemory = new PhysicalMemory(64, "Test RAM");
+        var ram = new RamTarget(physicalMemory.Slice(0, 64));
         var access = CreateDefaultAccess();
 
         ram.Write32(20, 0x12345678u, in access);
         uint value = ram.Read32(20, in access);
 
         Assert.That(value, Is.EqualTo(0x12345678u));
+    }
+
+    /// <summary>
+    /// Verifies that multiple RamTargets can share the same physical memory.
+    /// </summary>
+    [Test]
+    public void RamTarget_MultipleTargets_SharePhysicalMemory()
+    {
+        var physicalMemory = new PhysicalMemory(128, "Test RAM");
+        var ram1 = new RamTarget(physicalMemory.Slice(0, 64));
+        var ram2 = new RamTarget(physicalMemory.Slice(32, 64)); // Overlaps with ram1
+        var access = CreateDefaultAccess();
+
+        // Write via ram1 at offset 40 (which is offset 8 in ram2)
+        ram1.Write8(40, 0xAA, in access);
+
+        // Read via ram2
+        byte value = ram2.Read8(8, in access);
+
+        Assert.That(value, Is.EqualTo(0xAA), "Multiple targets should share the same storage");
     }
 
     /// <summary>

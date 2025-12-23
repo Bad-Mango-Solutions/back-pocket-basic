@@ -199,6 +199,80 @@ public class PageEntryTests
         });
     }
 
+    /// <summary>
+    /// Verifies that PageEntry has default privilege levels of Ring0.
+    /// </summary>
+    [Test]
+    public void PageEntry_PrivilegeLevels_DefaultToRing0()
+    {
+        var mockTarget = new Mock<IBusTarget>();
+        var entry = new PageEntry(1, RegionTag.Ram, PagePerms.All, TargetCaps.None, mockTarget.Object, 0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.MinReadPrivilege, Is.EqualTo(PrivilegeLevel.Ring0));
+            Assert.That(entry.MinWritePrivilege, Is.EqualTo(PrivilegeLevel.Ring0));
+            Assert.That(entry.MinExecutePrivilege, Is.EqualTo(PrivilegeLevel.Ring0));
+            Assert.That(entry.IsSealed, Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PageEntry can be created with custom privilege levels.
+    /// </summary>
+    [Test]
+    public void PageEntry_CanBeCreatedWithCustomPrivilegeLevels()
+    {
+        var mockTarget = new Mock<IBusTarget>();
+        var entry = new PageEntry(
+            DeviceId: 1,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: TargetCaps.None,
+            Target: mockTarget.Object,
+            PhysicalBase: 0,
+            MinReadPrivilege: PrivilegeLevel.Ring3,
+            MinWritePrivilege: PrivilegeLevel.Ring1,
+            MinExecutePrivilege: PrivilegeLevel.Ring2,
+            IsSealed: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.MinReadPrivilege, Is.EqualTo(PrivilegeLevel.Ring3));
+            Assert.That(entry.MinWritePrivilege, Is.EqualTo(PrivilegeLevel.Ring1));
+            Assert.That(entry.MinExecutePrivilege, Is.EqualTo(PrivilegeLevel.Ring2));
+            Assert.That(entry.IsSealed, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that multiple page entries can share slices of one physical memory.
+    /// </summary>
+    [Test]
+    public void PageEntry_MultipleEntries_CanSharePhysicalMemorySlices()
+    {
+        // Create a single physical memory pool
+        var physicalMemory = new PhysicalMemory(8192, "Main RAM");
+
+        // Create two RamTargets pointing to overlapping slices
+        var ramTarget1 = new RamTarget(physicalMemory.Slice(0, 4096)); // Page 0
+        var ramTarget2 = new RamTarget(physicalMemory.Slice(2048, 4096)); // Overlaps with page 0
+
+        // Create page entries for each target
+        var entry1 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, ramTarget1, 0);
+        var entry2 = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, ramTarget2, 0);
+
+        var access = new BusAccess(0, 0, 8, CpuMode.Compat, true, AccessIntent.DataWrite, 0, 0, AccessFlags.None);
+
+        // Write via entry1's target at offset 2048
+        entry1.Target.Write8(2048, 0xAA, in access);
+
+        // Read via entry2's target at offset 0 (which maps to physical offset 2048)
+        byte value = entry2.Target.Read8(0, in access);
+
+        Assert.That(value, Is.EqualTo(0xAA), "Multiple page entries should share the same physical memory");
+    }
+
     private static PageEntry CreateEntry(TargetCaps caps)
     {
         var mockTarget = new Mock<IBusTarget>();

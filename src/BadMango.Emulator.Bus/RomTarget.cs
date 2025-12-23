@@ -21,30 +21,26 @@ namespace BadMango.Emulator.Bus;
 /// Write operations are silently ignored to match real ROM behavior where writes
 /// have no effect on the stored data.
 /// </para>
+/// <para>
+/// <see cref="RomTarget"/> is a view into physical memory, not an owner. Create targets
+/// by slicing an <see cref="IPhysicalMemory"/> instance. Multiple targets can share
+/// overlapping or non-overlapping views of the same physical storage.
+/// </para>
 /// </remarks>
 public sealed class RomTarget : IBusTarget
 {
-    private readonly byte[] data;
+    private readonly ReadOnlyMemory<byte> memory;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RomTarget"/> class with the specified data.
+    /// Initializes a new instance of the <see cref="RomTarget"/> class with a memory slice.
     /// </summary>
-    /// <param name="romData">The ROM data. A copy is made to ensure immutability.</param>
-    /// <exception cref="ArgumentNullException">Thrown when romData is null.</exception>
-    public RomTarget(byte[] romData)
+    /// <param name="memorySlice">
+    /// The read-only memory slice to use for this ROM target. This is a view into
+    /// physical memory, not owned storage.
+    /// </param>
+    public RomTarget(ReadOnlyMemory<byte> memorySlice)
     {
-        ArgumentNullException.ThrowIfNull(romData);
-        data = new byte[romData.Length];
-        Array.Copy(romData, data, romData.Length);
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RomTarget"/> class with the specified data.
-    /// </summary>
-    /// <param name="romData">The ROM data as a read-only span. A copy is made.</param>
-    public RomTarget(ReadOnlySpan<byte> romData)
-    {
-        data = romData.ToArray();
+        memory = memorySlice;
     }
 
     /// <inheritdoc />
@@ -57,12 +53,12 @@ public sealed class RomTarget : IBusTarget
     /// <summary>
     /// Gets the size of the ROM in bytes.
     /// </summary>
-    public int Size => data.Length;
+    public int Size => memory.Length;
 
     /// <inheritdoc />
     public byte Read8(Addr physicalAddress, in BusAccess access)
     {
-        return data[physicalAddress];
+        return memory.Span[(int)physicalAddress];
     }
 
     /// <inheritdoc />
@@ -82,7 +78,9 @@ public sealed class RomTarget : IBusTarget
     /// <returns>The 16-bit value at the address (little-endian).</returns>
     public Word Read16(Addr physicalAddress, in BusAccess access)
     {
-        return (Word)(data[physicalAddress] | (data[physicalAddress + 1] << 8));
+        var span = memory.Span;
+        int index = (int)physicalAddress;
+        return (Word)(span[index] | (span[index + 1] << 8));
     }
 
     /// <summary>
@@ -104,11 +102,13 @@ public sealed class RomTarget : IBusTarget
     /// <returns>The 32-bit value at the address (little-endian).</returns>
     public DWord Read32(Addr physicalAddress, in BusAccess access)
     {
+        var span = memory.Span;
+        int index = (int)physicalAddress;
         return (DWord)(
-            data[physicalAddress] |
-            (data[physicalAddress + 1] << 8) |
-            (data[physicalAddress + 2] << 16) |
-            (data[physicalAddress + 3] << 24));
+            span[index] |
+            (span[index + 1] << 8) |
+            (span[index + 2] << 16) |
+            (span[index + 3] << 24));
     }
 
     /// <summary>
@@ -121,10 +121,4 @@ public sealed class RomTarget : IBusTarget
     {
         // Writes to ROM are silently ignored
     }
-
-    /// <summary>
-    /// Gets a read-only span over the ROM data.
-    /// </summary>
-    /// <returns>A read-only span containing the ROM data.</returns>
-    public ReadOnlySpan<byte> AsReadOnlySpan() => data.AsSpan();
 }
