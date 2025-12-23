@@ -17,7 +17,7 @@ using Core;
 /// Apple IIgs system emulation.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
+public class Cpu65816 : ICpu
 {
     /// <inheritdoc/>
     public bool Halted => throw new NotImplementedException();
@@ -41,19 +41,19 @@ public class Cpu65816 : ICpu<Cpu65816Registers, Cpu65816State>
     }
 
     /// <inheritdoc/>
-    public Cpu65816Registers GetRegisters()
+    public Registers GetRegisters()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Cpu65816State GetState()
+    public ref CpuState GetState()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public void SetState(Cpu65816State state)
+    public void SetState(CpuState state)
     {
         throw new NotImplementedException();
     }

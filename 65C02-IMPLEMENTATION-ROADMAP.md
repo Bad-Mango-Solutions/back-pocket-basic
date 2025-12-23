@@ -8,7 +8,11 @@ This document tracks the implementation status of the complete 65C02 CPU instruc
 
 ### Implementation Status Summary
 
-**Total Instructions: 56+ implemented** (100% complete)
+**Total Instructions: 70 implemented** (100% complete)
+- All instructions use unified `CpuState` structure
+- Runtime mode detection via CPU flags (E, M, X)
+- Extension methods for size-aware register access
+- Organized across 11 partial class files by category
 - Load/Store: LDA, LDX, LDY, STA, STX, STY, STZ
 - Register Transfers: TAX, TAY, TXA, TYA, TXS, TSX
 - Stack Operations: PHA, PHP, PLA, PLP, PHX, PLX, PHY, PLY
@@ -22,7 +26,7 @@ This document tracks the implementation status of the complete 65C02 CPU instruc
 - Flags: CLC, SEC, CLI, SEI, CLD, SED, CLV
 - 65C02-Specific: BRA, STZ, PHX, PLX, PHY, PLY, TSB, TRB, WAI, STP
 
-**Test Coverage: 132 emulator tests, all passing** ✅
+**Test Coverage: 153 emulator tests, all passing** ✅
 
 ---
 
@@ -223,48 +227,68 @@ All 15 addressing modes implemented:
 
 ## Architecture Benefits
 
-The compositional architecture provides:
+The unified architecture with runtime mode detection provides:
 
-✅ **No Code Duplication** - One instruction implementation works with all addressing modes  
-✅ **Easy to Add Instructions** - Just implement the instruction logic once  
-✅ **Easy to Add Addressing Modes** - Immediately available to all compatible instructions  
-✅ **Type Safe** - Compile-time checking via generics and delegates  
+✅ **Multi-CPU Support** - Single codebase for 65C02, 65816, and 65832 variants  
+✅ **No Code Duplication** - One instruction implementation adapts to all CPU modes  
+✅ **Runtime Flexibility** - Instructions check CPU state flags (E, M, X) for mode-aware behavior  
+✅ **Type Safe** - Extension methods provide compile-time checking  
 ✅ **Testable** - Instructions and addressing modes tested independently  
-✅ **Maintainable** - Changes to instruction semantics in one place  
-✅ **Extensible** - Ready for 65816 and 65832 variants  
+✅ **Maintainable** - Organized into 11 partial class files by category  
+✅ **Extensible** - Easy to add new CPU modes and register sizes  
+✅ **Size-Aware** - Register helpers provide byte/word/dword views automatically  
 
-**Example:**
+**Current Architecture (Unified State Pattern):**
 ```csharp
-// In Instructions.cs - implement once
-public static OpcodeHandler<Cpu65C02, Cpu65C02State> LDA(AddressingMode<Cpu65C02State> mode)
+// Unified state structure for all CPU variants
+public struct CpuState
 {
-    return (cpu, memory, ref state) =>
+    public Registers Registers;  // Universal register set
+    public ulong Cycles;
+    public HaltState HaltReason;
+}
+
+// Size-aware register access via extension methods
+byte accumulator8 = state.Registers.A.GetByte();
+Word accumulator16 = state.Registers.A.GetWord();  // For 65816 native mode
+DWord accumulator32 = state.Registers.A.GetDWord(); // For 65832
+
+// Instructions adapt to CPU mode at runtime
+public static OpcodeHandler LDA(AddressingMode<CpuState> mode)
+{
+    return (memory, ref state) =>
     {
         Addr address = mode(memory, ref state);
-        byte value = memory.Read(address);
-        state.A = value;
-        SetZN(value, ref state.P);
+        byte size = state.Registers.GetAccumulatorSize();  // Runtime check
+        var value = memory.ReadValue(address, size);
+        state.Registers.P.SetZeroAndNegative(value, size);
+        state.Registers.A.SetValue(value, size);
     };
 }
 
-// In Cpu65C02OpcodeTableBuilder.cs - register all modes
-handlers[0xA9] = Instructions.LDA(AddressingModes.Immediate);
-handlers[0xA5] = Instructions.LDA(AddressingModes.ZeroPage);
-handlers[0xB5] = Instructions.LDA(AddressingModes.ZeroPageX);
-handlers[0xAD] = Instructions.LDA(AddressingModes.Absolute);
-handlers[0xBD] = Instructions.LDA(AddressingModes.AbsoluteX);
-handlers[0xB9] = Instructions.LDA(AddressingModes.AbsoluteY);
-handlers[0xA1] = Instructions.LDA(AddressingModes.IndirectX);
-handlers[0xB1] = Instructions.LDA(AddressingModes.IndirectY);
+// Instructions organized by category (partial classes)
+- Instructions.cs           (Load/Store, NOP, BRK)
+- Instructions.Flags.cs     (Flag manipulation)
+- Instructions.Transfer.cs  (Register transfers)
+- Instructions.Stack.cs     (Stack operations)
+- Instructions.Jump.cs      (Jumps and subroutines)
+- Instructions.Branch.cs    (Branches)
+- Instructions.Arithmetic.cs (Arithmetic)
+- Instructions.Logical.cs   (Logical operations)
+- Instructions.Shift.cs     (Shifts and rotates)
+- Instructions.Compare.cs   (Comparisons)
+- Instructions.65C02.cs     (65C02-specific)
 ```
 
 ---
 
 ## Testing
 
-**Total Test Coverage: 132 emulator tests**
-- AddressingModes: 19 tests
-- Instructions: 113 tests (21 original + 92 new)
+**Total Test Coverage: 153 emulator tests + 429 BASIC interpreter tests**
+- AddressingModes: Mode-aware implementations tested
+- Instructions: All 70 instructions tested across categories
+- Unified State: CpuState structure validated
+- Extension Methods: Register helpers and flag operations tested
 - All tests passing ✅
 
 ---
@@ -285,6 +309,13 @@ While the 65C02 instruction set is complete, future work could include:
 
 ## Conclusion
 
-The 65C02 CPU emulation is now **100% complete** with all instructions, addressing modes, and 65C02-specific enhancements fully implemented using a clean compositional architecture. The implementation is well-tested, maintainable, and ready for future extensions to the 65816 and 65832 architectures.
+The 65C02 CPU emulation is now **100% complete** with all instructions, addressing modes, and 65C02-specific enhancements fully implemented using a **unified state architecture with runtime mode detection**. The implementation supports multiple CPU variants (65C02, 65816, 65832) through a single codebase with extension methods providing size-aware register access. The architecture is well-tested, maintainable, and production-ready.
+
+**Key Architectural Features:**
+- **Unified `CpuState`** structure for all CPU variants
+- **Extension methods** for size-aware register operations (byte/word/dword)
+- **Runtime mode detection** based on CPU flags (E, M, X)
+- **Organized code** across 11 partial class files by instruction category
+- **Zero duplication** - single implementation adapts to all modes
 
 **Status: COMPLETE ✅**

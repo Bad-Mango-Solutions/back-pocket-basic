@@ -52,12 +52,17 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
   The parameter is evaluated and stored in FAC1 at $009D before the routine is called.
   The routine should return its result in FAC1.
 
-### 6502 Emulation
+### Multi-CPU Emulation (65C02/65816/65832)
 
-- Full 6502 CPU instruction set implementation
-- 64KB emulated memory space matching Apple II memory map
-- `PEEK`, `POKE`, `CALL`, `&`, and `USR` operate within the emulated memory with bounds checking
-- ProDOS system call emulation layer
+- **Unified CPU Architecture**: Single codebase supports multiple CPU variants through runtime mode detection
+- **65C02 Support**: Full WDC 65C02 instruction set (70 instructions, 15 addressing modes)
+- **65816-Ready**: Architecture prepared for Apple IIgs 65816 emulation
+- **65832-Ready**: Foundation for future 32-bit 65832 support
+- **Extension Methods**: Size-aware register access (byte/word/dword views) adapts to CPU mode
+- **Runtime Mode Detection**: Instructions adapt behavior based on CPU flags (E, M, X)
+- **64KB Memory**: Emulated memory space matching Apple II memory map
+- **Memory Operations**: `PEEK`, `POKE`, `CALL`, `&`, and `USR` operate with bounds checking
+- **ProDOS Emulation**: System call emulation layer
 
 ## Getting Started
 
@@ -185,9 +190,14 @@ back-pocket-basic/
 1. **Lexer** (`BasicLexer`) - Tokenizes BASIC source code into tokens
 2. **Parser** (`BasicParser`) - Parses tokens into an Abstract Syntax Tree
 3. **Interpreter** (`BasicInterpreter`) - Executes the AST using the visitor pattern
-4. **6502 CPU** (`Cpu6502`) - Emulates the 6502 processor for `CALL` statements
-5. **Memory** (`AppleMemory`) - 64KB emulated memory space for `PEEK`/`POKE`
+4. **Multi-CPU Engine** - Unified architecture supporting 65C02/65816/65832 variants
+   - `CpuState` - Unified CPU state structure with mode-aware register access
+   - `Registers` - Universal register set supporting all CPU variants
+   - `Instructions` - Static instruction methods organized by category (11 files)
+   - `AddressingModes` - Mode-aware addressing mode implementations
+5. **Memory** (`BasicMemory`) - 64KB emulated memory space for `PEEK`/`POKE`
 6. **Apple System** (`AppleSystem`) - Coordinates CPU and memory emulation
+7. **Extension Methods** - Helper methods for register manipulation and flag operations
 
 ## Language Reference
 

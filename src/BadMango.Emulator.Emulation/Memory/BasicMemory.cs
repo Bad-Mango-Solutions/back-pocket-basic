@@ -71,6 +71,24 @@ public class BasicMemory : IMemory
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DWord ReadDWord(Addr address)
+    {
+        return (DWord)(memory[address] | (memory[address + 1] << 8) | (memory[address + 2] << 16) |
+                       (memory[address + 3] << 24));
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteDWord(Addr address, DWord value)
+    {
+        memory[address] = (byte)(value & 0xFF);
+        memory[address + 1] = (byte)((value >> 8) & 0xFF);
+        memory[address + 2] = (byte)((value >> 16) & 0xFF);
+        memory[address + 3] = (byte)((value >> 24) & 0xFF);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
         Array.Clear(memory, 0, memory.Length);
@@ -80,13 +98,20 @@ public class BasicMemory : IMemory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlyMemory<byte> AsReadOnlyMemory()
     {
-        return new ReadOnlyMemory<byte>(memory);
+        return new(memory);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlyMemory<byte> Inspect(int start, int length)
+    {
+        return new(memory, start, length);
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<byte> AsMemory()
     {
-        return new Memory<byte>(memory);
+        return new(memory);
     }
 }

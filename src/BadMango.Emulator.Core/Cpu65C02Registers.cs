@@ -17,19 +17,19 @@ using System.Runtime.InteropServices;
 public struct Cpu65C02Registers : ICpuRegisters<byte, byte, byte, Word>
 {
     /// <summary>
-    /// Gets or sets the Accumulator register (A).
+    /// Gets or sets the Accumulator register (RegisterAccumulator).
     /// </summary>
-    public byte A { get; set; }
+    public RegisterAccumulator RegisterAccumulator { get; set; }
 
     /// <summary>
     /// Gets or sets the X index register.
     /// </summary>
-    public byte X { get; set; }
+    public RegisterIndex X { get; set; }
 
     /// <summary>
     /// Gets or sets the Y index register.
     /// </summary>
-    public byte Y { get; set; }
+    public RegisterIndex Y { get; set; }
 
     /// <summary>
     /// Gets or sets the Stack Pointer register (SP).
@@ -44,5 +44,5 @@ public struct Cpu65C02Registers : ICpuRegisters<byte, byte, byte, Word>
     /// <summary>
     /// Gets or sets the Program Counter (PC).
     /// </summary>
-    public Word PC { get; set; }
+    public RegisterProgramCounter PC { get; set; }
 }

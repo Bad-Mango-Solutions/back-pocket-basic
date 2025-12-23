@@ -14,12 +14,12 @@ using BadMango.Emulator.Emulation.Memory;
 [TestFixture]
 public class NewInstructionsTests
 {
-    private const byte FlagC = 0x01; // Carry
-    private const byte FlagZ = 0x02; // Zero
-    private const byte FlagI = 0x04; // Interrupt Disable
-    private const byte FlagD = 0x08; // Decimal
-    private const byte FlagV = 0x40; // Overflow
-    private const byte FlagN = 0x80; // Negative
+    private const ProcessorStatusFlags FlagC = ProcessorStatusFlags.C;
+    private const ProcessorStatusFlags FlagZ = ProcessorStatusFlags.Z;
+    private const ProcessorStatusFlags FlagI = ProcessorStatusFlags.I;
+    private const ProcessorStatusFlags FlagD = ProcessorStatusFlags.D;
+    private const ProcessorStatusFlags FlagV = ProcessorStatusFlags.V;
+    private const ProcessorStatusFlags FlagN = ProcessorStatusFlags.N;
 
     private IMemory memory = null!;
     private Cpu65C02 cpu = null!;
@@ -37,75 +37,75 @@ public class NewInstructionsTests
     #region Register Transfer Tests
 
     /// <summary>
-    /// Verifies TAX transfers A to X and sets flags.
+    /// Verifies TAX transfers accumulator to X and sets flags.
     /// </summary>
     [Test]
     public void TAX_TransfersAccumulatorToX()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, X = 0x00, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, x: 0x00, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TAX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.X, Is.EqualTo(0x42));
-        Assert.That(state.P & FlagZ, Is.EqualTo(0), "Zero flag should be clear");
-        Assert.That(state.P & FlagN, Is.EqualTo(0), "Negative flag should be clear");
+        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x42));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
+        Assert.That(state.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
     }
 
     /// <summary>
-    /// Verifies TAY transfers A to Y with zero flag.
+    /// Verifies TAY transfers RegisterAccumulator to Y with zero flag.
     /// </summary>
     [Test]
     public void TAY_TransfersZeroAndSetsZeroFlag()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, Y = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x00, y: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TAY(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.Y, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
-    /// Verifies TXA transfers X to A with negative flag.
+    /// Verifies TXA transfers X to RegisterAccumulator with negative flag.
     /// </summary>
     [Test]
     public void TXA_TransfersNegativeValue()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, X = 0x80, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x00, x: 0x80, p: 0, cycles: 10, compat: true);
 
         // Act
         var handler = Instructions.TXA(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x80));
-        Assert.That(state.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x80));
+        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
     }
 
     /// <summary>
-    /// Verifies TYA transfers Y to A.
+    /// Verifies TYA transfers Y to RegisterAccumulator.
     /// </summary>
     [Test]
     public void TYA_TransfersYToAccumulator()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, Y = 0x55, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x00, y: 0x55, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TYA(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x55));
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x55));
     }
 
     /// <summary>
@@ -115,15 +115,15 @@ public class NewInstructionsTests
     public void TXS_TransfersXToStackPointer()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, X = 0xAB, SP = 0xFF, P = FlagZ | FlagN, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0xAB, sp: 0xFF, p: FlagZ | FlagN, cycles: 10);
 
         // Act
         var handler = Instructions.TXS(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xAB));
-        Assert.That(state.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be affected");
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xAB));
+        Assert.That(state.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be affected");
     }
 
     /// <summary>
@@ -133,15 +133,15 @@ public class NewInstructionsTests
     public void TSX_TransfersStackPointerToX()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x00, SP = 0x00, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x00, sp: 0x00, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TSX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.X, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     #endregion
@@ -155,14 +155,14 @@ public class NewInstructionsTests
     public void PHA_PushesAccumulatorToStack()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, SP = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, sp: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PHA(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFE));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
         Assert.That(memory.Read(0x01FF), Is.EqualTo(0x42));
     }
 
@@ -174,15 +174,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x01FF, 0x42);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, SP = 0xFE, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLA(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFF));
-        Assert.That(state.A, Is.EqualTo(0x42));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -192,15 +192,15 @@ public class NewInstructionsTests
     public void PHP_PushesProcessorStatusWithBFlag()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, SP = 0xFF, P = FlagC | FlagZ, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x00, sp: 0xFF, p: FlagC | FlagZ, cycles: 10);
 
         // Act
         var handler = Instructions.PHP(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFE));
-        Assert.That(memory.Read(0x01FF), Is.EqualTo(FlagC | FlagZ | 0x10)); // B flag should be set
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
+        Assert.That(memory.Read(0x01FF), Is.EqualTo((byte)(FlagC | FlagZ | ProcessorStatusFlags.B))); // B flag should be set
     }
 
     /// <summary>
@@ -210,16 +210,16 @@ public class NewInstructionsTests
     public void PLP_PullsProcessorStatusFromStack()
     {
         // Arrange
-        memory.Write(0x01FF, FlagC | FlagN);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x00, SP = 0xFE, P = 0x00, Cycles = 10 };
+        memory.Write(0x01FF, (byte)(FlagC | FlagN));
+        var state = CreateState(pc: 0x1000, a: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLP(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFF));
-        Assert.That(state.P, Is.EqualTo(FlagC | FlagN));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(state.Registers.P, Is.EqualTo(FlagC | FlagN));
     }
 
     #endregion
@@ -227,41 +227,41 @@ public class NewInstructionsTests
     #region Comparison Tests
 
     /// <summary>
-    /// Verifies CMP sets carry when A >= value.
+    /// Verifies CMP sets carry when RegisterAccumulator >= value.
     /// </summary>
     [Test]
     public void CMP_SetsCarryWhenAGreaterOrEqual()
     {
         // Arrange
         memory.Write(0x1000, 0x42);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.CMP(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     /// <summary>
-    /// Verifies CMP clears carry when A less than value.
+    /// Verifies CMP clears carry when RegisterAccumulator less than value.
     /// </summary>
     [Test]
     public void CMP_ClearsCarryWhenALessThan()
     {
         // Arrange
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = FlagC, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.CMP(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.P & FlagC, Is.EqualTo(0), "Carry should be clear");
-        Assert.That(state.P & FlagN, Is.EqualTo(FlagN), "Negative should be set");
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative should be set");
     }
 
     /// <summary>
@@ -272,14 +272,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x20);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x30, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x30, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CPX(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.CPX(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
     }
 
     /// <summary>
@@ -290,15 +290,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x40);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x40, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x40, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CPY(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.CPY(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     #endregion
@@ -313,14 +313,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x10); // Offset +16
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x1011)); // 0x1001 + 0x10
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1011)); // 0x1001 + 0x10
     }
 
     /// <summary>
@@ -331,15 +331,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x10);
-        var state = new Cpu65C02State { PC = 0x1000, P = FlagC, Cycles = 10 };
-        ushort originalPC = state.PC;
+        var state = CreateState(pc: 0x1000, p: FlagC, cycles: 10);
+        ushort originalPC = state.Registers.PC.GetWord();
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert - PC should only advance by the addressing mode (1 byte for relative)
-        Assert.That(state.PC, Is.EqualTo((ushort)(originalPC + 1)));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo((ushort)(originalPC + 1)));
     }
 
     /// <summary>
@@ -350,14 +350,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x05);
-        var state = new Cpu65C02State { PC = 0x1000, P = FlagZ, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: FlagZ, cycles: 10);
 
         // Act
         var handler = Instructions.BEQ(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x1006)); // 0x1001 + 0x05
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1006)); // 0x1001 + 0x05
     }
 
     /// <summary>
@@ -368,14 +368,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0xFE); // -2 in signed byte
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BNE(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x0FFF)); // 0x1001 + (-2)
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x0FFF)); // 0x1001 + (-2)
     }
 
     /// <summary>
@@ -386,14 +386,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x20); // Offset +32
-        var state = new Cpu65C02State { PC = 0x1000, P = 0xFF, Cycles = 10 }; // All flags set
+        var state = CreateState(pc: 0x1000, p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x1021)); // 0x1001 + 0x20
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1021)); // 0x1001 + 0x20
     }
 
     /// <summary>
@@ -404,14 +404,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0xF0); // -16 in signed byte
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x0FF1)); // 0x1001 + (-16)
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x0FF1)); // 0x1001 + (-16)
     }
 
     #endregion
@@ -426,14 +426,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x42);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x10, P = FlagC, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x10, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.ADC(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x53)); // 0x10 + 0x42 + 1
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x53)); // 0x10 + 0x42 + 1
     }
 
     /// <summary>
@@ -444,15 +444,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x7F);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x01, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x01, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.ADC(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x80));
-        Assert.That(state.P & FlagV, Is.EqualTo(FlagV), "Overflow should be set");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x80));
+        Assert.That(state.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow should be set");
     }
 
     /// <summary>
@@ -463,14 +463,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x10);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x50, P = FlagC, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x50, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.SBC(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.SBC(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x40)); // 0x50 - 0x10 - 0
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x40)); // 0x50 - 0x10 - 0
     }
 
     /// <summary>
@@ -480,14 +480,14 @@ public class NewInstructionsTests
     public void INX_IncrementsXRegister()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x42, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.INX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.X, Is.EqualTo(0x43));
+        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x43));
     }
 
     /// <summary>
@@ -497,15 +497,15 @@ public class NewInstructionsTests
     public void INY_IncrementsAndWraps()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.INY(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.Y, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -515,15 +515,15 @@ public class NewInstructionsTests
     public void DEX_DecrementsXRegister()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x01, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x01, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.DEX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.X, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -535,11 +535,11 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0x42);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.INC(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x43));
@@ -554,15 +554,15 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0x01);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.DEC(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     #endregion
@@ -577,14 +577,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x0F);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.AND(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.AND(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x0F));
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x0F));
     }
 
     /// <summary>
@@ -595,14 +595,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x0F);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xF0, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.ORA(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.ORA(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0xFF));
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xFF));
     }
 
     /// <summary>
@@ -613,15 +613,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0xFF);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.EOR(AddressingModes.Immediate);
-        handler(cpu, memory, ref state);
+        var handler = Instructions.EOR(AddressingModes.ImmediateByte);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -633,16 +633,16 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0xC0); // Bits 7 and 6 set
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BIT(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set from bit 7");
-        Assert.That(state.P & FlagV, Is.EqualTo(FlagV), "Overflow flag should be set from bit 6");
-        Assert.That(state.P & FlagZ, Is.EqualTo(0), "Zero flag should be clear (A & M != 0)");
+        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set from bit 7");
+        Assert.That(state.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow flag should be set from bit 6");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator & M != 0)");
     }
 
     #endregion
@@ -656,15 +656,15 @@ public class NewInstructionsTests
     public void ASL_ShiftsAccumulatorLeft()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x84));
-        Assert.That(state.P & FlagC, Is.EqualTo(0), "Carry should be clear");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x84));
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -674,16 +674,16 @@ public class NewInstructionsTests
     public void ASL_SetsCarryFromBit7()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x80, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x80, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x00));
-        Assert.That(state.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x00));
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     /// <summary>
@@ -693,15 +693,15 @@ public class NewInstructionsTests
     public void LSR_ShiftsAccumulatorRight()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LSRa(AddressingModes.Accumulator);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x21));
-        Assert.That(state.P & FlagC, Is.EqualTo(0), "Carry should be clear");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x21));
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -711,15 +711,15 @@ public class NewInstructionsTests
     public void ROL_RotatesLeftThroughCarry()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = FlagC, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: FlagC, cycles: 10);
 
         // Act
         var handler = Instructions.ROLa(AddressingModes.Accumulator);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0x85)); // 0x42 << 1 | 1
-        Assert.That(state.P & FlagC, Is.EqualTo(0), "Carry should be clear");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x85)); // 0x42 << 1 | 1
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -729,15 +729,15 @@ public class NewInstructionsTests
     public void ROR_RotatesRightThroughCarry()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x42, P = FlagC, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x42, p: FlagC, cycles: 10);
 
         // Act
         var handler = Instructions.RORa(AddressingModes.Accumulator);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.A, Is.EqualTo(0xA1)); // 0x80 | (0x42 >> 1)
-        Assert.That(state.P & FlagC, Is.EqualTo(0), "Carry should be clear");
+        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0xA1)); // 0x80 | (0x42 >> 1)
+        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     #endregion
@@ -752,14 +752,14 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x2000);
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.JMP(AddressingModes.Absolute);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x2000));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
     }
 
     /// <summary>
@@ -770,15 +770,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x2000);
-        var state = new Cpu65C02State { PC = 0x1000, SP = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, sp: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.JSR(AddressingModes.Absolute);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x2000));
-        Assert.That(state.SP, Is.EqualTo(0xFD));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFD));
         ushort returnAddr = (ushort)((memory.Read(0x01FF) << 8) | memory.Read(0x01FE));
         Assert.That(returnAddr, Is.EqualTo(0x1001)); // PC - 1 after reading operand
     }
@@ -792,15 +792,15 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x01FE, 0x00);
         memory.Write(0x01FF, 0x20);
-        var state = new Cpu65C02State { PC = 0x1000, SP = 0xFD, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, sp: 0xFD, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.RTS(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x2001)); // Return address + 1
-        Assert.That(state.SP, Is.EqualTo(0xFF));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2001)); // Return address + 1
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
     }
 
     /// <summary>
@@ -810,19 +810,19 @@ public class NewInstructionsTests
     public void RTI_PullsStatusAndReturnAddress()
     {
         // Arrange
-        memory.Write(0x01FE, FlagC | FlagZ);
-        memory.Write(0x01FF, 0x00);
-        memory.Write(0x0100, 0x20);
-        var state = new Cpu65C02State { PC = 0x1000, SP = 0xFD, P = 0x00, Cycles = 10 };
+        memory.Write(0x01FD, (byte)(FlagC | FlagZ));
+        memory.Write(0x01FE, 0x00);
+        memory.Write(0x01FF, 0x20);
+        var state = CreateState(pc: 0x1000, sp: 0xFC, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.RTI(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.PC, Is.EqualTo(0x2000));
-        Assert.That(state.SP, Is.EqualTo(0x00));
-        Assert.That(state.P, Is.EqualTo(FlagC | FlagZ));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(state.Registers.P, Is.EqualTo(FlagC | FlagZ));
     }
 
     #endregion
@@ -837,11 +837,11 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x42, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STX(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x42));
@@ -855,11 +855,11 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x55, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x55, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STY(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x55));
@@ -878,11 +878,11 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0xFF);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STZ(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
@@ -895,14 +895,14 @@ public class NewInstructionsTests
     public void PHX_PushesXRegisterToStack()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x42, SP = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x42, sp: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PHX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFE));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
         Assert.That(memory.Read(0x01FF), Is.EqualTo(0x42));
     }
 
@@ -914,15 +914,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x01FF, 0x42);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x00, SP = 0xFE, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLX(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFF));
-        Assert.That(state.X, Is.EqualTo(0x42));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -932,14 +932,14 @@ public class NewInstructionsTests
     public void PHY_PushesYRegisterToStack()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x55, SP = 0xFF, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x55, sp: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PHY(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFE));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFE));
         Assert.That(memory.Read(0x01FF), Is.EqualTo(0x55));
     }
 
@@ -951,15 +951,15 @@ public class NewInstructionsTests
     {
         // Arrange
         memory.Write(0x01FF, 0x55);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x00, SP = 0xFE, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLY(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
-        Assert.That(state.SP, Is.EqualTo(0xFF));
-        Assert.That(state.Y, Is.EqualTo(0x55));
+        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x55));
     }
 
     /// <summary>
@@ -971,15 +971,15 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0x0F);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xF0, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0x0F OR 0xF0
-        Assert.That(state.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set (A AND M was 0)");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set (RegisterAccumulator AND M was 0)");
     }
 
     /// <summary>
@@ -991,15 +991,15 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0xFF);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0x80, P = FlagZ, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0x80, p: FlagZ, cycles: 10);
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0xFF OR 0x80 = 0xFF
-        Assert.That(state.P & FlagZ, Is.EqualTo(0), "Zero flag should be clear (A AND M != 0)");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
     }
 
     /// <summary>
@@ -1011,15 +1011,15 @@ public class NewInstructionsTests
         // Arrange
         memory.Write(0x50, 0xFF);
         memory.Write(0x1000, 0x50);
-        var state = new Cpu65C02State { PC = 0x1000, A = 0xF0, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TRB(AddressingModes.ZeroPage);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(memory.Read(0x50), Is.EqualTo(0x0F)); // 0xFF AND (NOT 0xF0)
-        Assert.That(state.P & FlagZ, Is.EqualTo(0), "Zero flag should be clear (A AND M != 0)");
+        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
     }
 
     /// <summary>
@@ -1029,11 +1029,11 @@ public class NewInstructionsTests
     public void WAI_HaltsProcessor()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, HaltReason = HaltState.None, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, haltReason: HaltState.None, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.WAI(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(state.Halted, Is.True, "Processor should be halted");
@@ -1046,15 +1046,40 @@ public class NewInstructionsTests
     public void STP_HaltsProcessor()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, HaltReason = HaltState.None, P = 0x00, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, haltReason: HaltState.None, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STP(AddressingModes.Implied);
-        handler(cpu, memory, ref state);
+        handler(memory, ref state);
 
         // Assert
         Assert.That(state.Halted, Is.True, "Processor should be halted");
     }
 
     #endregion
+
+    /// <summary>
+    /// Creates a CpuState for testing with the specified register values.
+    /// </summary>
+    private static CpuState CreateState(
+        Word pc = 0,
+        byte a = 0,
+        byte x = 0,
+        byte y = 0,
+        byte sp = 0,
+        ProcessorStatusFlags p = 0,
+        ulong cycles = 0,
+        HaltState haltReason = HaltState.None,
+        bool compat = true)
+    {
+        var state = new CpuState { Cycles = cycles, HaltReason = haltReason };
+        state.Registers.Reset(compat);
+        state.Registers.PC.SetWord(pc);
+        state.Registers.A.SetByte(a);
+        state.Registers.X.SetByte(x);
+        state.Registers.Y.SetByte(y);
+        state.Registers.SP.SetByte(sp);
+        state.Registers.P = p;
+        return state;
+    }
 }

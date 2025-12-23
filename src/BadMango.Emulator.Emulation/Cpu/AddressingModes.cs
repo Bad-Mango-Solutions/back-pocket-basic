@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
+using System.Runtime.CompilerServices;
+
 using Core;
 
 /// <summary>
@@ -22,6 +24,10 @@ public delegate Addr AddressingMode<TState>(IMemory memory, ref TState state)
 /// <remarks>
 /// Each addressing mode is a function that computes an effective address given memory and CPU state.
 /// This allows clean composition with instruction handlers.
+/// Mode-aware behavior:
+/// - In 65C02 mode: Standard 6502 behavior
+/// - In 65816 emulation mode (E=1): 6502-compatible with stack pointer forced to page 1
+/// - In 65816 native mode (E=0): Direct page relocatable, 16-bit registers possible, different cycle rules.
 /// </remarks>
 public static class AddressingModes
 {
@@ -34,71 +40,150 @@ public static class AddressingModes
     /// <remarks>
     /// Returns zero as a placeholder address. Instructions using this mode
     /// typically operate only on registers or the stack (e.g., NOP, CLC, SEI).
+    /// Mode-agnostic: behavior is identical across all CPU modes.
     /// </remarks>
-    public static Addr Implied(IMemory memory, ref Cpu65C02State state)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr Implied(IMemory memory, ref CpuState state)
     {
         // No addressing needed, no PC increment, no cycles
+        // Mode-agnostic
         return 0;
     }
 
     /// <summary>
-    /// Immediate addressing - returns the address of the immediate operand (PC).
+    /// ImmediateByte addressing - returns the address of the immediate operand (PC).
     /// </summary>
     /// <param name="memory">The memory interface (not used for immediate addressing).</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The address of the immediate operand (current PC value).</returns>
-    public static Addr Immediate(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - In emulation mode: Always fetches 8-bit immediate
+    /// - In native mode with M=0: Would fetch 16-bit immediate (handled by instruction, not addressing mode)
+    /// - In native mode with X=0: Would fetch 16-bit immediate for index operations.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ImmediateByte(IMemory memory, ref CpuState state)
     {
-        Addr address = state.PC;
-        state.PC++;
+        Addr address = state.Registers.PC.GetDWord();
+        state.Registers.PC.Advance();
 
         // Immediate mode: no extra cycles beyond the read that will happen
+        // Mode behavior: In 65816 native mode, instructions would handle 16-bit fetches themselves
         return address;
     }
 
     /// <summary>
-    /// Zero Page addressing - reads zero page address from PC.
+    /// Zero Page addressing - reads zero-page/direct-page address from PC.
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The zero page address (0x00-0xFF).</returns>
-    public static Addr ZeroPage(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The zero-page/direct-page address.</returns>
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - In 6502/65C02 mode: Direct page is fixed at $0000
+    /// - In 65816 emulation mode: Direct page is fixed at $0000
+    /// - In 65816 native mode: Direct page can be relocated via D register
+    /// - Adds extra cycle if D.l != 0 (direct page not page-aligned) in native mode.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ZeroPage(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = memory.Read(state.PC++);
+        byte zpOffset = memory.Read(state.Registers.PC.addr++);
         state.Cycles++; // 1 cycle to fetch the ZP address
 
+        // In 65816 native mode, D register can relocate the direct page
+        // In emulation mode or 6502 mode, D is always $0000
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add 1 cycle if direct page low byte != 0 (not page-aligned) in native mode
+        // In emulation mode, D is always 0, so no penalty
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        Addr effectiveAddr = (Addr)(directPage + zpOffset);
+
         // The instruction will add 1 more cycle for the actual read
-        return zpAddr;
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Zero Page,X addressing - reads zero page address and adds X register.
+    /// Zero Page,X addressing - reads zero-page/direct-page address and adds X register.
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The effective zero page address with X offset (wraps within zero page).</returns>
-    public static Addr ZeroPageX(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The effective zero-page/direct-page address with X offset (wraps within direct page).</returns>
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - Wrapping behavior: Always wraps within the direct page (even in native mode)
+    /// - In native mode: X can be 8 or 16 bits (controlled by X flag)
+    /// - Adds extra cycle if D.l != 0 in native mode.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ZeroPageX(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
-        state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte zpOffset = memory.Read(pc);
+        state.Cycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add X register (wraps within 256-byte direct page)
+        byte x = state.Registers.X.GetByte();
+        byte effectiveOffset = (byte)(zpOffset + x);
+
+        state.Cycles++; // 1 cycle for indexing
+
+        // Add 1 cycle if direct page not page-aligned in native mode
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         // The instruction will add 1 more cycle for the actual read
-        return zpAddr;
+        return effectiveAddr;
     }
 
     /// <summary>
-    /// Zero Page,Y addressing - reads zero page address and adds Y register.
+    /// Zero Page,Y addressing - reads zero-page/direct-page address and adds Y register.
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The effective zero page address with Y offset (wraps within zero page).</returns>
-    public static Addr ZeroPageY(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The effective zero-page/direct-page address with Y offset (wraps within direct page).</returns>
+    /// <remarks>
+    /// Mode-aware behavior: Same as ZeroPageX but with Y register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ZeroPageY(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = (byte)(memory.Read(state.PC++) + state.Y);
-        state.Cycles += 2; // 1 cycle to fetch ZP address, 1 cycle for indexing
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte zpOffset = memory.Read(pc);
+        state.Cycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add Y register (wraps within 256-byte direct page)
+        byte y = state.Registers.Y.GetByte();
+        byte effectiveOffset = (byte)(zpOffset + y);
+
+        state.Cycles++; // 1 cycle for indexing
+
+        // Add 1 cycle if direct page not page-aligned in native mode
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         // The instruction will add 1 more cycle for the actual read
-        return zpAddr;
+        return effectiveAddr;
     }
 
     /// <summary>
@@ -107,14 +192,26 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The 16-bit absolute address.</returns>
-    public static Addr Absolute(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - In 6502/65C02: Direct 16-bit address
+    /// - In 65816: Uses Data Bank Register (DBR) to form 24-bit address
+    /// - Result is always 16-bit for 6502/65C02 compatibility
+    /// - In 65816, the actual 24-bit address would be (DBR &lt;&lt; 16) | absAddr.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr Absolute(IMemory memory, ref CpuState state)
     {
-        Addr address = memory.ReadWord(state.PC);
-        state.PC += 2;
+        Addr address = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
+        // In 65816, this would be combined with DBR for 24-bit addressing
+        // For now, we return just the 16-bit portion
+        // Future enhancement: return (state.DBR << 16) | address for 65816
+
         // The instruction will add 1 more cycle for the actual read
-        return address;
+        return ((Addr)state.Registers.DBR << 16) | address;
     }
 
     /// <summary>
@@ -123,14 +220,23 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with X offset.</returns>
-    public static Addr AbsoluteX(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - In 6502/65C02/emulation mode: Always adds page boundary cycle on cross
+    /// - In 65816 native mode: Page boundary behavior depends on instruction type
+    /// - X register can be 8 or 16 bits in native mode (controlled by X flag).
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr AbsoluteX(IMemory memory, ref CpuState state)
     {
-        Addr baseAddr = memory.ReadWord(state.PC);
-        state.PC += 2;
-        Addr effectiveAddr = baseAddr + state.X;
+        Addr baseAddr = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + state.Registers.X.GetDWord();
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
         // Add extra cycle if page boundary crossed
+        // In emulation mode (E=1): Always check page boundary
+        // In native mode (E=0): Some instructions skip this check
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
             state.Cycles++;
@@ -146,11 +252,15 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset.</returns>
-    public static Addr AbsoluteY(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior: Same as AbsoluteX but with Y register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr AbsoluteY(IMemory memory, ref CpuState state)
     {
-        Addr baseAddr = memory.ReadWord(state.PC);
-        state.PC += 2;
-        Addr effectiveAddr = baseAddr + state.Y;
+        Addr baseAddr = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + state.Registers.Y.GetDWord();
         state.Cycles += 2; // 2 cycles to fetch the 16-bit address
 
         // Add extra cycle if page boundary crossed
@@ -164,33 +274,86 @@ public static class AddressingModes
     }
 
     /// <summary>
-    /// Indexed Indirect (Indirect,X) addressing - uses X-indexed zero page pointer.
+    /// Indexed Indirect (Indirect,X) addressing - uses X-indexed zero-page pointer.
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The effective address read from the X-indexed zero page pointer.</returns>
-    public static Addr IndirectX(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The effective address read from the X-indexed zero-page pointer.</returns>
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - Uses direct page (D register) in 65816 native mode
+    /// - Pointer read wraps within direct page
+    /// - Adds extra cycle if D.l != 0 in native mode.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr IndirectX(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = (byte)(memory.Read(state.PC++) + state.X);
-        Addr address = memory.ReadWord(zpAddr);
-        state.Cycles += 4; // 1 (fetch ZP), 1 (index), 2 (read pointer from ZP)
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte zpOffset = memory.Read(pc);
+        state.Cycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add X register (wraps within direct page)
+        byte x = state.Registers.X.GetByte();
+        byte effectiveOffset = (byte)(zpOffset + x);
+
+        state.Cycles++; // 1 cycle for indexing
+
+        // Add 1 cycle if direct page not page-aligned in native mode
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        // Read 16-bit pointer from direct page (wraps within direct page for both bytes)
+        Addr pointerAddr = (Addr)(directPage + effectiveOffset);
+        Addr address = memory.ReadWord(pointerAddr);
+
+        state.Cycles += 2; // 2 cycles to read pointer from ZP
 
         // The instruction will add 1 more cycle for the actual read
         return address;
     }
 
     /// <summary>
-    /// Indirect Indexed (Indirect),Y addressing - uses zero page pointer indexed by Y.
+    /// Indirect Indexed (Indirect),Y addressing - uses zero-page pointer indexed by Y.
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The effective address with Y offset applied to the zero page pointer.</returns>
-    public static Addr IndirectY(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The effective address with Y offset applied to the zero-page pointer.</returns>
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - Uses direct page (D register) in 65816 native mode
+    /// - Page boundary crossing adds cycle in emulation mode
+    /// - Adds extra cycle if D.l != 0 in native mode.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr IndirectY(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = memory.Read(state.PC++);
-        Addr baseAddr = memory.ReadWord(zpAddr);
-        Addr effectiveAddr = baseAddr + state.Y;
-        state.Cycles += 3; // 1 (fetch ZP), 2 (read pointer from ZP)
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte zpOffset = memory.Read(pc);
+        state.Cycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add 1 cycle if direct page not page-aligned in native mode
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        // Read 16-bit pointer from direct page
+        Addr pointerAddr = (Addr)(directPage + zpOffset);
+        Addr baseAddr = memory.ReadWord(pointerAddr);
+
+        state.Cycles += 2; // 2 cycles to read pointer from ZP
+
+        // Add Y register
+        byte y = state.Registers.Y.GetByte();
+        Addr effectiveAddr = baseAddr + y;
 
         // Add extra cycle if page boundary crossed
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
@@ -210,12 +373,21 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with X offset.</returns>
-    public static Addr AbsoluteXWrite(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - Always takes maximum cycles regardless of page boundary crossing
+    /// - In 65816 native mode, behavior matches read mode but without conditional cycle.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr AbsoluteXWrite(IMemory memory, ref CpuState state)
     {
-        Addr baseAddr = memory.ReadWord(state.PC);
-        state.PC += 2;
-        Addr effectiveAddr = baseAddr + state.X;
+        Addr baseAddr = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + state.Registers.X.GetByte();
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
+
+        // Write operations always take the maximum cycles
+        // No conditional page boundary check
 
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
@@ -227,11 +399,15 @@ public static class AddressingModes
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
     /// <returns>The effective address with Y offset.</returns>
-    public static Addr AbsoluteYWrite(IMemory memory, ref Cpu65C02State state)
+    /// <remarks>
+    /// Mode-aware behavior: Same as AbsoluteXWrite but with Y register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr AbsoluteYWrite(IMemory memory, ref CpuState state)
     {
-        Addr baseAddr = memory.ReadWord(state.PC);
-        state.PC += 2;
-        Addr effectiveAddr = baseAddr + state.Y;
+        Addr baseAddr = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
+        Addr effectiveAddr = baseAddr + state.Registers.Y.GetByte();
         state.Cycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         // The instruction will add 1 more cycle for the actual write
@@ -243,13 +419,39 @@ public static class AddressingModes
     /// </summary>
     /// <param name="memory">The memory interface.</param>
     /// <param name="state">Reference to the CPU state.</param>
-    /// <returns>The effective address with Y offset applied to the zero page pointer.</returns>
-    public static Addr IndirectYWrite(IMemory memory, ref Cpu65C02State state)
+    /// <returns>The effective address with Y offset applied to the zero-page pointer.</returns>
+    /// <remarks>
+    /// Mode-aware behavior:
+    /// - Always takes maximum cycles regardless of page boundary
+    /// - Uses direct page (D register) in 65816 native mode.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr IndirectYWrite(IMemory memory, ref CpuState state)
     {
-        byte zpAddr = memory.Read(state.PC++);
-        Addr baseAddr = memory.ReadWord(zpAddr);
-        Addr effectiveAddr = baseAddr + state.Y;
-        state.Cycles += 4; // 1 (fetch ZP), 2 (read pointer), 1 extra for write
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte zpOffset = memory.Read(pc);
+        state.Cycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = state.Registers.D.GetWord();
+
+        // Add 1 cycle if direct page not page-aligned in native mode
+        if ((directPage & 0xFF) != 0)
+        {
+            state.Cycles++;
+        }
+
+        // Read 16-bit pointer from direct page
+        Addr pointerAddr = (Addr)(directPage + zpOffset);
+        Addr baseAddr = memory.ReadWord(pointerAddr);
+
+        state.Cycles += 2; // 2 cycles to read pointer from ZP
+
+        // Add Y register
+        byte y = state.Registers.Y.GetByte();
+        Addr effectiveAddr = baseAddr + y;
+
+        state.Cycles++; // 1 extra cycle for write (always taken)
 
         // The instruction will add 1 more cycle for the actual write
         return effectiveAddr;
@@ -263,11 +465,17 @@ public static class AddressingModes
     /// <returns>Returns zero as a placeholder address since the operation is on the accumulator.</returns>
     /// <remarks>
     /// Returns zero as a placeholder address. Instructions using this mode operate directly
-    /// on the accumulator register (e.g., ASL A, LSR A, ROL A, ROR A).
+    /// on the accumulator register (e.g., ASL RegisterAccumulator, LSR RegisterAccumulator, ROL RegisterAccumulator, ROR RegisterAccumulator).
+    /// Mode-aware behavior:
+    /// - In 6502/65C02/emulation mode: Operates on 8-bit accumulator
+    /// - In 65816 native mode with M=0: Operates on 16-bit accumulator
+    /// - Instruction implementation handles width differences.
     /// </remarks>
-    public static Addr Accumulator(IMemory memory, ref Cpu65C02State state)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr Accumulator(IMemory memory, ref CpuState state)
     {
         // No addressing needed, no PC increment, no cycles
+        // Mode differences handled by instruction implementation
         return 0;
     }
 
@@ -280,14 +488,22 @@ public static class AddressingModes
     /// <remarks>
     /// Reads a signed byte offset from PC and computes the branch target.
     /// Branch instructions must handle the conditional logic and cycle counting.
+    /// Mode-aware behavior:
+    /// - In emulation mode: Page boundary crossing adds cycle
+    /// - In native mode: Some implementations may not add page boundary cycle
+    /// - Branch instruction implementation handles mode-specific cycle counting.
     /// </remarks>
-    public static Addr Relative(IMemory memory, ref Cpu65C02State state)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr Relative(IMemory memory, ref CpuState state)
     {
-        sbyte offset = (sbyte)memory.Read(state.PC++);
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        sbyte offset = (sbyte)memory.Read(pc);
         state.Cycles++; // 1 cycle to fetch the offset
-        Addr targetAddr = (Addr)(state.PC + offset);
+        Addr targetAddr = (Addr)(state.Registers.PC.GetAddr() + offset);
 
         // Branch instructions will add extra cycles if branch is taken
+        // Mode-aware cycle counting is handled by the branch instruction itself
         return targetAddr;
     }
 
@@ -299,13 +515,23 @@ public static class AddressingModes
     /// <returns>The address read from the indirect pointer.</returns>
     /// <remarks>
     /// Used by JMP (Indirect). The 65C02 fixed the page wrap bug from the original 6502.
+    /// Mode-aware behavior:
+    /// - In 6502: Page boundary wrapping bug (if pointer at $xxFF, high byte read from $xx00)
+    /// - In 65C02: Fixed to read correctly across page boundaries
+    /// - In 65816: Enhanced with additional indirect modes (not this one).
     /// </remarks>
-    public static Addr Indirect(IMemory memory, ref Cpu65C02State state)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr Indirect(IMemory memory, ref CpuState state)
     {
-        Addr pointerAddr = memory.ReadWord(state.PC);
-        state.PC += 2;
+        Addr pointerAddr = memory.ReadWord(state.Registers.PC.GetAddr());
+        state.Registers.PC.Advance(2);
+        state.Cycles += 2; // 2 cycles to fetch pointer address
+
+        // In 65C02+, this correctly handles page boundary crossing
+        // In original 6502, there was a bug if pointerAddr ended in $FF
         Addr targetAddr = memory.ReadWord(pointerAddr);
-        state.Cycles += 4; // 2 cycles to fetch pointer address, 2 cycles to read target
+
+        state.Cycles += 2; // 2 cycles to read target
 
         // The instruction will add 1 more cycle for execution
         return targetAddr;

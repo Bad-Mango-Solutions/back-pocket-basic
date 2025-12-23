@@ -32,32 +32,32 @@ public class AddressingModesTests
     public void Implied_ReturnsZeroAndDoesNotModifyState()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
         Addr address = AddressingModes.Implied(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0));
-        Assert.That(state.PC, Is.EqualTo(0x1000)); // PC unchanged
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1000)); // PC unchanged
         Assert.That(state.Cycles, Is.EqualTo(10)); // Cycles unchanged
     }
 
     /// <summary>
-    /// Verifies that Immediate addressing mode returns PC and increments it.
+    /// Verifies that ImmediateByte addressing mode returns PC and increments it.
     /// </summary>
     [Test]
     public void Immediate_ReturnsPCAndIncrementsIt()
     {
         // Arrange
-        var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.Immediate(memory, ref state);
+        Addr address = AddressingModes.ImmediateByte(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1000));
-        Assert.That(state.PC, Is.EqualTo(0x1001)); // PC incremented
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001)); // PC incremented
         Assert.That(state.Cycles, Is.EqualTo(10)); // No extra cycles for immediate
     }
 
@@ -69,14 +69,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0x42);
-        var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
         Addr address = AddressingModes.ZeroPage(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0042));
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(11)); // +1 cycle for ZP fetch
     }
 
@@ -88,14 +88,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0xF0);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x20, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x20, cycles: 10);
 
         // Act
         Addr address = AddressingModes.ZeroPageX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0xF0 + 0x20 = 0x110, wrapped to 0x10
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles (fetch + index)
     }
 
@@ -107,14 +107,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.Write(0x1000, 0x80);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x90, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x90, cycles: 10);
 
         // Act
         Addr address = AddressingModes.ZeroPageY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x0010)); // 0x80 + 0x90 = 0x110, wrapped to 0x10
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles (fetch + index)
     }
 
@@ -126,14 +126,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x5678);
-        var state = new Cpu65C02State { PC = 0x1000, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
         Addr address = AddressingModes.Absolute(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5678));
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles for 16-bit address fetch
     }
 
@@ -145,14 +145,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x1234);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x10, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1244)); // 0x1234 + 0x10
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles, no page boundary penalty
     }
 
@@ -164,14 +164,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x12FF);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x02, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x02, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1301)); // 0x12FF + 0x02
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
     }
 
@@ -183,14 +183,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x2000);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x50, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x50, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2050)); // 0x2000 + 0x50
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(12)); // +2 cycles, no page boundary penalty
     }
 
@@ -202,14 +202,14 @@ public class AddressingModesTests
     {
         // Arrange
         memory.WriteWord(0x1000, 0x20F0);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x20, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2110)); // 0x20F0 + 0x20
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles (2 base + 1 page boundary)
     }
 
@@ -222,14 +222,14 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x40); // ZP address
         memory.WriteWord(0x0045, 0x3000); // Pointer at ZP 0x45 (0x40 + 0x05)
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x05, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x05, cycles: 10);
 
         // Act
         Addr address = AddressingModes.IndirectX(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3000));
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(14)); // +4 cycles (fetch ZP + index + read pointer)
     }
 
@@ -242,14 +242,14 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x50); // ZP address
         memory.WriteWord(0x0050, 0x4000); // Pointer at ZP 0x50
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x10, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x10, cycles: 10);
 
         // Act
         Addr address = AddressingModes.IndirectY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4010)); // 0x4000 + 0x10
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(13)); // +3 cycles, no page boundary penalty
     }
 
@@ -262,14 +262,14 @@ public class AddressingModesTests
         // Arrange
         memory.Write(0x1000, 0x60); // ZP address
         memory.WriteWord(0x0060, 0x40FF); // Pointer at ZP 0x60
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x02, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x02, cycles: 10);
 
         // Act
         Addr address = AddressingModes.IndirectY(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x4101)); // 0x40FF + 0x02
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(14)); // +4 cycles (3 base + 1 page boundary)
     }
 
@@ -281,14 +281,14 @@ public class AddressingModesTests
     {
         // Arrange - no page crossing case
         memory.WriteWord(0x1000, 0x2000);
-        var state = new Cpu65C02State { PC = 0x1000, X = 0x10, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, x: 0x10, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteXWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x2010));
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(13)); // Always +3 cycles for write operations
     }
 
@@ -300,14 +300,14 @@ public class AddressingModesTests
     {
         // Arrange - no page crossing case
         memory.WriteWord(0x1000, 0x3000);
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x20, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x20, cycles: 10);
 
         // Act
         Addr address = AddressingModes.AbsoluteYWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x3020));
-        Assert.That(state.PC, Is.EqualTo(0x1002));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         Assert.That(state.Cycles, Is.EqualTo(13)); // Always +3 cycles for write operations
     }
 
@@ -320,14 +320,36 @@ public class AddressingModesTests
         // Arrange - no page crossing case
         memory.Write(0x1000, 0x70); // ZP address
         memory.WriteWord(0x0070, 0x5000); // Pointer at ZP 0x70
-        var state = new Cpu65C02State { PC = 0x1000, Y = 0x30, Cycles = 10 };
+        var state = CreateState(pc: 0x1000, y: 0x30, cycles: 10);
 
         // Act
         Addr address = AddressingModes.IndirectYWrite(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x5030));
-        Assert.That(state.PC, Is.EqualTo(0x1001));
+        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
         Assert.That(state.Cycles, Is.EqualTo(14)); // Always +4 cycles for write operations
+    }
+
+    /// <summary>
+    /// Creates a CpuState for testing with the specified register values.
+    /// </summary>
+    private static CpuState CreateState(
+        Word pc = 0,
+        byte a = 0,
+        byte x = 0,
+        byte y = 0,
+        byte sp = 0,
+        ProcessorStatusFlags p = 0,
+        ulong cycles = 0)
+    {
+        var state = new CpuState { Cycles = cycles };
+        state.Registers.PC.SetWord(pc);
+        state.Registers.A.SetByte(a);
+        state.Registers.X.SetByte(x);
+        state.Registers.Y.SetByte(y);
+        state.Registers.SP.SetByte(sp);
+        state.Registers.P = p;
+        return state;
     }
 }

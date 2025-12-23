@@ -17,7 +17,7 @@ using System.Runtime.InteropServices;
 public struct Cpu65832Registers
 {
     /// <summary>
-    /// Gets or sets the Accumulator register (A - 32-bit).
+    /// Gets or sets the Accumulator register (RegisterAccumulator - 32-bit).
     /// </summary>
     public uint A { get; set; }
 

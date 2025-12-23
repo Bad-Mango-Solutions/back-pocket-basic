@@ -18,7 +18,7 @@ using System.Runtime.InteropServices;
 public struct Cpu65816Registers
 {
     /// <summary>
-    /// Gets or sets the Accumulator register (A/C - 16-bit in native mode, 8-bit in emulation mode).
+    /// Gets or sets the Accumulator register (RegisterAccumulator/C - 16-bit in native mode, 8-bit in emulation mode).
     /// </summary>
     public ushort A { get; set; }
 

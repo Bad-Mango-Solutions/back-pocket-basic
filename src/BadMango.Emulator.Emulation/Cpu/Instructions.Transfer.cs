@@ -1,0 +1,127 @@
+// <copyright file="Instructions.Transfer.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+// ReSharper disable InconsistentNaming
+namespace BadMango.Emulator.Emulation.Cpu;
+
+using System.Runtime.CompilerServices;
+
+using Core;
+
+/// <summary>
+/// Register transfer instructions (TAX, TAY, TXA, TYA, TXS, TSX).
+/// </summary>
+public static partial class Instructions
+{
+    /// <summary>
+    /// TAX - Transfer Accumulator to X instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TAX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TAX(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte size = state.Registers.GetIndexSize();
+            var value = state.Registers.A.GetValue(size);
+            state.Registers.X.SetValue(value, size);
+            state.Registers.P.SetZeroAndNegative(value, size);
+            state.Cycles++;
+        };
+    }
+
+    /// <summary>
+    /// TAY - Transfer Accumulator to Y instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TAY.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TAY(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte size = state.Registers.GetIndexSize();
+            var value = state.Registers.A.GetValue(size);
+            state.Registers.Y.SetValue(value, size);
+            state.Registers.P.SetZeroAndNegative(value, size);
+            state.Cycles++;
+        };
+    }
+
+    /// <summary>
+    /// TXA - Transfer X to Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TXA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TXA(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte size = state.Registers.GetAccumulatorSize();
+            var value = state.Registers.X.GetValue(size);
+            state.Registers.A.SetValue(value, size);
+            state.Registers.P.SetZeroAndNegative(value, size);
+            state.Cycles++;
+        };
+    }
+
+    /// <summary>
+    /// TYA - Transfer Y to Accumulator instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TYA.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TYA(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte size = state.Registers.GetAccumulatorSize();
+            var value = state.Registers.Y.GetValue(size);
+            state.Registers.A.SetValue(value, size);
+            state.Registers.P.SetZeroAndNegative(value, size);
+            state.Cycles++;
+        };
+    }
+
+    /// <summary>
+    /// TXS - Transfer X to Stack Pointer instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TXS.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TXS(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            state.Registers.SP.SetByte(state.Registers.X.GetByte());
+            state.Cycles++;
+        };
+    }
+
+    /// <summary>
+    /// TSX - Transfer Stack Pointer to X instruction.
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <returns>An opcode handler that executes TSX.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler TSX(AddressingMode<CpuState> addressingMode)
+    {
+        return (memory, ref state) =>
+        {
+            addressingMode(memory, ref state);
+            byte size = state.Registers.GetIndexSize();
+            byte value = state.Registers.SP.GetByte();
+            state.Registers.X.SetByte(value);
+            state.Registers.P.SetZeroAndNegative(value, size);
+            state.Cycles++;
+        };
+    }
+}

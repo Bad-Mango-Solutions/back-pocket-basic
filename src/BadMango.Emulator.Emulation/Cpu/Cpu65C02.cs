@@ -17,12 +17,12 @@ using Core;
 /// functional CPU core with basic instruction support.
 /// Optimized with aggressive inlining for maximum performance.
 /// </remarks>
-public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
+public class Cpu65C02 : ICpu
 {
     private readonly IMemory memory;
-    private readonly OpcodeTable<Cpu65C02, Cpu65C02State> opcodeTable;
+    private readonly OpcodeTable opcodeTable;
 
-    private Cpu65C02State state; // CPU state including all registers, cycles, and halt state
+    private CpuState state; // CPU state including all registers, cycles, and halt state
     private bool irqPending;
     private bool nmiPending;
 
@@ -46,17 +46,9 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// <inheritdoc/>
     public void Reset()
     {
-        state = new Cpu65C02State
+        state = new()
         {
-            Registers = new Cpu65C02Registers
-            {
-                A = 0,
-                X = 0,
-                Y = 0,
-                SP = 0xFD,
-                P = (byte)(Cpu65C02Constants.FlagU | Cpu65C02Constants.FlagI), // Unused flag always set, interrupts disabled
-                PC = memory.ReadWord(Cpu65C02Constants.ResetVector),
-            },
+            Registers = new(true, memory.ReadWord(Cpu65C02Constants.ResetVector)),
             Cycles = 0,
             HaltReason = HaltState.None,
         };
@@ -87,7 +79,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         byte opcode = FetchByte();
 
         // Execute opcode with state
-        opcodeTable.Execute(opcode, this, memory, ref state);
+        opcodeTable.Execute(opcode, memory, ref state);
 
         return (int)(state.Cycles - cyclesBefore);
     }
@@ -95,7 +87,7 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     /// <inheritdoc/>
     public void Execute(uint startAddress)
     {
-        state.PC = (Word)startAddress;
+        state.Registers.PC.SetAddr(startAddress);
         state.HaltReason = HaltState.None;
 
         while (!Halted)
@@ -106,21 +98,21 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Cpu65C02Registers GetRegisters()
+    public Registers GetRegisters()
     {
         return state.Registers;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Cpu65C02State GetState()
+    public ref CpuState GetState()
     {
-        return state;
+        return ref state;
     }
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetState(Cpu65C02State newState)
+    public void SetState(CpuState newState)
     {
         state = newState;
     }
@@ -140,7 +132,9 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
-        byte value = memory.Read(state.PC++);
+        var pc = state.Registers.PC.GetAddr();
+        state.Registers.PC.Advance();
+        byte value = memory.Read(pc);
         state.Cycles++;
         return value;
     }
@@ -179,21 +173,18 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
         }
 
         // Check for IRQ (maskable by I flag)
-        if (irqPending && (state.P & Cpu65C02Constants.FlagI) == 0)
+        if (!irqPending || state.Registers.P.IsInterruptDisabled()) { return false; }
+
+        irqPending = false;
+
+        // Resume from WAI if halted
+        if (state.HaltReason == HaltState.Wai)
         {
-            irqPending = false;
-
-            // Resume from WAI if halted
-            if (state.HaltReason == HaltState.Wai)
-            {
-                state.HaltReason = HaltState.None;
-            }
-
-            ProcessInterrupt(Cpu65C02Constants.IrqVector);
-            return true;
+            state.HaltReason = HaltState.None;
         }
 
-        return false;
+        ProcessInterrupt(Cpu65C02Constants.IrqVector);
+        return true;
     }
 
     /// <summary>
@@ -212,18 +203,20 @@ public class Cpu65C02 : ICpu<Cpu65C02Registers, Cpu65C02State>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessInterrupt(Addr vector)
     {
+        var pc = state.Registers.PC.GetWord();
+
         // Push PC to stack (high byte first)
-        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC >> 8));
-        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.PC & 0xFF));
+        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.HighByte());
+        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
 
         // Push processor status (with B flag clear for hardware interrupts)
-        memory.Write((Word)(Cpu65C02Constants.StackBase + state.SP--), (byte)(state.P & ~Cpu65C02Constants.FlagB));
+        memory.Write(state.PushByte(Cpu65C02Constants.StackBase), (byte)(state.Registers.P & ~ProcessorStatusFlags.B));
 
         // Set I flag to disable further IRQs
-        state.P |= Cpu65C02Constants.FlagI;
+        state.Registers.P.SetInterruptDisable(true);
 
         // Load PC from interrupt vector
-        state.PC = memory.ReadWord(vector);
+        state.Registers.PC.SetAddr(memory.ReadWord(vector));
 
         // Account for 7 cycles for interrupt processing
         state.Cycles += 7;

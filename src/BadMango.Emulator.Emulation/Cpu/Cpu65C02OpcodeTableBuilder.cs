@@ -20,10 +20,10 @@ public static class Cpu65C02OpcodeTableBuilder
     /// <summary>
     /// Builds the opcode table for the 65C02 CPU.
     /// </summary>
-    /// <returns>An <see cref="OpcodeTable{TCpu, TState}"/> configured for the 65C02 CPU.</returns>
-    public static OpcodeTable<Cpu65C02, Cpu65C02State> Build()
+    /// <returns>An <see cref="OpcodeTable"/> configured for the 65C02 CPU.</returns>
+    public static OpcodeTable Build()
     {
-        var handlers = new OpcodeHandler<Cpu65C02, Cpu65C02State>[256];
+        var handlers = new OpcodeHandler[256];
 
         // Initialize all opcodes to illegal opcode handler
         for (int i = 0; i < 256; i++)
@@ -35,7 +35,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x00] = Instructions.BRK(AddressingModes.Implied);
 
         // LDA - Load Accumulator (true compositional pattern)
-        handlers[0xA9] = Instructions.LDA(AddressingModes.Immediate);
+        handlers[0xA9] = Instructions.LDA(AddressingModes.ImmediateByte);
         handlers[0xA5] = Instructions.LDA(AddressingModes.ZeroPage);
         handlers[0xB5] = Instructions.LDA(AddressingModes.ZeroPageX);
         handlers[0xAD] = Instructions.LDA(AddressingModes.Absolute);
@@ -54,34 +54,21 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x91] = Instructions.STA(AddressingModes.IndirectYWrite); // Write version always takes max cycles
 
         // LDX - Load X Register
-        handlers[0xA2] = Instructions.LDX(AddressingModes.Immediate);
-
-        // LDY - Load Y Register
-        handlers[0xA0] = Instructions.LDY(AddressingModes.Immediate);
-
-        // NOP - No Operation
-        handlers[0xEA] = Instructions.NOP(AddressingModes.Implied);
-
-        // Flag manipulation instructions (all use Implied addressing)
-        handlers[0x18] = Instructions.CLC(AddressingModes.Implied); // Clear Carry
-        handlers[0x38] = Instructions.SEC(AddressingModes.Implied); // Set Carry
-        handlers[0x58] = Instructions.CLI(AddressingModes.Implied); // Clear Interrupt Disable
-        handlers[0x78] = Instructions.SEI(AddressingModes.Implied); // Set Interrupt Disable
-        handlers[0xD8] = Instructions.CLD(AddressingModes.Implied); // Clear Decimal
-        handlers[0xF8] = Instructions.SED(AddressingModes.Implied); // Set Decimal
-        handlers[0xB8] = Instructions.CLV(AddressingModes.Implied); // Clear Overflow
-
-        // LDX - Additional addressing modes
+        handlers[0xA2] = Instructions.LDX(AddressingModes.ImmediateByte);
         handlers[0xA6] = Instructions.LDX(AddressingModes.ZeroPage);
         handlers[0xB6] = Instructions.LDX(AddressingModes.ZeroPageY);
         handlers[0xAE] = Instructions.LDX(AddressingModes.Absolute);
         handlers[0xBE] = Instructions.LDX(AddressingModes.AbsoluteY);
 
-        // LDY - Additional addressing modes
+        // LDY - Load Y Register
+        handlers[0xA0] = Instructions.LDY(AddressingModes.ImmediateByte);
         handlers[0xA4] = Instructions.LDY(AddressingModes.ZeroPage);
         handlers[0xB4] = Instructions.LDY(AddressingModes.ZeroPageX);
         handlers[0xAC] = Instructions.LDY(AddressingModes.Absolute);
         handlers[0xBC] = Instructions.LDY(AddressingModes.AbsoluteX);
+
+        // NOP - No Operation
+        handlers[0xEA] = Instructions.NOP(AddressingModes.Implied);
 
         // STX - Store X Register
         handlers[0x86] = Instructions.STX(AddressingModes.ZeroPage);
@@ -93,11 +80,20 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x94] = Instructions.STY(AddressingModes.ZeroPageX);
         handlers[0x8C] = Instructions.STY(AddressingModes.Absolute);
 
+        // Flag manipulation instructions (all use Implied addressing)
+        handlers[0x18] = Instructions.CLC(AddressingModes.Implied); // Clear Carry
+        handlers[0x38] = Instructions.SEC(AddressingModes.Implied); // Set Carry
+        handlers[0x58] = Instructions.CLI(AddressingModes.Implied); // Clear Interrupt Disable
+        handlers[0x78] = Instructions.SEI(AddressingModes.Implied); // Set Interrupt Disable
+        handlers[0xD8] = Instructions.CLD(AddressingModes.Implied); // Clear Decimal
+        handlers[0xF8] = Instructions.SED(AddressingModes.Implied); // Set Decimal
+        handlers[0xB8] = Instructions.CLV(AddressingModes.Implied); // Clear Overflow
+
         // Register Transfer Operations
-        handlers[0xAA] = Instructions.TAX(AddressingModes.Implied); // Transfer A to X
-        handlers[0xA8] = Instructions.TAY(AddressingModes.Implied); // Transfer A to Y
-        handlers[0x8A] = Instructions.TXA(AddressingModes.Implied); // Transfer X to A
-        handlers[0x98] = Instructions.TYA(AddressingModes.Implied); // Transfer Y to A
+        handlers[0xAA] = Instructions.TAX(AddressingModes.Implied); // Transfer RegisterAccumulator to X
+        handlers[0xA8] = Instructions.TAY(AddressingModes.Implied); // Transfer RegisterAccumulator to Y
+        handlers[0x8A] = Instructions.TXA(AddressingModes.Implied); // Transfer X to RegisterAccumulator
+        handlers[0x98] = Instructions.TYA(AddressingModes.Implied); // Transfer Y to RegisterAccumulator
         handlers[0x9A] = Instructions.TXS(AddressingModes.Implied); // Transfer X to SP
         handlers[0xBA] = Instructions.TSX(AddressingModes.Implied); // Transfer SP to X
 
@@ -131,7 +127,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x40] = Instructions.RTI(AddressingModes.Implied); // Return from Interrupt
 
         // Comparison Operations
-        handlers[0xC9] = Instructions.CMP(AddressingModes.Immediate);
+        handlers[0xC9] = Instructions.CMP(AddressingModes.ImmediateByte);
         handlers[0xC5] = Instructions.CMP(AddressingModes.ZeroPage);
         handlers[0xD5] = Instructions.CMP(AddressingModes.ZeroPageX);
         handlers[0xCD] = Instructions.CMP(AddressingModes.Absolute);
@@ -140,11 +136,11 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xC1] = Instructions.CMP(AddressingModes.IndirectX);
         handlers[0xD1] = Instructions.CMP(AddressingModes.IndirectY);
 
-        handlers[0xE0] = Instructions.CPX(AddressingModes.Immediate);
+        handlers[0xE0] = Instructions.CPX(AddressingModes.ImmediateByte);
         handlers[0xE4] = Instructions.CPX(AddressingModes.ZeroPage);
         handlers[0xEC] = Instructions.CPX(AddressingModes.Absolute);
 
-        handlers[0xC0] = Instructions.CPY(AddressingModes.Immediate);
+        handlers[0xC0] = Instructions.CPY(AddressingModes.ImmediateByte);
         handlers[0xC4] = Instructions.CPY(AddressingModes.ZeroPage);
         handlers[0xCC] = Instructions.CPY(AddressingModes.Absolute);
 
@@ -160,7 +156,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x80] = Instructions.BRA(AddressingModes.Relative); // Branch Always (65C02)
 
         // Arithmetic Operations
-        handlers[0x69] = Instructions.ADC(AddressingModes.Immediate);
+        handlers[0x69] = Instructions.ADC(AddressingModes.ImmediateByte);
         handlers[0x65] = Instructions.ADC(AddressingModes.ZeroPage);
         handlers[0x75] = Instructions.ADC(AddressingModes.ZeroPageX);
         handlers[0x6D] = Instructions.ADC(AddressingModes.Absolute);
@@ -169,7 +165,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x61] = Instructions.ADC(AddressingModes.IndirectX);
         handlers[0x71] = Instructions.ADC(AddressingModes.IndirectY);
 
-        handlers[0xE9] = Instructions.SBC(AddressingModes.Immediate);
+        handlers[0xE9] = Instructions.SBC(AddressingModes.ImmediateByte);
         handlers[0xE5] = Instructions.SBC(AddressingModes.ZeroPage);
         handlers[0xF5] = Instructions.SBC(AddressingModes.ZeroPageX);
         handlers[0xED] = Instructions.SBC(AddressingModes.Absolute);
@@ -194,7 +190,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x88] = Instructions.DEY(AddressingModes.Implied);
 
         // Logical Operations
-        handlers[0x29] = Instructions.AND(AddressingModes.Immediate);
+        handlers[0x29] = Instructions.AND(AddressingModes.ImmediateByte);
         handlers[0x25] = Instructions.AND(AddressingModes.ZeroPage);
         handlers[0x35] = Instructions.AND(AddressingModes.ZeroPageX);
         handlers[0x2D] = Instructions.AND(AddressingModes.Absolute);
@@ -203,7 +199,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x21] = Instructions.AND(AddressingModes.IndirectX);
         handlers[0x31] = Instructions.AND(AddressingModes.IndirectY);
 
-        handlers[0x09] = Instructions.ORA(AddressingModes.Immediate);
+        handlers[0x09] = Instructions.ORA(AddressingModes.ImmediateByte);
         handlers[0x05] = Instructions.ORA(AddressingModes.ZeroPage);
         handlers[0x15] = Instructions.ORA(AddressingModes.ZeroPageX);
         handlers[0x0D] = Instructions.ORA(AddressingModes.Absolute);
@@ -212,7 +208,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x01] = Instructions.ORA(AddressingModes.IndirectX);
         handlers[0x11] = Instructions.ORA(AddressingModes.IndirectY);
 
-        handlers[0x49] = Instructions.EOR(AddressingModes.Immediate);
+        handlers[0x49] = Instructions.EOR(AddressingModes.ImmediateByte);
         handlers[0x45] = Instructions.EOR(AddressingModes.ZeroPage);
         handlers[0x55] = Instructions.EOR(AddressingModes.ZeroPageX);
         handlers[0x4D] = Instructions.EOR(AddressingModes.Absolute);
@@ -249,13 +245,13 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x6E] = Instructions.ROR(AddressingModes.Absolute);
         handlers[0x7E] = Instructions.ROR(AddressingModes.AbsoluteX);
 
-        return new OpcodeTable<Cpu65C02, Cpu65C02State>(handlers);
+        return new(handlers);
     }
 
     /// <summary>
     /// Handles illegal/undefined opcodes by halting execution.
     /// </summary>
-    private static void IllegalOpcode(Cpu65C02 cpu, IMemory memory, ref Cpu65C02State state)
+    private static void IllegalOpcode(IMemory memory, ref CpuState state)
     {
         state.HaltReason = HaltState.Stp; // Halt on illegal opcode (stop execution)
     }
