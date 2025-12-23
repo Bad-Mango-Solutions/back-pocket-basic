@@ -48,6 +48,7 @@
   <Folder Name="/src/">
     <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
     <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />
+    <Project Path="src/BadMango.Emulator.Bus/BadMango.Emulator.Bus.csproj" />
     <Project Path="src/BadMango.Emulator.Core/BadMango.Emulator.Core.csproj" />
     <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
     <Project Path="src/BadMango.Emulator.Devices/BadMango.Emulator.Devices.csproj" />
@@ -57,6 +58,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BadMango.Basic.Tests/BadMango.Basic.Tests.csproj" />
+    <Project Path="tests/BadMango.Emulator.Bus.Tests/BadMango.Emulator.Bus.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
   </Folder>
   <Folder Name="/wiki/">
