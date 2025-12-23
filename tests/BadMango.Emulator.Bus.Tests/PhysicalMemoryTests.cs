@@ -487,5 +487,6 @@ public class PhysicalMemoryTests
         Intent: AccessIntent.DataRead,
         SourceId: 0,
         Cycle: 0,
-        Flags: AccessFlags.None);
+        Flags: AccessFlags.None,
+        PrivilegeLevel: PrivilegeLevel.Ring0);
 }
