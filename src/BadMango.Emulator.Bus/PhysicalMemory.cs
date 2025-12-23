@@ -27,13 +27,13 @@ public sealed class PhysicalMemory : IPhysicalMemory
     /// </summary>
     /// <param name="size">The size of the memory in bytes.</param>
     /// <param name="name">A descriptive name for this memory pool.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when size is less than or equal to zero.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when size is zero.</exception>
     /// <exception cref="ArgumentNullException">Thrown when name is null.</exception>
     /// <exception cref="ArgumentException">Thrown when name is empty or whitespace.</exception>
     /// <remarks>The memory is zero-initialized.</remarks>
-    public PhysicalMemory(int size, string name)
+    public PhysicalMemory(uint size, string name)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
+        ArgumentOutOfRangeException.ThrowIfZero(size);
         ArgumentNullException.ThrowIfNull(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -55,7 +55,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialData.Length);
+        ArgumentOutOfRangeException.ThrowIfZero(initialData.Length);
 
         data = initialData.ToArray();
         mem = data.AsMemory();
@@ -63,7 +63,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
     }
 
     /// <inheritdoc />
-    public int Size => data.Length;
+    public uint Size => (uint)data.Length;
 
     /// <inheritdoc />
     public string Name { get; }
@@ -72,33 +72,33 @@ public sealed class PhysicalMemory : IPhysicalMemory
     public ReadOnlyMemory<byte> Memory => mem;
 
     /// <inheritdoc />
-    public Memory<byte> Slice(int offset, int length)
+    public Memory<byte> Slice(uint offset, uint length)
     {
         ValidateSliceParameters(offset, length);
-        return mem.Slice(offset, length);
+        return mem.Slice((int)offset, (int)length);
     }
 
     /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlice(int offset, int length)
+    public ReadOnlyMemory<byte> ReadOnlySlice(uint offset, uint length)
     {
         ValidateSliceParameters(offset, length);
-        return mem.Slice(offset, length);
+        return mem.Slice((int)offset, (int)length);
     }
 
     /// <inheritdoc />
-    public Memory<byte> SlicePage(int pageIndex, int pageSize = 4096)
+    public Memory<byte> SlicePage(uint pageIndex, uint pageSize = 4096)
     {
         ValidatePageParameters(pageIndex, pageSize);
-        int offset = pageIndex * pageSize;
-        return mem.Slice(offset, pageSize);
+        uint offset = pageIndex * pageSize;
+        return mem.Slice((int)offset, (int)pageSize);
     }
 
     /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlicePage(int pageIndex, int pageSize = 4096)
+    public ReadOnlyMemory<byte> ReadOnlySlicePage(uint pageIndex, uint pageSize = 4096)
     {
         ValidatePageParameters(pageIndex, pageSize);
-        int offset = pageIndex * pageSize;
-        return mem.Slice(offset, pageSize);
+        uint offset = pageIndex * pageSize;
+        return mem.Slice((int)offset, (int)pageSize);
     }
 
     /// <inheritdoc />
@@ -114,32 +114,28 @@ public sealed class PhysicalMemory : IPhysicalMemory
     public void Clear() => mem.Span.Clear();
 
     /// <inheritdoc />
-    public int PageCount(int pageSize = 4096)
+    public uint PageCount(uint pageSize = 4096)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
-        return data.Length / pageSize;
+        ArgumentOutOfRangeException.ThrowIfZero(pageSize);
+        return (uint)data.Length / pageSize;
     }
 
     /// <inheritdoc />
-    public void WritePhysical(DebugPrivilege privilege, int address, ReadOnlySpan<byte> dataToWrite)
+    public void WritePhysical(DebugPrivilege privilege, Addr address, ReadOnlySpan<byte> dataToWrite)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(address);
-
-        if (address + dataToWrite.Length > data.Length)
+        if (address + (uint)dataToWrite.Length > data.Length)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(address),
                 $"Write at address {address} with length {dataToWrite.Length} exceeds memory size ({data.Length}).");
         }
 
-        dataToWrite.CopyTo(mem.Span.Slice(address));
+        dataToWrite.CopyTo(mem.Span.Slice((int)address));
     }
 
     /// <inheritdoc />
-    public void WriteBytePhysical(DebugPrivilege privilege, int address, byte value)
+    public void WriteBytePhysical(DebugPrivilege privilege, Addr address, byte value)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(address);
-
         if (address >= data.Length)
         {
             throw new ArgumentOutOfRangeException(
@@ -147,14 +143,11 @@ public sealed class PhysicalMemory : IPhysicalMemory
                 $"Address {address} exceeds memory size ({data.Length}).");
         }
 
-        mem.Span[address] = value;
+        mem.Span[(int)address] = value;
     }
 
-    private void ValidateSliceParameters(int offset, int length)
+    private void ValidateSliceParameters(uint offset, uint length)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfNegative(length);
-
         if (offset + length > data.Length)
         {
             throw new ArgumentOutOfRangeException(
@@ -163,12 +156,11 @@ public sealed class PhysicalMemory : IPhysicalMemory
         }
     }
 
-    private void ValidatePageParameters(int pageIndex, int pageSize)
+    private void ValidatePageParameters(uint pageIndex, uint pageSize)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
+        ArgumentOutOfRangeException.ThrowIfZero(pageSize);
 
-        int offset = pageIndex * pageSize;
+        uint offset = pageIndex * pageSize;
         if (offset + pageSize > data.Length)
         {
             throw new ArgumentOutOfRangeException(

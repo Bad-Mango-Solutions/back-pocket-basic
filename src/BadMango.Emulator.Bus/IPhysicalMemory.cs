@@ -29,7 +29,7 @@ public interface IPhysicalMemory
     /// Gets the total size of the physical memory in bytes.
     /// </summary>
     /// <value>The size in bytes.</value>
-    int Size { get; }
+    uint Size { get; }
 
     /// <summary>
     /// Gets the descriptive name for this memory pool.
@@ -50,11 +50,9 @@ public interface IPhysicalMemory
     /// <param name="length">The length of the slice in bytes.</param>
     /// <returns>A <see cref="Memory{T}"/> representing the requested slice.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="offset"/> is negative,
-    /// <paramref name="length"/> is negative,
-    /// or <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
+    /// Thrown when <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
     /// </exception>
-    Memory<byte> Slice(int offset, int length);
+    Memory<byte> Slice(uint offset, uint length);
 
     /// <summary>
     /// Gets a read-only slice of the memory.
@@ -63,11 +61,9 @@ public interface IPhysicalMemory
     /// <param name="length">The length of the slice in bytes.</param>
     /// <returns>A <see cref="ReadOnlyMemory{T}"/> representing the requested slice.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="offset"/> is negative,
-    /// <paramref name="length"/> is negative,
-    /// or <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
+    /// Thrown when <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
     /// </exception>
-    ReadOnlyMemory<byte> ReadOnlySlice(int offset, int length);
+    ReadOnlyMemory<byte> ReadOnlySlice(uint offset, uint length);
 
     /// <summary>
     /// Gets a writable slice for a specific page.
@@ -76,11 +72,10 @@ public interface IPhysicalMemory
     /// <param name="pageSize">The size of each page in bytes. Defaults to 4096.</param>
     /// <returns>A <see cref="Memory{T}"/> representing the requested page.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="pageIndex"/> is negative,
-    /// <paramref name="pageSize"/> is not positive,
+    /// Thrown when <paramref name="pageSize"/> is zero,
     /// or the requested page extends beyond <see cref="Size"/>.
     /// </exception>
-    Memory<byte> SlicePage(int pageIndex, int pageSize = 4096);
+    Memory<byte> SlicePage(uint pageIndex, uint pageSize = 4096);
 
     /// <summary>
     /// Gets a read-only slice for a specific page.
@@ -89,11 +84,10 @@ public interface IPhysicalMemory
     /// <param name="pageSize">The size of each page in bytes. Defaults to 4096.</param>
     /// <returns>A <see cref="ReadOnlyMemory{T}"/> representing the requested page.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="pageIndex"/> is negative,
-    /// <paramref name="pageSize"/> is not positive,
+    /// Thrown when <paramref name="pageSize"/> is zero,
     /// or the requested page extends beyond <see cref="Size"/>.
     /// </exception>
-    ReadOnlyMemory<byte> ReadOnlySlicePage(int pageIndex, int pageSize = 4096);
+    ReadOnlyMemory<byte> ReadOnlySlicePage(uint pageIndex, uint pageSize = 4096);
 
     /// <summary>
     /// Gets a writable span over the entire memory.
@@ -124,9 +118,9 @@ public interface IPhysicalMemory
     /// <param name="pageSize">The size of each page in bytes. Defaults to 4096.</param>
     /// <returns>The number of complete pages.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="pageSize"/> is not positive.
+    /// Thrown when <paramref name="pageSize"/> is zero.
     /// </exception>
-    int PageCount(int pageSize = 4096);
+    uint PageCount(uint pageSize = 4096);
 
     /// <summary>
     /// Writes data directly to physical memory at the specified address for debugging purposes.
@@ -135,9 +129,9 @@ public interface IPhysicalMemory
     /// <param name="address">The starting address to write to.</param>
     /// <param name="data">The data to write.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="address"/> is negative or the write would exceed memory bounds.
+    /// Thrown when the write would exceed memory bounds.
     /// </exception>
-    void WritePhysical(DebugPrivilege privilege, int address, ReadOnlySpan<byte> data);
+    void WritePhysical(DebugPrivilege privilege, Addr address, ReadOnlySpan<byte> data);
 
     /// <summary>
     /// Writes a single byte directly to physical memory at the specified address for debugging purposes.
@@ -146,7 +140,7 @@ public interface IPhysicalMemory
     /// <param name="address">The address to write to.</param>
     /// <param name="value">The byte value to write.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="address"/> is negative or exceeds memory bounds.
+    /// Thrown when <paramref name="address"/> exceeds memory bounds.
     /// </exception>
-    void WriteBytePhysical(DebugPrivilege privilege, int address, byte value);
+    void WriteBytePhysical(DebugPrivilege privilege, Addr address, byte value);
 }

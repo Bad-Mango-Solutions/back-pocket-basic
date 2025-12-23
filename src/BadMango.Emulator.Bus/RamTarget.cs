@@ -56,7 +56,7 @@ public sealed class RamTarget : IBusTarget
     /// <summary>
     /// Gets the size of the RAM in bytes.
     /// </summary>
-    public int Size => memory.Length;
+    public uint Size => (uint)memory.Length;
 
     /// <inheritdoc />
     public byte Read8(Addr physicalAddress, in BusAccess access)

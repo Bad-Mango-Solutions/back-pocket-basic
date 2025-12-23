@@ -181,7 +181,7 @@ public class RomTargetTests
         }
 
         var physicalMemory = new PhysicalMemory(data, "Apple II ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, data.Length));
+        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, (uint)data.Length));
         var access = CreateDefaultAccess();
 
         Assert.Multiple(() =>

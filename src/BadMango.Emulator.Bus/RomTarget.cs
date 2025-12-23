@@ -53,7 +53,7 @@ public sealed class RomTarget : IBusTarget
     /// <summary>
     /// Gets the size of the ROM in bytes.
     /// </summary>
-    public int Size => memory.Length;
+    public uint Size => (uint)memory.Length;
 
     /// <inheritdoc />
     public byte Read8(Addr physicalAddress, in BusAccess access)

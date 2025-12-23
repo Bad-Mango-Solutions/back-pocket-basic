@@ -46,16 +46,7 @@ public class PhysicalMemoryTests
     [Test]
     public void PhysicalMemory_Constructor_ThrowsForZeroSize()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PhysicalMemory(0, "Test"));
-    }
-
-    /// <summary>
-    /// Verifies that constructor throws for negative size.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_Constructor_ThrowsForNegativeSize()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PhysicalMemory(-1, "Test"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new PhysicalMemory(0U, "Test"));
     }
 
     /// <summary>
@@ -158,28 +149,6 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
-    /// Verifies that Slice throws for negative offset.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_Slice_ThrowsForNegativeOffset()
-    {
-        var memory = new PhysicalMemory(64, "Test");
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.Slice(-1, 4));
-    }
-
-    /// <summary>
-    /// Verifies that Slice throws for negative length.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_Slice_ThrowsForNegativeLength()
-    {
-        var memory = new PhysicalMemory(64, "Test");
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.Slice(0, -1));
-    }
-
-    /// <summary>
     /// Verifies that Slice throws when exceeding bounds.
     /// </summary>
     [Test]
@@ -240,17 +209,6 @@ public class PhysicalMemoryTests
         // Verify the slice is at the correct offset
         page.Span[0] = 0xAA;
         Assert.That(memory.AsReadOnlySpan()[256], Is.EqualTo(0xAA));
-    }
-
-    /// <summary>
-    /// Verifies that SlicePage throws for negative page index.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_SlicePage_ThrowsForNegativePageIndex()
-    {
-        var memory = new PhysicalMemory(4096, "Test");
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.SlicePage(-1));
     }
 
     /// <summary>
@@ -409,17 +367,6 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
-    /// Verifies that PageCount throws for negative page size.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_PageCount_ThrowsForNegativePageSize()
-    {
-        var memory = new PhysicalMemory(64, "Test");
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.PageCount(-1));
-    }
-
-    /// <summary>
     /// Verifies that multiple slices share the same underlying storage.
     /// </summary>
     [Test]
@@ -507,18 +454,6 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
-    /// Verifies that WriteBytePhysical throws for negative address.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_WriteBytePhysical_ThrowsForNegativeAddress()
-    {
-        var memory = new PhysicalMemory(16, "Test");
-        var debugPrivilege = new DebugPrivilege();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WriteBytePhysical(debugPrivilege, -1, 0xAA));
-    }
-
-    /// <summary>
     /// Verifies that WriteBytePhysical throws when address exceeds bounds.
     /// </summary>
     [Test]
@@ -545,19 +480,6 @@ public class PhysicalMemoryTests
         Assert.That(memory.AsReadOnlySpan()[4], Is.EqualTo(0x11));
         Assert.That(memory.AsReadOnlySpan()[5], Is.EqualTo(0x22));
         Assert.That(memory.AsReadOnlySpan()[6], Is.EqualTo(0x33));
-    }
-
-    /// <summary>
-    /// Verifies that WritePhysical throws for negative address.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_WritePhysical_ThrowsForNegativeAddress()
-    {
-        var memory = new PhysicalMemory(16, "Test");
-        var debugPrivilege = new DebugPrivilege();
-        var dataToWrite = new byte[] { 0x11, 0x22 };
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => memory.WritePhysical(debugPrivilege, -1, dataToWrite));
     }
 
     /// <summary>
