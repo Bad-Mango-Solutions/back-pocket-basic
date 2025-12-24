@@ -23,6 +23,12 @@ public class Cpu65832 : ICpu
     public bool Halted => throw new NotImplementedException();
 
     /// <inheritdoc/>
+    public bool IsDebuggerAttached => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public bool IsStopRequested => throw new NotImplementedException();
+
+    /// <inheritdoc/>
     public int Step()
     {
         throw new NotImplementedException();
@@ -66,6 +72,42 @@ public class Cpu65832 : ICpu
 
     /// <inheritdoc/>
     public void SignalNMI()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void AttachDebugger(IDebugStepListener listener)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void DetachDebugger()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void SetPC(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Addr GetPC()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void RequestStop()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void ClearStopRequest()
     {
         throw new NotImplementedException();
     }

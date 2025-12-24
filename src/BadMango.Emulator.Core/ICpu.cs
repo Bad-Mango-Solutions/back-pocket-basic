@@ -21,6 +21,16 @@ public interface ICpu
     bool Halted { get; }
 
     /// <summary>
+    /// Gets a value indicating whether a debugger is currently attached.
+    /// </summary>
+    bool IsDebuggerAttached { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a stop has been requested.
+    /// </summary>
+    bool IsStopRequested { get; }
+
+    /// <summary>
     /// Executes a single instruction.
     /// </summary>
     /// <returns>Number of cycles consumed by the instruction.</returns>
@@ -88,4 +98,46 @@ public interface ICpu
     /// NMI has higher priority than IRQ.
     /// </remarks>
     void SignalNMI();
+
+    /// <summary>
+    /// Attaches a debug listener to receive step notifications.
+    /// </summary>
+    /// <param name="listener">The listener to attach.</param>
+    /// <remarks>
+    /// When a debugger is attached, the CPU will emit step events before and after
+    /// each instruction execution. This does not affect cycle counting or execution
+    /// timing - debugger overhead is not charged to the emulated system.
+    /// </remarks>
+    void AttachDebugger(IDebugStepListener listener);
+
+    /// <summary>
+    /// Detaches the current debug listener.
+    /// </summary>
+    void DetachDebugger();
+
+    /// <summary>
+    /// Sets the program counter to the specified address.
+    /// </summary>
+    /// <param name="address">The new program counter value.</param>
+    void SetPC(Addr address);
+
+    /// <summary>
+    /// Gets the current program counter value.
+    /// </summary>
+    /// <returns>The current program counter address.</returns>
+    Addr GetPC();
+
+    /// <summary>
+    /// Requests that execution stop at the next opportunity.
+    /// </summary>
+    /// <remarks>
+    /// This is used by debuggers to interrupt a running CPU without waiting for
+    /// a halt instruction. The stop request is processed at instruction boundaries.
+    /// </remarks>
+    void RequestStop();
+
+    /// <summary>
+    /// Clears any pending stop request.
+    /// </summary>
+    void ClearStopRequest();
 }
