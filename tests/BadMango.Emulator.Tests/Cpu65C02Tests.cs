@@ -4,9 +4,9 @@
 
 namespace BadMango.Emulator.Tests;
 
-using BadMango.Emulator.Core;
-using BadMango.Emulator.Emulation.Cpu;
-using BadMango.Emulator.Emulation.Memory;
+using Core;
+using Emulation.Cpu;
+using Emulation.Memory;
 
 /// <summary>
 /// Unit tests for the <see cref="Cpu65C02"/> class.

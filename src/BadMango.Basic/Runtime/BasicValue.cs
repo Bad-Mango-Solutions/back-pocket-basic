@@ -4,7 +4,7 @@
 
 namespace BadMango.Basic.Runtime;
 
-using BadMango.Basic.Emulation;
+using Emulation;
 
 /// <summary>
 /// Represents a BASIC value (number or string).

@@ -6,7 +6,7 @@ namespace BadMango.Emulator.Debug;
 
 using Autofac;
 
-using BadMango.Emulator.Debug.Commands;
+using Commands;
 
 /// <summary>
 /// Autofac module for registering debug console services.

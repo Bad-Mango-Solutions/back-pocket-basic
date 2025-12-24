@@ -826,7 +826,7 @@ public class ExecutionVisitor : IAstVisitor<BasicValue>
         double value = arg.Accept(this).AsNumber();
 
         // Store the value in FAC1 at $009D using the FacConverter utility
-        Emulation.FacConverter.WriteToMemory(
+        FacConverter.WriteToMemory(
             appleSystem.Memory,
             Emulation.AppleSystem.MemoryLocations.FAC1,
             Emulation.AppleSystem.MemoryLocations.FAC1SIGN,
@@ -839,7 +839,7 @@ public class ExecutionVisitor : IAstVisitor<BasicValue>
 
         // Read the result from FAC1 after the ML routine returns
         return BasicValue.FromNumber(
-            Emulation.FacConverter.ReadFromMemory(appleSystem.Memory, Emulation.AppleSystem.MemoryLocations.FAC1));
+            FacConverter.ReadFromMemory(appleSystem.Memory, Emulation.AppleSystem.MemoryLocations.FAC1));
     }
 
     private BasicValue EvaluateLog(IExpression arg)

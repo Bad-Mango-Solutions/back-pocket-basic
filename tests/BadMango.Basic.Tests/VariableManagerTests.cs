@@ -4,11 +4,9 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Runtime;
-
 using Microsoft.Extensions.Logging;
-
 using Moq;
+using Runtime;
 
 /// <summary>
 /// Tests for <see cref="VariableManager"/>.

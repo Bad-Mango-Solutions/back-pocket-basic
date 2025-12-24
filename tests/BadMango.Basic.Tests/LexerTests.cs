@@ -4,12 +4,10 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Lexer;
-using BadMango.Basic.Tokens;
-
+using Lexer;
 using Microsoft.Extensions.Logging;
-
 using Moq;
+using Tokens;
 
 /// <summary>
 /// Contains unit tests for the <see cref="BasicLexer"/> class, ensuring its functionality for tokenizing Applesoft BASIC source code.

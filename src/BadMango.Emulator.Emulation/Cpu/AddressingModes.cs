@@ -9,16 +9,6 @@ using System.Runtime.CompilerServices;
 using Core;
 
 /// <summary>
-/// Delegate representing an addressing mode that computes an effective address.
-/// </summary>
-/// <typeparam name="TState">The CPU state type.</typeparam>
-/// <param name="memory">The memory interface.</param>
-/// <param name="state">Reference to the CPU state.</param>
-/// <returns>The effective address computed by the addressing mode.</returns>
-public delegate Addr AddressingMode<TState>(IMemory memory, ref TState state)
-    where TState : struct;
-
-/// <summary>
 /// Provides addressing mode implementations for 6502-family CPUs.
 /// </summary>
 /// <remarks>

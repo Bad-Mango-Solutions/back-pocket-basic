@@ -20,7 +20,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>
     /// <returns>An opcode handler that executes JMP.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JMP(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler JMP(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -40,7 +40,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Absolute).</param>
     /// <returns>An opcode handler that executes JSR.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JSR(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler JSR(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -74,7 +74,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTS(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler RTS(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -104,7 +104,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTI.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTI(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler RTI(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {

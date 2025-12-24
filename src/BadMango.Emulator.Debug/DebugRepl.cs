@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.Debug;
 
-using BadMango.Emulator.Debug.Commands;
+using Commands;
 
 /// <summary>
 /// Read-Eval-Print Loop (REPL) for the debug console.

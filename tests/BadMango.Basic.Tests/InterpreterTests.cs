@@ -4,16 +4,14 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Emulation;
-using BadMango.Basic.Execution;
-using BadMango.Basic.IO;
-using BadMango.Basic.Lexer;
-using BadMango.Basic.Parser;
-using BadMango.Basic.Runtime;
-
+using Emulation;
+using Execution;
+using IO;
+using Lexer;
 using Microsoft.Extensions.Logging;
-
 using Moq;
+using Parser;
+using Runtime;
 
 /// <summary>
 /// Contains unit tests for the <see cref="BasicInterpreter"/> class,
