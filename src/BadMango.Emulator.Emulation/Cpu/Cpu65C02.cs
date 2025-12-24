@@ -21,7 +21,6 @@ public class Cpu65C02 : ICpu
 {
     private readonly IMemory memory;
     private readonly OpcodeTable opcodeTable;
-    private readonly byte[] operandLengths;
 
     private CpuState state; // CPU state including all registers, cycles, and halt state
     private bool irqPending;
@@ -37,7 +36,6 @@ public class Cpu65C02 : ICpu
     {
         this.memory = memory ?? throw new ArgumentNullException(nameof(memory));
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        operandLengths = OpcodeTableAnalyzer.BuildOperandLengthTable(opcodeTable);
     }
 
     /// <inheritdoc/>
@@ -99,33 +97,20 @@ public class Cpu65C02 : ICpu
         Addr pcBefore = state.Registers.PC.GetAddr();
         byte opcode = FetchByte();
 
-        // Peek ahead to get operand bytes for debug (does not cost cycles)
-        byte operand1 = 0;
-        byte operand2 = 0;
-        byte operandLength = GetOperandLength(opcode);
-
-        if (operandLength >= 1)
-        {
-            operand1 = memory.Read(pcBefore + 1);
-        }
-
-        if (operandLength >= 2)
-        {
-            operand2 = memory.Read(pcBefore + 2);
-        }
-
         // Notify debug listener before execution
         if (debugListener is not null)
         {
+            // Set up state for instruction tracking
+            state.IsDebuggerAttached = true;
+            state.Opcode = opcode;
+            state.InstructionCycles = 1; // Opcode fetch cycle
+
             var beforeArgs = new DebugStepEventArgs
             {
                 PC = pcBefore,
                 Opcode = opcode,
-                OperandLength = operandLength,
-                Operand1 = operand1,
-                Operand2 = operand2,
                 Registers = state.Registers,
-                Cycles = state.Cycles,
+                Cycles = cyclesBefore,
                 Halted = false,
                 HaltReason = HaltState.None,
             };
@@ -142,15 +127,26 @@ public class Cpu65C02 : ICpu
             {
                 PC = pcBefore,
                 Opcode = opcode,
-                OperandLength = operandLength,
-                Operand1 = operand1,
-                Operand2 = operand2,
+                Instruction = state.Instruction,
+                AddressingMode = state.AddressingMode,
+                OperandSize = state.OperandSize,
+                Operands = state.Operands,
+                EffectiveAddress = state.EffectiveAddress,
                 Registers = state.Registers,
                 Cycles = state.Cycles,
+                InstructionCycles = state.InstructionCycles,
                 Halted = state.Halted,
                 HaltReason = state.HaltReason,
             };
             debugListener.OnAfterStep(in afterArgs);
+
+            // Reset debug state for next instruction
+            state.IsDebuggerAttached = false;
+            state.Instruction = CpuInstructions.None;
+            state.AddressingMode = CpuAddressingModes.None;
+            state.OperandSize = 0;
+            state.EffectiveAddress = 0;
+            state.InstructionCycles = 0;
         }
 
         return (int)(state.Cycles - cyclesBefore);
@@ -240,18 +236,6 @@ public class Cpu65C02 : ICpu
     {
         stopRequested = false;
     }
-
-    /// <summary>
-    /// Gets the operand length in bytes for the given opcode.
-    /// </summary>
-    /// <param name="opcode">The opcode to check.</param>
-    /// <returns>The number of operand bytes (0, 1, or 2).</returns>
-    /// <remarks>
-    /// This method does not cost cycles - it's used for debug purposes only.
-    /// It uses a precomputed lookup table for O(1) access.
-    /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private byte GetOperandLength(byte opcode) => operandLengths[opcode];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()

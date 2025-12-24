@@ -44,7 +44,7 @@ public class AddressingModesTests
     }
 
     /// <summary>
-    /// Verifies that ImmediateByte addressing mode returns PC and increments it.
+    /// Verifies that Immediate addressing mode returns PC and increments it.
     /// </summary>
     [Test]
     public void Immediate_ReturnsPCAndIncrementsIt()
@@ -53,7 +53,7 @@ public class AddressingModesTests
         var state = CreateState(pc: 0x1000, cycles: 10);
 
         // Act
-        Addr address = AddressingModes.ImmediateByte(memory, ref state);
+        Addr address = AddressingModes.Immediate(memory, ref state);
 
         // Assert
         Assert.That(address, Is.EqualTo(0x1000));

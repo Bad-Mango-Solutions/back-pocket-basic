@@ -26,7 +26,7 @@ public static class OpcodeTableAnalyzer
     {
         [nameof(AddressingModes.Implied)] = 0,
         [nameof(AddressingModes.Accumulator)] = 0,
-        [nameof(AddressingModes.ImmediateByte)] = 1,
+        [nameof(AddressingModes.Immediate)] = 1,
         [nameof(AddressingModes.ZeroPage)] = 1,
         [nameof(AddressingModes.ZeroPageX)] = 1,
         [nameof(AddressingModes.ZeroPageY)] = 1,

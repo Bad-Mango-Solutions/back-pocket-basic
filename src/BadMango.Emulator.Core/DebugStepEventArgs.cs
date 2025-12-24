@@ -34,19 +34,24 @@ public struct DebugStepEventArgs
     public byte Opcode;
 
     /// <summary>
+    /// Gets or sets the instruction mnemonic that was executed.
+    /// </summary>
+    public CpuInstructions Instruction;
+
+    /// <summary>
+    /// Gets or sets the addressing mode used by the instruction.
+    /// </summary>
+    public CpuAddressingModes AddressingMode;
+
+    /// <summary>
     /// Gets or sets the number of operand bytes (0, 1, or 2).
     /// </summary>
-    public byte OperandLength;
+    public byte OperandSize;
 
     /// <summary>
-    /// Gets or sets the first operand byte (if any).
+    /// Gets or sets the operand bytes (up to 4 bytes for future 65816/65832 support).
     /// </summary>
-    public byte Operand1;
-
-    /// <summary>
-    /// Gets or sets the second operand byte (if any).
-    /// </summary>
-    public byte Operand2;
+    public OperandBuffer Operands;
 
     /// <summary>
     /// Gets or sets the effective address computed by the addressing mode (if applicable).
@@ -62,6 +67,11 @@ public struct DebugStepEventArgs
     /// Gets or sets the total cycle count after instruction execution.
     /// </summary>
     public ulong Cycles;
+
+    /// <summary>
+    /// Gets or sets the number of cycles this instruction took to execute.
+    /// </summary>
+    public byte InstructionCycles;
 
     /// <summary>
     /// Gets or sets a value indicating whether the CPU is now halted.

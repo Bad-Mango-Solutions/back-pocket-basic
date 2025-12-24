@@ -56,7 +56,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
         memory.Write(0x1000, 0x42); // Value to load
         var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
 
-        // Act - Execute LDA ImmediateByte (opcode 0xA9)
+        // Act - Execute LDA Immediate (opcode 0xA9)
         var handler = opcodeTable.GetHandler(0xA9);
         handler(memory, ref state);
 
@@ -116,7 +116,7 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // It shows how the compositional pattern provides clean, readable code
 
         // Instructions compose cleanly with addressing modes:
-        var handler1 = Instructions.LDA(AddressingModes.ImmediateByte);
+        var handler1 = Instructions.LDA(AddressingModes.Immediate);
         var handler2 = Instructions.STA(AddressingModes.ZeroPage);
 
         // The pattern allows easy extension without combinatorial explosion

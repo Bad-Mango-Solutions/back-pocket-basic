@@ -24,13 +24,29 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte result = (byte)(state.Registers.A.GetByte() & value);
             state.Registers.A.SetByte(result);
             state.Registers.P.SetZeroAndNegative(result);
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.AND;
+
+                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    state.OperandSize = 1;
+                    state.Operands[0] = value;
+                }
+
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -44,13 +60,29 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte result = (byte)(state.Registers.A.GetByte() | value);
             state.Registers.A.SetByte(result);
             state.Registers.P.SetZeroAndNegative(result);
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.ORA;
+
+                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    state.OperandSize = 1;
+                    state.Operands[0] = value;
+                }
+
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -64,13 +96,29 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte result = (byte)(state.Registers.A.GetByte() ^ value);
             state.Registers.A.SetByte(result);
             state.Registers.P.SetZeroAndNegative(result);
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.EOR;
+
+                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    state.OperandSize = 1;
+                    state.Operands[0] = value;
+                }
+
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -84,9 +132,10 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte result = (byte)(state.Registers.A.GetByte() & value);
 
@@ -119,6 +168,14 @@ public static partial class Instructions
             {
                 state.Registers.P &= ~ProcessorStatusFlags.V;
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BIT;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }

@@ -237,7 +237,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CMP(AddressingModes.ImmediateByte);
+        var handler = Instructions.CMP(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -256,7 +256,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x42, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.CMP(AddressingModes.ImmediateByte);
+        var handler = Instructions.CMP(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -275,7 +275,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, x: 0x30, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CPX(AddressingModes.ImmediateByte);
+        var handler = Instructions.CPX(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -293,7 +293,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, y: 0x40, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.CPY(AddressingModes.ImmediateByte);
+        var handler = Instructions.CPY(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -429,7 +429,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x10, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.ADC(AddressingModes.ImmediateByte);
+        var handler = Instructions.ADC(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -447,7 +447,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x01, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.ADC(AddressingModes.ImmediateByte);
+        var handler = Instructions.ADC(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -466,7 +466,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x50, p: FlagC, cycles: 10);
 
         // Act
-        var handler = Instructions.SBC(AddressingModes.ImmediateByte);
+        var handler = Instructions.SBC(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -580,7 +580,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.AND(AddressingModes.ImmediateByte);
+        var handler = Instructions.AND(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -598,7 +598,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.ORA(AddressingModes.ImmediateByte);
+        var handler = Instructions.ORA(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -616,7 +616,7 @@ public class NewInstructionsTests
         var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.EOR(AddressingModes.ImmediateByte);
+        var handler = Instructions.EOR(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert

@@ -24,12 +24,21 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte size = state.Registers.GetIndexSize();
             var value = state.Registers.A.GetValue(size);
             state.Registers.X.SetValue(value, size);
             state.Registers.P.SetZeroAndNegative(value, size);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TAX;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -43,12 +52,21 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte size = state.Registers.GetIndexSize();
             var value = state.Registers.A.GetValue(size);
             state.Registers.Y.SetValue(value, size);
             state.Registers.P.SetZeroAndNegative(value, size);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TAY;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -62,12 +80,21 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte size = state.Registers.GetAccumulatorSize();
             var value = state.Registers.X.GetValue(size);
             state.Registers.A.SetValue(value, size);
             state.Registers.P.SetZeroAndNegative(value, size);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TXA;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -81,12 +108,21 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte size = state.Registers.GetAccumulatorSize();
             var value = state.Registers.Y.GetValue(size);
             state.Registers.A.SetValue(value, size);
             state.Registers.P.SetZeroAndNegative(value, size);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TYA;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -100,9 +136,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.SP.SetByte(state.Registers.X.GetByte());
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TXS;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -116,12 +161,21 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte size = state.Registers.GetIndexSize();
             byte value = state.Registers.SP.GetByte();
             state.Registers.X.SetByte(value);
             state.Registers.P.SetZeroAndNegative(value, size);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.TSX;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }

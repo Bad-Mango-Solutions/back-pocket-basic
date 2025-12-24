@@ -190,8 +190,10 @@ public class CpuDebugSupportTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(listener.LastBeforeStepData.OperandLength, Is.EqualTo(1));
-            Assert.That(listener.LastBeforeStepData.Operand1, Is.EqualTo(0x42));
+            Assert.That(listener.LastAfterStepData.Instruction, Is.EqualTo(CpuInstructions.LDA));
+            Assert.That(listener.LastAfterStepData.AddressingMode, Is.EqualTo(CpuAddressingModes.Immediate));
+            Assert.That(listener.LastAfterStepData.OperandSize, Is.EqualTo(1));
+            Assert.That(listener.LastAfterStepData.Operands[0], Is.EqualTo(0x42));
         });
     }
 
@@ -205,6 +207,7 @@ public class CpuDebugSupportTests
         memory.Write(0x1000, 0xAD); // LDA $2000
         memory.Write(0x1001, 0x00);
         memory.Write(0x1002, 0x20);
+        memory.Write(0x2000, 0x55); // Value at $2000
         cpu.Reset();
 
         var listener = new TestDebugListener();
@@ -214,9 +217,11 @@ public class CpuDebugSupportTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(listener.LastBeforeStepData.OperandLength, Is.EqualTo(2));
-            Assert.That(listener.LastBeforeStepData.Operand1, Is.EqualTo(0x00));
-            Assert.That(listener.LastBeforeStepData.Operand2, Is.EqualTo(0x20));
+            Assert.That(listener.LastAfterStepData.Instruction, Is.EqualTo(CpuInstructions.LDA));
+            Assert.That(listener.LastAfterStepData.AddressingMode, Is.EqualTo(CpuAddressingModes.Absolute));
+            Assert.That(listener.LastAfterStepData.OperandSize, Is.EqualTo(2));
+            Assert.That(listener.LastAfterStepData.Operands[0], Is.EqualTo(0x00));
+            Assert.That(listener.LastAfterStepData.Operands[1], Is.EqualTo(0x20));
         });
     }
 

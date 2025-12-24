@@ -24,9 +24,10 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte a = state.Registers.A.GetByte();
             byte carry = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
@@ -88,6 +89,21 @@ public static partial class Instructions
                 state.Registers.P.SetZeroAndNegative(result8);
                 state.Registers.A.SetByte(result8);
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.ADC;
+
+                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    state.OperandSize = 1;
+                    state.Operands[0] = value;
+                }
+
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -101,9 +117,10 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             byte a = state.Registers.A.GetByte();
             byte borrow = state.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0 : (byte)1;
@@ -165,6 +182,21 @@ public static partial class Instructions
                 state.Registers.P.SetZeroAndNegative(result8);
                 state.Registers.A.SetByte(result8);
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.SBC;
+
+                if (state.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    state.OperandSize = 1;
+                    state.Operands[0] = value;
+                }
+
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -178,16 +210,25 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             value++;
             memory.Write(address, value);
-            state.Cycles++;
+            opCycles++; // Memory write
 
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++; // Internal operation
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.INC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -201,16 +242,25 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr address = addressingMode(memory, ref state);
             byte value = memory.Read(address);
-            state.Cycles++;
+            opCycles++; // Memory read
 
             value--;
             memory.Write(address, value);
-            state.Cycles++;
+            opCycles++; // Memory write
 
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++; // Internal operation
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.DEC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -224,11 +274,20 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte value = (byte)(state.Registers.X.GetByte() + 1);
             state.Registers.X.SetByte(value);
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.INX;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -242,11 +301,20 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte value = (byte)(state.Registers.Y.GetByte() + 1);
             state.Registers.Y.SetByte(value);
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.INY;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -260,11 +328,20 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte value = (byte)(state.Registers.X.GetByte() - 1);
             state.Registers.X.SetByte(value);
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.DEX;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -278,11 +355,20 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             byte value = (byte)(state.Registers.Y.GetByte() - 1);
             state.Registers.Y.SetByte(value);
             state.Registers.P.SetZeroAndNegative(value);
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.DEY;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }
