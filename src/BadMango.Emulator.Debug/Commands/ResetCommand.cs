@@ -47,7 +47,7 @@ public sealed class ResetCommand : CommandHandlerBase
 
         if (debugContext.Cpu is null)
         {
-            return CommandResult.Error("No CPU attached. Use 'attach' command first.");
+            return CommandResult.Error("No CPU attached to debug context.");
         }
 
         bool hardReset = args.Any(arg =>

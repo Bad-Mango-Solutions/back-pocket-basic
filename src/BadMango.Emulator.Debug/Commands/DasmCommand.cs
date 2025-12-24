@@ -50,7 +50,7 @@ public sealed class DasmCommand : CommandHandlerBase
 
         if (debugContext.Disassembler is null)
         {
-            return CommandResult.Error("No disassembler attached. Use 'attach' command first.");
+            return CommandResult.Error("No disassembler attached to debug context.");
         }
 
         // Parse options

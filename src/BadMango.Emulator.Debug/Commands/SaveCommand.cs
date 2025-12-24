@@ -47,7 +47,7 @@ public sealed class SaveCommand : CommandHandlerBase
 
         if (debugContext.Memory is null)
         {
-            return CommandResult.Error("No memory attached. Use 'attach' command first.");
+            return CommandResult.Error("No memory attached to debug context.");
         }
 
         if (args.Length < 3)
