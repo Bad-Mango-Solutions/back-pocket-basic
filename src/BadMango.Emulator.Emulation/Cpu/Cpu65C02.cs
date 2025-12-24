@@ -19,52 +19,9 @@ using Core;
 /// </remarks>
 public class Cpu65C02 : ICpu
 {
-    /// <summary>
-    /// Lookup table for instruction operand lengths.
-    /// Each index corresponds to an opcode (0x00-0xFF).
-    /// Values are 0, 1, or 2 indicating the number of operand bytes.
-    /// </summary>
-    /// <remarks>
-    /// <para>The table is organized in rows of 16 opcodes ($x0-$xF).</para>
-    /// <para>$00-$0F: BRK/ORA/TSB/ASL family.</para>
-    /// <para>$10-$1F: BPL/ORA/TRB/CLC family.</para>
-    /// <para>$20-$2F: JSR/AND/BIT/ROL family.</para>
-    /// <para>$30-$3F: BMI/AND/SEC family.</para>
-    /// <para>$40-$4F: RTI/EOR/LSR/JMP family.</para>
-    /// <para>$50-$5F: BVC/EOR/CLI/PHY family.</para>
-    /// <para>$60-$6F: RTS/ADC/ROR/PLA family.</para>
-    /// <para>$70-$7F: BVS/ADC/SEI/PLY family.</para>
-    /// <para>$80-$8F: BRA/STA/STY/STX family.</para>
-    /// <para>$90-$9F: BCC/STA/STZ/TYA family.</para>
-    /// <para>$A0-$AF: LDY/LDA/LDX family.</para>
-    /// <para>$B0-$BF: BCS/LDA/CLV family.</para>
-    /// <para>$C0-$CF: CPY/CMP/DEC/WAI family.</para>
-    /// <para>$D0-$DF: BNE/CMP/CLD/STP family.</para>
-    /// <para>$E0-$EF: CPX/SBC/INC/NOP family.</para>
-    /// <para>$F0-$FF: BEQ/SBC/SED family.</para>
-    /// </remarks>
-    private static readonly byte[] OperandLengths =
-    [
-        0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
-        2, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
-        0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
-        0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
-        1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
-        1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0,
-        1, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 0,
-    ];
-
     private readonly IMemory memory;
     private readonly OpcodeTable opcodeTable;
+    private readonly byte[] operandLengths;
 
     private CpuState state; // CPU state including all registers, cycles, and halt state
     private bool irqPending;
@@ -80,6 +37,7 @@ public class Cpu65C02 : ICpu
     {
         this.memory = memory ?? throw new ArgumentNullException(nameof(memory));
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        operandLengths = OpcodeTableAnalyzer.BuildOperandLengthTable(opcodeTable);
     }
 
     /// <inheritdoc/>
@@ -293,7 +251,7 @@ public class Cpu65C02 : ICpu
     /// It uses a precomputed lookup table for O(1) access.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static byte GetOperandLength(byte opcode) => OperandLengths[opcode];
+    private byte GetOperandLength(byte opcode) => operandLengths[opcode];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
