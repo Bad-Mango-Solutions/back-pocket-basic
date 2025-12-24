@@ -14,8 +14,9 @@ namespace BadMango.Emulator.Bus;
 /// instance can invoke debug write methods on <see cref="IPhysicalMemory"/>.
 /// </para>
 /// <para>
-/// The internal constructor ensures that only assemblies with internal access
-/// (such as the test assembly) can create instances.
+/// The internal constructor restricts creation of instances to this assembly
+/// and any assemblies granted internal access via <c>InternalsVisibleTo</c>
+/// (for example, dedicated test assemblies).
 /// </para>
 /// </remarks>
 public sealed class DebugPrivilege

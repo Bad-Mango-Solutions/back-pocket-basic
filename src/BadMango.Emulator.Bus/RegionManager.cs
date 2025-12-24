@@ -78,27 +78,22 @@ public sealed class RegionManager : IRegionManager
     /// <inheritdoc />
     public IMappingStack? GetMappingStack(Addr address)
     {
-        foreach (var stack in mappingStacks)
-        {
-            if (address >= stack.BaseAddress && address < stack.BaseAddress + stack.Size)
-            {
-                return stack;
-            }
-        }
-
-        return null;
+        return mappingStacks
+            .Where(stack => address >= stack.BaseAddress && address < stack.BaseAddress + stack.Size)
+            .FirstOrDefault();
     }
 
     /// <inheritdoc />
     public IMappingStack GetOrCreateMappingStack(Addr baseAddress, uint size)
     {
         // Check for existing stack that covers this range
-        foreach (var existing in mappingStacks)
+        var existing = mappingStacks
+            .Where(s => s.BaseAddress == baseAddress && s.Size == size)
+            .FirstOrDefault();
+
+        if (existing is not null)
         {
-            if (existing.BaseAddress == baseAddress && existing.Size == size)
-            {
-                return existing;
-            }
+            return existing;
         }
 
         var stack = new MappingStack(baseAddress, size);
@@ -125,7 +120,6 @@ public sealed class RegionManager : IRegionManager
                 continue;
             }
 
-            var entry = active.Value;
             var startPage = (int)(stack.BaseAddress / pageSize);
             var numPages = (int)(stack.Size / pageSize);
 

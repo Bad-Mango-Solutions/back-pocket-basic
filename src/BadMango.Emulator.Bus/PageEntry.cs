@@ -34,10 +34,25 @@ namespace BadMango.Emulator.Bus;
 /// <param name="Caps">Capability flags for the target device.</param>
 /// <param name="Target">The bus target implementation for this page.</param>
 /// <param name="PhysicalBase">The physical base address within the target's address space.</param>
-/// <param name="MinReadPrivilege">Minimum privilege level required for read access. Defaults to Ring 0.</param>
-/// <param name="MinWritePrivilege">Minimum privilege level required for write access. Defaults to Ring 0.</param>
-/// <param name="MinExecutePrivilege">Minimum privilege level required for execute access. Defaults to Ring 0.</param>
-/// <param name="IsSealed">When true, prevents modification of this entry from lower privilege levels.</param>
+/// <param name="MinReadPrivilege">
+/// Minimum privilege level required for read accesses to this page.
+/// The default value, <see cref="PrivilegeLevel.Ring0"/>, allows reads from the most privileged ring only;
+/// set this to a less-privileged ring (for example, user mode) to permit reads from code running at that level or higher.
+/// </param>
+/// <param name="MinWritePrivilege">
+/// Minimum privilege level required for write accesses to this page.
+/// The default value, <see cref="PrivilegeLevel.Ring0"/>, restricts writes to the most privileged ring;
+/// override this to a less-privileged ring when user-mode or guest code must be able to write to the page.
+/// </param>
+/// <param name="MinExecutePrivilege">
+/// Minimum privilege level required for instruction fetch (execute) accesses to this page.
+/// The default value, <see cref="PrivilegeLevel.Ring0"/>, limits execution to the most privileged ring;
+/// increase this to a less-privileged ring when mapping user-executable code or shared executable regions.
+/// </param>
+/// <param name="IsSealed">
+/// When set to <see langword="true"/>, prevents modification of this page entry from callers running at a lower privilege level,
+/// ensuring that critical mappings (such as kernel or hypervisor pages) cannot be altered by less-privileged code.
+/// </param>
 public readonly record struct PageEntry(
     int DeviceId,
     RegionTag RegionTag,
