@@ -100,6 +100,8 @@ public class Cpu65C02 : ICpu
         // Notify debug listener before execution
         if (debugListener is not null)
         {
+            state.ClearDebugStateInformation();
+
             // Set up state for instruction tracking
             state.IsDebuggerAttached = true;
             state.Opcode = opcode;
