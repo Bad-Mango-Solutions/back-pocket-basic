@@ -2,11 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Emulation.Cpu;
+namespace BadMango.Emulator.Core;
 
 using System.Text;
-
-using BadMango.Emulator.Core;
 
 /// <summary>
 /// Represents a decoded instruction for disassembly and debugging purposes.
@@ -33,25 +31,25 @@ public sealed class DisassembledInstruction
     /// </summary>
     /// <param name="address">The address where the instruction starts.</param>
     /// <param name="opcode">The opcode byte.</param>
-    /// <param name="operandBytes">The operand bytes buffer.</param>
+    /// <param name="operands">The operand bytes buffer.</param>
     /// <param name="operandLength">The number of valid operand bytes (0-4).</param>
     /// <param name="instruction">The instruction mnemonic.</param>
     /// <param name="addressingMode">The addressing mode.</param>
     public DisassembledInstruction(
         uint address,
         byte opcode,
-        OperandBuffer operandBytes,
+        OperandBuffer operands,
         byte operandLength,
         CpuInstructions instruction,
         CpuAddressingModes addressingMode)
     {
         Address = address;
         Opcode = opcode;
-        OperandBytes = operandBytes;
+        Operands = operands;
         OperandLength = operandLength;
         Instruction = instruction;
         AddressingMode = addressingMode;
-        Metadata = new Dictionary<string, object>();
+        Metadata = new();
     }
 
     /// <summary>
@@ -71,7 +69,7 @@ public sealed class DisassembledInstruction
     /// Use <see cref="OperandLength"/> to determine how many bytes are valid.
     /// The buffer is a fixed-size value type to avoid heap allocation.
     /// </remarks>
-    public OperandBuffer OperandBytes { get; }
+    public OperandBuffer Operands { get; }
 
     /// <summary>
     /// Gets the number of valid operand bytes (0-4).
@@ -122,7 +120,7 @@ public sealed class DisassembledInstruction
         bytes[0] = Opcode;
         for (int i = 0; i < OperandLength; i++)
         {
-            bytes[i + 1] = OperandBytes[i];
+            bytes[i + 1] = Operands[i];
         }
 
         return bytes;
@@ -179,7 +177,7 @@ public sealed class DisassembledInstruction
         for (int i = 0; i < OperandLength; i++)
         {
             sb.Append(' ');
-            sb.Append(OperandBytes[i].ToString("X2"));
+            sb.Append(Operands[i].ToString("X2"));
         }
 
         return sb.ToString();
@@ -194,8 +192,8 @@ public sealed class DisassembledInstruction
         return OperandLength switch
         {
             0 => 0,
-            1 => OperandBytes[0],
-            _ => (ushort)(OperandBytes[0] | (OperandBytes[1] << 8)),
+            1 => Operands[0],
+            _ => (ushort)(Operands[0] | (Operands[1] << 8)),
         };
     }
 
@@ -211,7 +209,7 @@ public sealed class DisassembledInstruction
         }
 
         // Calculate target address: PC + 2 (instruction length) + signed offset
-        var offset = (sbyte)OperandBytes[0];
+        var offset = (sbyte)Operands[0];
         var targetAddress = (uint)(Address + 2 + offset);
         return $"${targetAddress:X4}";
     }

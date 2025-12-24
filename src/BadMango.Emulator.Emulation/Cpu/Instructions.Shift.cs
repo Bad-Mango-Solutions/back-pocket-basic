@@ -20,7 +20,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ASL on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ASLa(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ASLa(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -59,7 +59,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ASL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ASL(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ASL(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -100,7 +100,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes LSR on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LSRa(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler LSRa(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -139,7 +139,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LSR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler LSR(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler LSR(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -180,7 +180,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROL on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROLa(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ROLa(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -220,7 +220,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROL on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROL(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ROL(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -263,7 +263,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROR on the accumulator.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RORa(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler RORa(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -303,7 +303,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROR on memory.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ROR(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ROR(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {

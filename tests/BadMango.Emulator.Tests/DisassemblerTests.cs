@@ -4,9 +4,11 @@
 
 namespace BadMango.Emulator.Tests;
 
-using BadMango.Emulator.Core;
-using BadMango.Emulator.Emulation.Cpu;
-using BadMango.Emulator.Emulation.Memory;
+using Core;
+using Emulation.Cpu;
+using Emulation.Memory;
+
+using Emulation.Debugging;
 
 /// <summary>
 /// Unit tests for the disassembler helper functionality.
@@ -453,7 +455,7 @@ public class DisassemblerTests
             Assert.That(instruction.Address, Is.EqualTo(0x1000u));
             Assert.That(instruction.Opcode, Is.EqualTo(0xA9));
             Assert.That(instruction.OperandLength, Is.EqualTo(1));
-            Assert.That(instruction.OperandBytes[0], Is.EqualTo(0x42));
+            Assert.That(instruction.Operands[0], Is.EqualTo(0x42));
             Assert.That(instruction.Instruction, Is.EqualTo(CpuInstructions.LDA));
             Assert.That(instruction.AddressingMode, Is.EqualTo(CpuAddressingModes.Immediate));
         });

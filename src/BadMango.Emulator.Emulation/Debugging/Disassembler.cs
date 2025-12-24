@@ -2,9 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Emulation.Cpu;
+namespace BadMango.Emulator.Emulation.Debugging;
 
-using BadMango.Emulator.Core;
+using Core;
 
 /// <summary>
 /// Disassembles machine code from memory into a list of structured instruction representations.
@@ -29,7 +29,7 @@ using BadMango.Emulator.Core;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class Disassembler
+public sealed class Disassembler : IDisassembler
 {
     private readonly IMemory memory;
     private readonly OpcodeInfo[] opcodeInfoTable;
@@ -41,12 +41,8 @@ public sealed class Disassembler
     /// <param name="memory">The memory interface to read from.</param>
     /// <exception cref="ArgumentNullException">Thrown when opcodeTable or memory is null.</exception>
     public Disassembler(OpcodeTable opcodeTable, IMemory memory)
+        : this(BuildOpcodeInfoArray(opcodeTable), memory)
     {
-        ArgumentNullException.ThrowIfNull(opcodeTable);
-        ArgumentNullException.ThrowIfNull(memory);
-
-        this.memory = memory;
-        this.opcodeInfoTable = OpcodeTableAnalyzer.BuildOpcodeInfoArray(opcodeTable);
     }
 
     /// <summary>
@@ -67,20 +63,10 @@ public sealed class Disassembler
         }
 
         this.memory = memory;
-        this.opcodeInfoTable = opcodeInfoArray;
+        opcodeInfoTable = opcodeInfoArray;
     }
 
-    /// <summary>
-    /// Disassembles a range of memory starting at the specified address.
-    /// </summary>
-    /// <param name="startAddress">The starting address to disassemble from.</param>
-    /// <param name="byteCount">The maximum number of bytes to disassemble.</param>
-    /// <returns>A list of <see cref="DisassembledInstruction"/> objects representing the decoded instructions.</returns>
-    /// <remarks>
-    /// The disassembler will stop when it has processed at least <paramref name="byteCount"/> bytes
-    /// or when it encounters the end of a complete instruction that would exceed the byte count.
-    /// Instructions are never truncated.
-    /// </remarks>
+    /// <inheritdoc />
     public IReadOnlyList<DisassembledInstruction> Disassemble(uint startAddress, int byteCount)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(byteCount);
@@ -99,12 +85,7 @@ public sealed class Disassembler
         return instructions;
     }
 
-    /// <summary>
-    /// Disassembles a specific number of instructions starting at the specified address.
-    /// </summary>
-    /// <param name="startAddress">The starting address to disassemble from.</param>
-    /// <param name="instructionCount">The number of instructions to disassemble.</param>
-    /// <returns>A list of <see cref="DisassembledInstruction"/> objects representing the decoded instructions.</returns>
+    /// <inheritdoc />
     public IReadOnlyList<DisassembledInstruction> DisassembleInstructions(uint startAddress, int instructionCount)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(instructionCount);
@@ -122,11 +103,7 @@ public sealed class Disassembler
         return instructions;
     }
 
-    /// <summary>
-    /// Disassembles a single instruction at the specified address.
-    /// </summary>
-    /// <param name="address">The address of the instruction to disassemble.</param>
-    /// <returns>A <see cref="DisassembledInstruction"/> representing the decoded instruction.</returns>
+    /// <inheritdoc />
     /// <remarks>
     /// Uses <see cref="OperandBuffer"/> to avoid heap allocation for operand bytes.
     /// </remarks>
@@ -151,20 +128,15 @@ public sealed class Disassembler
             opcodeInfo.AddressingMode);
     }
 
-    /// <summary>
-    /// Disassembles memory within a specified address range.
-    /// </summary>
-    /// <param name="startAddress">The starting address (inclusive).</param>
-    /// <param name="endAddress">The ending address (exclusive).</param>
-    /// <returns>A list of <see cref="DisassembledInstruction"/> objects representing the decoded instructions.</returns>
-    /// <exception cref="ArgumentException">Thrown when endAddress is less than startAddress.</exception>
-    public IReadOnlyList<DisassembledInstruction> DisassembleRange(uint startAddress, uint endAddress)
-    {
-        if (endAddress < startAddress)
-        {
-            throw new ArgumentException("End address must be greater than or equal to start address.", nameof(endAddress));
-        }
+    /// <inheritdoc />
+    public IReadOnlyList<DisassembledInstruction> DisassembleRange(uint startAddress, uint endAddress) =>
+        endAddress < startAddress
+            ? throw new ArgumentException("End address must be greater than or equal to start address.", nameof(endAddress))
+            : Disassemble(startAddress, (int)(endAddress - startAddress));
 
-        return Disassemble(startAddress, (int)(endAddress - startAddress));
+    private static OpcodeInfo[] BuildOpcodeInfoArray(OpcodeTable opcodeTable)
+    {
+        ArgumentNullException.ThrowIfNull(opcodeTable);
+        return OpcodeTableAnalyzer.BuildOpcodeInfoArray(opcodeTable);
     }
 }

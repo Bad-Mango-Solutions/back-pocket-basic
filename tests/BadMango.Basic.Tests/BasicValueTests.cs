@@ -4,8 +4,8 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Emulation;
-using BadMango.Basic.Runtime;
+using Emulation;
+using Runtime;
 
 /// <summary>
 /// Contains unit tests for the <see cref="BasicValue"/> struct,

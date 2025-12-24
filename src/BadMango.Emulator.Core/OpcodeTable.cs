@@ -2,18 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Emulation.Cpu;
+namespace BadMango.Emulator.Core;
 
 using System.Runtime.CompilerServices;
-
-using Core;
-
-/// <summary>
-/// Delegate for opcode handlers that receive machine state via state structure and memory.
-/// </summary>
-/// <param name="memory">The memory interface.</param>
-/// <param name="state">Reference to the CPU state structure.</param>
-public delegate void OpcodeHandler(IMemory memory, ref CpuState state);
 
 /// <summary>
 /// Represents an opcode lookup table for 6502-family CPUs.
@@ -35,10 +26,7 @@ public class OpcodeTable
     /// <exception cref="ArgumentException">Thrown when handlers array is not exactly 256 elements.</exception>
     public OpcodeTable(OpcodeHandler[] handlers)
     {
-        if (handlers == null)
-        {
-            throw new ArgumentNullException(nameof(handlers));
-        }
+        ArgumentNullException.ThrowIfNull(handlers);
 
         if (handlers.Length != 256)
         {

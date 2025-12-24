@@ -2,11 +2,13 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Emulation.Cpu;
+namespace BadMango.Emulator.Emulation.Debugging;
 
 using System.Reflection;
 
-using BadMango.Emulator.Core;
+using Core;
+
+using Cpu;
 
 /// <summary>
 /// Analyzes opcode handlers to extract addressing mode information for debugging.
@@ -14,7 +16,7 @@ using BadMango.Emulator.Core;
 /// <remarks>
 /// This analyzer uses reflection to inspect opcode handlers and determine operand
 /// lengths based on the addressing mode delegates they capture. This is performed
-/// once at initialization time, outside of the hot loop, so the reflection cost
+/// once at initialization time, outside the hot loop, so the reflection cost
 /// is acceptable.
 /// </remarks>
 public static class OpcodeTableAnalyzer
@@ -159,13 +161,10 @@ public static class OpcodeTableAnalyzer
         var map = new Dictionary<string, CpuInstructions>(StringComparer.Ordinal);
 
         // Map all instruction names from the enum
-        foreach (CpuInstructions instruction in Enum.GetValues<CpuInstructions>())
+        foreach (CpuInstructions instruction in Enum.GetValues<CpuInstructions>().Where(i => i != CpuInstructions.None))
         {
-            if (instruction != CpuInstructions.None)
-            {
-                var name = instruction.ToString();
-                map[name] = instruction;
-            }
+            var name = instruction.ToString();
+            map[name] = instruction;
         }
 
         // Add variants for accumulator operations (e.g., ASLa -> ASL)
@@ -186,16 +185,11 @@ public static class OpcodeTableAnalyzer
     /// Returns a default <see cref="OpcodeInfo"/> with <see cref="CpuInstructions.None"/> if the handler
     /// cannot be analyzed.
     /// </returns>
-    private static OpcodeInfo GetOpcodeInfoFromHandler(OpcodeHandler handler)
+    private static OpcodeInfo GetOpcodeInfoFromHandler(OpcodeHandler? handler)
     {
-        if (handler == null)
-        {
-            return default;
-        }
-
         // The handler is a closure - its Target is the compiler-generated display class
-        object? target = handler.Target;
-        if (target == null)
+        object? target = handler?.Target;
+        if (target is null)
         {
             // Static method (like IllegalOpcode) - no captured state
             return default;
@@ -203,12 +197,12 @@ public static class OpcodeTableAnalyzer
 
         // Extract the instruction from the handler's declaring type name
         // The handler is generated from Instructions.LDA, Instructions.STA, etc.
-        var instruction = GetInstructionFromHandler(handler);
+        var instruction = GetInstructionFromHandler(handler!); // We already checked for null above.
 
-        // Find the captured AddressingMode delegate field
+        // Find the captured AddressingModeHandler delegate field
         var (addressingMode, operandLength) = GetAddressingModeFromTarget(target);
 
-        return new OpcodeInfo(instruction, addressingMode, operandLength);
+        return new(instruction, addressingMode, operandLength);
     }
 
     /// <summary>
@@ -233,7 +227,7 @@ public static class OpcodeTableAnalyzer
         // The method name will be something like "<LDA>b__0" for a lambda inside LDA
         string methodName = method.Name;
 
-        // Extract the instruction name from the lambda naming pattern
+        // Extract the instruction name from the lambda naming pattern.
         // Pattern: "<InstructionName>b__X" where X is a number
         if (methodName.Length > 2 && methodName[0] == '<')
         {
@@ -265,12 +259,11 @@ public static class OpcodeTableAnalyzer
         var targetType = target.GetType();
         var addressingModeFields = targetType
             .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(f => f.FieldType == typeof(AddressingMode<CpuState>));
+            .Where(f => f.FieldType == typeof(AddressingModeHandler<CpuState>));
 
         foreach (var field in addressingModeFields)
         {
-            var addressingModeDelegate = field.GetValue(target) as AddressingMode<CpuState>;
-            if (addressingModeDelegate != null)
+            if (field.GetValue(target) is AddressingModeHandler<CpuState> addressingModeDelegate)
             {
                 string methodName = addressingModeDelegate.Method.Name;
 

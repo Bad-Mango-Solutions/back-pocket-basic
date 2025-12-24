@@ -4,9 +4,9 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.AST;
-using BadMango.Basic.Lexer;
-using BadMango.Basic.Parser;
+using AST;
+using Lexer;
+using Parser;
 
 using Microsoft.Extensions.Logging;
 

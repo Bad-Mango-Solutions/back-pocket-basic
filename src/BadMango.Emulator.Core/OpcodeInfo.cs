@@ -2,10 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Emulation.Cpu;
-
-using BadMango.Emulator.Core;
-
+namespace BadMango.Emulator.Core;
 /// <summary>
 /// Encapsulates decoded opcode information including instruction, addressing mode, and operand length.
 /// </summary>

@@ -20,7 +20,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes AND with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler AND(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler AND(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -56,7 +56,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ORA with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler ORA(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler ORA(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -92,7 +92,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes EOR with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler EOR(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler EOR(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -128,7 +128,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes BIT with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BIT(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BIT(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {

@@ -4,7 +4,7 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Runtime;
+using Runtime;
 
 /// <summary>
 /// Tests for <see cref="ForLoopManager"/>.

@@ -20,7 +20,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STZ with the given addressing mode.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STZ(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler STZ(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -49,7 +49,7 @@ public static partial class Instructions
     /// then sets the bits in memory that are set in the accumulator (M = M OR A).
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TSB(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler TSB(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -95,7 +95,7 @@ public static partial class Instructions
     /// then clears the bits in memory that are set in the accumulator (M = M AND (NOT A)).
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TRB(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler TRB(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -141,7 +141,7 @@ public static partial class Instructions
     /// The CPU will resume execution when IRQ (if I flag clear) or NMI is signaled.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler WAI(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler WAI(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -170,7 +170,7 @@ public static partial class Instructions
     /// This is the deepest halt state and cannot be resumed by interrupts.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STP(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler STP(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {

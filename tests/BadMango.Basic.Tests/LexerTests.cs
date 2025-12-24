@@ -4,8 +4,8 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Lexer;
-using BadMango.Basic.Tokens;
+using Lexer;
+using Tokens;
 
 using Microsoft.Extensions.Logging;
 

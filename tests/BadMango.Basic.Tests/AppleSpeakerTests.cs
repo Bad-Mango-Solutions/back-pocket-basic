@@ -6,7 +6,7 @@ namespace BadMango.Basic.Tests;
 
 using System.Reflection;
 
-using BadMango.Basic.Emulation;
+using Emulation;
 
 using Microsoft.Extensions.Logging;
 

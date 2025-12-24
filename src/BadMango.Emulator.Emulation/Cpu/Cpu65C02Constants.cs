@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using Core;
-
 /// <summary>
 /// Constants for the 65C02 CPU.
 /// </summary>

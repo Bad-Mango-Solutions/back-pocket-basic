@@ -4,12 +4,12 @@
 
 namespace BadMango.Basic.Tests;
 
-using BadMango.Basic.Emulation;
-using BadMango.Basic.Execution;
-using BadMango.Basic.IO;
-using BadMango.Basic.Lexer;
-using BadMango.Basic.Parser;
-using BadMango.Basic.Runtime;
+using Emulation;
+using Execution;
+using IO;
+using Lexer;
+using Parser;
+using Runtime;
 
 using Microsoft.Extensions.Logging;
 

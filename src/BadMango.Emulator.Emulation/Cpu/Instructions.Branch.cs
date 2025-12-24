@@ -20,7 +20,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCC.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BCC(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BCC(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -55,7 +55,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BCS(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BCS(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -90,7 +90,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BEQ.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BEQ(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BEQ(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -125,7 +125,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BNE.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BNE(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BNE(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -160,7 +160,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BMI.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BMI(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BMI(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -195,7 +195,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BPL.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BPL(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BPL(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -230,7 +230,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVC.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BVC(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BVC(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -265,7 +265,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVS.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BVS(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BVS(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
@@ -304,7 +304,7 @@ public static partial class Instructions
     /// It always branches unconditionally.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BRA(AddressingMode<CpuState> addressingMode)
+    public static OpcodeHandler BRA(AddressingModeHandler<CpuState> addressingMode)
     {
         return (memory, ref state) =>
         {
