@@ -26,6 +26,11 @@ public static partial class Instructions
         {
             Addr targetAddr = addressingMode(memory, ref state);
             state.Registers.PC.SetWord((Word)targetAddr);
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.JMP;
+            }
         };
     }
 
@@ -39,6 +44,7 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             // JSR pushes PC - 1 to the stack (6502 behavior)
@@ -46,9 +52,19 @@ public static partial class Instructions
             Word returnAddr = (Word)(state.Registers.PC.GetWord() - 1);
 
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), returnAddr.HighByte());
+            opCycles++; // Push high byte
             memory.Write(state.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
+            opCycles++; // Push low byte
             state.Registers.PC.SetAddr(targetAddr);
-            state.Cycles += 3;
+            opCycles++; // Internal operation
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.JSR;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -62,12 +78,23 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
 
             byte lo = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            opCycles++; // Pull low byte
             byte hi = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            opCycles++; // Pull high byte
             state.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
-            state.Cycles += 5;
+            opCycles += 3; // Internal operations
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.RTS;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -81,13 +108,25 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P = (ProcessorStatusFlags)memory.ReadByte(state.PopByte(Cpu65C02Constants.StackBase));
+            opCycles++; // Pull P
             byte lo = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            opCycles++; // Pull PC low byte
             byte hi = memory.Read(state.PopByte(Cpu65C02Constants.StackBase));
+            opCycles++; // Pull PC high byte
             state.Registers.PC.SetWord((Word)((hi << 8) | lo));
             state.HaltReason = HaltState.None;
-            state.Cycles += 5;
+            opCycles += 2; // Internal operations
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.RTI;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }

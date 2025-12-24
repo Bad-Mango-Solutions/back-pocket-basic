@@ -37,4 +37,9 @@
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="BadMango.Emulator.Tests" />
+    <InternalsVisibleTo Include="BadMango.Emulator.Emulation" />
+  </ItemGroup>
+
 </Project>

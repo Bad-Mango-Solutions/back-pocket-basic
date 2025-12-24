@@ -24,9 +24,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P &= ~ProcessorStatusFlags.C;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.CLC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -40,9 +49,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P |= ProcessorStatusFlags.C;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.SEC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -56,9 +74,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P &= ~ProcessorStatusFlags.I;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.CLI;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -72,9 +99,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P |= ProcessorStatusFlags.I;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.SEI;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -88,9 +124,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P &= ~ProcessorStatusFlags.D;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.CLD;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -104,9 +149,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P |= ProcessorStatusFlags.D;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.SED;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -120,9 +174,18 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             addressingMode(memory, ref state);
             state.Registers.P &= ~ProcessorStatusFlags.V;
-            state.Cycles++;
+            opCycles++;
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.CLV;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }

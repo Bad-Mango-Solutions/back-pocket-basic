@@ -50,7 +50,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDA(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDA(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -70,7 +70,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDA(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDA(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -90,7 +90,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, a: 0x00, p: FlagZ | FlagN, cycles: 10);
 
         // Act
-        var handler = Instructions.LDA(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDA(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -114,7 +114,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, x: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDX(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDX(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -134,7 +134,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, x: 0x00, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDX(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDX(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -157,7 +157,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, y: 0xFF, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDY(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDY(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert
@@ -176,7 +176,7 @@ public class InstructionsTests
         var state = CreateState(pc: 0x1000, y: 0x00, p: 0, cycles: 10);
 
         // Act
-        var handler = Instructions.LDY(AddressingModes.ImmediateByte);
+        var handler = Instructions.LDY(AddressingModes.Immediate);
         handler(memory, ref state);
 
         // Assert

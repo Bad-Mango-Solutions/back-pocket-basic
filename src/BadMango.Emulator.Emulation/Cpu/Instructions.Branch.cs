@@ -24,19 +24,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (!state.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BCC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -50,19 +59,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (state.Registers.P.HasFlag(ProcessorStatusFlags.C))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BCS;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -76,19 +94,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (state.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BEQ;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -102,19 +129,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (!state.Registers.P.HasFlag(ProcessorStatusFlags.Z))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BNE;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -128,19 +164,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (state.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BMI;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -154,19 +199,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (!state.Registers.P.HasFlag(ProcessorStatusFlags.N))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BPL;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -180,19 +234,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (!state.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BVC;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -206,19 +269,28 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
 
             if (state.Registers.P.HasFlag(ProcessorStatusFlags.V))
             {
                 Word oldPC = state.Registers.PC.GetWord();
                 state.Registers.PC.SetWord((Word)targetAddr);
-                state.Cycles++;
+                opCycles++; // Branch taken
 
                 if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
                 {
-                    state.Cycles++;
+                    opCycles++; // Page boundary crossed
                 }
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BVS;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 
@@ -236,15 +308,24 @@ public static partial class Instructions
     {
         return (memory, ref state) =>
         {
+            byte opCycles = 0;
             Addr targetAddr = addressingMode(memory, ref state);
             Word oldPC = state.Registers.PC.GetWord();
             state.Registers.PC.SetWord((Word)targetAddr);
-            state.Cycles++;
+            opCycles++; // Branch always taken
 
             if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
             {
-                state.Cycles++;
+                opCycles++; // Page boundary crossed
             }
+
+            if (state.IsDebuggerAttached)
+            {
+                state.Instruction = CpuInstructions.BRA;
+                state.InstructionCycles += opCycles;
+            }
+
+            state.Cycles += opCycles;
         };
     }
 }

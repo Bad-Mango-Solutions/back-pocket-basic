@@ -25,6 +25,8 @@ public class Cpu65C02 : ICpu
     private CpuState state; // CPU state including all registers, cycles, and halt state
     private bool irqPending;
     private bool nmiPending;
+    private bool stopRequested;
+    private IDebugStepListener? debugListener;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class.
@@ -44,6 +46,20 @@ public class Cpu65C02 : ICpu
     }
 
     /// <inheritdoc/>
+    public bool IsDebuggerAttached
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => debugListener is not null;
+    }
+
+    /// <inheritdoc/>
+    public bool IsStopRequested
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => stopRequested;
+    }
+
+    /// <inheritdoc/>
     public void Reset()
     {
         state = new()
@@ -54,6 +70,7 @@ public class Cpu65C02 : ICpu
         };
         irqPending = false;
         nmiPending = false;
+        stopRequested = false;
     }
 
     /// <inheritdoc/>
@@ -76,10 +93,63 @@ public class Cpu65C02 : ICpu
             return 0;
         }
 
+        // Capture state before execution for debug listener
+        Addr pcBefore = state.Registers.PC.GetAddr();
         byte opcode = FetchByte();
+
+        // Notify debug listener before execution
+        if (debugListener is not null)
+        {
+            state.ClearDebugStateInformation();
+
+            // Set up state for instruction tracking
+            state.IsDebuggerAttached = true;
+            state.Opcode = opcode;
+            state.InstructionCycles = 1; // Opcode fetch cycle
+
+            var beforeArgs = new DebugStepEventArgs
+            {
+                PC = pcBefore,
+                Opcode = opcode,
+                Registers = state.Registers,
+                Cycles = cyclesBefore,
+                Halted = false,
+                HaltReason = HaltState.None,
+            };
+            debugListener.OnBeforeStep(in beforeArgs);
+        }
 
         // Execute opcode with state
         opcodeTable.Execute(opcode, memory, ref state);
+
+        // Notify debug listener after execution
+        if (debugListener is not null)
+        {
+            var afterArgs = new DebugStepEventArgs
+            {
+                PC = pcBefore,
+                Opcode = opcode,
+                Instruction = state.Instruction,
+                AddressingMode = state.AddressingMode,
+                OperandSize = state.OperandSize,
+                Operands = state.Operands,
+                EffectiveAddress = state.EffectiveAddress,
+                Registers = state.Registers,
+                Cycles = state.Cycles,
+                InstructionCycles = state.InstructionCycles,
+                Halted = state.Halted,
+                HaltReason = state.HaltReason,
+            };
+            debugListener.OnAfterStep(in afterArgs);
+
+            // Reset debug state for next instruction
+            state.IsDebuggerAttached = false;
+            state.Instruction = CpuInstructions.None;
+            state.AddressingMode = CpuAddressingModes.None;
+            state.OperandSize = 0;
+            state.EffectiveAddress = 0;
+            state.InstructionCycles = 0;
+        }
 
         return (int)(state.Cycles - cyclesBefore);
     }
@@ -89,8 +159,9 @@ public class Cpu65C02 : ICpu
     {
         state.Registers.PC.SetAddr(startAddress);
         state.HaltReason = HaltState.None;
+        stopRequested = false;
 
-        while (!Halted)
+        while (!Halted && !stopRequested)
         {
             Step();
         }
@@ -127,6 +198,45 @@ public class Cpu65C02 : ICpu
     public void SignalNMI()
     {
         nmiPending = true;
+    }
+
+    /// <inheritdoc/>
+    public void AttachDebugger(IDebugStepListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+        debugListener = listener;
+    }
+
+    /// <inheritdoc/>
+    public void DetachDebugger()
+    {
+        debugListener = null;
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetPC(Addr address)
+    {
+        state.Registers.PC.SetAddr(address);
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Addr GetPC()
+    {
+        return state.Registers.PC.GetAddr();
+    }
+
+    /// <inheritdoc/>
+    public void RequestStop()
+    {
+        stopRequested = true;
+    }
+
+    /// <inheritdoc/>
+    public void ClearStopRequest()
+    {
+        stopRequested = false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
