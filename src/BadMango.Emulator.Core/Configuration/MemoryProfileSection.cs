@@ -1,4 +1,8 @@
-﻿namespace BadMango.Emulator.Core.Configuration;
+﻿// <copyright file="MemoryProfileSection.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Core.Configuration;
 
 using System.Text.Json.Serialization;
 
