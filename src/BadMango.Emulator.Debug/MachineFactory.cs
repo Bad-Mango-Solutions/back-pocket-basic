@@ -27,6 +27,7 @@ public static class MachineFactory
 
         var memory = CreateMemory(profile.Memory);
         (ICpu cpu, OpcodeTable opcodeTable) = CreateCpu(profile.Cpu, memory);
+        cpu.Reset();
         var disassembler = new Disassembler(opcodeTable, memory);
         var info = MachineInfo.FromProfile(profile);
 
