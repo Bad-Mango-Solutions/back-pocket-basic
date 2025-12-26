@@ -81,14 +81,14 @@ public sealed class MemoryBusAdapter : IMemory
     public void Write(Addr address, byte value)
     {
         var access = CreateAccess(address, 8, AccessIntent.DataWrite);
-        var fault = bus.TryWrite8(access, value);
+        var result = bus.TryWrite8(access, value);
 
-        if (fault.IsFault)
+        if (result.Failed)
         {
-            ThrowForFault(fault, "Write8");
+            ThrowForFault(result.Fault, "Write8");
         }
 
-        cycleCount++;
+        cycleCount += result.Cycles;
     }
 
     /// <inheritdoc />
@@ -110,14 +110,14 @@ public sealed class MemoryBusAdapter : IMemory
     public void WriteWord(Addr address, Word value)
     {
         var access = CreateAccess(address, 16, AccessIntent.DataWrite);
-        var fault = bus.TryWrite16(access, value);
+        var result = bus.TryWrite16(access, value);
 
-        if (fault.IsFault)
+        if (result.Failed)
         {
-            ThrowForFault(fault, "Write16");
+            ThrowForFault(result.Fault, "Write16");
         }
 
-        cycleCount += 2; // Decomposed in compat mode
+        cycleCount += result.Cycles;
     }
 
     /// <inheritdoc />
@@ -139,14 +139,14 @@ public sealed class MemoryBusAdapter : IMemory
     public void WriteDWord(Addr address, DWord value)
     {
         var access = CreateAccess(address, 32, AccessIntent.DataWrite);
-        var fault = bus.TryWrite32(access, value);
+        var result = bus.TryWrite32(access, value);
 
-        if (fault.IsFault)
+        if (result.Failed)
         {
-            ThrowForFault(fault, "Write32");
+            ThrowForFault(result.Fault, "Write32");
         }
 
-        cycleCount += 4; // Decomposed in compat mode
+        cycleCount += result.Cycles;
     }
 
     /// <inheritdoc />

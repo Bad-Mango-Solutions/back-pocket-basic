@@ -168,12 +168,12 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The byte value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
+    /// <returns>A result indicating success or containing fault information.</returns>
     /// <remarks>
     /// This try-style API performs write permission checks before touching the device
     /// and returns faults as first-class values rather than throwing exceptions.
     /// </remarks>
-    BusFault TryWrite8(in BusAccess access, byte value);
+    BusResult TryWrite8(in BusAccess access, byte value);
 
     /// <summary>
     /// Attempts to read a 16-bit word from the specified address.
@@ -193,8 +193,8 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The 16-bit value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
-    BusFault TryWrite16(in BusAccess access, Word value);
+    /// <returns>A result indicating success or containing fault information.</returns>
+    BusResult TryWrite16(in BusAccess access, Word value);
 
     /// <summary>
     /// Attempts to read a 32-bit double word from the specified address.
@@ -214,8 +214,8 @@ public interface IMemoryBus
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>
     /// <param name="value">The 32-bit value to write.</param>
-    /// <returns>A fault if the operation failed, or success with <see cref="FaultKind.None"/>.</returns>
-    BusFault TryWrite32(in BusAccess access, DWord value);
+    /// <returns>A result indicating success or containing fault information.</returns>
+    BusResult TryWrite32(in BusAccess access, DWord value);
 
     /// <summary>
     /// Gets the page entry for the specified address.
@@ -261,4 +261,56 @@ public interface IMemoryBus
         TargetCaps caps,
         IBusTarget target,
         Addr physicalBase);
+
+    /// <summary>
+    /// Gets the page entry by index for direct inspection.
+    /// </summary>
+    /// <param name="pageIndex">The page index.</param>
+    /// <returns>A reference to the page entry.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="pageIndex"/> is out of range.
+    /// </exception>
+    ref readonly PageEntry GetPageEntryByIndex(int pageIndex);
+
+    /// <summary>
+    /// Atomically remaps a page to a different target.
+    /// </summary>
+    /// <param name="pageIndex">The page index to remap.</param>
+    /// <param name="newTarget">The new target device.</param>
+    /// <param name="newPhysBase">The new physical base within the target.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is used for language card and auxiliary memory bank switching
+    /// in Apple II-compatible machines. It preserves the page's device ID, region tag,
+    /// permissions, and capabilities while changing only the target and physical base.
+    /// </para>
+    /// </remarks>
+    void RemapPage(int pageIndex, IBusTarget newTarget, Addr newPhysBase);
+
+    /// <summary>
+    /// Atomically remaps a page with full entry replacement.
+    /// </summary>
+    /// <param name="pageIndex">The page index to remap.</param>
+    /// <param name="newEntry">The complete new page entry.</param>
+    /// <remarks>
+    /// This method replaces all page entry fields, including device ID, region tag,
+    /// permissions, capabilities, target, and physical base.
+    /// </remarks>
+    void RemapPage(int pageIndex, PageEntry newEntry);
+
+    /// <summary>
+    /// Remaps a contiguous range of pages.
+    /// </summary>
+    /// <param name="startPage">The first page index to remap.</param>
+    /// <param name="pageCount">The number of consecutive pages to remap.</param>
+    /// <param name="newTarget">The new target device for all pages.</param>
+    /// <param name="newPhysBase">The new physical base address for the first page.</param>
+    /// <remarks>
+    /// <para>
+    /// This method preserves each page's device ID, region tag, permissions, and
+    /// capabilities while changing the target and physical base. Physical addresses
+    /// are computed as newPhysBase + (pageIndex - startPage) * pageSize.
+    /// </para>
+    /// </remarks>
+    void RemapPageRange(int startPage, int pageCount, IBusTarget newTarget, Addr newPhysBase);
 }

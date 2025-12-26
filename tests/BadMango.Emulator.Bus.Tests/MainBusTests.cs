@@ -194,12 +194,12 @@ public class MainBusTests
         var bus = new MainBus();
 
         var access = CreateTestAccess(0x5000, AccessIntent.DataWrite);
-        var fault = bus.TryWrite8(access, 0x00);
+        var result = bus.TryWrite8(access, 0x00);
 
         Assert.Multiple(() =>
         {
-            Assert.That(fault.IsFault, Is.True);
-            Assert.That(fault.Kind, Is.EqualTo(FaultKind.Unmapped));
+            Assert.That(result.Failed, Is.True);
+            Assert.That(result.Fault.Kind, Is.EqualTo(FaultKind.Unmapped));
         });
     }
 
@@ -240,12 +240,12 @@ public class MainBusTests
         bus.MapPage(0, new PageEntry(1, RegionTag.Rom, PagePerms.Read, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataWrite);
-        var fault = bus.TryWrite8(access, 0x42);
+        var result = bus.TryWrite8(access, 0x42);
 
         Assert.Multiple(() =>
         {
-            Assert.That(fault.IsFault, Is.True);
-            Assert.That(fault.Kind, Is.EqualTo(FaultKind.Permission));
+            Assert.That(result.Failed, Is.True);
+            Assert.That(result.Fault.Kind, Is.EqualTo(FaultKind.Permission));
         });
     }
 

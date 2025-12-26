@@ -357,12 +357,12 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-    public BusFault TryWrite8(in BusAccess access, byte value)
+    public BusResult TryWrite8(in BusAccess access, byte value)
     {
         int pageIndex = (int)(access.Address >> PageShift);
         if (pageIndex >= pageTable.Length)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         ref readonly var page = ref pageTable[pageIndex];
@@ -370,13 +370,13 @@ public sealed class MainBus : IMemoryBus
         // Check for unmapped page
         if (page.Target is null)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         // Check write permission
         if (!page.CanWrite)
         {
-            return BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag);
+            return BusResult.FromFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }
 
         // Handle composite target dispatch
@@ -390,14 +390,14 @@ public sealed class MainBus : IMemoryBus
                 subTarget.Write8(physicalAddress, value, access);
             }
 
-            return BusFault.Success(access, page.DeviceId, page.RegionTag);
+            return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
         // Perform the write
         Addr physAddr = page.PhysicalBase + (access.Address & PageMask);
         page.Target.Write8(physAddr, value, access);
 
-        return BusFault.Success(access, page.DeviceId, page.RegionTag);
+        return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
     }
 
     /// <inheritdoc />
@@ -461,7 +461,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-    public BusFault TryWrite16(in BusAccess access, Word value)
+    public BusResult TryWrite16(in BusAccess access, Word value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 2))
@@ -478,7 +478,7 @@ public sealed class MainBus : IMemoryBus
         int pageIndex = (int)(access.Address >> PageShift);
         if (pageIndex >= pageTable.Length)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         ref readonly var page = ref pageTable[pageIndex];
@@ -486,13 +486,13 @@ public sealed class MainBus : IMemoryBus
         // Check for unmapped page
         if (page.Target is null)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         // Check write permission
         if (!page.CanWrite)
         {
-            return BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag);
+            return BusResult.FromFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }
 
         // Atomic request + target supports it
@@ -500,7 +500,7 @@ public sealed class MainBus : IMemoryBus
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
             page.Target.Write16(physicalAddress, value, access);
-            return BusFault.Success(access, page.DeviceId, page.RegionTag);
+            return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
         // Compat mode default: decompose (Apple II expects byte-visible cycles)
@@ -514,7 +514,7 @@ public sealed class MainBus : IMemoryBus
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
             page.Target.Write16(physicalAddress, value, access);
-            return BusFault.Success(access, page.DeviceId, page.RegionTag);
+            return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
         return DecomposeTryWrite16(access, value);
@@ -581,7 +581,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-    public BusFault TryWrite32(in BusAccess access, DWord value)
+    public BusResult TryWrite32(in BusAccess access, DWord value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 4))
@@ -598,7 +598,7 @@ public sealed class MainBus : IMemoryBus
         int pageIndex = (int)(access.Address >> PageShift);
         if (pageIndex >= pageTable.Length)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         ref readonly var page = ref pageTable[pageIndex];
@@ -606,13 +606,13 @@ public sealed class MainBus : IMemoryBus
         // Check for unmapped page
         if (page.Target is null)
         {
-            return BusFault.Unmapped(access);
+            return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
         // Check write permission
         if (!page.CanWrite)
         {
-            return BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag);
+            return BusResult.FromFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }
 
         // Atomic request + target supports it
@@ -620,7 +620,7 @@ public sealed class MainBus : IMemoryBus
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
             page.Target.Write32(physicalAddress, value, access);
-            return BusFault.Success(access, page.DeviceId, page.RegionTag);
+            return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
         // Compat mode default: decompose (Apple II expects byte-visible cycles)
@@ -634,7 +634,7 @@ public sealed class MainBus : IMemoryBus
         {
             Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
             page.Target.Write32(physicalAddress, value, access);
-            return BusFault.Success(access, page.DeviceId, page.RegionTag);
+            return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
         }
 
         return DecomposeTryWrite32(access, value);
@@ -903,17 +903,23 @@ public sealed class MainBus : IMemoryBus
     /// <summary>
     /// Decomposes a 16-bit try-write into two 8-bit try-writes.
     /// </summary>
-    private BusFault DecomposeTryWrite16(in BusAccess access, Word value)
+    private BusResult DecomposeTryWrite16(in BusAccess access, Word value)
     {
         var access0 = access with { WidthBits = 8 };
-        var fault0 = TryWrite8(access0, (byte)value);
-        if (fault0.IsFault)
+        var result0 = TryWrite8(access0, (byte)value);
+        if (result0.Failed)
         {
-            return fault0;
+            return result0;
         }
 
         var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
-        return TryWrite8(access1, (byte)(value >> 8));
+        var result1 = TryWrite8(access1, (byte)(value >> 8));
+        if (result1.Failed)
+        {
+            return BusResult.FromFault(result1.Fault, cycles: result0.Cycles);
+        }
+
+        return BusResult.Success(cycles: result0.Cycles + result1.Cycles);
     }
 
     /// <summary>
@@ -956,30 +962,36 @@ public sealed class MainBus : IMemoryBus
     /// <summary>
     /// Decomposes a 32-bit try-write into four 8-bit try-writes.
     /// </summary>
-    private BusFault DecomposeTryWrite32(in BusAccess access, DWord value)
+    private BusResult DecomposeTryWrite32(in BusAccess access, DWord value)
     {
         var access0 = access with { WidthBits = 8 };
-        var fault0 = TryWrite8(access0, (byte)value);
-        if (fault0.IsFault)
+        var result0 = TryWrite8(access0, (byte)value);
+        if (result0.Failed)
         {
-            return fault0;
+            return result0;
         }
 
         var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
-        var fault1 = TryWrite8(access1, (byte)(value >> 8));
-        if (fault1.IsFault)
+        var result1 = TryWrite8(access1, (byte)(value >> 8));
+        if (result1.Failed)
         {
-            return fault1;
+            return BusResult.FromFault(result1.Fault, cycles: result0.Cycles);
         }
 
         var access2 = access with { Address = access.Address + 2, WidthBits = 8 };
-        var fault2 = TryWrite8(access2, (byte)(value >> 16));
-        if (fault2.IsFault)
+        var result2 = TryWrite8(access2, (byte)(value >> 16));
+        if (result2.Failed)
         {
-            return fault2;
+            return BusResult.FromFault(result2.Fault, cycles: result0.Cycles + result1.Cycles);
         }
 
         var access3 = access with { Address = access.Address + 3, WidthBits = 8 };
-        return TryWrite8(access3, (byte)(value >> 24));
+        var result3 = TryWrite8(access3, (byte)(value >> 24));
+        if (result3.Failed)
+        {
+            return BusResult.FromFault(result3.Fault, cycles: result0.Cycles + result1.Cycles + result2.Cycles);
+        }
+
+        return BusResult.Success(cycles: result0.Cycles + result1.Cycles + result2.Cycles + result3.Cycles);
     }
 }
