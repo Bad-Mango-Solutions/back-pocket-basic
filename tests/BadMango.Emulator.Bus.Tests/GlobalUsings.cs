@@ -6,3 +6,8 @@
 
 global using BadMango.Emulator.Bus;
 global using NUnit.Framework;
+
+// Global type aliases matching the Bus project
+global using Addr = uint;  // Address type - 32-bit for future flat addressing
+global using DWord = uint; // Double word - 32-bit unsigned integer
+global using Word = ushort;  // Word - 16-bit unsigned integer
