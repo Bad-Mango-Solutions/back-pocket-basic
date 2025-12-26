@@ -50,26 +50,29 @@
   </Folder>
   <Folder Name="/schemas/" />
   <Folder Name="/specs/">
-    <File Path="specs/Authoritative Emulator Architecture Specification v1.0.md" />
+    <File Path="specs/Architecture Spec v1.0 Appendix.md" />
+    <File Path="specs/Architecture Spec v1.0 Part 1.md" />
+    <File Path="specs/Architecture Spec v1.0 Part 2.md" />
+    <File Path="specs/Architecture Spec v1.0 Part 3.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
     <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />
     <Project Path="src/BadMango.Emulator.Bus/BadMango.Emulator.Bus.csproj" />
     <Project Path="src/BadMango.Emulator.Core/BadMango.Emulator.Core.csproj" />
-    <Project Path="src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj" />
     <Project Path="src/BadMango.Emulator.Debug.Infrastructure/BadMango.Emulator.Debug.Infrastructure.csproj" />
-    <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
+    <Project Path="src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj" />
     <Project Path="src/BadMango.Emulator.Devices/BadMango.Emulator.Devices.csproj" />
+    <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
+    <Project Path="src/BadMango.Emulator.Interop/BadMango.Emulator.Interop.csproj" />
     <Project Path="src/BadMango.Emulator.Systems/BadMango.Emulator.Systems.csproj" />
     <Project Path="src/BadMango.Emulator.UI/BadMango.Emulator.UI.csproj" />
-    <Project Path="src/BadMango.Emulator.Interop/BadMango.Emulator.Interop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BadMango.Basic.Tests/BadMango.Basic.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Bus.Tests/BadMango.Emulator.Bus.Tests.csproj" />
-    <Project Path="tests/BadMango.Emulator.Debug.Tests/BadMango.Emulator.Debug.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Debug.Infrastructure.Tests/BadMango.Emulator.Debug.Infrastructure.Tests.csproj" />
+    <Project Path="tests/BadMango.Emulator.Debug.Tests/BadMango.Emulator.Debug.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
   </Folder>
   <Folder Name="/wiki/">
