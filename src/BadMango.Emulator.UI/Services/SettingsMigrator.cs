@@ -44,6 +44,9 @@ public class SettingsMigrator : ISettingsMigrator
         var currentVersion = fromVersion;
 
         // Apply migrations sequentially
+        // Note: No migrations are currently defined. This loop structure is kept
+        // so that future versioned migrations can be added here without
+        // changing the surrounding logic.
         while (currentVersion < CurrentVersion)
         {
             currentSettings = currentVersion switch

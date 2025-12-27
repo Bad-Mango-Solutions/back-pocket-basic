@@ -26,10 +26,24 @@ public partial class SettingsWindow : Window
     {
         if (DataContext is SettingsWindowViewModel vm)
         {
-            await vm.ApplyCommand.ExecuteAsync(null);
-        }
+            try
+            {
+                await vm.ApplyCommand.ExecuteAsync(null);
+                Close(true);
+            }
+            catch (Exception ex)
+            {
+                // Log the error and keep the window open so user knows save failed
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
 
-        Close(true);
+                // In a production app, show an error dialog to the user
+                // For now, we don't close the window so the user can retry
+            }
+        }
+        else
+        {
+            Close(true);
+        }
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e)

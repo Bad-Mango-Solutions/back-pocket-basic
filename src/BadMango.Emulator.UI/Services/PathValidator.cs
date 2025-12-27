@@ -64,12 +64,6 @@ public class PathValidator : IPathValidator
             };
         }
 
-        // Check if path is relative
-        if (!Path.IsPathRooted(normalizedPath))
-        {
-            warnings.Add(PathValidationWarning.RelativePath);
-        }
-
         // Check if directory exists
         if (!Directory.Exists(normalizedPath))
         {
@@ -93,7 +87,7 @@ public class PathValidator : IPathValidator
             {
                 // Attempt to get directory info as a basic permission check
                 var testFile = Path.Combine(normalizedPath, $".backpocket_test_{Guid.NewGuid():N}");
-                using (var stream = File.Create(testFile, 1, FileOptions.DeleteOnClose))
+                using (File.Create(testFile, 1, FileOptions.DeleteOnClose))
                 {
                     // File created and will be deleted on close
                 }

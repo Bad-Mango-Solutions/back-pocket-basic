@@ -60,12 +60,9 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task ApplyAsync()
     {
-        foreach (var page in SettingsPages)
+        foreach (var page in SettingsPages.Where(p => p.HasChanges))
         {
-            if (page.HasChanges)
-            {
-                await page.SaveAsync().ConfigureAwait(false);
-            }
+            await page.SaveAsync().ConfigureAwait(false);
         }
 
         HasChanges = false;
@@ -104,8 +101,25 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     partial void OnSelectedPageChanged(ISettingsPage? value)
     {
-        // Load the page when selected - fire and forget is intentional here
-        // as we don't want to block the UI during page navigation
-        _ = value?.LoadAsync();
+        // Load the page when selected asynchronously with error handling
+        _ = LoadSelectedPageAsync(value);
+    }
+
+    private async Task LoadSelectedPageAsync(ISettingsPage? page)
+    {
+        if (page is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await page.LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Log the error - in a real application, this could also show a user notification
+            System.Diagnostics.Debug.WriteLine($"Failed to load settings page '{page.DisplayName}': {ex.Message}");
+        }
     }
 }
