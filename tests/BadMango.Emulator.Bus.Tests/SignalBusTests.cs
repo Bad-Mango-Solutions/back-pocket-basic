@@ -299,4 +299,151 @@ public class SignalBusTests
 
         Assert.That(bus.IsIrqAsserted, Is.False);
     }
+
+    /// <summary>
+    /// Verifies that TotalFetchCycles starts at zero.
+    /// </summary>
+    [Test]
+    public void SignalBus_NewInstance_TotalFetchCyclesIsZero()
+    {
+        var bus = new SignalBus();
+
+        Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
+    }
+
+    /// <summary>
+    /// Verifies that TotalExecuteCycles starts at zero.
+    /// </summary>
+    [Test]
+    public void SignalBus_NewInstance_TotalExecuteCyclesIsZero()
+    {
+        var bus = new SignalBus();
+
+        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
+    }
+
+    /// <summary>
+    /// Verifies that TotalCpuCycles starts at zero.
+    /// </summary>
+    [Test]
+    public void SignalBus_NewInstance_TotalCpuCyclesIsZero()
+    {
+        var bus = new SignalBus();
+
+        Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
+    }
+
+    /// <summary>
+    /// Verifies that SignalInstructionFetched accumulates cycles.
+    /// </summary>
+    [Test]
+    public void SignalBus_SignalInstructionFetched_AccumulatesCycles()
+    {
+        var bus = new SignalBus();
+
+        bus.SignalInstructionFetched(3);
+        Assert.That(bus.TotalFetchCycles, Is.EqualTo(3ul));
+
+        bus.SignalInstructionFetched(2);
+        Assert.That(bus.TotalFetchCycles, Is.EqualTo(5ul));
+    }
+
+    /// <summary>
+    /// Verifies that SignalInstructionExecuted accumulates cycles.
+    /// </summary>
+    [Test]
+    public void SignalBus_SignalInstructionExecuted_AccumulatesCycles()
+    {
+        var bus = new SignalBus();
+
+        bus.SignalInstructionExecuted(4);
+        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4ul));
+
+        bus.SignalInstructionExecuted(2);
+        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(6ul));
+    }
+
+    /// <summary>
+    /// Verifies that TotalCpuCycles is the sum of fetch and execute cycles.
+    /// </summary>
+    [Test]
+    public void SignalBus_TotalCpuCycles_IsSumOfFetchAndExecute()
+    {
+        var bus = new SignalBus();
+
+        bus.SignalInstructionFetched(3);
+        bus.SignalInstructionExecuted(4);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.TotalFetchCycles, Is.EqualTo(3ul));
+            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4ul));
+            Assert.That(bus.TotalCpuCycles, Is.EqualTo(7ul));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that Reset clears CPU cycle counters.
+    /// </summary>
+    [Test]
+    public void SignalBus_Reset_ClearsCycleCounters()
+    {
+        var bus = new SignalBus();
+        bus.SignalInstructionFetched(10);
+        bus.SignalInstructionExecuted(20);
+
+        bus.Reset();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
+            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
+            Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that ResetCycleCounters clears counters without affecting signals.
+    /// </summary>
+    [Test]
+    public void SignalBus_ResetCycleCounters_ClearsCountersOnly()
+    {
+        var bus = new SignalBus();
+        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+        bus.SignalInstructionFetched(10);
+        bus.SignalInstructionExecuted(20);
+
+        bus.ResetCycleCounters();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
+            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
+            Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
+            Assert.That(bus.IsIrqAsserted, Is.True, "IRQ should still be asserted");
+        });
+    }
+
+    /// <summary>
+    /// Verifies cycle counting works with many signals.
+    /// </summary>
+    [Test]
+    public void SignalBus_CycleCounters_WorkWithManyCycles()
+    {
+        var bus = new SignalBus();
+
+        // Simulate 1000 instructions worth of cycles
+        for (int i = 0; i < 1000; i++)
+        {
+            bus.SignalInstructionFetched(2);
+            bus.SignalInstructionExecuted(4);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.TotalFetchCycles, Is.EqualTo(2000ul));
+            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4000ul));
+            Assert.That(bus.TotalCpuCycles, Is.EqualTo(6000ul));
+        });
+    }
 }

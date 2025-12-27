@@ -94,4 +94,20 @@ public interface IScheduler
     /// a device is reset or a DMA transfer is aborted.
     /// </remarks>
     bool Cancel(ISchedulable actor);
+
+    /// <summary>
+    /// Advances the scheduler's current cycle by the specified number of cycles.
+    /// </summary>
+    /// <param name="cycles">The number of cycles to advance.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is used to advance the scheduler's time based on CPU cycle signals.
+    /// It processes any events that become due as a result of the time advancement.
+    /// </para>
+    /// <para>
+    /// This is the preferred method for CPU-driven scheduling, where the CPU
+    /// signals instruction execution and the scheduler advances accordingly.
+    /// </para>
+    /// </remarks>
+    void AdvanceCycles(ulong cycles);
 }
