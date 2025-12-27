@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.GeneralSettingsView"
+             x:DataType="vm:GeneralSettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="General Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Startup Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Startup" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding LoadLastProfile}"
+                          Content="Load last profile on startup" />
+                
+                <CheckBox IsChecked="{Binding StartPaused}"
+                          Content="Start emulator paused" />
+                
+                <CheckBox IsChecked="{Binding RestoreWindowLayout}"
+                          Content="Restore window layout" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Appearance Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Language:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableLanguages}"
+                              SelectedItem="{Binding Language}"
+                              HorizontalAlignment="Stretch" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Theme:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableThemes}"
+                              SelectedItem="{Binding Theme}"
+                              HorizontalAlignment="Stretch" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- Updates Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Updates &amp; Privacy" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding CheckForUpdates}"
+                          Content="Check for updates automatically" />
+                
+                <CheckBox IsChecked="{Binding EnableTelemetry}"
+                          Content="Send anonymous usage data" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
