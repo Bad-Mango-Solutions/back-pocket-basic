@@ -211,4 +211,90 @@ public class CyclesTests
 
         Assert.That(cycles.ToString(), Is.EqualTo("123 cycles"));
     }
+
+    /// <summary>
+    /// Verifies the prefix increment operator returns incremented value.
+    /// </summary>
+    [Test]
+    public void Cycles_PrefixIncrement_ReturnsIncrementedValue()
+    {
+        var cycles = new Cycles(100ul);
+
+        var result = ++cycles;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Value, Is.EqualTo(101ul));
+            Assert.That(cycles.Value, Is.EqualTo(101ul));
+        });
+    }
+
+    /// <summary>
+    /// Verifies the postfix increment operator returns original value and increments.
+    /// </summary>
+    [Test]
+    public void Cycles_PostfixIncrement_ReturnsOriginalValueThenIncrements()
+    {
+        var cycles = new Cycles(100ul);
+
+        var result = cycles++;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Value, Is.EqualTo(100ul));
+            Assert.That(cycles.Value, Is.EqualTo(101ul));
+        });
+    }
+
+    /// <summary>
+    /// Verifies the compound assignment operator (+=) works correctly.
+    /// </summary>
+    [Test]
+    public void Cycles_CompoundAddition_ReturnsCorrectSum()
+    {
+        var cycles = new Cycles(100ul);
+
+        cycles += new Cycles(50ul);
+
+        Assert.That(cycles.Value, Is.EqualTo(150ul));
+    }
+
+    /// <summary>
+    /// Verifies the compound subtraction operator (-=) works correctly.
+    /// </summary>
+    [Test]
+    public void Cycles_CompoundSubtraction_ReturnsCorrectDifference()
+    {
+        var cycles = new Cycles(100ul);
+
+        cycles -= new Cycles(30ul);
+
+        Assert.That(cycles.Value, Is.EqualTo(70ul));
+    }
+
+    /// <summary>
+    /// Verifies increment from zero works correctly.
+    /// </summary>
+    [Test]
+    public void Cycles_IncrementFromZero_ReturnsOne()
+    {
+        var cycles = Cycles.Zero;
+
+        cycles++;
+
+        Assert.That(cycles.Value, Is.EqualTo(1ul));
+    }
+
+    /// <summary>
+    /// Verifies increment from One constant works correctly.
+    /// </summary>
+    [Test]
+    public void Cycles_IncrementFromOne_ReturnsTwo()
+    {
+        var cycles = Cycles.One;
+
+        cycles++;
+
+        Assert.That(cycles.Value, Is.EqualTo(2ul));
+    }
 }

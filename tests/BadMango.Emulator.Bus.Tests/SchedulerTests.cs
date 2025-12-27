@@ -658,6 +658,289 @@ public class SchedulerTests
     }
 
     /// <summary>
+    /// Integration test: Validates end-to-end CPU instruction cycle tracking with scheduler.
+    /// </summary>
+    [Test]
+    public void Integration_CpuInstructionCycleTracking_FullWorkflow()
+    {
+        var signalBus = new SignalBus();
+        var scheduler = new Scheduler();
+        var events = new List<(string Name, ulong Cycle)>();
+
+        // Schedule multiple device events
+        scheduler.Schedule(new TestActor(() => events.Add(("Timer1", scheduler.CurrentCycle))), 10ul);
+        scheduler.Schedule(new TestActor(() => events.Add(("Timer2", scheduler.CurrentCycle))), 25ul);
+        scheduler.Schedule(new TestActor(() => events.Add(("Timer3", scheduler.CurrentCycle))), 50ul);
+
+        // Simulate CPU executing instructions with varying cycle counts
+        // Instruction 1: 2 fetch + 3 execute = 5 cycles
+        signalBus.SignalInstructionFetched(2);
+        signalBus.SignalInstructionExecuted(3);
+        scheduler.AdvanceCycles(5);
+
+        // Instruction 2: 3 fetch + 4 execute = 7 cycles (total: 12)
+        signalBus.SignalInstructionFetched(3);
+        signalBus.SignalInstructionExecuted(4);
+        scheduler.AdvanceCycles(7);
+
+        // Instruction 3: 2 fetch + 10 execute = 12 cycles (total: 24)
+        signalBus.SignalInstructionFetched(2);
+        signalBus.SignalInstructionExecuted(10);
+        scheduler.AdvanceCycles(12);
+
+        // Instruction 4: 4 fetch + 22 execute = 26 cycles (total: 50)
+        signalBus.SignalInstructionFetched(4);
+        signalBus.SignalInstructionExecuted(22);
+        scheduler.AdvanceCycles(26);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(signalBus.TotalFetchCycles, Is.EqualTo(11ul), "Total fetch cycles should be 2+3+2+4=11");
+            Assert.That(signalBus.TotalExecuteCycles, Is.EqualTo(39ul), "Total execute cycles should be 3+4+10+22=39");
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(50ul), "Total CPU cycles should be 50");
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(50ul), "Scheduler should be at cycle 50");
+            Assert.That(events.Count, Is.EqualTo(3), "All three timer events should have fired");
+            Assert.That(events[0].Name, Is.EqualTo("Timer1"));
+            Assert.That(events[0].Cycle, Is.EqualTo(10ul));
+            Assert.That(events[1].Name, Is.EqualTo("Timer2"));
+            Assert.That(events[1].Cycle, Is.EqualTo(25ul));
+            Assert.That(events[2].Name, Is.EqualTo("Timer3"));
+            Assert.That(events[2].Cycle, Is.EqualTo(50ul));
+        });
+    }
+
+    /// <summary>
+    /// Integration test: Validates cycle counter reset during execution.
+    /// </summary>
+    [Test]
+    public void Integration_CycleCounterReset_DuringExecution()
+    {
+        var signalBus = new SignalBus();
+        var scheduler = new Scheduler();
+
+        // Run some cycles
+        signalBus.SignalInstructionFetched(10);
+        signalBus.SignalInstructionExecuted(20);
+        scheduler.AdvanceCycles(30);
+
+        Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(30ul));
+        Assert.That(scheduler.CurrentCycle, Is.EqualTo(30ul));
+
+        // Reset cycle counters (but not scheduler)
+        signalBus.ResetCycleCounters();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(signalBus.TotalFetchCycles, Is.EqualTo(0ul), "Fetch cycles should be reset");
+            Assert.That(signalBus.TotalExecuteCycles, Is.EqualTo(0ul), "Execute cycles should be reset");
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(0ul), "Total CPU cycles should be reset");
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(30ul), "Scheduler should NOT be reset");
+        });
+
+        // Continue execution
+        signalBus.SignalInstructionFetched(5);
+        signalBus.SignalInstructionExecuted(15);
+        scheduler.AdvanceCycles(20);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(20ul), "Should count only new cycles");
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(50ul), "Scheduler should continue from where it was");
+        });
+    }
+
+    /// <summary>
+    /// Functional test: Validates multiple events at the same cycle execute in order.
+    /// </summary>
+    [Test]
+    public void Functional_MultipleEventsAtSameCycle_ExecuteInScheduleOrder()
+    {
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        var executionOrder = new List<string>();
+
+        // Schedule multiple events at the same cycle
+        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event1")), 20ul);
+        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event2")), 20ul);
+        scheduler.Schedule(new TestActor(() => executionOrder.Add("Event3")), 20ul);
+
+        // Advance via CPU cycles
+        signalBus.SignalInstructionFetched(5);
+        signalBus.SignalInstructionExecuted(15);
+        scheduler.AdvanceCycles(20);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(executionOrder.Count, Is.EqualTo(3));
+            Assert.That(executionOrder[0], Is.EqualTo("Event1"));
+            Assert.That(executionOrder[1], Is.EqualTo("Event2"));
+            Assert.That(executionOrder[2], Is.EqualTo("Event3"));
+        });
+    }
+
+    /// <summary>
+    /// Functional test: Validates event cancellation during CPU-driven execution.
+    /// </summary>
+    [Test]
+    public void Functional_EventCancellation_DuringCpuExecution()
+    {
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        bool event1Fired = false;
+        bool event2Fired = false;
+
+        var actor1 = new TestActor(() => event1Fired = true);
+        var actor2 = new TestActor(() => event2Fired = true);
+
+        scheduler.Schedule(actor1, 30ul);
+        scheduler.Schedule(actor2, 50ul);
+
+        // Advance to cycle 20, then cancel actor2
+        signalBus.SignalInstructionFetched(5);
+        signalBus.SignalInstructionExecuted(15);
+        scheduler.AdvanceCycles(20);
+
+        bool cancelled = scheduler.Cancel(actor2);
+
+        // Advance to cycle 60
+        signalBus.SignalInstructionFetched(10);
+        signalBus.SignalInstructionExecuted(30);
+        scheduler.AdvanceCycles(40);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cancelled, Is.True, "Cancel should return true");
+            Assert.That(event1Fired, Is.True, "Event1 should have fired");
+            Assert.That(event2Fired, Is.False, "Event2 should NOT have fired (cancelled)");
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(60ul));
+        });
+    }
+
+    /// <summary>
+    /// Functional test: Validates scheduler reset clears all state.
+    /// </summary>
+    [Test]
+    public void Functional_SchedulerReset_ClearsAllState()
+    {
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        bool eventFired = false;
+
+        scheduler.Schedule(new TestActor(() => eventFired = true), 100ul);
+
+        // Advance partially
+        signalBus.SignalInstructionFetched(10);
+        signalBus.SignalInstructionExecuted(40);
+        scheduler.AdvanceCycles(50);
+
+        // Reset scheduler
+        scheduler.Reset();
+
+        // Advance past where the event was scheduled
+        signalBus.SignalInstructionFetched(50);
+        signalBus.SignalInstructionExecuted(100);
+        scheduler.AdvanceCycles(150);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventFired, Is.False, "Event should NOT fire after reset");
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(150ul));
+            Assert.That(scheduler.PendingEventCount, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    /// Functional test: Validates device periodic timer behavior with CPU-driven timing.
+    /// </summary>
+    [Test]
+    public void Functional_PeriodicTimer_WithCpuDrivenTiming()
+    {
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        var tickCycles = new List<ulong>();
+        const ulong timerInterval = 25ul;
+
+        PeriodicActor? timerActor = null;
+        timerActor = new PeriodicActor(
+            () => tickCycles.Add(scheduler.CurrentCycle),
+            () => scheduler.ScheduleAfter(timerActor!, timerInterval));
+
+        scheduler.Schedule(timerActor, timerInterval);
+
+        // Simulate CPU executing instructions to advance time
+        for (int i = 0; i < 20; i++)
+        {
+            signalBus.SignalInstructionFetched(2);
+            signalBus.SignalInstructionExecuted(3);
+            scheduler.AdvanceCycles(5);
+        }
+
+        // Should have ticks at cycles 25, 50, 75, 100
+        Assert.Multiple(() =>
+        {
+            Assert.That(tickCycles.Count, Is.EqualTo(4));
+            Assert.That(tickCycles[0], Is.EqualTo(25ul));
+            Assert.That(tickCycles[1], Is.EqualTo(50ul));
+            Assert.That(tickCycles[2], Is.EqualTo(75ul));
+            Assert.That(tickCycles[3], Is.EqualTo(100ul));
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(100ul));
+        });
+    }
+
+    /// <summary>
+    /// Integration test: Validates SignalBus and Scheduler work correctly with mixed operations.
+    /// </summary>
+    [Test]
+    public void Integration_MixedOperations_SignalBusAndScheduler()
+    {
+        var signalBus = new SignalBus();
+        var scheduler = new Scheduler();
+        var events = new List<string>();
+
+        // Set up some signal line activity
+        signalBus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+
+        // Schedule events
+        scheduler.Schedule(new TestActor(() => events.Add("Event1")), 10ul);
+        scheduler.Schedule(
+            new TestActor(() =>
+            {
+                events.Add("Event2");
+                signalBus.Clear(SignalLine.Irq, deviceId: 1, cycle: scheduler.CurrentCycle);
+            }),
+            30ul);
+
+        // Verify initial state
+        Assert.That(signalBus.IsIrqAsserted, Is.True);
+
+        // Execute some CPU instructions
+        signalBus.SignalInstructionFetched(5);
+        signalBus.SignalInstructionExecuted(10);
+        scheduler.AdvanceCycles(15);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(events.Count, Is.EqualTo(1));
+            Assert.That(signalBus.IsIrqAsserted, Is.True, "IRQ still asserted");
+        });
+
+        // Execute more instructions
+        signalBus.SignalInstructionFetched(5);
+        signalBus.SignalInstructionExecuted(15);
+        scheduler.AdvanceCycles(20);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(events.Count, Is.EqualTo(2));
+            Assert.That(signalBus.IsIrqAsserted, Is.False, "IRQ should be cleared by Event2");
+            Assert.That(signalBus.TotalFetchCycles, Is.EqualTo(10ul));
+            Assert.That(signalBus.TotalExecuteCycles, Is.EqualTo(25ul));
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(35ul));
+        });
+    }
+
+    /// <summary>
     /// Test actor that executes a callback and returns a specified number of consumed cycles.
     /// </summary>
     private sealed class TestActor : ISchedulable

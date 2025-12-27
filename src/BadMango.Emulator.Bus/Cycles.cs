@@ -104,6 +104,14 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     public static bool operator >=(Cycles left, Cycles right) => left.Value >= right.Value;
 
     /// <summary>
+    /// Increments a cycle count by one.
+    /// </summary>
+    /// <param name="cycles">The cycle count to increment.</param>
+    /// <returns>A new <see cref="Cycles"/> instance with the value incremented by one.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Cycles operator ++(Cycles cycles) => new(cycles.Value + 1);
+
+    /// <summary>
     /// Compares this instance to another <see cref="Cycles"/> instance.
     /// </summary>
     /// <param name="other">The other instance to compare to.</param>
