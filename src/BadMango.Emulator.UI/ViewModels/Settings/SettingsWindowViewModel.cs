@@ -104,7 +104,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     partial void OnSelectedPageChanged(ISettingsPage? value)
     {
-        // Load the page when selected
-        value?.LoadAsync();
+        // Load the page when selected - fire and forget is intentional here
+        // as we don't want to block the UI during page navigation
+        _ = value?.LoadAsync();
     }
 }

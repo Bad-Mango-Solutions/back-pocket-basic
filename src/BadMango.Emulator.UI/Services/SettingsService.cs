@@ -89,7 +89,7 @@ public class SettingsService : ISettingsService
             }
 
             logger?.LogInformation("Settings loaded from {Path}", settingsFilePath);
-            SettingsChanged?.Invoke(this, new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
             return current;
         }
         catch (JsonException ex)
@@ -124,7 +124,7 @@ public class SettingsService : ISettingsService
 
             current = settings;
             logger?.LogInformation("Settings saved to {Path}", settingsFilePath);
-            SettingsChanged?.Invoke(this, new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
         }
         catch (IOException ex)
         {
@@ -138,7 +138,7 @@ public class SettingsService : ISettingsService
     {
         logger?.LogInformation("Resetting settings to defaults");
         current = new AppSettings();
-        SettingsChanged?.Invoke(this, new SettingsChangedEventArgs { IsFullReload = true });
+        OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
         return Task.FromResult(current);
     }
 
@@ -173,7 +173,7 @@ public class SettingsService : ISettingsService
 
             current = settings;
             logger?.LogInformation("Settings imported from {Path}", path);
-            SettingsChanged?.Invoke(this, new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
             return current;
         }
         catch (JsonException ex)
@@ -222,6 +222,10 @@ public class SettingsService : ISettingsService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// This implementation supports two-level nesting only (e.g., "General.Theme").
+    /// For settings with deeper nesting, use SaveAsync with a modified AppSettings record.
+    /// </remarks>
     public void SetValue<T>(string key, T value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -229,24 +233,23 @@ public class SettingsService : ISettingsService
         // For setting values, we need to create a new record with the updated value
         // This is complex with nested records, so we'll serialize/deserialize with modifications
         var parts = key.Split('.');
-        if (parts.Length < 2)
+        if (parts.Length != 2)
         {
-            logger?.LogWarning("Invalid setting key format: {Key}", key);
+            logger?.LogWarning("SetValue only supports two-level keys (Category.Property). Key: {Key}", key);
             return;
         }
 
         // Convert current settings to a mutable dictionary
         var json = JsonSerializer.Serialize(current, JsonOptions);
-        using var document = JsonDocument.Parse(json);
 
         var mutableDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
         if (mutableDict is null)
         {
+            logger?.LogWarning("Failed to deserialize settings for SetValue operation");
             return;
         }
 
         // Navigate and update the value
-        // Note: This is a simplified implementation - a more robust version would handle deep nesting
         var categoryName = char.ToLowerInvariant(parts[0][0]) + parts[0][1..];
         if (mutableDict.TryGetValue(categoryName, out var categoryElement))
         {
@@ -266,7 +269,7 @@ public class SettingsService : ISettingsService
         if (newSettings is not null)
         {
             current = newSettings;
-            SettingsChanged?.Invoke(this, new SettingsChangedEventArgs { ChangedKeys = [key] });
+            OnSettingsChanged(new SettingsChangedEventArgs { ChangedKeys = [key] });
         }
     }
 
@@ -274,5 +277,15 @@ public class SettingsService : ISettingsService
     {
         var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(homeDir, ".backpocket");
+    }
+
+    /// <summary>
+    /// Raises the SettingsChanged event in a thread-safe manner.
+    /// </summary>
+    /// <param name="args">The event arguments.</param>
+    private void OnSettingsChanged(SettingsChangedEventArgs args)
+    {
+        var handler = SettingsChanged;
+        handler?.Invoke(this, args);
     }
 }
