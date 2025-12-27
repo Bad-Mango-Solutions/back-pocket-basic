@@ -44,7 +44,7 @@ public class MainWindowViewModelTests
             Assert.That(viewModel.Title, Is.EqualTo("BackPocket Emulator"));
             Assert.That(viewModel.IsDarkTheme, Is.True);
             Assert.That(viewModel.NavigationItems, Is.Not.Null);
-            Assert.That(viewModel.NavigationItems.Count, Is.EqualTo(5));
+            Assert.That(viewModel.NavigationItems.Count, Is.EqualTo(6));
             Assert.That(viewModel.CurrentView, Is.Not.Null);
             Assert.That(viewModel.CurrentView, Is.InstanceOf<MachineManagerViewModel>());
         });

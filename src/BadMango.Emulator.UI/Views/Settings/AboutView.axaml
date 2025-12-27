@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.AboutView"
+             x:DataType="vm:AboutViewModel">
+
+    <StackPanel Spacing="24" HorizontalAlignment="Center" MaxWidth="500">
+        <!-- Logo and Title -->
+        <StackPanel Spacing="16" HorizontalAlignment="Center">
+            <Border Width="80" Height="80" 
+                    Background="{DynamicResource PrimaryBrush}"
+                    CornerRadius="16">
+                <TextBlock Text="BP" 
+                           FontSize="32" 
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+            </Border>
+            
+            <TextBlock Text="{Binding ApplicationName}" 
+                       FontSize="24" 
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center" />
+            
+            <TextBlock Text="{Binding Description}" 
+                       FontSize="14"
+                       HorizontalAlignment="Center"
+                       Opacity="0.8" />
+        </StackPanel>
+        
+        <!-- Build Information -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Build Information" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Version:" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Version}" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Build Date:" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BuildDate}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- System Information -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="System Information" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="OS:" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OperatingSystem}" TextWrapping="Wrap" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text=".NET:" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DotNetVersion}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- License -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="License" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock Text="{Binding License}" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Links -->
+        <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
+            <Button Content="View on GitHub" 
+                    Padding="16,8" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -12,8 +12,10 @@ using Autofac.Extensions.DependencyInjection;
 
 using Avalonia;
 
+using BadMango.Emulator.UI.Abstractions.Settings;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
+using BadMango.Emulator.UI.ViewModels.Settings;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,9 +92,13 @@ internal sealed class Program
                 // Register services
                 builder.RegisterType<ThemeService>().As<IThemeService>().SingleInstance();
                 builder.RegisterType<NavigationService>().As<INavigationService>().SingleInstance();
+                builder.RegisterType<SettingsService>().As<ISettingsService>().SingleInstance();
+                builder.RegisterType<SettingsMigrator>().As<ISettingsMigrator>().SingleInstance();
+                builder.RegisterType<PathValidator>().As<IPathValidator>().SingleInstance();
 
                 // Register ViewModels
                 builder.RegisterType<MainWindowViewModel>().AsSelf();
                 builder.RegisterType<MachineManagerViewModel>().AsSelf();
+                builder.RegisterType<SettingsWindowViewModel>().AsSelf();
             });
 }

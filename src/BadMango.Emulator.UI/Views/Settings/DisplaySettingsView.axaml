@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.DisplaySettingsView"
+             x:DataType="vm:DisplaySettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="Display Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Scaling Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Scaling" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Scaling Mode:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableScalingModes}"
+                              SelectedItem="{Binding ScalingMode}"
+                              HorizontalAlignment="Stretch" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Scale Factor:" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" 
+                                   Value="{Binding ScaleFactor}"
+                                   Minimum="1" Maximum="8"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- Effects Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Visual Effects" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding ScanlineEffect}"
+                          Content="Enable CRT scanline effect" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Color Palette:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableColorPalettes}"
+                              SelectedItem="{Binding ColorPalette}"
+                              HorizontalAlignment="Stretch" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- Performance Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Performance" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Frame Rate Cap:" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="0" Grid.Column="1" 
+                                   Value="{Binding FrameRateCap}"
+                                   Minimum="30" Maximum="120"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Full Screen Monitor:" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" 
+                                   Value="{Binding FullScreenMonitor}"
+                                   Minimum="0" Maximum="10"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                </Grid>
+                
+                <CheckBox IsChecked="{Binding VSync}"
+                          Content="Enable VSync" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

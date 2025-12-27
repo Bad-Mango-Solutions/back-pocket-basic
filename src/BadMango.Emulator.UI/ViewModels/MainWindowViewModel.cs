@@ -6,7 +6,9 @@ namespace BadMango.Emulator.UI.ViewModels;
 
 using System.Collections.ObjectModel;
 
+using BadMango.Emulator.UI.Abstractions.Settings;
 using BadMango.Emulator.UI.Services;
+using BadMango.Emulator.UI.ViewModels.Settings;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
+    private readonly ISettingsService? settingsService;
 
     /// <summary>
     /// Gets or sets the window title.
@@ -49,10 +52,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     /// <param name="themeService">The theme service for managing application themes.</param>
     /// <param name="navigationService">The navigation service for view navigation.</param>
-    public MainWindowViewModel(IThemeService themeService, INavigationService navigationService)
+    /// <param name="settingsService">The settings service for managing application settings.</param>
+    public MainWindowViewModel(
+        IThemeService themeService,
+        INavigationService navigationService,
+        ISettingsService? settingsService = null)
     {
         this.themeService = themeService;
         this.navigationService = navigationService;
+        this.settingsService = settingsService;
 
         // Initialize navigation items
         NavigationItems = new ObservableCollection<NavigationItemViewModel>
@@ -62,6 +70,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new("Display", "M480-280q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520H320q-17 0-28.5 11.5T280-480v160q0 17 11.5 28.5T320-280h160Zm-120-80v-80h80v80h-80Zm-160 0v-80h80v80h-80Zm480 0v-80h80v80h-80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z"),
             new("Debug", "M480-120q-83 0-156-31.5T197-249q-54-66-85.5-152T80-580h80q0 66 22 127t62 111l58-57q-38-45-60-101t-22-116v-28l162-162 57 57-134 133q0 60 20.5 113t57.5 93l137-137-57-57 56-56 170 170q12 12 12 28.5T708-380q-66 66-152 103t-176 37ZM376-576l-57-57q45-38 101-60t116-22h28l-80 80v-28q0-17 3.5-33.5T497-728l-64 64-57-57 56-56-170-170q-12-12-28.5-12T205-947q66 66 103 152t37 176h-28q60 0 113 20.5t93 57.5l-147 147Z"),
             new("Editor", "M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"),
+            new("Settings", "M480-120q-75 0-140.5-28.5t-114-77q-48.5-48.5-77-114T120-480q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm0-80q116 0 198-82t82-198q0-116-82-198t-198-82q-116 0-198 82t-82 198q0 116 82 198t198 82Zm0-120q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T560-480q0-33-23.5-56.5T480-560q-33 0-56.5 23.5T400-480q0 33 23.5 56.5T480-400Z"),
         };
 
         // Set initial view
@@ -98,6 +107,9 @@ public partial class MainWindowViewModel : ViewModelBase
             "Display" => new PlaceholderViewModel("Display", "Video display emulation coming soon."),
             "Debug" => new PlaceholderViewModel("Debug Console", "Debug console integration coming soon."),
             "Editor" => new PlaceholderViewModel("Assembly Editor", "Assembly language editor coming soon."),
+            "Settings" => settingsService is not null
+                ? new SettingsWindowViewModel(settingsService)
+                : new PlaceholderViewModel("Settings", "Settings panel coming soon."),
             _ => CurrentView,
         };
 

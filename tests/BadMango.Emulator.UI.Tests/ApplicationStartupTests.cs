@@ -184,12 +184,13 @@ public class ApplicationStartupTests
         Assert.Multiple(() =>
         {
             Assert.That(viewModel.NavigationItems, Is.Not.Null);
-            Assert.That(viewModel.NavigationItems.Count, Is.EqualTo(5));
+            Assert.That(viewModel.NavigationItems.Count, Is.EqualTo(6));
             Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Machine Manager"), Is.True);
             Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Storage"), Is.True);
             Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Display"), Is.True);
             Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Debug"), Is.True);
             Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Editor"), Is.True);
+            Assert.That(viewModel.NavigationItems.Any(n => n.Name == "Settings"), Is.True);
         });
     }
 
