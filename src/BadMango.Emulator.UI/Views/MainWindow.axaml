@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:BadMango.Emulator.UI.ViewModels"
+        xmlns:views="using:BadMango.Emulator.UI.Views"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="BadMango.Emulator.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1200" Height="800"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+    
+    <Grid ColumnDefinitions="200,*">
+        <!-- Navigation Sidebar -->
+        <Border Grid.Column="0" 
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- App Title -->
+                <Border DockPanel.Dock="Top" Padding="16" Background="{DynamicResource PrimaryBrush}">
+                    <StackPanel>
+                        <TextBlock Text="BackPocket"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="White" />
+                        <TextBlock Text="Emulator"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   Opacity="0.8" />
+                    </StackPanel>
+                </Border>
+                
+                <!-- Theme Toggle -->
+                <Border DockPanel.Dock="Bottom" Padding="16">
+                    <Button Command="{Binding ToggleThemeCommand}"
+                            HorizontalAlignment="Stretch"
+                            Padding="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Z"
+                                      Width="16" Height="16" />
+                            <TextBlock Text="{Binding IsDarkTheme, Converter={x:Static views:MainWindow.ThemeTextConverter}}" />
+                        </StackPanel>
+                    </Button>
+                </Border>
+                
+                <!-- Navigation Items -->
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding NavigationItems}" Margin="8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:NavigationItemViewModel">
+                                <Button Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding Name}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="12,10"
+                                        Margin="0,2"
+                                        Classes.selected="{Binding IsSelected}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <PathIcon Data="{Binding IconPath}" Width="20" Height="20" />
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+        
+        <!-- Main Content Area -->
+        <Border Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
+            <ContentControl Content="{Binding CurrentView}">
+                <ContentControl.DataTemplates>
+                    <DataTemplate DataType="vm:MachineManagerViewModel">
+                        <views:MachineManagerView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:PlaceholderViewModel">
+                        <views:PlaceholderView />
+                    </DataTemplate>
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Border>
+    </Grid>
+</Window>

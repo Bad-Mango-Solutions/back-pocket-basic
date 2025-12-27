@@ -1,0 +1,45 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 
+    Color palette per Emulator UI Specification:
+    
+    Element        Light Theme   Dark Theme
+    Background     #FAFAFA       #1E1E1E
+    Surface        #F5F5F5       #252526
+    Primary        #007ACC       #0E639C
+    Secondary      #6B9F00       #4EC9B0
+    Error          #D32F2F       #F44747
+    Text           #212121       #D4D4D4
+    -->
+    
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- Dark Theme Colors -->
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#252526" />
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#0E639C" />
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#4EC9B0" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="#F44747" />
+            <SolidColorBrush x:Key="TextBrush" Color="#D4D4D4" />
+            <SolidColorBrush x:Key="BorderBrush" Color="#3C3C3C" />
+            <SolidColorBrush x:Key="HoverBrush" Color="#2A2D2E" />
+            <SolidColorBrush x:Key="SelectedBrush" Color="#094771" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#0E639C" />
+        </ResourceDictionary>
+        
+        <!-- Light Theme Colors -->
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#FAFAFA" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#F0F0F0" />
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#007ACC" />
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#6B9F00" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="#D32F2F" />
+            <SolidColorBrush x:Key="TextBrush" Color="#212121" />
+            <SolidColorBrush x:Key="BorderBrush" Color="#D8D8D8" />
+            <SolidColorBrush x:Key="HoverBrush" Color="#D0D0D0" />
+            <SolidColorBrush x:Key="SelectedBrush" Color="#CCE4F7" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+    
+</ResourceDictionary>
