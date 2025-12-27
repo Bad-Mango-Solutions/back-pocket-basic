@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Runtime.CompilerServices;
+
 /// <summary>
 /// The main memory bus implementation for routing CPU and DMA memory operations.
 /// </summary>
@@ -88,6 +90,7 @@ public sealed class MainBus : IMemoryBus
     public int PageCount => pageTable.Length;
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte Read8(in BusAccess access)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
@@ -111,6 +114,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write8(in BusAccess access, byte value)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
@@ -133,6 +137,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Word Read16(in BusAccess access)
     {
         // Cross-page check: always decompose
@@ -173,6 +178,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write16(in BusAccess access, Word value)
     {
         // Cross-page check: always decompose
@@ -218,6 +224,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public DWord Read32(in BusAccess access)
     {
         // Cross-page check: always decompose
@@ -258,6 +265,7 @@ public sealed class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write32(in BusAccess access, DWord value)
     {
         // Cross-page check: always decompose
@@ -825,6 +833,7 @@ public sealed class MainBus : IMemoryBus
     /// <param name="address">The starting address.</param>
     /// <param name="bytes">The number of bytes in the access.</param>
     /// <returns><see langword="true"/> if the access crosses a page boundary; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool CrossesPageBoundary(Addr address, int bytes)
     {
         return ((address & DefaultPageMask) + (uint)(bytes - 1)) > DefaultPageMask;
