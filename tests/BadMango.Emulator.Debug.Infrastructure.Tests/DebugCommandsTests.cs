@@ -4,10 +4,13 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
+
+using Moq;
 
 /// <summary>
 /// Unit tests for the debug command handlers.
@@ -945,6 +948,139 @@ public class DebugCommandsTests
     {
         debugContext.DetachSystem();
         Assert.That(debugContext.IsSystemAttached, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that IsBusAttached is false when no bus is attached.
+    /// </summary>
+    [Test]
+    public void DebugContext_IsBusAttached_IsFalse_WhenNoBusAttached()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        Assert.That(context.IsBusAttached, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that IsBusAttached is true when a bus is attached.
+    /// </summary>
+    [Test]
+    public void DebugContext_IsBusAttached_IsTrue_WhenBusAttached()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var mockBus = new Mock<IMemoryBus>();
+        context.AttachBus(mockBus.Object);
+        Assert.That(context.IsBusAttached, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that Bus property is null when no bus is attached.
+    /// </summary>
+    [Test]
+    public void DebugContext_Bus_IsNull_WhenNoBusAttached()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        Assert.That(context.Bus, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that AttachBus correctly sets the bus property.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachBus_SetsBusProperty()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var mockBus = new Mock<IMemoryBus>();
+        context.AttachBus(mockBus.Object);
+        Assert.That(context.Bus, Is.SameAs(mockBus.Object));
+    }
+
+    /// <summary>
+    /// Verifies that AttachBus throws ArgumentNullException when bus is null.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachBus_ThrowsArgumentNullException_WhenBusIsNull()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        Assert.Throws<ArgumentNullException>(() => context.AttachBus(null!));
+    }
+
+    /// <summary>
+    /// Verifies that Machine property is null when no machine is attached.
+    /// </summary>
+    [Test]
+    public void DebugContext_Machine_IsNull_WhenNoMachineAttached()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        Assert.That(context.Machine, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that AttachMachine correctly sets the machine property.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachMachine_SetsMachineProperty()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var mockBus = new Mock<IMemoryBus>();
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Cpu).Returns(cpu);
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        context.AttachMachine(mockMachine.Object);
+        Assert.That(context.Machine, Is.SameAs(mockMachine.Object));
+    }
+
+    /// <summary>
+    /// Verifies that AttachMachine also sets CPU and Bus properties from the machine.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachMachine_SetsCpuAndBusFromMachine()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var mockBus = new Mock<IMemoryBus>();
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Cpu).Returns(cpu);
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        context.AttachMachine(mockMachine.Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Cpu, Is.SameAs(cpu));
+            Assert.That(context.Bus, Is.SameAs(mockBus.Object));
+            Assert.That(context.IsBusAttached, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AttachMachine throws ArgumentNullException when machine is null.
+    /// </summary>
+    [Test]
+    public void DebugContext_AttachMachine_ThrowsArgumentNullException_WhenMachineIsNull()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        Assert.Throws<ArgumentNullException>(() => context.AttachMachine(null!));
+    }
+
+    /// <summary>
+    /// Verifies that DetachSystem clears bus and machine properties.
+    /// </summary>
+    [Test]
+    public void DebugContext_DetachSystem_ClearsBusAndMachine()
+    {
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var mockBus = new Mock<IMemoryBus>();
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Cpu).Returns(cpu);
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        context.AttachMachine(mockMachine.Object);
+
+        context.DetachSystem();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Bus, Is.Null);
+            Assert.That(context.Machine, Is.Null);
+            Assert.That(context.IsBusAttached, Is.False);
+        });
     }
 
     // =====================

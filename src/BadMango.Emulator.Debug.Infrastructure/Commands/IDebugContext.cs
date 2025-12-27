@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
@@ -70,4 +71,33 @@ public interface IDebugContext : ICommandContext
     /// Returns true if CPU, Memory, and Disassembler are all available.
     /// </remarks>
     bool IsSystemAttached { get; }
+
+    /// <summary>
+    /// Gets the memory bus for bus-aware debugging.
+    /// </summary>
+    /// <remarks>
+    /// When non-null, provides access to the page-based memory system
+    /// including page table inspection and bus-level tracing.
+    /// Legacy systems may have Memory but not Bus.
+    /// </remarks>
+    IMemoryBus? Bus { get; }
+
+    /// <summary>
+    /// Gets the machine instance for high-level machine control.
+    /// </summary>
+    /// <remarks>
+    /// When non-null, provides access to Run/Step/Reset through the
+    /// machine abstraction rather than direct CPU manipulation.
+    /// </remarks>
+    IMachine? Machine { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether bus-level debugging is available.
+    /// </summary>
+    /// <remarks>
+    /// Returns true if a memory bus has been attached to the debug context.
+    /// When true, bus-level debugging capabilities such as page table inspection
+    /// and bus-level tracing are available.
+    /// </remarks>
+    bool IsBusAttached { get; }
 }
