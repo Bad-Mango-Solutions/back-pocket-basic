@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
@@ -98,6 +99,15 @@ public sealed class DebugContext : IDebugContext
     /// <inheritdoc/>
     public bool IsSystemAttached => this.Cpu is not null && this.Memory is not null && this.Disassembler is not null;
 
+    /// <inheritdoc/>
+    public IMemoryBus? Bus { get; private set; }
+
+    /// <inheritdoc/>
+    public IMachine? Machine { get; private set; }
+
+    /// <inheritdoc/>
+    public bool IsBusAttached => this.Bus is not null;
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>
@@ -159,6 +169,37 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
+    /// Attaches a memory bus to this debug context.
+    /// </summary>
+    /// <param name="bus">The memory bus to attach.</param>
+    /// <remarks>
+    /// Attaching a memory bus enables bus-level debugging capabilities
+    /// such as page table inspection and bus-level tracing.
+    /// </remarks>
+    public void AttachBus(IMemoryBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(bus);
+        this.Bus = bus;
+    }
+
+    /// <summary>
+    /// Attaches a machine instance to this debug context.
+    /// </summary>
+    /// <param name="machine">The machine to attach.</param>
+    /// <remarks>
+    /// Attaching a machine provides high-level machine control through
+    /// the machine abstraction. This also attaches the machine's CPU
+    /// and bus to the debug context.
+    /// </remarks>
+    public void AttachMachine(IMachine machine)
+    {
+        ArgumentNullException.ThrowIfNull(machine);
+        this.Machine = machine;
+        this.Cpu = machine.Cpu;
+        this.Bus = machine.Bus;
+    }
+
+    /// <summary>
     /// Attaches all emulator components to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>
@@ -208,5 +249,7 @@ public sealed class DebugContext : IDebugContext
         this.Disassembler = null;
         this.MachineInfo = null;
         this.TracingListener = null;
+        this.Bus = null;
+        this.Machine = null;
     }
 }

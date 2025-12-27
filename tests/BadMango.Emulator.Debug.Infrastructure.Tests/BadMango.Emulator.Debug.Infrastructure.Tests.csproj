@@ -35,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\BadMango.Emulator.Bus\BadMango.Emulator.Bus.csproj" />
     <ProjectReference Include="..\..\src\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
   </ItemGroup>
 
