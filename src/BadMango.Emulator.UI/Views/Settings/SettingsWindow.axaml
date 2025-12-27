@@ -1,0 +1,106 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+        xmlns:settings="using:BadMango.Emulator.UI.Views.Settings"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="BadMango.Emulator.UI.Views.Settings.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Title="Settings"
+        Width="900" Height="650"
+        MinWidth="700" MinHeight="500"
+        WindowStartupLocation="CenterOwner">
+
+    <Design.DataContext>
+        <vm:SettingsWindowViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*,Auto">
+        <!-- Main Content -->
+        <Grid Grid.Row="0" ColumnDefinitions="220,*">
+            <!-- Navigation Panel -->
+            <Border Grid.Column="0" 
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding SettingsPages}" Margin="8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding DataContext.NavigateToPageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding DisplayName}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="12,10"
+                                        Margin="0,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Settings Content Area -->
+            <Border Grid.Column="1" Background="{DynamicResource BackgroundBrush}" Padding="24">
+                <ScrollViewer>
+                    <ContentControl Content="{Binding SelectedPage}">
+                        <ContentControl.DataTemplates>
+                            <DataTemplate DataType="vm:GeneralSettingsViewModel">
+                                <settings:GeneralSettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:LibrarySettingsViewModel">
+                                <settings:LibrarySettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:DisplaySettingsViewModel">
+                                <settings:DisplaySettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:InputSettingsViewModel">
+                                <settings:InputSettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:DebugSettingsViewModel">
+                                <settings:DebugSettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:EditorSettingsViewModel">
+                                <settings:EditorSettingsView />
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:AboutViewModel">
+                                <settings:AboutView />
+                            </DataTemplate>
+                        </ContentControl.DataTemplates>
+                    </ContentControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Button Bar -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0" 
+                        Command="{Binding ResetToDefaultsCommand}"
+                        Content="Reset to Defaults"
+                        Padding="16,8" />
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding ApplyCommand}"
+                            Content="Apply"
+                            Padding="16,8" />
+                    <Button Content="Cancel"
+                            Padding="16,8"
+                            Click="OnCancelClick" />
+                    <Button Classes="primary"
+                            Content="OK"
+                            Padding="16,8"
+                            Click="OnOkClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

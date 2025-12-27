@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.InputSettingsView"
+             x:DataType="vm:InputSettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="Input Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Keyboard Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Keyboard Mapping:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableKeyboardMappings}"
+                              SelectedItem="{Binding KeyboardMapping}"
+                              HorizontalAlignment="Stretch" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Custom Key Map:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Text="{Binding CustomKeyMapFile}"
+                             Watermark="Path to custom key map file..." />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- Mouse Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Mouse" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding MouseCapture}"
+                          Content="Auto-capture mouse in display" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Joystick Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Joystick / Gamepad" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding JoystickEnabled}"
+                          Content="Enable joystick/gamepad input" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Joystick Device:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding JoystickDevice}"
+                             Watermark="Auto" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Paddle Sensitivity:" 
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Slider Value="{Binding PaddleSensitivity}"
+                                Minimum="1" Maximum="100"
+                                Width="200" />
+                        <TextBlock Text="{Binding PaddleSensitivity}" 
+                                   VerticalAlignment="Center"
+                                   Width="30" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.DebugSettingsView"
+             x:DataType="vm:DebugSettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="Debug Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Debugger Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Debugger" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding AutoAttachDebugger}"
+                          Content="Attach debugger on instance start" />
+                
+                <CheckBox IsChecked="{Binding BreakOnReset}"
+                          Content="Break into debugger on reset" />
+                
+                <CheckBox IsChecked="{Binding TraceInstructions}"
+                          Content="Enable instruction tracing" />
+                
+                <CheckBox IsChecked="{Binding ShowCycleCount}"
+                          Content="Show cycle count in debugger" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Logging Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Logging" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Log Level:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableLogLevels}"
+                              SelectedItem="{Binding LogLevel}"
+                              HorizontalAlignment="Stretch" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Max Log Size (MB):" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" 
+                                   Value="{Binding MaxLogFileSizeMB}"
+                                   Minimum="1" Maximum="100"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                </Grid>
+                
+                <CheckBox IsChecked="{Binding LogToFile}"
+                          Content="Write logs to file" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

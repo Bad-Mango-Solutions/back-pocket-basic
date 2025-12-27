@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.LibrarySettingsView"
+             x:DataType="vm:LibrarySettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="Library Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Paths Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Paths" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Library Root:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding LibraryRoot}" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Disk Images:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Text="{Binding DiskImagesPath}" />
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" 
+                               Text="ROM Images:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" 
+                             Text="{Binding RomImagesPath}" />
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="0" 
+                               Text="Log Files:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" 
+                             Text="{Binding LogFilesPath}" />
+                    
+                    <TextBlock Grid.Row="4" Grid.Column="0" 
+                               Text="Save States:" 
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Row="4" Grid.Column="1" 
+                             Text="{Binding SaveStatesPath}" />
+                </Grid>
+                
+                <TextBlock Text="Use {Library} as a placeholder for the Library Root path."
+                           FontSize="11"
+                           Foreground="{DynamicResource TextBrush}"
+                           Opacity="0.7" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Scanning Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Library Scanning" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding AutoScanOnStartup}"
+                          Content="Scan library for changes on startup" />
+                
+                <CheckBox IsChecked="{Binding WatchForChanges}"
+                          Content="Watch for external changes" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

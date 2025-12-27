@@ -3,7 +3,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:BadMango.Emulator.UI.ViewModels"
+        xmlns:vmSettings="using:BadMango.Emulator.UI.ViewModels.Settings"
         xmlns:views="using:BadMango.Emulator.UI.Views"
+        xmlns:settingsViews="using:BadMango.Emulator.UI.Views.Settings"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="BadMango.Emulator.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -83,6 +85,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="vm:PlaceholderViewModel">
                         <views:PlaceholderView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vmSettings:SettingsWindowViewModel">
+                        <settingsViews:SettingsEmbeddedView />
                     </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>

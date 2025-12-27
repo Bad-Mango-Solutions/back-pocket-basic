@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BadMango.Emulator.UI.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="BadMango.Emulator.UI.Views.Settings.EditorSettingsView"
+             x:DataType="vm:EditorSettingsViewModel">
+
+    <StackPanel Spacing="24">
+        <TextBlock Text="Editor Settings" Classes="panel-header" FontSize="20" FontWeight="SemiBold" />
+        
+        <!-- Font Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Font" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Font Family:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableFontFamilies}"
+                              SelectedItem="{Binding FontFamily}"
+                              HorizontalAlignment="Stretch" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" 
+                               Text="Font Size:" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" 
+                                   Value="{Binding FontSize}"
+                                   Minimum="8" Maximum="36"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        
+        <!-- Indentation Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Indentation" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Tab Size:" 
+                               VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="0" Grid.Column="1" 
+                                   Value="{Binding TabSize}"
+                                   Minimum="2" Maximum="8"
+                                   HorizontalAlignment="Left"
+                                   Width="120" />
+                </Grid>
+                
+                <CheckBox IsChecked="{Binding InsertSpaces}"
+                          Content="Insert spaces instead of tabs" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Features Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Features" FontWeight="SemiBold" FontSize="14" />
+                
+                <CheckBox IsChecked="{Binding AutoComplete}"
+                          Content="Enable auto-completion" />
+                
+                <CheckBox IsChecked="{Binding SyntaxHighlighting}"
+                          Content="Enable syntax highlighting" />
+                
+                <CheckBox IsChecked="{Binding LineNumbers}"
+                          Content="Show line numbers" />
+                
+                <CheckBox IsChecked="{Binding WordWrap}"
+                          Content="Word wrap" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Assembler Section -->
+        <Border Classes="card" Padding="16">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Assembler" FontWeight="SemiBold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto" >
+                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                               Text="Default Dialect:" 
+                               VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableAssemblerDialects}"
+                              SelectedItem="{Binding AssemblerDialect}"
+                              HorizontalAlignment="Stretch" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
