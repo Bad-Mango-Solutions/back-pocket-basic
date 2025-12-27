@@ -1215,15 +1215,23 @@ public class DebugCommandsTests
     /// <summary>
     /// Helper method to create a bus with full RAM mapping and access to physical memory.
     /// </summary>
+    /// <remarks>
+    /// Creates a 64KB address space (16-bit addressing) with 16 pages of 4KB each,
+    /// all mapped to RAM with full read/write permissions.
+    /// </remarks>
     private static Bus.MainBus CreateBusWithRam(out Bus.PhysicalMemory physicalMemory)
     {
+        // 64KB address space: 16 pages × 4KB = 65536 bytes
+        const int TestMemorySize = 65536;
+        const int PageCount = 16; // 64KB / 4KB per page
+
         var bus = new Bus.MainBus(addressSpaceBits: 16);
-        physicalMemory = new Bus.PhysicalMemory(65536, "TestRAM");
-        var target = new Bus.RamTarget(physicalMemory.Slice(0, 65536));
+        physicalMemory = new Bus.PhysicalMemory(TestMemorySize, "TestRAM");
+        var target = new Bus.RamTarget(physicalMemory.Slice(0, TestMemorySize));
 
         bus.MapPageRange(
             startPage: 0,
-            pageCount: 16,
+            pageCount: PageCount,
             deviceId: 1,
             regionTag: Bus.RegionTag.Ram,
             perms: Bus.PagePerms.ReadWrite,
