@@ -765,12 +765,16 @@ public interface IHypervisorService
 
 | Element | Light Theme | Dark Theme |
 |---------|-------------|------------|
-| Background | #FFFFFF | #1E1E1E |
-| Surface | #F5F5F5 | #252526 |
+| Background | #FAFAFA | #1E1E1E |
+| Surface | #F0F0F0 | #252526 |
 | Primary | #007ACC | #0E639C |
 | Secondary | #6B9F00 | #4EC9B0 |
 | Error | #D32F2F | #F44747 |
 | Text | #212121 | #D4D4D4 |
+| Border | #D8D8D8 | #3C3C3C |
+| Hover | #D0D0D0 | #2A2D2E |
+| Selected | #CCE4F7 | #094771 |
+| Accent | #007ACC | #0E639C |
 
 ### Fonts
 
