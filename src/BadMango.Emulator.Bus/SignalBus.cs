@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Runtime.CompilerServices;
+
 /// <summary>
 /// Default implementation of <see cref="ISignalBus"/> for signal fabric management.
 /// </summary>
@@ -22,11 +24,18 @@ namespace BadMango.Emulator.Bus;
 /// NMI is edge-triggered: the signal edge is detected when transitioning from clear to asserted,
 /// and the CPU must acknowledge the NMI before another edge can be detected.
 /// </para>
+/// <para>
+/// The signal bus also tracks CPU cycle signals for scheduler integration. When the CPU
+/// signals instruction fetch or execution, the cycle counts are accumulated and can be
+/// used by the scheduler to advance time.
+/// </para>
 /// </remarks>
 public sealed class SignalBus : ISignalBus
 {
     private readonly Dictionary<SignalLine, HashSet<int>> asserters = [];
     private bool nmiEdgeDetected;
+    private ulong totalFetchCycles;
+    private ulong totalExecuteCycles;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SignalBus"/> class.
@@ -40,16 +49,53 @@ public sealed class SignalBus : ISignalBus
     }
 
     /// <inheritdoc />
-    public bool IsIrqAsserted => asserters[SignalLine.Irq].Count > 0;
+    public bool IsIrqAsserted
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => asserters[SignalLine.Irq].Count > 0;
+    }
 
     /// <inheritdoc />
-    public bool IsNmiAsserted => nmiEdgeDetected || asserters[SignalLine.Nmi].Count > 0;
+    public bool IsNmiAsserted
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => nmiEdgeDetected || asserters[SignalLine.Nmi].Count > 0;
+    }
 
     /// <inheritdoc />
-    public bool IsWaiting => asserters[SignalLine.Rdy].Count > 0;
+    public bool IsWaiting
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => asserters[SignalLine.Rdy].Count > 0;
+    }
 
     /// <inheritdoc />
-    public bool IsDmaRequested => asserters[SignalLine.DmaReq].Count > 0;
+    public bool IsDmaRequested
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => asserters[SignalLine.DmaReq].Count > 0;
+    }
+
+    /// <inheritdoc />
+    public ulong TotalFetchCycles
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => totalFetchCycles;
+    }
+
+    /// <inheritdoc />
+    public ulong TotalExecuteCycles
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => totalExecuteCycles;
+    }
+
+    /// <inheritdoc />
+    public ulong TotalCpuCycles
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => totalFetchCycles + totalExecuteCycles;
+    }
 
     /// <inheritdoc />
     public void Assert(SignalLine line, int deviceId, ulong cycle)
@@ -72,6 +118,7 @@ public sealed class SignalBus : ISignalBus
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public SignalState Sample(SignalLine line)
     {
         if (line == SignalLine.Nmi)
@@ -101,5 +148,28 @@ public sealed class SignalBus : ISignalBus
         }
 
         nmiEdgeDetected = false;
+        totalFetchCycles = 0;
+        totalExecuteCycles = 0;
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SignalInstructionFetched(ulong cycles)
+    {
+        totalFetchCycles += cycles;
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SignalInstructionExecuted(ulong cycles)
+    {
+        totalExecuteCycles += cycles;
+    }
+
+    /// <inheritdoc />
+    public void ResetCycleCounters()
+    {
+        totalFetchCycles = 0;
+        totalExecuteCycles = 0;
     }
 }
