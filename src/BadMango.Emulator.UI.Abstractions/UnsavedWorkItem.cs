@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Models;
+namespace BadMango.Emulator.UI.Abstractions;
 
 /// <summary>
 /// Represents an item with unsaved work that should be handled during shutdown.

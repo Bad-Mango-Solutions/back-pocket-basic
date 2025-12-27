@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.UI.Tests;
 
-using BadMango.Emulator.UI.Models.Events;
+using BadMango.Emulator.UI.Abstractions.Events;
 using BadMango.Emulator.UI.Services;
 
 /// <summary>

@@ -37,22 +37,6 @@ public interface IDebugContext : ICommandContext
     IMemory? Memory { get; }
 
     /// <summary>
-    /// Gets the memory bus for bus-aware debugging.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// When non-null, provides access to the page-based memory system
-    /// including page table inspection and bus-level tracing.
-    /// </para>
-    /// <para>
-    /// Legacy systems may have Memory but not Bus. New systems using the
-    /// bus architecture will have both - Memory may be a <see cref="MemoryBusAdapter"/>
-    /// wrapping the Bus for backward compatibility with existing debug commands.
-    /// </para>
-    /// </remarks>
-    IMemoryBus? Bus { get; }
-
-    /// <summary>
     /// Gets the disassembler instance for the debug session.
     /// </summary>
     /// <remarks>
@@ -89,11 +73,37 @@ public interface IDebugContext : ICommandContext
     bool IsSystemAttached { get; }
 
     /// <summary>
+    /// Gets the memory bus for bus-aware debugging.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When non-null, provides access to the page-based memory system
+    /// including page table inspection and bus-level tracing.
+    /// </para>
+    /// <para>
+    /// Legacy systems may have Memory but not Bus. New systems using the
+    /// bus architecture will have both - Memory may be a <see cref="MemoryBusAdapter"/>
+    /// wrapping the Bus for backward compatibility with existing debug commands.
+    /// </para>
+    /// </remarks>
+    IMemoryBus? Bus { get; }
+
+    /// <summary>
+    /// Gets the machine instance for high-level machine control.
+    /// </summary>
+    /// <remarks>
+    /// When non-null, provides access to Run/Step/Reset through the
+    /// machine abstraction rather than direct CPU manipulation.
+    /// </remarks>
+    IMachine? Machine { get; }
+
+    /// <summary>
     /// Gets a value indicating whether bus-level debugging is available.
     /// </summary>
     /// <remarks>
-    /// Returns true when <see cref="Bus"/> is non-null, indicating that bus-specific
-    /// debug commands (page table inspection, bus tracing, etc.) can be used.
+    /// Returns true if a memory bus has been attached to the debug context.
+    /// When true, bus-level debugging capabilities such as page table inspection
+    /// and bus-level tracing are available.
     /// </remarks>
     bool IsBusAttached { get; }
 }

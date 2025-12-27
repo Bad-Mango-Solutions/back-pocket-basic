@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Models.Events;
+namespace BadMango.Emulator.UI.Abstractions.Events;
 
 /// <summary>
 /// Event raised to request focus on a specific component window.

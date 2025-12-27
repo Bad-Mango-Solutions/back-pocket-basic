@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.UI.Tests;
 
+using BadMango.Emulator.UI.Abstractions;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 

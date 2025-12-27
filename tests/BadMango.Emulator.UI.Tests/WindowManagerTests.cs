@@ -6,6 +6,7 @@ namespace BadMango.Emulator.UI.Tests;
 
 using Avalonia.Controls;
 
+using BadMango.Emulator.UI.Abstractions;
 using BadMango.Emulator.UI.Models;
 using BadMango.Emulator.UI.Services;
 

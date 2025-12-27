@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Models;
+namespace BadMango.Emulator.UI.Abstractions;
 
 /// <summary>
 /// Defines the types of components that can be detached into pop-out windows.

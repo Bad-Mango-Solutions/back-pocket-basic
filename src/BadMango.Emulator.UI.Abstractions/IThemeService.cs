@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Services;
+namespace BadMango.Emulator.UI.Abstractions;
 
 /// <summary>
 /// Service interface for managing application themes.

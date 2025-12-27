@@ -96,9 +96,6 @@ public sealed class DebugContext : IDebugContext
     public IMemory? Memory { get; private set; }
 
     /// <inheritdoc/>
-    public IMemoryBus? Bus { get; private set; }
-
-    /// <inheritdoc/>
     public IDisassembler? Disassembler { get; private set; }
 
     /// <inheritdoc/>
@@ -109,6 +106,12 @@ public sealed class DebugContext : IDebugContext
 
     /// <inheritdoc/>
     public bool IsSystemAttached => this.Cpu is not null && this.Memory is not null && this.Disassembler is not null;
+
+    /// <inheritdoc/>
+    public IMemoryBus? Bus { get; private set; }
+
+    /// <inheritdoc/>
+    public IMachine? Machine { get; private set; }
 
     /// <inheritdoc/>
     public bool IsBusAttached => this.Bus is not null;
@@ -144,29 +147,6 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
-    /// Attaches a memory bus to this debug context.
-    /// </summary>
-    /// <param name="bus">The memory bus to attach.</param>
-    /// <remarks>
-    /// <para>
-    /// When a bus is attached, a <see cref="MemoryBusAdapter"/> is automatically
-    /// created and attached as the <see cref="Memory"/> property to provide backward
-    /// compatibility with existing debug commands that use <see cref="IMemory"/>.
-    /// </para>
-    /// <para>
-    /// If you need to use a custom <see cref="IMemory"/> implementation instead of
-    /// the adapter, attach the memory using <see cref="AttachMemory"/> after calling
-    /// this method.
-    /// </para>
-    /// </remarks>
-    public void AttachBus(IMemoryBus bus)
-    {
-        ArgumentNullException.ThrowIfNull(bus);
-        this.Bus = bus;
-        this.Memory = new MemoryBusAdapter(bus);
-    }
-
-    /// <summary>
     /// Attaches a disassembler to this debug context.
     /// </summary>
     /// <param name="disassembler">The disassembler to attach.</param>
@@ -194,6 +174,46 @@ public sealed class DebugContext : IDebugContext
     {
         ArgumentNullException.ThrowIfNull(tracingListener);
         this.TracingListener = tracingListener;
+    }
+
+    /// <summary>
+    /// Attaches a memory bus to this debug context.
+    /// </summary>
+    /// <param name="bus">The memory bus to attach.</param>
+    /// <remarks>
+    /// <para>
+    /// When a bus is attached, a <see cref="MemoryBusAdapter"/> is automatically
+    /// created and attached as the <see cref="Memory"/> property to provide backward
+    /// compatibility with existing debug commands that use <see cref="IMemory"/>.
+    /// </para>
+    /// <para>
+    /// If you need to use a custom <see cref="IMemory"/> implementation instead of
+    /// the adapter, attach the memory using <see cref="AttachMemory"/> after calling
+    /// this method.
+    /// </para>
+    /// </remarks>
+    public void AttachBus(IMemoryBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(bus);
+        this.Bus = bus;
+        this.Memory = new MemoryBusAdapter(bus);
+    }
+
+    /// <summary>
+    /// Attaches a machine instance to this debug context.
+    /// </summary>
+    /// <param name="machine">The machine to attach.</param>
+    /// <remarks>
+    /// Attaching a machine provides high-level machine control through
+    /// the machine abstraction. This also attaches the machine's CPU
+    /// and bus to the debug context.
+    /// </remarks>
+    public void AttachMachine(IMachine machine)
+    {
+        ArgumentNullException.ThrowIfNull(machine);
+        this.Machine = machine;
+        this.Cpu = machine.Cpu;
+        this.Bus = machine.Bus;
     }
 
     /// <summary>
@@ -304,9 +324,10 @@ public sealed class DebugContext : IDebugContext
     {
         this.Cpu = null;
         this.Memory = null;
-        this.Bus = null;
         this.Disassembler = null;
         this.MachineInfo = null;
         this.TracingListener = null;
+        this.Bus = null;
+        this.Machine = null;
     }
 }

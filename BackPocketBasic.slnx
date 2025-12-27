@@ -71,6 +71,7 @@
     <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
     <Project Path="src/BadMango.Emulator.Interop/BadMango.Emulator.Interop.csproj" />
     <Project Path="src/BadMango.Emulator.Systems/BadMango.Emulator.Systems.csproj" />
+    <Project Path="src/BadMango.Emulator.UI.Abstractions/BadMango.Emulator.UI.Abstractions.csproj" />
     <Project Path="src/BadMango.Emulator.UI/BadMango.Emulator.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
