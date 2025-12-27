@@ -4,7 +4,7 @@
     Color palette per Emulator UI Specification:
     
     Element        Light Theme   Dark Theme
-    Background     #FFFFFF       #1E1E1E
+    Background     #FAFAFA       #1E1E1E
     Surface        #F5F5F5       #252526
     Primary        #007ACC       #0E639C
     Secondary      #6B9F00       #4EC9B0
@@ -29,7 +29,7 @@
         
         <!-- Light Theme Colors -->
         <ResourceDictionary x:Key="Light">
-            <SolidColorBrush x:Key="BackgroundBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#FAFAFA" />
             <SolidColorBrush x:Key="SurfaceBrush" Color="#F5F5F5" />
             <SolidColorBrush x:Key="PrimaryBrush" Color="#007ACC" />
             <SolidColorBrush x:Key="SecondaryBrush" Color="#6B9F00" />
