@@ -93,4 +93,17 @@ public class ISchedulerTests
         Assert.That(result, Is.True);
         mockScheduler.Verify(s => s.Cancel(mockActor.Object), Times.Once);
     }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles can be called.
+    /// </summary>
+    [Test]
+    public void IScheduler_AdvanceCycles_CanBeCalled()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+
+        mockScheduler.Object.AdvanceCycles(100ul);
+
+        mockScheduler.Verify(s => s.AdvanceCycles(100ul), Times.Once);
+    }
 }

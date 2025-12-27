@@ -501,6 +501,163 @@ public class SchedulerTests
     }
 
     /// <summary>
+    /// Verifies that AdvanceCycles advances the current cycle.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_AdvancesCurrentCycle()
+    {
+        var scheduler = new Scheduler();
+
+        scheduler.AdvanceCycles(100ul);
+
+        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles with zero does not change cycle.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_WithZero_DoesNotChange()
+    {
+        var scheduler = new Scheduler();
+        scheduler.RunUntil(50ul);
+
+        scheduler.AdvanceCycles(0ul);
+
+        Assert.That(scheduler.CurrentCycle, Is.EqualTo(50ul));
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles executes due events.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_ExecutesDueEvents()
+    {
+        var scheduler = new Scheduler();
+        var executionOrder = new List<int>();
+        var actor1 = new TestActor(() => executionOrder.Add(1));
+        var actor2 = new TestActor(() => executionOrder.Add(2));
+
+        scheduler.Schedule(actor1, 50ul);
+        scheduler.Schedule(actor2, 75ul);
+
+        scheduler.AdvanceCycles(100ul);
+
+        Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2 }));
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles does not execute future events.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_DoesNotExecuteFutureEvents()
+    {
+        var scheduler = new Scheduler();
+        bool executed = false;
+        var actor = new TestActor(() => executed = true);
+
+        scheduler.Schedule(actor, 200ul);
+        scheduler.AdvanceCycles(100ul);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(executed, Is.False);
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles accumulates correctly.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_AccumulatesCorrectly()
+    {
+        var scheduler = new Scheduler();
+
+        scheduler.AdvanceCycles(50ul);
+        scheduler.AdvanceCycles(30ul);
+        scheduler.AdvanceCycles(20ul);
+
+        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles works with events consuming cycles.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_WithEventConsumingCycles()
+    {
+        var scheduler = new Scheduler();
+        var actor = new TestActor(() => { }, consumedCycles: 10ul);
+
+        scheduler.Schedule(actor, 50ul);
+        scheduler.AdvanceCycles(100ul);
+
+        // The event fires at 50 and consumes 10 cycles (current cycle becomes 60)
+        // Then we advance to the target cycle 100
+        Assert.That(scheduler.CurrentCycle, Is.EqualTo(100ul));
+    }
+
+    /// <summary>
+    /// Verifies integration between SignalBus and Scheduler for CPU-driven timing.
+    /// </summary>
+    [Test]
+    public void Integration_SignalBusAndScheduler_CpuDrivenTiming()
+    {
+        var signalBus = new SignalBus();
+        var scheduler = new Scheduler();
+        bool deviceTriggered = false;
+
+        // Schedule a device event at cycle 50
+        scheduler.Schedule(new TestActor(() => deviceTriggered = true), 50ul);
+
+        // Simulate CPU executing 10 instructions of 6 cycles each
+        for (int i = 0; i < 10; i++)
+        {
+            signalBus.SignalInstructionFetched(2);
+            signalBus.SignalInstructionExecuted(4);
+            scheduler.AdvanceCycles(6);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(signalBus.TotalCpuCycles, Is.EqualTo(60ul));
+            Assert.That(scheduler.CurrentCycle, Is.EqualTo(60ul));
+            Assert.That(deviceTriggered, Is.True, "Device event should have triggered at cycle 50");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that AdvanceCycles maintains deterministic event ordering.
+    /// </summary>
+    [Test]
+    public void AdvanceCycles_MaintainsDeterministicOrdering()
+    {
+        var results = new List<List<int>>();
+
+        for (int run = 0; run < 3; run++)
+        {
+            var scheduler = new Scheduler();
+            var executionOrder = new List<int>();
+
+            scheduler.Schedule(new TestActor(() => executionOrder.Add(1)), 25ul);
+            scheduler.Schedule(new TestActor(() => executionOrder.Add(2)), 25ul);
+            scheduler.Schedule(new TestActor(() => executionOrder.Add(3)), 50ul);
+
+            // Advance in increments
+            scheduler.AdvanceCycles(30ul);
+            scheduler.AdvanceCycles(30ul);
+
+            results.Add(new List<int>(executionOrder));
+        }
+
+        // All runs should produce identical results
+        Assert.That(results[0], Is.EqualTo(results[1]));
+        Assert.That(results[1], Is.EqualTo(results[2]));
+        Assert.That(results[0], Is.EqualTo(new[] { 1, 2, 3 }));
+    }
+
+    /// <summary>
     /// Test actor that executes a callback and returns a specified number of consumed cycles.
     /// </summary>
     private sealed class TestActor : ISchedulable

@@ -20,6 +20,12 @@ namespace BadMango.Emulator.Bus;
 /// record of who asserted what and when, avoiding "spooky action at a distance"
 /// in interrupt handling.
 /// </para>
+/// <para>
+/// The signal bus also tracks CPU cycle signals, allowing the scheduler
+/// to be driven by CPU instruction execution. The CPU signals when it
+/// fetches and executes instructions, providing cycle counts that the
+/// scheduler uses to advance time.
+/// </para>
 /// </remarks>
 public interface ISignalBus
 {
@@ -59,6 +65,32 @@ public interface ISignalBus
     /// <see langword="true"/> if DMA is requested; otherwise, <see langword="false"/>.
     /// </value>
     bool IsDmaRequested { get; }
+
+    /// <summary>
+    /// Gets the total number of cycles consumed by instruction fetches.
+    /// </summary>
+    /// <value>The cumulative cycle count from all instruction fetch signals.</value>
+    /// <remarks>
+    /// This counter accumulates cycles reported via <see cref="SignalInstructionFetched"/>
+    /// and is reset when <see cref="Reset"/> or <see cref="ResetCycleCounters"/> is called.
+    /// </remarks>
+    ulong TotalFetchCycles { get; }
+
+    /// <summary>
+    /// Gets the total number of cycles consumed by instruction execution.
+    /// </summary>
+    /// <value>The cumulative cycle count from all instruction execution signals.</value>
+    /// <remarks>
+    /// This counter accumulates cycles reported via <see cref="SignalInstructionExecuted"/>
+    /// and is reset when <see cref="Reset"/> or <see cref="ResetCycleCounters"/> is called.
+    /// </remarks>
+    ulong TotalExecuteCycles { get; }
+
+    /// <summary>
+    /// Gets the total number of CPU cycles (fetch + execute combined).
+    /// </summary>
+    /// <value>The sum of <see cref="TotalFetchCycles"/> and <see cref="TotalExecuteCycles"/>.</value>
+    ulong TotalCpuCycles { get; }
 
     /// <summary>
     /// Asserts a signal line.
@@ -123,4 +155,53 @@ public interface ISignalBus
     /// Called during system reset to ensure all signals start in a known state.
     /// </remarks>
     void Reset();
+
+    /// <summary>
+    /// Signals that the CPU has fetched an instruction.
+    /// </summary>
+    /// <param name="cycles">The number of cycles consumed by the fetch operation.</param>
+    /// <remarks>
+    /// <para>
+    /// Called by the CPU after fetching an instruction's opcode and operands.
+    /// The cycle count represents the memory access cycles required for the fetch.
+    /// </para>
+    /// <para>
+    /// This signal is used by the scheduler to track time progression and
+    /// maintain cycle-accurate emulation.
+    /// </para>
+    /// </remarks>
+    void SignalInstructionFetched(ulong cycles);
+
+    /// <summary>
+    /// Signals that the CPU has executed an instruction.
+    /// </summary>
+    /// <param name="cycles">The number of cycles consumed by the execution.</param>
+    /// <remarks>
+    /// <para>
+    /// Called by the CPU after completing instruction execution.
+    /// The cycle count represents the execution cycles (which may include
+    /// additional memory accesses for addressing modes).
+    /// </para>
+    /// <para>
+    /// This signal is used by the scheduler to track time progression and
+    /// maintain cycle-accurate emulation. The scheduler will advance its
+    /// current cycle based on these signals.
+    /// </para>
+    /// </remarks>
+    void SignalInstructionExecuted(ulong cycles);
+
+    /// <summary>
+    /// Resets the CPU cycle counters without affecting signal line states.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method resets <see cref="TotalFetchCycles"/>, <see cref="TotalExecuteCycles"/>,
+    /// and <see cref="TotalCpuCycles"/> to zero without clearing signal line assertions.
+    /// </para>
+    /// <para>
+    /// Use this when you need to measure cycles for a specific execution span
+    /// without disturbing interrupt handling state.
+    /// </para>
+    /// </remarks>
+    void ResetCycleCounters();
 }

@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Runtime.CompilerServices;
+
 /// <summary>
 /// Cycle-accurate event scheduler implementation for discrete-event emulation.
 /// </summary>
@@ -22,14 +24,17 @@ namespace BadMango.Emulator.Bus;
 /// Events are one-shot, ordered by cycle, and deterministic. Same inputs yield the same
 /// event order and the same behavior, making the system fully reproducible and debuggable.
 /// </para>
+/// <para>
+/// The scheduler can be driven by CPU cycle signals from the <see cref="ISignalBus"/>,
+/// allowing it to advance time based on actual CPU instruction execution.
+/// </para>
 /// </remarks>
 public sealed class Scheduler : IScheduler
 {
     /// <summary>
     /// Priority queue of scheduled events, ordered by cycle then sequence.
     /// </summary>
-    private readonly PriorityQueue<ScheduledEvent, ScheduledEvent> eventQueue = new(
-        Comparer<ScheduledEvent>.Create((a, b) => a.CompareTo(b)));
+    private readonly PriorityQueue<ScheduledEvent, ScheduledEvent> eventQueue;
 
     /// <summary>
     /// Sequence number for deterministic tie-breaking when events share the same cycle.
@@ -37,16 +42,39 @@ public sealed class Scheduler : IScheduler
     private long nextSequence;
 
     /// <summary>
+    /// Backing field for <see cref="CurrentCycle"/>.
+    /// </summary>
+    private ulong currentCycle;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Scheduler"/> class.
+    /// </summary>
+    public Scheduler()
+    {
+        eventQueue = new PriorityQueue<ScheduledEvent, ScheduledEvent>(
+            Comparer<ScheduledEvent>.Create(static (a, b) => a.CompareTo(b)));
+    }
+
+    /// <summary>
     /// Gets the current cycle in the timeline.
     /// </summary>
     /// <value>The current cycle, which only advances as actors consume cycles.</value>
-    public ulong CurrentCycle { get; private set; }
+    public ulong CurrentCycle
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => currentCycle;
+        private set => currentCycle = value;
+    }
 
     /// <summary>
     /// Gets the number of pending events in the scheduler.
     /// </summary>
     /// <value>The count of events waiting to be dispatched.</value>
-    public int PendingEventCount => eventQueue.Count;
+    public int PendingEventCount
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => eventQueue.Count;
+    }
 
     /// <summary>
     /// Schedules an actor to run at an absolute cycle.
@@ -64,6 +92,7 @@ public sealed class Scheduler : IScheduler
     /// which is assigned at scheduling time, ensuring deterministic dispatch order.
     /// </para>
     /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Schedule(ISchedulable actor, ulong cycle)
     {
         ArgumentNullException.ThrowIfNull(actor, nameof(actor));
@@ -81,11 +110,12 @@ public sealed class Scheduler : IScheduler
     /// <remarks>
     /// This is a convenience method equivalent to <c>Schedule(actor, CurrentCycle + deltaCycles)</c>.
     /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ScheduleAfter(ISchedulable actor, ulong deltaCycles)
     {
         ArgumentNullException.ThrowIfNull(actor, nameof(actor));
 
-        Schedule(actor, CurrentCycle + deltaCycles);
+        Schedule(actor, currentCycle + deltaCycles);
     }
 
     /// <summary>
@@ -108,15 +138,15 @@ public sealed class Scheduler : IScheduler
     /// </remarks>
     public void Drain()
     {
-        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= CurrentCycle)
+        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= currentCycle)
         {
             eventQueue.Dequeue();
-            ulong consumedCycles = nextEvent.Actor.Execute(CurrentCycle, this);
+            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
 
             // Time advances based on consumed cycles (but CurrentCycle can never decrease)
             if (consumedCycles > 0)
             {
-                CurrentCycle += consumedCycles;
+                currentCycle += consumedCycles;
             }
         }
     }
@@ -148,25 +178,73 @@ public sealed class Scheduler : IScheduler
             eventQueue.Dequeue();
 
             // Advance current cycle to the event's due time if it's in the future
-            if (nextEvent.Cycle > CurrentCycle)
+            if (nextEvent.Cycle > currentCycle)
             {
-                CurrentCycle = nextEvent.Cycle;
+                currentCycle = nextEvent.Cycle;
             }
 
-            ulong consumedCycles = nextEvent.Actor.Execute(CurrentCycle, this);
+            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
 
             // Time advances based on consumed cycles
             if (consumedCycles > 0)
             {
-                CurrentCycle += consumedCycles;
+                currentCycle += consumedCycles;
             }
         }
 
         // Ensure we reach the target cycle even if no events or all events were earlier
-        if (CurrentCycle < targetCycle)
+        if (currentCycle < targetCycle)
         {
-            CurrentCycle = targetCycle;
+            currentCycle = targetCycle;
         }
+    }
+
+    /// <summary>
+    /// Advances the scheduler's current cycle by the specified number of cycles.
+    /// </summary>
+    /// <param name="cycles">The number of cycles to advance.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is used to advance the scheduler's time based on CPU cycle signals
+    /// from the <see cref="ISignalBus"/>. It processes any events that become due
+    /// as a result of the time advancement.
+    /// </para>
+    /// <para>
+    /// This is the preferred method for CPU-driven scheduling, where the CPU
+    /// signals instruction execution and the scheduler advances accordingly.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AdvanceCycles(ulong cycles)
+    {
+        if (cycles == 0)
+        {
+            return;
+        }
+
+        ulong targetCycle = currentCycle + cycles;
+
+        // Process any events that are now due
+        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= targetCycle)
+        {
+            eventQueue.Dequeue();
+
+            // Advance to the event's cycle
+            if (nextEvent.Cycle > currentCycle)
+            {
+                currentCycle = nextEvent.Cycle;
+            }
+
+            ulong consumedCycles = nextEvent.Actor.Execute(currentCycle, this);
+
+            if (consumedCycles > 0)
+            {
+                currentCycle += consumedCycles;
+            }
+        }
+
+        // Advance to the target cycle
+        currentCycle = targetCycle;
     }
 
     /// <summary>
@@ -233,7 +311,7 @@ public sealed class Scheduler : IScheduler
     public void Reset()
     {
         eventQueue.Clear();
-        CurrentCycle = 0;
+        currentCycle = 0;
         nextSequence = 0;
     }
 }
