@@ -84,6 +84,9 @@ public class PathValidator : IPathValidator
         }
 
         // Try to check permissions if directory exists
+        // Note: This creates a temporary file to test write permissions.
+        // For performance-sensitive scenarios, consider caching results or
+        // using platform-specific APIs to check permissions without file I/O.
         if (Directory.Exists(normalizedPath))
         {
             try
