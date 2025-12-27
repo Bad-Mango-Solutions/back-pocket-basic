@@ -130,16 +130,22 @@ public class PathValidatorTests
     }
 
     /// <summary>
-    /// Tests that Validate returns a warning for relative paths.
+    /// Tests that Validate normalizes relative paths to absolute paths.
     /// </summary>
     [Test]
-    public void Validate_RelativePath_ReturnsWarning()
+    public void Validate_RelativePath_NormalizesToAbsolute()
     {
         // Arrange & Act
         var result = validator.Validate("relative/path", PathPurpose.LibraryRoot);
 
-        // Assert
-        Assert.That(result.Warnings, Does.Contain(PathValidationWarning.RelativePath));
+        // Assert - relative paths are now normalized to absolute paths
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(result.NormalizedPath, Is.Not.Null);
+            Assert.That(Path.IsPathRooted(result.NormalizedPath), Is.True);
+            Assert.That(result.Warnings, Does.Contain(PathValidationWarning.DirectoryDoesNotExist));
+        });
     }
 
     /// <summary>

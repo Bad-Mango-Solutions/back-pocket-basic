@@ -127,23 +127,37 @@ public class PathValidator : IPathValidator
         var normalized = path;
 
         // Expand ~ to home directory
-        if (normalized.StartsWith("~/", StringComparison.Ordinal) || normalized == "~")
+        if (normalized == "~")
+        {
+            normalized = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+        else if (normalized.StartsWith("~/", StringComparison.Ordinal))
         {
             var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            normalized = normalized == "~"
-                ? homeDir
-                : Path.Combine(homeDir, normalized[2..]);
+
+            // Extract the part after "~/" and combine with home directory
+            // Using substring starting at index 2 to skip "~/"
+            var relativePart = normalized.Substring(2);
+            normalized = Path.Combine(homeDir, relativePart);
         }
 
         // Expand environment variables
         normalized = Environment.ExpandEnvironmentVariables(normalized);
 
-        // Normalize path separators
-        normalized = normalized.Replace('\\', Path.DirectorySeparatorChar)
-                               .Replace('/', Path.DirectorySeparatorChar);
+        // Use Path.GetFullPath to normalize path separators and resolve relative paths
+        // This handles both forward and backward slashes and removes trailing separators
+        try
+        {
+            normalized = Path.GetFullPath(normalized);
 
-        // Remove trailing separator
-        normalized = normalized.TrimEnd(Path.DirectorySeparatorChar);
+            // Use Path.TrimEndingDirectorySeparator to remove trailing separator
+            normalized = Path.TrimEndingDirectorySeparator(normalized);
+        }
+        catch (ArgumentException)
+        {
+            // If the path contains invalid characters, return as-is
+            // Validation will catch this later
+        }
 
         return normalized;
     }
