@@ -1,0 +1,29 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 
+    Color palette per Emulator UI Specification:
+    
+    Element        Light Theme   Dark Theme
+    Background     #FFFFFF       #1E1E1E
+    Surface        #F5F5F5       #252526
+    Primary        #007ACC       #0E639C
+    Secondary      #6B9F00       #4EC9B0
+    Error          #D32F2F       #F44747
+    Text           #212121       #D4D4D4
+    -->
+    
+    <!-- Dark Theme Colors (Default) -->
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#252526" />
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#0E639C" />
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#4EC9B0" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#F44747" />
+    <SolidColorBrush x:Key="TextBrush" Color="#D4D4D4" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#3C3C3C" />
+    
+    <!-- Additional UI Colors -->
+    <SolidColorBrush x:Key="HoverBrush" Color="#2A2D2E" />
+    <SolidColorBrush x:Key="SelectedBrush" Color="#094771" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#0E639C" />
+    
+</ResourceDictionary>

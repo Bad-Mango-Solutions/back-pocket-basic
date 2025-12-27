@@ -79,6 +79,7 @@
     <Project Path="tests/BadMango.Emulator.Debug.Infrastructure.Tests/BadMango.Emulator.Debug.Infrastructure.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Debug.Tests/BadMango.Emulator.Debug.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
+    <Project Path="tests/BadMango.Emulator.UI.Tests/BadMango.Emulator.UI.Tests.csproj" />
   </Folder>
   <Folder Name="/wiki/">
     <File Path="wiki/6502-Emulation.md" />
