@@ -146,6 +146,10 @@ public class SettingsThemeIntegrationTests
         });
 
         // Wait for the dispatcher to process the posted theme change
+        // Multiple waits needed because the event chain involves multiple Dispatcher.Post calls:
+        // 1. ThemeService.OnSettingsChanged posts SetTheme
+        // 2. MainWindowViewModel.OnThemeChanged posts IsDarkTheme update
+        await Dispatcher.UIThread.InvokeAsync(() => { });
         await Dispatcher.UIThread.InvokeAsync(() => { });
 
         // Assert - Verify the complete event chain
@@ -260,6 +264,8 @@ public class SettingsThemeIntegrationTests
         });
 
         // Wait for the dispatcher to process the posted theme change
+        // Multiple waits needed because the event chain involves multiple Dispatcher.Post calls
+        await Dispatcher.UIThread.InvokeAsync(() => { });
         await Dispatcher.UIThread.InvokeAsync(() => { });
 
         // Assert
