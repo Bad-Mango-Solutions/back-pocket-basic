@@ -1,4 +1,4 @@
-// <copyright file="Cycles.cs" company="Bad Mango Solutions">
+// <copyright file="Cycle.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The <see cref="Cycles"/> struct provides a type-safe wrapper around cycle counts,
+/// The <see cref="Cycle"/> struct provides a type-safe wrapper around cycle counts,
 /// preventing accidental mixing of cycles with other numeric values. This is critical
 /// for the scheduler and timing subsystem where cycle accuracy is paramount.
 /// </para>
@@ -21,33 +21,33 @@ using System.Runtime.CompilerServices;
 /// </para>
 /// </remarks>
 /// <param name="Value">The raw cycle count as an unsigned 64-bit integer.</param>
-public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
+public readonly record struct Cycle(ulong Value) : IComparable<Cycle>
 {
     /// <summary>
-    /// Gets a <see cref="Cycles"/> instance representing zero cycles.
+    /// Gets a <see cref="Cycle"/> instance representing zero cycles.
     /// </summary>
-    public static Cycles Zero => new(0);
+    public static Cycle Zero => new(0);
 
     /// <summary>
-    /// Gets a <see cref="Cycles"/> instance representing one cycle.
+    /// Gets a <see cref="Cycle"/> instance representing one cycle.
     /// </summary>
-    public static Cycles One => new(1);
+    public static Cycle One => new(1);
 
     /// <summary>
-    /// Implicitly converts a <see cref="ulong"/> to a <see cref="Cycles"/> instance.
+    /// Implicitly converts a <see cref="ulong"/> to a <see cref="Cycle"/> instance.
     /// </summary>
     /// <param name="value">The raw cycle count.</param>
-    /// <returns>A <see cref="Cycles"/> instance with the specified value.</returns>
+    /// <returns>A <see cref="Cycle"/> instance with the specified value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Cycles(ulong value) => new(value);
+    public static implicit operator Cycle(ulong value) => new(value);
 
     /// <summary>
-    /// Explicitly converts a <see cref="Cycles"/> instance to a <see cref="ulong"/>.
+    /// Implicitly converts a <see cref="Cycle"/> instance to a <see cref="ulong"/>.
     /// </summary>
-    /// <param name="cycles">The cycles instance.</param>
+    /// <param name="cycle">The cycle instance.</param>
     /// <returns>The raw cycle count as a <see cref="ulong"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static explicit operator ulong(Cycles cycles) => cycles.Value;
+    public static implicit operator ulong(Cycle cycle) => cycle.Value;
 
     /// <summary>
     /// Adds two cycle counts.
@@ -56,7 +56,7 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The second cycle count.</param>
     /// <returns>The sum of the two cycle counts.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Cycles operator +(Cycles left, Cycles right) => new(left.Value + right.Value);
+    public static Cycle operator +(Cycle left, Cycle right) => new(left.Value + right.Value);
 
     /// <summary>
     /// Subtracts one cycle count from another.
@@ -65,7 +65,7 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The cycle count to subtract.</param>
     /// <returns>The difference between the two cycle counts.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Cycles operator -(Cycles left, Cycles right) => new(left.Value - right.Value);
+    public static Cycle operator -(Cycle left, Cycle right) => new(left.Value - right.Value);
 
     /// <summary>
     /// Determines whether one cycle count is less than another.
@@ -74,7 +74,7 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The second cycle count.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> is less than <paramref name="right"/>; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator <(Cycles left, Cycles right) => left.Value < right.Value;
+    public static bool operator <(Cycle left, Cycle right) => left.Value < right.Value;
 
     /// <summary>
     /// Determines whether one cycle count is greater than another.
@@ -83,7 +83,7 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The second cycle count.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> is greater than <paramref name="right"/>; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator >(Cycles left, Cycles right) => left.Value > right.Value;
+    public static bool operator >(Cycle left, Cycle right) => left.Value > right.Value;
 
     /// <summary>
     /// Determines whether one cycle count is less than or equal to another.
@@ -92,7 +92,7 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The second cycle count.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> is less than or equal to <paramref name="right"/>; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator <=(Cycles left, Cycles right) => left.Value <= right.Value;
+    public static bool operator <=(Cycle left, Cycle right) => left.Value <= right.Value;
 
     /// <summary>
     /// Determines whether one cycle count is greater than or equal to another.
@@ -101,23 +101,23 @@ public readonly record struct Cycles(ulong Value) : IComparable<Cycles>
     /// <param name="right">The second cycle count.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> is greater than or equal to <paramref name="right"/>; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator >=(Cycles left, Cycles right) => left.Value >= right.Value;
+    public static bool operator >=(Cycle left, Cycle right) => left.Value >= right.Value;
 
     /// <summary>
     /// Increments a cycle count by one.
     /// </summary>
-    /// <param name="cycles">The cycle count to increment.</param>
-    /// <returns>A new <see cref="Cycles"/> instance with the value incremented by one.</returns>
+    /// <param name="cycle">The cycle count to increment.</param>
+    /// <returns>A new <see cref="Cycle"/> instance with the value incremented by one.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Cycles operator ++(Cycles cycles) => new(cycles.Value + 1);
+    public static Cycle operator ++(Cycle cycle) => new(cycle.Value + 1);
 
     /// <summary>
-    /// Compares this instance to another <see cref="Cycles"/> instance.
+    /// Compares this instance to another <see cref="Cycle"/> instance.
     /// </summary>
     /// <param name="other">The other instance to compare to.</param>
     /// <returns>A value indicating the relative order of the instances.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int CompareTo(Cycles other) => Value.CompareTo(other.Value);
+    public int CompareTo(Cycle other) => Value.CompareTo(other.Value);
 
     /// <summary>
     /// Returns a string representation of the cycle count.

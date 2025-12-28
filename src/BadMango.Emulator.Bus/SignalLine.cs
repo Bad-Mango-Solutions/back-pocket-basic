@@ -23,7 +23,7 @@ public enum SignalLine : byte
     /// CPU's I (Interrupt Disable) flag. Multiple devices can assert IRQ
     /// simultaneously; the CPU must poll to determine the source.
     /// </remarks>
-    Irq,
+    IRQ,
 
     /// <summary>
     /// Non-Maskable Interrupt signal.
@@ -33,7 +33,7 @@ public enum SignalLine : byte
     /// It has higher priority than IRQ and is typically used for
     /// critical events like power failure notification.
     /// </remarks>
-    Nmi,
+    NMI,
 
     /// <summary>
     /// Reset signal.
@@ -53,7 +53,7 @@ public enum SignalLine : byte
     /// Used by slow devices and for single-step debugging.
     /// The CPU halts instruction execution until RDY is asserted.
     /// </remarks>
-    Rdy,
+    RDY,
 
     /// <summary>
     /// DMA Request signal.
@@ -64,13 +64,4 @@ public enum SignalLine : byte
     /// cycle and wait for the DMA transfer to complete.
     /// </remarks>
     DmaReq,
-
-    /// <summary>
-    /// Bus Enable signal.
-    /// </summary>
-    /// <remarks>
-    /// Controls whether the CPU drives the address and data buses.
-    /// Used for DMA operations and multi-processor configurations.
-    /// </remarks>
-    BusEnable,
 }

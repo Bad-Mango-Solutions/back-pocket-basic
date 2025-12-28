@@ -126,11 +126,11 @@ public class IScheduledDeviceTests
         var device = new InterruptRaisingDevice();
         device.Initialize(context);
 
-        Assert.That(signals.IsIrqAsserted, Is.False);
+        Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.False);
 
         scheduler.RunUntil(100ul);
 
-        Assert.That(signals.IsIrqAsserted, Is.True);
+        Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.True);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public class IScheduledDeviceTests
 
         public ulong Execute(ulong currentCycle, IScheduler scheduler)
         {
-            context?.Signals.Assert(SignalLine.Irq, 1, currentCycle);
+            context?.Signals.Assert(SignalLine.IRQ, 1);
             return 0;
         }
     }

@@ -20,38 +20,38 @@ public class SignalBusTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(bus.IsIrqAsserted, Is.False);
-            Assert.That(bus.IsNmiAsserted, Is.False);
-            Assert.That(bus.IsWaiting, Is.False);
-            Assert.That(bus.IsDmaRequested, Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.NMI), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.RDY), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.DmaReq), Is.False);
         });
     }
 
     /// <summary>
-    /// Verifies that Assert sets IsIrqAsserted to true.
+    /// Verifies that Assert sets IRQ to asserted.
     /// </summary>
     [Test]
     public void SignalBus_Assert_SetsIrqAsserted()
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        Assert.That(bus.IsIrqAsserted, Is.True);
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True);
     }
 
     /// <summary>
-    /// Verifies that Clear deasserts IRQ.
+    /// Verifies that Deassert deasserts IRQ.
     /// </summary>
     [Test]
-    public void SignalBus_Clear_DeassertsIrq()
+    public void SignalBus_Deassert_DeassertsIrq()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        bus.Clear(SignalLine.Irq, deviceId: 1, cycle: 10);
+        bus.Deassert(SignalLine.IRQ, deviceId: 1);
 
-        Assert.That(bus.IsIrqAsserted, Is.False);
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
     }
 
     /// <summary>
@@ -62,144 +62,137 @@ public class SignalBusTests
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
-        bus.Assert(SignalLine.Irq, deviceId: 2, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
+        bus.Assert(SignalLine.IRQ, deviceId: 2);
 
-        Assert.That(bus.IsIrqAsserted, Is.True);
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True);
     }
 
     /// <summary>
-    /// Verifies that IRQ remains asserted until all devices clear.
+    /// Verifies that IRQ remains asserted until all devices deassert.
     /// </summary>
     [Test]
-    public void SignalBus_IrqRemainsAsserted_UntilAllDevicesClear()
+    public void SignalBus_IrqRemainsAsserted_UntilAllDevicesDeassert()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
-        bus.Assert(SignalLine.Irq, deviceId: 2, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
+        bus.Assert(SignalLine.IRQ, deviceId: 2);
 
-        bus.Clear(SignalLine.Irq, deviceId: 1, cycle: 10);
+        bus.Deassert(SignalLine.IRQ, deviceId: 1);
 
-        Assert.That(bus.IsIrqAsserted, Is.True, "IRQ should remain asserted while device 2 holds it");
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True, "IRQ should remain asserted while device 2 holds it");
 
-        bus.Clear(SignalLine.Irq, deviceId: 2, cycle: 20);
+        bus.Deassert(SignalLine.IRQ, deviceId: 2);
 
-        Assert.That(bus.IsIrqAsserted, Is.False, "IRQ should be clear when all devices release");
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False, "IRQ should be clear when all devices release");
     }
 
     /// <summary>
-    /// Verifies that Assert sets IsNmiAsserted to true.
+    /// Verifies that Assert sets NMI to asserted.
     /// </summary>
     [Test]
     public void SignalBus_Assert_SetsNmiAsserted()
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Nmi, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.NMI, deviceId: 1);
 
-        Assert.That(bus.IsNmiAsserted, Is.True);
+        Assert.That(bus.IsAsserted(SignalLine.NMI), Is.True);
     }
 
     /// <summary>
-    /// Verifies that NMI edge is detected on transition from clear to asserted.
+    /// Verifies that NMI edge is detected on transition from deasserted to asserted.
     /// </summary>
     [Test]
     public void SignalBus_NmiEdge_DetectedOnRisingEdge()
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Nmi, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.NMI, deviceId: 1);
 
-        Assert.That(bus.IsNmiAsserted, Is.True, "NMI should be asserted after edge");
-
-        bus.Clear(SignalLine.Nmi, deviceId: 1, cycle: 10);
-
-        // NMI edge should still be detected until acknowledged
-        Assert.That(bus.IsNmiAsserted, Is.True, "NMI edge should remain until acknowledged");
+        Assert.That(bus.ConsumeNmiEdge(), Is.True, "NMI edge should be pending after assertion");
     }
 
     /// <summary>
-    /// Verifies that AcknowledgeNmi clears the edge-detected flag.
+    /// Verifies that ConsumeNmiEdge clears the edge-detected flag.
     /// </summary>
     [Test]
-    public void SignalBus_AcknowledgeNmi_ClearsEdgeFlag()
+    public void SignalBus_ConsumeNmiEdge_ClearsEdgeFlag()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Nmi, deviceId: 1, cycle: 0);
-        bus.Clear(SignalLine.Nmi, deviceId: 1, cycle: 10);
+        bus.Assert(SignalLine.NMI, deviceId: 1);
 
-        bus.AcknowledgeNmi(cycle: 20);
+        // Consume the edge
+        bool firstCall = bus.ConsumeNmiEdge();
+        bool secondCall = bus.ConsumeNmiEdge();
 
-        Assert.That(bus.IsNmiAsserted, Is.False, "NMI should be clear after acknowledgment");
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstCall, Is.True, "First call should return true");
+            Assert.That(secondCall, Is.False, "Second call should return false (edge consumed)");
+        });
     }
 
     /// <summary>
-    /// Verifies that Assert sets IsWaiting to true for RDY.
+    /// Verifies that NMI edge remains pending after deassert until consumed.
     /// </summary>
     [Test]
-    public void SignalBus_Assert_SetsWaiting()
+    public void SignalBus_NmiEdge_RemainsPendingAfterDeassert()
     {
         var bus = new SignalBus();
+        bus.Assert(SignalLine.NMI, deviceId: 1);
+        bus.Deassert(SignalLine.NMI, deviceId: 1);
 
-        bus.Assert(SignalLine.Rdy, deviceId: 1, cycle: 0);
-
-        Assert.That(bus.IsWaiting, Is.True);
+        Assert.That(bus.ConsumeNmiEdge(), Is.True, "NMI edge should remain until consumed");
     }
 
     /// <summary>
-    /// Verifies that Assert sets IsDmaRequested to true for DmaReq.
+    /// Verifies that Assert sets RDY to asserted.
+    /// </summary>
+    [Test]
+    public void SignalBus_Assert_SetsRdyAsserted()
+    {
+        var bus = new SignalBus();
+
+        bus.Assert(SignalLine.RDY, deviceId: 1);
+
+        Assert.That(bus.IsAsserted(SignalLine.RDY), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that Assert sets DmaReq to asserted.
     /// </summary>
     [Test]
     public void SignalBus_Assert_SetsDmaRequested()
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.DmaReq, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.DmaReq, deviceId: 1);
 
-        Assert.That(bus.IsDmaRequested, Is.True);
+        Assert.That(bus.IsAsserted(SignalLine.DmaReq), Is.True);
     }
 
     /// <summary>
-    /// Verifies that Sample returns Asserted when line is asserted.
+    /// Verifies that IsAsserted returns true when line is asserted.
     /// </summary>
     [Test]
-    public void SignalBus_Sample_ReturnsAssertedWhenAsserted()
+    public void SignalBus_IsAsserted_ReturnsTrueWhenAsserted()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        var state = bus.Sample(SignalLine.Irq);
-
-        Assert.That(state, Is.EqualTo(SignalState.Asserted));
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True);
     }
 
     /// <summary>
-    /// Verifies that Sample returns Clear when line is not asserted.
+    /// Verifies that IsAsserted returns false when line is not asserted.
     /// </summary>
     [Test]
-    public void SignalBus_Sample_ReturnsClearWhenNotAsserted()
+    public void SignalBus_IsAsserted_ReturnsFalseWhenNotAsserted()
     {
         var bus = new SignalBus();
 
-        var state = bus.Sample(SignalLine.Irq);
-
-        Assert.That(state, Is.EqualTo(SignalState.Clear));
-    }
-
-    /// <summary>
-    /// Verifies that Sample for NMI includes edge-detected state.
-    /// </summary>
-    [Test]
-    public void SignalBus_SampleNmi_IncludesEdgeState()
-    {
-        var bus = new SignalBus();
-        bus.Assert(SignalLine.Nmi, deviceId: 1, cycle: 0);
-        bus.Clear(SignalLine.Nmi, deviceId: 1, cycle: 10);
-
-        // Edge should still be detected
-        var state = bus.Sample(SignalLine.Nmi);
-
-        Assert.That(state, Is.EqualTo(SignalState.Asserted), "Sample should return Asserted while edge is pending");
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
     }
 
     /// <summary>
@@ -209,19 +202,19 @@ public class SignalBusTests
     public void SignalBus_Reset_ClearsAllSignals()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
-        bus.Assert(SignalLine.Nmi, deviceId: 2, cycle: 0);
-        bus.Assert(SignalLine.Rdy, deviceId: 3, cycle: 0);
-        bus.Assert(SignalLine.DmaReq, deviceId: 4, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
+        bus.Assert(SignalLine.NMI, deviceId: 2);
+        bus.Assert(SignalLine.RDY, deviceId: 3);
+        bus.Assert(SignalLine.DmaReq, deviceId: 4);
 
         bus.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(bus.IsIrqAsserted, Is.False);
-            Assert.That(bus.IsNmiAsserted, Is.False);
-            Assert.That(bus.IsWaiting, Is.False);
-            Assert.That(bus.IsDmaRequested, Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.NMI), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.RDY), Is.False);
+            Assert.That(bus.IsAsserted(SignalLine.DmaReq), Is.False);
         });
     }
 
@@ -232,27 +225,27 @@ public class SignalBusTests
     public void SignalBus_Reset_ClearsNmiEdgeFlag()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Nmi, deviceId: 1, cycle: 0);
-        bus.Clear(SignalLine.Nmi, deviceId: 1, cycle: 10);
+        bus.Assert(SignalLine.NMI, deviceId: 1);
+        bus.Deassert(SignalLine.NMI, deviceId: 1);
 
         bus.Reset();
 
-        Assert.That(bus.IsNmiAsserted, Is.False, "NMI edge should be cleared by Reset");
+        Assert.That(bus.ConsumeNmiEdge(), Is.False, "NMI edge should be cleared by Reset");
     }
 
     /// <summary>
-    /// Verifies that Clear for non-asserting device has no effect.
+    /// Verifies that Deassert for non-asserting device has no effect.
     /// </summary>
     [Test]
-    public void SignalBus_Clear_ForNonAssertingDevice_NoEffect()
+    public void SignalBus_Deassert_ForNonAssertingDevice_NoEffect()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        // Device 2 never asserted, so clear should have no effect
-        bus.Clear(SignalLine.Irq, deviceId: 2, cycle: 10);
+        // Device 2 never asserted, so deassert should have no effect
+        bus.Deassert(SignalLine.IRQ, deviceId: 2);
 
-        Assert.That(bus.IsIrqAsserted, Is.True, "IRQ should remain asserted");
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True, "IRQ should remain asserted");
     }
 
     /// <summary>
@@ -263,22 +256,9 @@ public class SignalBusTests
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Reset, deviceId: 1, cycle: 0);
+        bus.Assert(SignalLine.Reset, deviceId: 1);
 
-        Assert.That(bus.Sample(SignalLine.Reset), Is.EqualTo(SignalState.Asserted));
-    }
-
-    /// <summary>
-    /// Verifies that asserting BusEnable signal works correctly.
-    /// </summary>
-    [Test]
-    public void SignalBus_Assert_BusEnableSignal()
-    {
-        var bus = new SignalBus();
-
-        bus.Assert(SignalLine.BusEnable, deviceId: 1, cycle: 0);
-
-        Assert.That(bus.Sample(SignalLine.BusEnable), Is.EqualTo(SignalState.Asserted));
+        Assert.That(bus.IsAsserted(SignalLine.Reset), Is.True);
     }
 
     /// <summary>
@@ -289,161 +269,114 @@ public class SignalBusTests
     {
         var bus = new SignalBus();
 
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 5);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        Assert.That(bus.IsIrqAsserted, Is.True);
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True);
 
-        // Single clear should deassert
-        bus.Clear(SignalLine.Irq, deviceId: 1, cycle: 10);
+        // Single deassert should deassert
+        bus.Deassert(SignalLine.IRQ, deviceId: 1);
 
-        Assert.That(bus.IsIrqAsserted, Is.False);
+        Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
     }
 
     /// <summary>
-    /// Verifies that TotalFetchCycles starts at zero.
+    /// Verifies that SignalChanged event fires on state transition.
     /// </summary>
     [Test]
-    public void SignalBus_NewInstance_TotalFetchCyclesIsZero()
+    public void SignalBus_SignalChanged_FiresOnTransition()
     {
         var bus = new SignalBus();
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, ulong Cycle)>();
+        bus.SignalChanged += (line, asserted, deviceId, cycle) =>
+            events.Add((line, asserted, deviceId, cycle));
 
-        Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
-    }
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-    /// <summary>
-    /// Verifies that TotalExecuteCycles starts at zero.
-    /// </summary>
-    [Test]
-    public void SignalBus_NewInstance_TotalExecuteCyclesIsZero()
-    {
-        var bus = new SignalBus();
-
-        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
-    }
-
-    /// <summary>
-    /// Verifies that TotalCpuCycles starts at zero.
-    /// </summary>
-    [Test]
-    public void SignalBus_NewInstance_TotalCpuCyclesIsZero()
-    {
-        var bus = new SignalBus();
-
-        Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
-    }
-
-    /// <summary>
-    /// Verifies that SignalInstructionFetched accumulates cycles.
-    /// </summary>
-    [Test]
-    public void SignalBus_SignalInstructionFetched_AccumulatesCycles()
-    {
-        var bus = new SignalBus();
-
-        bus.SignalInstructionFetched(3);
-        Assert.That(bus.TotalFetchCycles, Is.EqualTo(3ul));
-
-        bus.SignalInstructionFetched(2);
-        Assert.That(bus.TotalFetchCycles, Is.EqualTo(5ul));
-    }
-
-    /// <summary>
-    /// Verifies that SignalInstructionExecuted accumulates cycles.
-    /// </summary>
-    [Test]
-    public void SignalBus_SignalInstructionExecuted_AccumulatesCycles()
-    {
-        var bus = new SignalBus();
-
-        bus.SignalInstructionExecuted(4);
-        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4ul));
-
-        bus.SignalInstructionExecuted(2);
-        Assert.That(bus.TotalExecuteCycles, Is.EqualTo(6ul));
-    }
-
-    /// <summary>
-    /// Verifies that TotalCpuCycles is the sum of fetch and execute cycles.
-    /// </summary>
-    [Test]
-    public void SignalBus_TotalCpuCycles_IsSumOfFetchAndExecute()
-    {
-        var bus = new SignalBus();
-
-        bus.SignalInstructionFetched(3);
-        bus.SignalInstructionExecuted(4);
-
+        Assert.That(events, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
         {
-            Assert.That(bus.TotalFetchCycles, Is.EqualTo(3ul));
-            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4ul));
-            Assert.That(bus.TotalCpuCycles, Is.EqualTo(7ul));
+            Assert.That(events[0].Line, Is.EqualTo(SignalLine.IRQ));
+            Assert.That(events[0].Asserted, Is.True);
+            Assert.That(events[0].DeviceId, Is.EqualTo(1));
         });
     }
 
     /// <summary>
-    /// Verifies that Reset clears CPU cycle counters.
+    /// Verifies that SignalChanged event does not fire when state doesn't change.
     /// </summary>
     [Test]
-    public void SignalBus_Reset_ClearsCycleCounters()
+    public void SignalBus_SignalChanged_DoesNotFireWhenNoStateChange()
     {
         var bus = new SignalBus();
-        bus.SignalInstructionFetched(10);
-        bus.SignalInstructionExecuted(20);
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
 
-        bus.Reset();
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, ulong Cycle)>();
+        bus.SignalChanged += (line, asserted, deviceId, cycle) =>
+            events.Add((line, asserted, deviceId, cycle));
 
+        // Second device asserts - line already asserted, no state change
+        bus.Assert(SignalLine.IRQ, deviceId: 2);
+
+        Assert.That(events, Is.Empty, "Event should not fire when state doesn't change");
+    }
+
+    /// <summary>
+    /// Verifies that SignalChanged event fires on deassert.
+    /// </summary>
+    [Test]
+    public void SignalBus_SignalChanged_FiresOnDeassert()
+    {
+        var bus = new SignalBus();
+        bus.Assert(SignalLine.IRQ, deviceId: 1);
+
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, ulong Cycle)>();
+        bus.SignalChanged += (line, asserted, deviceId, cycle) =>
+            events.Add((line, asserted, deviceId, cycle));
+
+        bus.Deassert(SignalLine.IRQ, deviceId: 1);
+
+        Assert.That(events, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
         {
-            Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
-            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
-            Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
+            Assert.That(events[0].Line, Is.EqualTo(SignalLine.IRQ));
+            Assert.That(events[0].Asserted, Is.False);
+            Assert.That(events[0].DeviceId, Is.EqualTo(1));
         });
     }
 
     /// <summary>
-    /// Verifies that ResetCycleCounters clears counters without affecting signals.
+    /// Verifies that NMI edge is not detected on re-assertion without deassert.
     /// </summary>
     [Test]
-    public void SignalBus_ResetCycleCounters_ClearsCountersOnly()
+    public void SignalBus_NmiEdge_NotDetectedOnReassertWithoutDeassert()
     {
         var bus = new SignalBus();
-        bus.Assert(SignalLine.Irq, deviceId: 1, cycle: 0);
-        bus.SignalInstructionFetched(10);
-        bus.SignalInstructionExecuted(20);
+        bus.Assert(SignalLine.NMI, deviceId: 1);
 
-        bus.ResetCycleCounters();
+        // Consume the first edge
+        bus.ConsumeNmiEdge();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(bus.TotalFetchCycles, Is.EqualTo(0ul));
-            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(0ul));
-            Assert.That(bus.TotalCpuCycles, Is.EqualTo(0ul));
-            Assert.That(bus.IsIrqAsserted, Is.True, "IRQ should still be asserted");
-        });
+        // Assert again from another device while still asserted
+        bus.Assert(SignalLine.NMI, deviceId: 2);
+
+        Assert.That(bus.ConsumeNmiEdge(), Is.False, "No new edge should be detected when line was already asserted");
     }
 
     /// <summary>
-    /// Verifies cycle counting works with many signals.
+    /// Verifies that new NMI edge is detected after full deassert/assert cycle.
     /// </summary>
     [Test]
-    public void SignalBus_CycleCounters_WorkWithManyCycles()
+    public void SignalBus_NmiEdge_DetectedAfterFullCycle()
     {
         var bus = new SignalBus();
+        bus.Assert(SignalLine.NMI, deviceId: 1);
+        bus.ConsumeNmiEdge();
+        bus.Deassert(SignalLine.NMI, deviceId: 1);
 
-        // Simulate 1000 instructions worth of cycles
-        for (int i = 0; i < 1000; i++)
-        {
-            bus.SignalInstructionFetched(2);
-            bus.SignalInstructionExecuted(4);
-        }
+        // Now assert again - should detect new edge
+        bus.Assert(SignalLine.NMI, deviceId: 1);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(bus.TotalFetchCycles, Is.EqualTo(2000ul));
-            Assert.That(bus.TotalExecuteCycles, Is.EqualTo(4000ul));
-            Assert.That(bus.TotalCpuCycles, Is.EqualTo(6000ul));
-        });
+        Assert.That(bus.ConsumeNmiEdge(), Is.True, "New edge should be detected after full deassert/assert cycle");
     }
 }

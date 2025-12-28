@@ -17,14 +17,14 @@ public class SignalEdgeTests
     public void SignalEdge_CanBeCreatedWithProperties()
     {
         var edge = new SignalEdge(
-            Line: SignalLine.Irq,
+            Line: SignalLine.IRQ,
             NewState: SignalState.Asserted,
             DeviceId: 5,
             Cycle: 12345ul);
 
         Assert.Multiple(() =>
         {
-            Assert.That(edge.Line, Is.EqualTo(SignalLine.Irq));
+            Assert.That(edge.Line, Is.EqualTo(SignalLine.IRQ));
             Assert.That(edge.NewState, Is.EqualTo(SignalState.Asserted));
             Assert.That(edge.DeviceId, Is.EqualTo(5));
             Assert.That(edge.Cycle, Is.EqualTo(12345ul));
@@ -37,7 +37,7 @@ public class SignalEdgeTests
     [Test]
     public void SignalEdge_IsRisingEdge_TrueWhenAsserted()
     {
-        var edge = new SignalEdge(SignalLine.Irq, SignalState.Asserted, 1, 100);
+        var edge = new SignalEdge(SignalLine.IRQ, SignalState.Asserted, 1, 100);
         Assert.That(edge.IsRisingEdge, Is.True);
     }
 
@@ -47,7 +47,7 @@ public class SignalEdgeTests
     [Test]
     public void SignalEdge_IsRisingEdge_FalseWhenClear()
     {
-        var edge = new SignalEdge(SignalLine.Irq, SignalState.Clear, 1, 100);
+        var edge = new SignalEdge(SignalLine.IRQ, SignalState.Clear, 1, 100);
         Assert.That(edge.IsRisingEdge, Is.False);
     }
 
@@ -57,7 +57,7 @@ public class SignalEdgeTests
     [Test]
     public void SignalEdge_IsFallingEdge_TrueWhenClear()
     {
-        var edge = new SignalEdge(SignalLine.Nmi, SignalState.Clear, 2, 200);
+        var edge = new SignalEdge(SignalLine.NMI, SignalState.Clear, 2, 200);
         Assert.That(edge.IsFallingEdge, Is.True);
     }
 
@@ -67,7 +67,7 @@ public class SignalEdgeTests
     [Test]
     public void SignalEdge_IsFallingEdge_FalseWhenAsserted()
     {
-        var edge = new SignalEdge(SignalLine.Nmi, SignalState.Asserted, 2, 200);
+        var edge = new SignalEdge(SignalLine.NMI, SignalState.Asserted, 2, 200);
         Assert.That(edge.IsFallingEdge, Is.False);
     }
 
@@ -77,9 +77,9 @@ public class SignalEdgeTests
     [Test]
     public void SignalEdge_RecordEquality_Works()
     {
-        var edge1 = new SignalEdge(SignalLine.Irq, SignalState.Asserted, 1, 100);
-        var edge2 = new SignalEdge(SignalLine.Irq, SignalState.Asserted, 1, 100);
-        var edge3 = new SignalEdge(SignalLine.Nmi, SignalState.Asserted, 1, 100);
+        var edge1 = new SignalEdge(SignalLine.IRQ, SignalState.Asserted, 1, 100);
+        var edge2 = new SignalEdge(SignalLine.IRQ, SignalState.Asserted, 1, 100);
+        var edge3 = new SignalEdge(SignalLine.NMI, SignalState.Asserted, 1, 100);
 
         Assert.Multiple(() =>
         {

@@ -7,7 +7,7 @@ namespace BadMango.Emulator.Bus;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Default implementation of <see cref="ISignalBus"/> for signal fabric management.
+/// Implementation tracks multiple asserters per line.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,158 +18,91 @@ using System.Runtime.CompilerServices;
 /// </para>
 /// <para>
 /// This implementation supports multiple devices asserting the same line simultaneously.
-/// A line remains asserted as long as at least one device holds it low.
+/// A line remains asserted as long as at least one device holds it asserted.
 /// </para>
 /// <para>
-/// NMI is edge-triggered: the signal edge is detected when transitioning from clear to asserted,
-/// and the CPU must acknowledge the NMI before another edge can be detected.
-/// </para>
-/// <para>
-/// The signal bus also tracks CPU cycle signals for scheduler integration. When the CPU
-/// signals instruction fetch or execution, the cycle counts are accumulated and can be
-/// used by the scheduler to advance time.
+/// NMI is edge-triggered: the signal edge is detected when transitioning from deasserted to asserted,
+/// and the CPU must consume the edge before another edge can be detected.
 /// </para>
 /// </remarks>
 public sealed class SignalBus : ISignalBus
 {
-    private readonly Dictionary<SignalLine, HashSet<int>> asserters = [];
-    private bool nmiEdgeDetected;
-    private ulong totalFetchCycles;
-    private ulong totalExecuteCycles;
+    private readonly HashSet<int>[] asserters;
+    private bool nmiEdgePending;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SignalBus"/> class.
     /// </summary>
     public SignalBus()
     {
-        foreach (SignalLine line in Enum.GetValues<SignalLine>())
+        asserters = new HashSet<int>[Enum.GetValues<SignalLine>().Length];
+        for (int i = 0; i < asserters.Length; i++)
         {
-            asserters[line] = [];
+            asserters[i] = [];
         }
     }
 
     /// <inheritdoc />
-    public bool IsIrqAsserted
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => asserters[SignalLine.Irq].Count > 0;
-    }
+    public event Action<SignalLine, bool, int, ulong>? SignalChanged;
 
     /// <inheritdoc />
-    public bool IsNmiAsserted
+    public void Assert(SignalLine line, int deviceId)
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => nmiEdgeDetected || asserters[SignalLine.Nmi].Count > 0;
-    }
+        bool wasAsserted = IsAsserted(line);
+        asserters[(int)line].Add(deviceId);
+        bool nowAsserted = IsAsserted(line);
 
-    /// <inheritdoc />
-    public bool IsWaiting
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => asserters[SignalLine.Rdy].Count > 0;
-    }
-
-    /// <inheritdoc />
-    public bool IsDmaRequested
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => asserters[SignalLine.DmaReq].Count > 0;
-    }
-
-    /// <inheritdoc />
-    public ulong TotalFetchCycles
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => totalFetchCycles;
-    }
-
-    /// <inheritdoc />
-    public ulong TotalExecuteCycles
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => totalExecuteCycles;
-    }
-
-    /// <inheritdoc />
-    public ulong TotalCpuCycles
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => totalFetchCycles + totalExecuteCycles;
-    }
-
-    /// <inheritdoc />
-    public void Assert(SignalLine line, int deviceId, ulong cycle)
-    {
-        var lineAsserters = asserters[line];
-        bool wasAsserted = lineAsserters.Count > 0;
-        lineAsserters.Add(deviceId);
-
-        // NMI edge detection: detect rising edge (clear to asserted)
-        if (line == SignalLine.Nmi && !wasAsserted)
+        // NMI edge detection (low-to-high transition)
+        if (line == SignalLine.NMI && !wasAsserted && nowAsserted)
         {
-            nmiEdgeDetected = true;
+            nmiEdgePending = true;
+        }
+
+        if (wasAsserted != nowAsserted)
+        {
+            SignalChanged?.Invoke(line, nowAsserted, deviceId, 0);
         }
     }
 
     /// <inheritdoc />
-    public void Clear(SignalLine line, int deviceId, ulong cycle)
+    public void Deassert(SignalLine line, int deviceId)
     {
-        asserters[line].Remove(deviceId);
+        bool wasAsserted = IsAsserted(line);
+        asserters[(int)line].Remove(deviceId);
+        bool nowAsserted = IsAsserted(line);
+
+        if (wasAsserted != nowAsserted)
+        {
+            SignalChanged?.Invoke(line, nowAsserted, deviceId, 0);
+        }
     }
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SignalState Sample(SignalLine line)
-    {
-        if (line == SignalLine.Nmi)
-        {
-            return nmiEdgeDetected || asserters[line].Count > 0
-                ? SignalState.Asserted
-                : SignalState.Clear;
-        }
-
-        return asserters[line].Count > 0
-            ? SignalState.Asserted
-            : SignalState.Clear;
-    }
+    public bool IsAsserted(SignalLine line)
+        => asserters[(int)line].Count > 0;
 
     /// <inheritdoc />
-    public void AcknowledgeNmi(ulong cycle)
+    public bool ConsumeNmiEdge()
     {
-        nmiEdgeDetected = false;
+        bool pending = nmiEdgePending;
+        nmiEdgePending = false;
+        return pending;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Resets all signal lines to their default (deasserted) state.
+    /// </summary>
+    /// <remarks>
+    /// Called during system reset to ensure all signals start in a known state.
+    /// </remarks>
     public void Reset()
     {
-        foreach (var set in asserters.Values)
+        foreach (var set in asserters)
         {
             set.Clear();
         }
 
-        nmiEdgeDetected = false;
-        totalFetchCycles = 0;
-        totalExecuteCycles = 0;
-    }
-
-    /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SignalInstructionFetched(ulong cycles)
-    {
-        totalFetchCycles += cycles;
-    }
-
-    /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SignalInstructionExecuted(ulong cycles)
-    {
-        totalExecuteCycles += cycles;
-    }
-
-    /// <inheritdoc />
-    public void ResetCycleCounters()
-    {
-        totalFetchCycles = 0;
-        totalExecuteCycles = 0;
+        nmiEdgePending = false;
     }
 }

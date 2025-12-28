@@ -1,79 +1,79 @@
-// <copyright file="CyclesTests.cs" company="Bad Mango Solutions">
+// <copyright file="CycleTests.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Bus.Tests;
 
 /// <summary>
-/// Unit tests for the <see cref="Cycles"/> record struct.
+/// Unit tests for the <see cref="Cycle"/> record struct.
 /// </summary>
 [TestFixture]
-public class CyclesTests
+public class CycleTests
 {
     /// <summary>
-    /// Verifies that Cycles.Zero returns a zero value.
+    /// Verifies that Cycle.Zero returns a zero value.
     /// </summary>
     [Test]
-    public void Cycles_Zero_ReturnsZeroValue()
+    public void Cycle_Zero_ReturnsZeroValue()
     {
-        var cycles = Cycles.Zero;
+        var cycle = Cycle.Zero;
 
-        Assert.That(cycles.Value, Is.EqualTo(0ul));
+        Assert.That(cycle.Value, Is.EqualTo(0ul));
     }
 
     /// <summary>
-    /// Verifies that Cycles.One returns a one value.
+    /// Verifies that Cycle.One returns a one value.
     /// </summary>
     [Test]
-    public void Cycles_One_ReturnsOneValue()
+    public void Cycle_One_ReturnsOneValue()
     {
-        var cycles = Cycles.One;
+        var cycle = Cycle.One;
 
-        Assert.That(cycles.Value, Is.EqualTo(1ul));
+        Assert.That(cycle.Value, Is.EqualTo(1ul));
     }
 
     /// <summary>
-    /// Verifies that Cycles can be created with a value.
+    /// Verifies that Cycle can be created with a value.
     /// </summary>
     [Test]
-    public void Cycles_CanBeCreatedWithValue()
+    public void Cycle_CanBeCreatedWithValue()
     {
-        var cycles = new Cycles(100ul);
+        var cycle = new Cycle(100ul);
 
-        Assert.That(cycles.Value, Is.EqualTo(100ul));
+        Assert.That(cycle.Value, Is.EqualTo(100ul));
     }
 
     /// <summary>
-    /// Verifies implicit conversion from ulong to Cycles.
+    /// Verifies implicit conversion from ulong to Cycle.
     /// </summary>
     [Test]
-    public void Cycles_ImplicitConversion_FromUlong()
+    public void Cycle_ImplicitConversion_FromUlong()
     {
-        Cycles cycles = 500ul;
+        Cycle cycle = 500ul;
 
-        Assert.That(cycles.Value, Is.EqualTo(500ul));
+        Assert.That(cycle.Value, Is.EqualTo(500ul));
     }
 
     /// <summary>
-    /// Verifies explicit conversion from Cycles to ulong.
+    /// Verifies implicit conversion from Cycle to ulong.
     /// </summary>
     [Test]
-    public void Cycles_ExplicitConversion_ToUlong()
+    public void Cycle_ImplicitConversion_ToUlong()
     {
-        var cycles = new Cycles(250ul);
-        ulong value = (ulong)cycles;
+        var cycle = new Cycle(250ul);
+        ulong value = cycle;
 
         Assert.That(value, Is.EqualTo(250ul));
     }
 
     /// <summary>
-    /// Verifies addition of two Cycles values.
+    /// Verifies addition of two Cycle values.
     /// </summary>
     [Test]
-    public void Cycles_Addition_ReturnsCorrectSum()
+    public void Cycle_Addition_ReturnsCorrectSum()
     {
-        var a = new Cycles(100ul);
-        var b = new Cycles(50ul);
+        var a = new Cycle(100ul);
+        var b = new Cycle(50ul);
 
         var result = a + b;
 
@@ -81,13 +81,13 @@ public class CyclesTests
     }
 
     /// <summary>
-    /// Verifies subtraction of two Cycles values.
+    /// Verifies subtraction of two Cycle values.
     /// </summary>
     [Test]
-    public void Cycles_Subtraction_ReturnsCorrectDifference()
+    public void Cycle_Subtraction_ReturnsCorrectDifference()
     {
-        var a = new Cycles(100ul);
-        var b = new Cycles(30ul);
+        var a = new Cycle(100ul);
+        var b = new Cycle(30ul);
 
         var result = a - b;
 
@@ -98,11 +98,11 @@ public class CyclesTests
     /// Verifies less-than comparison.
     /// </summary>
     [Test]
-    public void Cycles_LessThan_ReturnsCorrectResult()
+    public void Cycle_LessThan_ReturnsCorrectResult()
     {
-        var a = new Cycles(50ul);
-        var b = new Cycles(100ul);
-        var c = new Cycles(50ul);
+        var a = new Cycle(50ul);
+        var b = new Cycle(100ul);
+        var c = new Cycle(50ul);
 
         Assert.Multiple(() =>
         {
@@ -116,11 +116,11 @@ public class CyclesTests
     /// Verifies greater-than comparison.
     /// </summary>
     [Test]
-    public void Cycles_GreaterThan_ReturnsCorrectResult()
+    public void Cycle_GreaterThan_ReturnsCorrectResult()
     {
-        var a = new Cycles(100ul);
-        var b = new Cycles(50ul);
-        var c = new Cycles(100ul);
+        var a = new Cycle(100ul);
+        var b = new Cycle(50ul);
+        var c = new Cycle(100ul);
 
         Assert.Multiple(() =>
         {
@@ -134,11 +134,11 @@ public class CyclesTests
     /// Verifies less-than-or-equal comparison.
     /// </summary>
     [Test]
-    public void Cycles_LessThanOrEqual_ReturnsCorrectResult()
+    public void Cycle_LessThanOrEqual_ReturnsCorrectResult()
     {
-        var a = new Cycles(50ul);
-        var b = new Cycles(100ul);
-        var c = new Cycles(50ul);
+        var a = new Cycle(50ul);
+        var b = new Cycle(100ul);
+        var c = new Cycle(50ul);
 
         Assert.Multiple(() =>
         {
@@ -152,11 +152,11 @@ public class CyclesTests
     /// Verifies greater-than-or-equal comparison.
     /// </summary>
     [Test]
-    public void Cycles_GreaterThanOrEqual_ReturnsCorrectResult()
+    public void Cycle_GreaterThanOrEqual_ReturnsCorrectResult()
     {
-        var a = new Cycles(100ul);
-        var b = new Cycles(50ul);
-        var c = new Cycles(100ul);
+        var a = new Cycle(100ul);
+        var b = new Cycle(50ul);
+        var c = new Cycle(100ul);
 
         Assert.Multiple(() =>
         {
@@ -170,11 +170,11 @@ public class CyclesTests
     /// Verifies CompareTo returns correct ordering.
     /// </summary>
     [Test]
-    public void Cycles_CompareTo_ReturnsCorrectOrdering()
+    public void Cycle_CompareTo_ReturnsCorrectOrdering()
     {
-        var a = new Cycles(50ul);
-        var b = new Cycles(100ul);
-        var c = new Cycles(50ul);
+        var a = new Cycle(50ul);
+        var b = new Cycle(100ul);
+        var c = new Cycle(50ul);
 
         Assert.Multiple(() =>
         {
@@ -188,11 +188,11 @@ public class CyclesTests
     /// Verifies record equality.
     /// </summary>
     [Test]
-    public void Cycles_RecordEquality_Works()
+    public void Cycle_RecordEquality_Works()
     {
-        var a = new Cycles(100ul);
-        var b = new Cycles(100ul);
-        var c = new Cycles(50ul);
+        var a = new Cycle(100ul);
+        var b = new Cycle(100ul);
+        var c = new Cycle(50ul);
 
         Assert.Multiple(() =>
         {
@@ -205,27 +205,27 @@ public class CyclesTests
     /// Verifies ToString returns descriptive string.
     /// </summary>
     [Test]
-    public void Cycles_ToString_ReturnsDescriptiveString()
+    public void Cycle_ToString_ReturnsDescriptiveString()
     {
-        var cycles = new Cycles(123ul);
+        var cycle = new Cycle(123ul);
 
-        Assert.That(cycles.ToString(), Is.EqualTo("123 cycles"));
+        Assert.That(cycle.ToString(), Is.EqualTo("123 cycles"));
     }
 
     /// <summary>
     /// Verifies the prefix increment operator returns incremented value.
     /// </summary>
     [Test]
-    public void Cycles_PrefixIncrement_ReturnsIncrementedValue()
+    public void Cycle_PrefixIncrement_ReturnsIncrementedValue()
     {
-        var cycles = new Cycles(100ul);
+        var cycle = new Cycle(100ul);
 
-        var result = ++cycles;
+        var result = ++cycle;
 
         Assert.Multiple(() =>
         {
             Assert.That(result.Value, Is.EqualTo(101ul));
-            Assert.That(cycles.Value, Is.EqualTo(101ul));
+            Assert.That(cycle.Value, Is.EqualTo(101ul));
         });
     }
 
@@ -233,16 +233,16 @@ public class CyclesTests
     /// Verifies the postfix increment operator returns original value and increments.
     /// </summary>
     [Test]
-    public void Cycles_PostfixIncrement_ReturnsOriginalValueThenIncrements()
+    public void Cycle_PostfixIncrement_ReturnsOriginalValueThenIncrements()
     {
-        var cycles = new Cycles(100ul);
+        var cycle = new Cycle(100ul);
 
-        var result = cycles++;
+        var result = cycle++;
 
         Assert.Multiple(() =>
         {
             Assert.That(result.Value, Is.EqualTo(100ul));
-            Assert.That(cycles.Value, Is.EqualTo(101ul));
+            Assert.That(cycle.Value, Is.EqualTo(101ul));
         });
     }
 
@@ -250,51 +250,51 @@ public class CyclesTests
     /// Verifies the compound assignment operator (+=) works correctly.
     /// </summary>
     [Test]
-    public void Cycles_CompoundAddition_ReturnsCorrectSum()
+    public void Cycle_CompoundAddition_ReturnsCorrectSum()
     {
-        var cycles = new Cycles(100ul);
+        var cycle = new Cycle(100ul);
 
-        cycles += new Cycles(50ul);
+        cycle += new Cycle(50ul);
 
-        Assert.That(cycles.Value, Is.EqualTo(150ul));
+        Assert.That(cycle.Value, Is.EqualTo(150ul));
     }
 
     /// <summary>
     /// Verifies the compound subtraction operator (-=) works correctly.
     /// </summary>
     [Test]
-    public void Cycles_CompoundSubtraction_ReturnsCorrectDifference()
+    public void Cycle_CompoundSubtraction_ReturnsCorrectDifference()
     {
-        var cycles = new Cycles(100ul);
+        var cycle = new Cycle(100ul);
 
-        cycles -= new Cycles(30ul);
+        cycle -= new Cycle(30ul);
 
-        Assert.That(cycles.Value, Is.EqualTo(70ul));
+        Assert.That(cycle.Value, Is.EqualTo(70ul));
     }
 
     /// <summary>
     /// Verifies increment from zero works correctly.
     /// </summary>
     [Test]
-    public void Cycles_IncrementFromZero_ReturnsOne()
+    public void Cycle_IncrementFromZero_ReturnsOne()
     {
-        var cycles = Cycles.Zero;
+        var cycle = Cycle.Zero;
 
-        cycles++;
+        cycle++;
 
-        Assert.That(cycles.Value, Is.EqualTo(1ul));
+        Assert.That(cycle.Value, Is.EqualTo(1ul));
     }
 
     /// <summary>
     /// Verifies increment from One constant works correctly.
     /// </summary>
     [Test]
-    public void Cycles_IncrementFromOne_ReturnsTwo()
+    public void Cycle_IncrementFromOne_ReturnsTwo()
     {
-        var cycles = Cycles.One;
+        var cycle = Cycle.One;
 
-        cycles++;
+        cycle++;
 
-        Assert.That(cycles.Value, Is.EqualTo(2ul));
+        Assert.That(cycle.Value, Is.EqualTo(2ul));
     }
 }
