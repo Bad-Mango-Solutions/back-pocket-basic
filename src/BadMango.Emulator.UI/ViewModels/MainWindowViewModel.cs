@@ -6,9 +6,9 @@ namespace BadMango.Emulator.UI.ViewModels;
 
 using System.Collections.ObjectModel;
 
-using BadMango.Emulator.Configuration.Events;
 using BadMango.Emulator.Configuration.Services;
 using BadMango.Emulator.Infrastructure.Events;
+using BadMango.Emulator.UI.Abstractions.Events;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels.Settings;
 
@@ -24,7 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
     private readonly ISettingsService? settingsService;
-    private readonly IDisposable? settingsSubscription;
+    private readonly IDisposable? themeSubscription;
     private bool disposed;
 
     /// <summary>
@@ -68,10 +68,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         this.navigationService = navigationService;
         this.settingsService = settingsService;
 
-        // Subscribe to settings changes via event aggregator for loose coupling
+        // Subscribe to theme changes via event aggregator for loose coupling
+        // ThemeService handles SettingsChangedEvent and publishes ThemeChangedEvent
         if (eventAggregator is not null)
         {
-            settingsSubscription = eventAggregator.Subscribe<SettingsChangedEvent>(OnSettingsChanged);
+            themeSubscription = eventAggregator.Subscribe<ThemeChangedEvent>(OnThemeChanged);
         }
 
         // Initialize navigation items
@@ -116,7 +117,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (disposing)
             {
                 // Unsubscribe from event aggregator
-                settingsSubscription?.Dispose();
+                themeSubscription?.Dispose();
             }
 
             disposed = true;
@@ -162,28 +163,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Handles settings changed events to synchronize theme with settings.
+    /// Handles theme changed events from the event aggregator.
+    /// Updates the ViewModel's IsDarkTheme property to stay in sync with the theme.
     /// </summary>
-    /// <param name="eventData">The settings changed event data.</param>
-    private void OnSettingsChanged(SettingsChangedEvent eventData)
+    /// <param name="eventData">The theme changed event data.</param>
+    private void OnThemeChanged(ThemeChangedEvent eventData)
     {
-        if (settingsService is null)
+        // Ensure UI operations happen on the UI thread
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            return;
-        }
-
-        // Update theme based on the new settings
-        var newTheme = settingsService.Current.General.Theme;
-        var shouldBeDark = newTheme == "Dark";
-
-        if (shouldBeDark != themeService.IsDarkTheme)
-        {
-            // Ensure UI operations happen on the UI thread
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                IsDarkTheme = shouldBeDark;
-                themeService.SetTheme(shouldBeDark);
-            });
-        }
+            IsDarkTheme = eventData.IsDarkTheme;
+        });
     }
 }

@@ -12,6 +12,7 @@ using Avalonia.Threading;
 using BadMango.Emulator.Configuration.Models;
 using BadMango.Emulator.Configuration.Services;
 using BadMango.Emulator.Infrastructure.Events;
+using BadMango.Emulator.UI.Abstractions.Events;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
@@ -50,7 +51,7 @@ public class SettingsThemeIntegrationTests
 
     /// <summary>
     /// Integration test: User changes theme from Dark to Light via Settings panel.
-    /// Validates the complete flow: Settings panel -> Apply -> SettingsService event -> EventAggregator -> ThemeService -> UI.
+    /// Validates the complete flow: Settings panel -> Apply -> SettingsChangedEvent via EventAggregator -> ThemeService -> ThemeChangedEvent -> MainWindowViewModel -> UI.
     /// </summary>
     /// <returns>A task representing the asynchronous test operation.</returns>
     [AvaloniaTest]
@@ -63,18 +64,22 @@ public class SettingsThemeIntegrationTests
         // Confirm initial state is dark
         Assert.That(settingsService.Current.General.Theme, Is.EqualTo("Dark"));
 
-        var themeService = new ThemeService();
-        Assert.That(themeService.IsDarkTheme, Is.True);
-
         // Create event aggregator for pub/sub messaging
         var eventAggregator = new EventAggregator();
 
         // Create bridge to connect SettingsService events to EventAggregator
         using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
 
-        // Track event firing
+        // Create ThemeService with event aggregator and settings service
+        // ThemeService subscribes to SettingsChangedEvent and publishes ThemeChangedEvent
+        using var themeService = new ThemeService(eventAggregator: eventAggregator, settingsService: settingsService);
+        Assert.That(themeService.IsDarkTheme, Is.True);
+
+        // Track event firing - verify full event aggregator flow
         bool settingsChangedEventFired = false;
+        bool settingsChangedViaAggregator = false;
         bool themeChangedEventFired = false;
+        bool themeChangedViaAggregator = false;
         bool? newThemeIsDark = null;
 
         settingsService.SettingsChanged += (_, args) =>
@@ -82,11 +87,23 @@ public class SettingsThemeIntegrationTests
             settingsChangedEventFired = true;
         };
 
+        // Subscribe to SettingsChangedEvent via EventAggregator to verify pub/sub flow
+        using var settingsAggregatorSubscription = eventAggregator.Subscribe<Configuration.Events.SettingsChangedEvent>(evt =>
+        {
+            settingsChangedViaAggregator = true;
+        });
+
         themeService.ThemeChanged += (_, isDark) =>
         {
             themeChangedEventFired = true;
             newThemeIsDark = isDark;
         };
+
+        // Subscribe to ThemeChangedEvent via EventAggregator to verify pub/sub flow
+        using var themeAggregatorSubscription = eventAggregator.Subscribe<ThemeChangedEvent>(evt =>
+        {
+            themeChangedViaAggregator = true;
+        });
 
         // Create main window with services - uses event aggregator for loose coupling
         var navigationService = new NavigationService();
@@ -134,11 +151,17 @@ public class SettingsThemeIntegrationTests
         // Assert - Verify the complete event chain
         Assert.Multiple(() =>
         {
-            // Settings service event was fired
-            Assert.That(settingsChangedEventFired, Is.True, "SettingsChanged event should fire");
+            // Settings service direct event was fired
+            Assert.That(settingsChangedEventFired, Is.True, "SettingsChanged direct event should fire");
 
-            // Theme service event was fired
-            Assert.That(themeChangedEventFired, Is.True, "ThemeChanged event should fire");
+            // SettingsChangedEvent was published via EventAggregator
+            Assert.That(settingsChangedViaAggregator, Is.True, "SettingsChangedEvent should be published via EventAggregator");
+
+            // Theme service direct event was fired
+            Assert.That(themeChangedEventFired, Is.True, "ThemeChanged direct event should fire");
+
+            // ThemeChangedEvent was published via EventAggregator
+            Assert.That(themeChangedViaAggregator, Is.True, "ThemeChangedEvent should be published via EventAggregator");
 
             // New theme is Light (isDark = false)
             Assert.That(newThemeIsDark, Is.False, "Theme should be Light (isDark = false)");
@@ -146,7 +169,7 @@ public class SettingsThemeIntegrationTests
             // Theme service state is now Light
             Assert.That(themeService.IsDarkTheme, Is.False, "ThemeService.IsDarkTheme should be false");
 
-            // MainViewModel's IsDarkTheme property is synchronized
+            // MainViewModel's IsDarkTheme property is synchronized via ThemeChangedEvent subscription
             Assert.That(mainViewModel.IsDarkTheme, Is.False, "MainWindowViewModel.IsDarkTheme should be false");
 
             // Verify the persisted settings have Light theme
@@ -181,7 +204,12 @@ public class SettingsThemeIntegrationTests
 
         Assert.That(settingsService.Current.General.Theme, Is.EqualTo("Light"));
 
-        var themeService = new ThemeService();
+        // Create event aggregator and bridge
+        var eventAggregator = new EventAggregator();
+        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+
+        // Create ThemeService with aggregator and settings service for pub/sub flow
+        using var themeService = new ThemeService(eventAggregator: eventAggregator, settingsService: settingsService);
 
         // Set theme to Light initially via Dispatcher
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -191,16 +219,19 @@ public class SettingsThemeIntegrationTests
 
         Assert.That(themeService.IsDarkTheme, Is.False);
 
-        // Create event aggregator and bridge
-        var eventAggregator = new EventAggregator();
-        using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
-
         bool themeChangedEventFired = false;
+        bool themeChangedViaAggregator = false;
 
         themeService.ThemeChanged += (_, _) =>
         {
             themeChangedEventFired = true;
         };
+
+        // Subscribe to ThemeChangedEvent via EventAggregator
+        using var themeAggregatorSubscription = eventAggregator.Subscribe<ThemeChangedEvent>(evt =>
+        {
+            themeChangedViaAggregator = true;
+        });
 
         var navigationService = new NavigationService();
         using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
@@ -234,7 +265,8 @@ public class SettingsThemeIntegrationTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(themeChangedEventFired, Is.True);
+            Assert.That(themeChangedEventFired, Is.True, "ThemeChanged direct event should fire");
+            Assert.That(themeChangedViaAggregator, Is.True, "ThemeChangedEvent should be published via EventAggregator");
             Assert.That(themeService.IsDarkTheme, Is.True);
             Assert.That(mainViewModel.IsDarkTheme, Is.True);
             Assert.That(settingsService.Current.General.Theme, Is.EqualTo("Dark"));
@@ -259,10 +291,10 @@ public class SettingsThemeIntegrationTests
         var settingsService = new SettingsService(settingsDirectory: tempDirectory);
         await settingsService.LoadAsync();
 
-        var themeService = new ThemeService();
-        var navigationService = new NavigationService();
         var eventAggregator = new EventAggregator();
         using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+        using var themeService = new ThemeService(eventAggregator: eventAggregator, settingsService: settingsService);
+        var navigationService = new NavigationService();
         using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
         _ = new MainWindow
@@ -302,13 +334,16 @@ public class SettingsThemeIntegrationTests
         var settingsService = new SettingsService(settingsDirectory: tempDirectory);
         await settingsService.LoadAsync();
 
-        var themeService = new ThemeService();
-        bool themeEventFired = false;
-        themeService.ThemeChanged += (_, _) => themeEventFired = true;
-
-        var navigationService = new NavigationService();
         var eventAggregator = new EventAggregator();
         using var settingsEventBridge = new SettingsEventBridge(settingsService, eventAggregator);
+        using var themeService = new ThemeService(eventAggregator: eventAggregator, settingsService: settingsService);
+        bool themeEventFired = false;
+        bool themeEventViaAggregator = false;
+
+        themeService.ThemeChanged += (_, _) => themeEventFired = true;
+        using var themeAggregatorSubscription = eventAggregator.Subscribe<ThemeChangedEvent>(_ => themeEventViaAggregator = true);
+
+        var navigationService = new NavigationService();
         using var mainViewModel = new MainWindowViewModel(themeService, navigationService, settingsService, eventAggregator);
 
         _ = new MainWindow
@@ -333,7 +368,11 @@ public class SettingsThemeIntegrationTests
         });
 
         // Assert - Theme service should not fire event since theme didn't change value
-        Assert.That(themeEventFired, Is.False);
-        Assert.That(themeService.IsDarkTheme, Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(themeEventFired, Is.False, "ThemeChanged direct event should not fire for same value");
+            Assert.That(themeEventViaAggregator, Is.False, "ThemeChangedEvent via aggregator should not fire for same value");
+            Assert.That(themeService.IsDarkTheme, Is.True);
+        });
     }
 }
