@@ -8,6 +8,9 @@ using System.Text;
 
 using BadMango.Emulator.Core;
 
+using Core.Cpu;
+using Core.Interfaces.Cpu;
+
 /// <summary>
 /// A debug step listener that traces instruction execution to output streams.
 /// </summary>

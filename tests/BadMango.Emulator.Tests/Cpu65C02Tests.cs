@@ -5,6 +5,8 @@
 namespace BadMango.Emulator.Tests;
 
 using Core;
+using Core.Cpu;
+
 using Emulation.Cpu;
 using Emulation.Memory;
 
@@ -293,7 +295,7 @@ public class Cpu65C02Tests
         Assert.That(registers.SP.GetByte(), Is.EqualTo(0xFF));
 
         // Verify the registers struct doesn't have a Cycles property
-        var registersType = typeof(Cpu65C02Registers);
+        var registersType = typeof(Registers);
         Assert.That(registersType.GetProperty("Cycles"), Is.Null);
     }
 

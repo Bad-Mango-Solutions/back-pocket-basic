@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Cpu;
 
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -82,7 +82,6 @@ public struct CpuState
     /// <remarks>
     /// Distinguishes between different halt states:
     /// - None: CPU is running
-    /// - Brk: Halted by BRK instruction (software interrupt)
     /// - Wai: Halted by WAI instruction (wait for interrupt)
     /// - Stp: Halted by STP instruction (permanent halt until reset).
     /// </remarks>

@@ -10,6 +10,9 @@ using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
 
+using Core.Cpu;
+using Core.Interfaces.Cpu;
+
 /// <summary>
 /// Factory for creating emulator components from machine profiles.
 /// </summary>

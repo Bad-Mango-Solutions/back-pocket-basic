@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 
+using Core.Cpu;
+
 /// <summary>
 /// Unit tests for the <see cref="MachineFactory"/> class.
 /// </summary>

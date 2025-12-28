@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Emulation.Debugging;
 using System.Reflection;
 
 using Core;
+using Core.Cpu;
 
 using Cpu;
 

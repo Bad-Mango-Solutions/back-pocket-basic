@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using BadMango.Emulator.Core;
 
+using Core.Interfaces.Cpu;
+
 /// <summary>
 /// Base interface for an assembled emulator machine.
 /// Provides access to core components for debugging and control.

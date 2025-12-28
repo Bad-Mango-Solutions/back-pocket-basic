@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Cpu;
 
 /// <summary>
 /// Delegate representing an addressing mode that computes an effective address.

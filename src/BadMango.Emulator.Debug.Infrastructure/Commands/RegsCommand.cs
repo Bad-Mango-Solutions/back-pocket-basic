@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Core;
 
+using Core.Cpu;
+
 /// <summary>
 /// Displays the current state of all CPU registers.
 /// </summary>

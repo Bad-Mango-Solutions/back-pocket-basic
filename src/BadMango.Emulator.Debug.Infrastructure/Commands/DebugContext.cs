@@ -9,6 +9,8 @@ using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 
+using Core.Interfaces.Cpu;
+
 /// <summary>
 /// Implementation of <see cref="IDebugContext"/> providing access to emulator components.
 /// </summary>

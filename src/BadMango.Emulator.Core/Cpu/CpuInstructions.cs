@@ -3,7 +3,7 @@
 // </copyright>
 
 // ReSharper disable InconsistentNaming
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Cpu;
 
 /// <summary>
 /// Represents the instruction mnemonics for the 65C02 CPU and variants.

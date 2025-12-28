@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Stack operations (PHA, PHP, PLA, PLP, PHX, PLX, PHY, PLY).

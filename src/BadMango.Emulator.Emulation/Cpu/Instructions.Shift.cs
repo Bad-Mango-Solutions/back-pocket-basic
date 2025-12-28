@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Shift and rotate instructions (ASL, LSR, ROL, ROR).

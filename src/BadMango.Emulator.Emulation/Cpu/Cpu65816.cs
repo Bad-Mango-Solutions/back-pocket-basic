@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Diagnostics.CodeAnalysis;
 
 using Core;
+using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Placeholder for WDC 65816 CPU emulator (Apple IIgs processor).

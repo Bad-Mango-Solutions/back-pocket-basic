@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Represents a single trace record capturing the state after an instruction executes.

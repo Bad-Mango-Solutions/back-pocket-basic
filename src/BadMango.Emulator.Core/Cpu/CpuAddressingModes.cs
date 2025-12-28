@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Cpu;
 
 /// <summary>Represents the various addressing modes supported by the 65C02 CPU.</summary>
 /// <remarks>

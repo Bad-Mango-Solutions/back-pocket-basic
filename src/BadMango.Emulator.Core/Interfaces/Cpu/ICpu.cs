@@ -2,7 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Interfaces.Cpu;
+
+using Core.Cpu;
 
 /// <summary>
 /// Base interface for CPU emulators in the 6502 family.

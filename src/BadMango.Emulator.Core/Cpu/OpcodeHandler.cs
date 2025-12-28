@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Core;
+namespace BadMango.Emulator.Core.Cpu;
 
 /// <summary>
 /// Delegate for opcode handlers that receive machine state via state structure and memory.

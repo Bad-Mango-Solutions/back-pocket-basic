@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Builds the opcode table for the 65C02 CPU using compositional pattern.

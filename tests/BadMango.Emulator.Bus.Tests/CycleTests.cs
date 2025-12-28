@@ -108,7 +108,7 @@ public class CycleTests
         {
             Assert.That(a < b, Is.True);
             Assert.That(b < a, Is.False);
-            Assert.That(c < c, Is.False); // Test same value comparison
+            Assert.That(c < a, Is.False); // Test same value comparison
         });
     }
 
@@ -126,7 +126,7 @@ public class CycleTests
         {
             Assert.That(a > b, Is.True);
             Assert.That(b > a, Is.False);
-            Assert.That(c > c, Is.False); // Test same value comparison
+            Assert.That(c > a, Is.False); // Test same value comparison
         });
     }
 

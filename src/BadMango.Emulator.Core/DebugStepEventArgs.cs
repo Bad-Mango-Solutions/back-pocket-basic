@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Core;
 
 using System.Runtime.InteropServices;
 
+using Cpu;
+
 /// <summary>
 /// Provides data for debug step events. Designed for minimal overhead in hot loop.
 /// </summary>

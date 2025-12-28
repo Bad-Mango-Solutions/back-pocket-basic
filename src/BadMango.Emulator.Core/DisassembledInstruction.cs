@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Core;
 
 using System.Text;
 
+using Cpu;
+
 /// <summary>
 /// Represents a decoded instruction for disassembly and debugging purposes.
 /// </summary>

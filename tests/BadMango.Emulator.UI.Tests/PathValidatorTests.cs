@@ -150,6 +150,7 @@ public class PathValidatorTests
     /// <summary>
     /// Tests that EnsureDirectoryExistsAsync creates a directory.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
     public async Task EnsureDirectoryExistsAsync_CreatesDirectory()
     {
@@ -170,6 +171,7 @@ public class PathValidatorTests
     /// <summary>
     /// Tests that EnsureDirectoryExistsAsync returns true for existing directories.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
     public async Task EnsureDirectoryExistsAsync_ExistingDirectory_ReturnsTrue()
     {

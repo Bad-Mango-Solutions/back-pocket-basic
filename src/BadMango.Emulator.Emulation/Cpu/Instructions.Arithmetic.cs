@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Arithmetic instructions (ADC, SBC, INC, DEC, INX, INY, DEX, DEY).

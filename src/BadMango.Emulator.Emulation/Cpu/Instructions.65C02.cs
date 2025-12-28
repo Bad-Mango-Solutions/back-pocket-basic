@@ -8,6 +8,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// 65C02-specific instructions (STZ, TSB, TRB, WAI, STP).

@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
 
 /// <summary>
 /// Provides addressing mode implementations for 6502-family CPUs.

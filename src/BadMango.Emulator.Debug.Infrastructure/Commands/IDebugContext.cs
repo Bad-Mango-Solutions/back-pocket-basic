@@ -9,6 +9,8 @@ using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 
+using Core.Interfaces.Cpu;
+
 /// <summary>
 /// Provides extended context for debug command execution including access to emulator components.
 /// </summary>

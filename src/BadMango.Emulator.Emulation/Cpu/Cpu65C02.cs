@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core;
+using Core.Cpu;
+using Core.Interfaces.Cpu;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution.
