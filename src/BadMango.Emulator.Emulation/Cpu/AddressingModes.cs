@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 
 using Core;
 using Core.Cpu;
+using Core.Interfaces;
 
 /// <summary>
 /// Provides addressing mode implementations for 6502-family CPUs.

@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using BadMango.Emulator.Core;
 
+using Core.Interfaces;
+
 /// <summary>
 /// Adapts an <see cref="IMemoryBus"/> to the <see cref="IMemory"/> interface.
 /// </summary>

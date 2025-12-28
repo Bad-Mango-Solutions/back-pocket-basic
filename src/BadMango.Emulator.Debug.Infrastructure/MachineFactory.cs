@@ -11,6 +11,7 @@ using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
 
 using Core.Cpu;
+using Core.Interfaces;
 using Core.Interfaces.Cpu;
 
 /// <summary>

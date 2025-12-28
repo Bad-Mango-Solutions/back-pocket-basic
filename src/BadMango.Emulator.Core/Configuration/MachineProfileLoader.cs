@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Core.Configuration;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 
+using Interfaces;
+
 /// <summary>
 /// Default implementation of <see cref="IMachineProfileLoader"/> that loads profiles from the filesystem.
 /// </summary>

@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using Core;
 using Core.Cpu;
 using Core.Interfaces.Cpu;
+using Core.Interfaces.Debugging;
 
 /// <summary>
 /// Placeholder for WDC 65816 CPU emulator (Apple IIgs processor).

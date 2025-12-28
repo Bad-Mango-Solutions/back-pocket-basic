@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Core.Cpu;
 
+using Interfaces;
+
 /// <summary>
 /// Delegate for opcode handlers that receive machine state via state structure and memory.
 /// </summary>

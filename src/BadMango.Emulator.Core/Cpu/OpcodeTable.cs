@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Core.Cpu;
 
 using System.Runtime.CompilerServices;
 
+using Interfaces;
+
 /// <summary>
 /// Represents an opcode lookup table for 6502-family CPUs.
 /// </summary>

@@ -6,7 +6,10 @@ namespace BadMango.Emulator.Tests;
 
 using Core;
 using Core.Cpu;
+using Core.Debugger;
+using Core.Interfaces;
 using Core.Interfaces.Cpu;
+using Core.Interfaces.Debugging;
 
 using Emulation.Cpu;
 using Emulation.Memory;

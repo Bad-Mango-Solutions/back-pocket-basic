@@ -11,6 +11,7 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using Core.Interfaces;
 using Core.Interfaces.Cpu;
 
 /// <summary>

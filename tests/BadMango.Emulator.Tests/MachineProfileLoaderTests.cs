@@ -9,6 +9,8 @@ using System.Text.Json;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 
+using Core.Interfaces;
+
 /// <summary>
 /// Unit tests for the <see cref="MachineProfileLoader"/> class.
 /// </summary>

@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Core.Cpu;
 
+using Debugging;
+
 /// <summary>
 /// Base interface for CPU emulators in the 6502 family.
 /// </summary>

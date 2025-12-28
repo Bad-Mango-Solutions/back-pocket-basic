@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using System.Globalization;
 using System.Text;
 
+using Core.Interfaces;
+
 /// <summary>
 /// Displays a hex dump of memory contents.
 /// </summary>
@@ -95,7 +97,7 @@ public sealed class MemCommand : CommandHandlerBase
         return CommandResult.Ok();
     }
 
-    private static void FormatHexDump(TextWriter output, Core.IMemory memory, uint startAddress, int byteCount)
+    private static void FormatHexDump(TextWriter output, IMemory memory, uint startAddress, int byteCount)
     {
         // Align start address to 16-byte boundary for clean display
         uint alignedStart = startAddress & 0xFFFFFFF0;
