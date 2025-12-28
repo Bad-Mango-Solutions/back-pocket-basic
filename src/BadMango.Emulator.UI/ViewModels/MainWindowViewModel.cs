@@ -62,6 +62,12 @@ public partial class MainWindowViewModel : ViewModelBase
         this.navigationService = navigationService;
         this.settingsService = settingsService;
 
+        // Subscribe to settings changes to update theme when theme setting changes
+        if (settingsService is not null)
+        {
+            settingsService.SettingsChanged += OnSettingsChanged;
+        }
+
         // Initialize navigation items
         NavigationItems = new ObservableCollection<NavigationItemViewModel>
         {
@@ -117,6 +123,33 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var item in NavigationItems)
         {
             item.IsSelected = item.Name == viewName;
+        }
+    }
+
+    /// <summary>
+    /// Handles settings changed events to synchronize theme with settings.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="args">The settings changed event arguments.</param>
+    private void OnSettingsChanged(object? sender, SettingsChangedEventArgs args)
+    {
+        if (settingsService is null)
+        {
+            return;
+        }
+
+        // Update theme based on the new settings
+        var newTheme = settingsService.Current.General.Theme;
+        var shouldBeDark = newTheme == "Dark";
+
+        if (shouldBeDark != themeService.IsDarkTheme)
+        {
+            // Ensure UI operations happen on the UI thread
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                IsDarkTheme = shouldBeDark;
+                themeService.SetTheme(shouldBeDark);
+            });
         }
     }
 }
