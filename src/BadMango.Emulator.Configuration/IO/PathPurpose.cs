@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Abstractions.Settings;
+namespace BadMango.Emulator.Configuration.IO;
 
 /// <summary>
 /// The intended purpose of a path setting.

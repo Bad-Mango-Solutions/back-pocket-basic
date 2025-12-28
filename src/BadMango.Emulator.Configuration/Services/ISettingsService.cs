@@ -2,7 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Abstractions.Settings;
+namespace BadMango.Emulator.Configuration.Services;
+
+using BadMango.Emulator.Configuration.Models;
 
 /// <summary>
 /// Service interface for managing application settings.

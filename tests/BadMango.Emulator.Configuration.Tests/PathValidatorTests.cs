@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Tests;
+namespace BadMango.Emulator.Configuration.Tests;
 
 using BadMango.Emulator.Configuration.IO;
 
@@ -150,6 +150,7 @@ public class PathValidatorTests
     /// <summary>
     /// Tests that EnsureDirectoryExistsAsync creates a directory.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task EnsureDirectoryExistsAsync_CreatesDirectory()
     {
@@ -170,6 +171,7 @@ public class PathValidatorTests
     /// <summary>
     /// Tests that EnsureDirectoryExistsAsync returns true for existing directories.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task EnsureDirectoryExistsAsync_ExistingDirectory_ReturnsTrue()
     {

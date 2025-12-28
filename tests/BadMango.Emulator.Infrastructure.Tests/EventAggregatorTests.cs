@@ -2,10 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Tests;
+namespace BadMango.Emulator.Infrastructure.Tests;
 
-using BadMango.Emulator.UI.Abstractions.Events;
-using BadMango.Emulator.UI.Services;
+using BadMango.Emulator.Infrastructure.Events;
 
 /// <summary>
 /// Tests for <see cref="EventAggregator"/>.
@@ -31,18 +30,18 @@ public class EventAggregatorTests
     public void Publish_InvokesSubscriber()
     {
         // Arrange
-        MachineStateChangedEvent? receivedEvent = null;
-        aggregator.Subscribe<MachineStateChangedEvent>(e => receivedEvent = e);
+        TestEventA? receivedEvent = null;
+        aggregator.Subscribe<TestEventA>(e => receivedEvent = e);
 
-        var testEvent = new MachineStateChangedEvent("machine-1", "Running");
+        var testEvent = new TestEventA("test-1", "Value1");
 
         // Act
         aggregator.Publish(testEvent);
 
         // Assert
         Assert.That(receivedEvent, Is.Not.Null);
-        Assert.That(receivedEvent!.MachineId, Is.EqualTo("machine-1"));
-        Assert.That(receivedEvent.NewState, Is.EqualTo("Running"));
+        Assert.That(receivedEvent!.Id, Is.EqualTo("test-1"));
+        Assert.That(receivedEvent.Data, Is.EqualTo("Value1"));
     }
 
     /// <summary>
@@ -53,10 +52,10 @@ public class EventAggregatorTests
     {
         // Arrange
         int callCount = 0;
-        aggregator.Subscribe<MachineStateChangedEvent>(_ => callCount++);
-        aggregator.Subscribe<MachineStateChangedEvent>(_ => callCount++);
+        aggregator.Subscribe<TestEventA>(_ => callCount++);
+        aggregator.Subscribe<TestEventA>(_ => callCount++);
 
-        var testEvent = new MachineStateChangedEvent("machine-1", "Running");
+        var testEvent = new TestEventA("test-1", "Value1");
 
         // Act
         aggregator.Publish(testEvent);
@@ -73,12 +72,12 @@ public class EventAggregatorTests
     {
         // Arrange
         int callCount = 0;
-        var subscription = aggregator.Subscribe<MachineStateChangedEvent>(_ => callCount++);
+        var subscription = aggregator.Subscribe<TestEventA>(_ => callCount++);
 
         // Act
-        aggregator.Publish(new MachineStateChangedEvent("machine-1", "Running"));
+        aggregator.Publish(new TestEventA("test-1", "Value1"));
         subscription.Dispose();
-        aggregator.Publish(new MachineStateChangedEvent("machine-2", "Stopped"));
+        aggregator.Publish(new TestEventA("test-2", "Value2"));
 
         // Assert
         Assert.That(callCount, Is.EqualTo(1));
@@ -91,7 +90,7 @@ public class EventAggregatorTests
     public void Publish_NoSubscribers_DoesNotThrow()
     {
         // Arrange
-        var testEvent = new MachineStateChangedEvent("machine-1", "Running");
+        var testEvent = new TestEventA("test-1", "Value1");
 
         // Act & Assert
         Assert.DoesNotThrow(() => aggregator.Publish(testEvent));
@@ -104,18 +103,18 @@ public class EventAggregatorTests
     public void Subscribe_DifferentEventTypes_AreIsolated()
     {
         // Arrange
-        MachineStateChangedEvent? machineEvent = null;
-        BreakpointHitEvent? breakpointEvent = null;
+        TestEventA? eventA = null;
+        TestEventB? eventB = null;
 
-        aggregator.Subscribe<MachineStateChangedEvent>(e => machineEvent = e);
-        aggregator.Subscribe<BreakpointHitEvent>(e => breakpointEvent = e);
+        aggregator.Subscribe<TestEventA>(e => eventA = e);
+        aggregator.Subscribe<TestEventB>(e => eventB = e);
 
         // Act
-        aggregator.Publish(new MachineStateChangedEvent("machine-1", "Running"));
+        aggregator.Publish(new TestEventA("test-1", "Value1"));
 
         // Assert
-        Assert.That(machineEvent, Is.Not.Null);
-        Assert.That(breakpointEvent, Is.Null);
+        Assert.That(eventA, Is.Not.Null);
+        Assert.That(eventB, Is.Null);
     }
 
     /// <summary>
@@ -125,7 +124,7 @@ public class EventAggregatorTests
     public void Subscribe_DoubleDispose_IsSafe()
     {
         // Arrange
-        var subscription = aggregator.Subscribe<MachineStateChangedEvent>(_ => { });
+        var subscription = aggregator.Subscribe<TestEventA>(_ => { });
 
         // Act & Assert
         Assert.DoesNotThrow(() =>
@@ -143,11 +142,11 @@ public class EventAggregatorTests
     {
         // Arrange
         int callCount = 0;
-        aggregator.Subscribe<MachineStateChangedEvent>(_ => throw new InvalidOperationException("Test error"));
-        aggregator.Subscribe<MachineStateChangedEvent>(_ => callCount++);
+        aggregator.Subscribe<TestEventA>(_ => throw new InvalidOperationException("Test error"));
+        aggregator.Subscribe<TestEventA>(_ => callCount++);
 
         // Act
-        aggregator.Publish(new MachineStateChangedEvent("machine-1", "Running"));
+        aggregator.Publish(new TestEventA("test-1", "Value1"));
 
         // Assert
         Assert.That(callCount, Is.EqualTo(1));
@@ -160,7 +159,7 @@ public class EventAggregatorTests
     public void Publish_NullEvent_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => aggregator.Publish<MachineStateChangedEvent>(null!));
+        Assert.Throws<ArgumentNullException>(() => aggregator.Publish<TestEventA>(null!));
     }
 
     /// <summary>
@@ -170,6 +169,20 @@ public class EventAggregatorTests
     public void Subscribe_NullHandler_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => aggregator.Subscribe<MachineStateChangedEvent>(null!));
+        Assert.Throws<ArgumentNullException>(() => aggregator.Subscribe<TestEventA>(null!));
     }
+
+    /// <summary>
+    /// Test event A for testing event aggregator.
+    /// </summary>
+    /// <param name="Id">The event identifier.</param>
+    /// <param name="Data">The event data.</param>
+    private record TestEventA(string Id, string Data);
+
+    /// <summary>
+    /// Test event B for testing event type isolation.
+    /// </summary>
+    /// <param name="Id">The event identifier.</param>
+    /// <param name="Value">The event value.</param>
+    private record TestEventB(string Id, int Value);
 }

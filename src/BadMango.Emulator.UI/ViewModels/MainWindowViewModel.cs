@@ -6,7 +6,9 @@ namespace BadMango.Emulator.UI.ViewModels;
 
 using System.Collections.ObjectModel;
 
-using BadMango.Emulator.UI.Abstractions.Settings;
+using BadMango.Emulator.Configuration.Services;
+using BadMango.Emulator.Infrastructure.Events;
+using BadMango.Emulator.UI.Abstractions.Events;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels.Settings;
 
@@ -17,11 +19,13 @@ using CommunityToolkit.Mvvm.Input;
 /// ViewModel for the main application window.
 /// Manages navigation, theme switching, and the overall application state.
 /// </summary>
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
     private readonly ISettingsService? settingsService;
+    private readonly IDisposable? themeSubscription;
+    private bool disposed;
 
     /// <summary>
     /// Gets or sets the window title.
@@ -53,14 +57,23 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <param name="themeService">The theme service for managing application themes.</param>
     /// <param name="navigationService">The navigation service for view navigation.</param>
     /// <param name="settingsService">The settings service for managing application settings.</param>
+    /// <param name="eventAggregator">The event aggregator for pub/sub messaging.</param>
     public MainWindowViewModel(
         IThemeService themeService,
         INavigationService navigationService,
-        ISettingsService? settingsService = null)
+        ISettingsService? settingsService = null,
+        IEventAggregator? eventAggregator = null)
     {
         this.themeService = themeService;
         this.navigationService = navigationService;
         this.settingsService = settingsService;
+
+        // Subscribe to theme changes via event aggregator for loose coupling
+        // ThemeService handles SettingsChangedEvent and publishes ThemeChangedEvent
+        if (eventAggregator is not null)
+        {
+            themeSubscription = eventAggregator.Subscribe<ThemeChangedEvent>(OnThemeChanged);
+        }
 
         // Initialize navigation items
         NavigationItems = new ObservableCollection<NavigationItemViewModel>
@@ -81,6 +94,35 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Gets the collection of navigation items displayed in the navigation panel.
     /// </summary>
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the <see cref="MainWindowViewModel"/>
+    /// and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">
+    /// <c>true</c> to release both managed and unmanaged resources;
+    /// <c>false</c> to release only unmanaged resources.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from event aggregator
+                themeSubscription?.Dispose();
+            }
+
+            disposed = true;
+        }
+    }
 
     /// <summary>
     /// Toggles between dark and light themes.
@@ -118,5 +160,19 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             item.IsSelected = item.Name == viewName;
         }
+    }
+
+    /// <summary>
+    /// Handles theme changed events from the event aggregator.
+    /// Updates the ViewModel's IsDarkTheme property to stay in sync with the theme.
+    /// </summary>
+    /// <param name="eventData">The theme changed event data.</param>
+    private void OnThemeChanged(ThemeChangedEvent eventData)
+    {
+        // Ensure UI operations happen on the UI thread
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            IsDarkTheme = eventData.IsDarkTheme;
+        });
     }
 }

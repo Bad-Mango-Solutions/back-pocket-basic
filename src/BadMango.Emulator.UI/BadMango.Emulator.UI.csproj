@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BadMango.Emulator.Core\BadMango.Emulator.Core.csproj" />
+    <ProjectReference Include="..\BadMango.Emulator.Infrastructure\BadMango.Emulator.Infrastructure.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.UI.Abstractions\BadMango.Emulator.UI.Abstractions.csproj" />
   </ItemGroup>
 

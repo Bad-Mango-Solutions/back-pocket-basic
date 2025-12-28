@@ -2,10 +2,11 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Abstractions;
+namespace BadMango.Emulator.Infrastructure.Events;
 
 /// <summary>
-/// Coordinates communication between windows using a publish-subscribe pattern.
+/// Coordinates communication between components using a publish-subscribe pattern.
+/// This is the core eventing infrastructure for the entire emulator system.
 /// </summary>
 public interface IEventAggregator
 {

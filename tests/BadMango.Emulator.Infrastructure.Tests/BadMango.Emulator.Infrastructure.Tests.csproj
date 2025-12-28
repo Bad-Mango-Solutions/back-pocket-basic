@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>BadMango.Emulator.UI.Tests</RootNamespace>
+    <RootNamespace>BadMango.Emulator.Infrastructure.Tests</RootNamespace>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -13,7 +13,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Headless.NUnit" Version="11.2.7" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101">
       <PrivateAssets>all</PrivateAssets>
@@ -35,10 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BadMango.Emulator.Configuration\BadMango.Emulator.Configuration.csproj" />
     <ProjectReference Include="..\..\src\BadMango.Emulator.Infrastructure\BadMango.Emulator.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\BadMango.Emulator.UI.Abstractions\BadMango.Emulator.UI.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\BadMango.Emulator.UI\BadMango.Emulator.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,7 +12,8 @@ using Autofac.Extensions.DependencyInjection;
 
 using Avalonia;
 
-using BadMango.Emulator.UI.Abstractions.Settings;
+using BadMango.Emulator.Configuration.Registration;
+using BadMango.Emulator.Infrastructure.Registration;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
@@ -89,12 +90,16 @@ internal sealed class Program
             })
             .ConfigureContainer<ContainerBuilder>((context, builder) =>
             {
-                // Register services
+                // Register shared modules
+                builder.RegisterModule<InfrastructureModule>();
+                builder.RegisterModule<ConfigurationModule>();
+
+                // Register UI-specific services
                 builder.RegisterType<ThemeService>().As<IThemeService>().SingleInstance();
                 builder.RegisterType<NavigationService>().As<INavigationService>().SingleInstance();
-                builder.RegisterType<SettingsService>().As<ISettingsService>().SingleInstance();
-                builder.RegisterType<SettingsMigrator>().As<ISettingsMigrator>().SingleInstance();
-                builder.RegisterType<PathValidator>().As<IPathValidator>().SingleInstance();
+
+                // Register settings event bridge to connect SettingsService to EventAggregator
+                builder.RegisterType<SettingsEventBridge>().AsSelf().SingleInstance().AutoActivate();
 
                 // Register ViewModels
                 builder.RegisterType<MainWindowViewModel>().AsSelf();

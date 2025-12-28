@@ -2,13 +2,13 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Services;
+namespace BadMango.Emulator.Configuration.Services;
 
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using BadMango.Emulator.UI.Abstractions.Settings;
+using BadMango.Emulator.Configuration.Models;
 
 using Microsoft.Extensions.Logging;
 

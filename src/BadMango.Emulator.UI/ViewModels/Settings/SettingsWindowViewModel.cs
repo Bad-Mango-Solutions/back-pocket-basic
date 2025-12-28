@@ -6,6 +6,7 @@ namespace BadMango.Emulator.UI.ViewModels.Settings;
 
 using System.Collections.ObjectModel;
 
+using BadMango.Emulator.Configuration.Services;
 using BadMango.Emulator.UI.Abstractions.Settings;
 
 using CommunityToolkit.Mvvm.ComponentModel;

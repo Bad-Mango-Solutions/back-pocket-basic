@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>BadMango.Emulator.UI.Abstractions</RootNamespace>
+    <RootNamespace>BadMango.Emulator.Configuration</RootNamespace>
     <NeutralLanguage>en</NeutralLanguage>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,22 +12,19 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - UI Abstractions</Product>
-    <Description>Shared interfaces, enums, and data structures for emulator UI components. Provides contracts that can be referenced without depending on the full UI implementation.</Description>
+    <Product>BackPocketBASIC - Configuration</Product>
+    <Description>Shared configuration services, settings models, and path validation infrastructure for emulator components. Provides cross-cutting configuration functionality that can be consumed by Core, Devices, Systems, Debug, and UI projects.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>applesoft;basic;emulator;ui;abstractions;contracts;6502;apple2</PackageTags>
+    <PackageTags>applesoft;basic;emulator;configuration;settings;6502;apple2</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BadMango.Emulator.Configuration\BadMango.Emulator.Configuration.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Infrastructure\BadMango.Emulator.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="Autofac" Version="8.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -43,9 +40,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="BadMango.Emulator.Configuration.Tests" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI.Tests" />
-    <InternalsVisibleTo Include="BadMango.Emulator.UI.Abstractions.Tests" />
   </ItemGroup>
 
 </Project>

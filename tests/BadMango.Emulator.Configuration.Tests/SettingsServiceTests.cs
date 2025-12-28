@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Tests;
+namespace BadMango.Emulator.Configuration.Tests;
 
 using System.Text.Json;
 
@@ -42,6 +42,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that the service initializes with default settings when no file exists.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task LoadAsync_NoFile_ReturnsDefaultSettings()
     {
@@ -64,6 +65,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that settings can be saved and loaded.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task SaveAndLoad_RoundTrip_PreservesSettings()
     {
@@ -103,6 +105,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that Current property returns the loaded settings.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task Current_AfterLoad_ReturnsSameSettings()
     {
@@ -120,6 +123,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that ResetToDefaultsAsync returns default settings.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task ResetToDefaultsAsync_ReturnsDefaultSettings()
     {
@@ -144,6 +148,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that ExportAsync creates a valid JSON file.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task ExportAsync_CreatesValidJsonFile()
     {
@@ -165,6 +170,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that ImportAsync loads settings from a file.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task ImportAsync_LoadsSettingsFromFile()
     {
@@ -196,6 +202,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that SettingsChanged event is raised on load when file exists.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task LoadAsync_WithExistingFile_RaisesSettingsChangedEvent()
     {
@@ -220,6 +227,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that SettingsChanged event is raised on save.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task SaveAsync_RaisesSettingsChangedEvent()
     {
@@ -238,6 +246,7 @@ public class SettingsServiceTests
     /// <summary>
     /// Tests that GetValue returns the correct value.
     /// </summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
     [Test]
     public async Task GetValue_ReturnsCorrectValue()
     {

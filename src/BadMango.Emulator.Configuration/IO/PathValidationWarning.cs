@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Abstractions.Settings;
+namespace BadMango.Emulator.Configuration.IO;
 
 /// <summary>
 /// Warning types that can occur during path validation.

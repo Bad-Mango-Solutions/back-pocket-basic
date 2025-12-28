@@ -2,14 +2,14 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.UI.Services;
+namespace BadMango.Emulator.Infrastructure.Events;
 
 using System.Collections.Concurrent;
 
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Default implementation of <see cref="IEventAggregator"/> for inter-window communication.
+/// Default implementation of <see cref="IEventAggregator"/> for cross-component communication.
 /// </summary>
 public class EventAggregator : IEventAggregator
 {
