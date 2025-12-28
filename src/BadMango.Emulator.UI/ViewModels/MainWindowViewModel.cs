@@ -17,11 +17,12 @@ using CommunityToolkit.Mvvm.Input;
 /// ViewModel for the main application window.
 /// Manages navigation, theme switching, and the overall application state.
 /// </summary>
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly IThemeService themeService;
     private readonly INavigationService navigationService;
     private readonly ISettingsService? settingsService;
+    private bool disposed;
 
     /// <summary>
     /// Gets or sets the window title.
@@ -151,5 +152,37 @@ public partial class MainWindowViewModel : ViewModelBase
                 themeService.SetTheme(shouldBeDark);
             });
         }
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the <see cref="MainWindowViewModel"/>
+    /// and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">
+    /// <c>true</c> to release both managed and unmanaged resources;
+    /// <c>false</c> to release only unmanaged resources.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from settings service events
+                if (settingsService is not null)
+                {
+                    settingsService.SettingsChanged -= OnSettingsChanged;
+                }
+            }
+
+            disposed = true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
