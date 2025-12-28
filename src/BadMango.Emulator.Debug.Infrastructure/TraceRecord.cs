@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure;
 
-using Core;
 using Core.Cpu;
 
 /// <summary>

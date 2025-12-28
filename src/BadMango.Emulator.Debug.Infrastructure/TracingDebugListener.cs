@@ -6,8 +6,6 @@ namespace BadMango.Emulator.Debug.Infrastructure;
 
 using System.Text;
 
-using BadMango.Emulator.Core;
-
 using Core.Cpu;
 using Core.Debugger;
 using Core.Interfaces.Cpu;

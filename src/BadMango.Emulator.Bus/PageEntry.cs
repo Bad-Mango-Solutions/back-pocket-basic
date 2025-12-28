@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// Represents a single entry in the page table for address routing.
 /// </summary>

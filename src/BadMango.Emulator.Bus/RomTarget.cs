@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// A bus target implementation for ROM (Read-Only Memory).
 /// </summary>

@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.UI.Services;
 
-using BadMango.Emulator.UI.Models;
-
 /// <summary>
 /// Handles application shutdown sequence, coordinating between windows and services.
 /// </summary>

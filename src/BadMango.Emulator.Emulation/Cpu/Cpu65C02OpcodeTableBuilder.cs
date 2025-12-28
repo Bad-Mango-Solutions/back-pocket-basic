@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using Core;
 using Core.Cpu;
 using Core.Interfaces;
 

@@ -4,6 +4,10 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using BadMango.Emulator.Core.Signaling;
+
+using Core;
+
 /// <summary>
 /// Unit tests for the <see cref="SignalBus"/> class.
 /// </summary>
@@ -49,7 +53,7 @@ public class SignalBusTests
         var bus = new SignalBus();
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
-        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new(10));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
     }
@@ -78,11 +82,11 @@ public class SignalBusTests
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
         bus.Assert(SignalLine.IRQ, deviceId: 2, cycle: Cycle.Zero);
 
-        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new(10));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True, "IRQ should remain asserted while device 2 holds it");
 
-        bus.Deassert(SignalLine.IRQ, deviceId: 2, cycle: new Cycle(20));
+        bus.Deassert(SignalLine.IRQ, deviceId: 2, cycle: new(20));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False, "IRQ should be clear when all devices release");
     }
@@ -141,7 +145,7 @@ public class SignalBusTests
     {
         var bus = new SignalBus();
         bus.Assert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
-        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new(10));
 
         Assert.That(bus.ConsumeNmiEdge(), Is.True, "NMI edge should remain until consumed");
     }
@@ -226,7 +230,7 @@ public class SignalBusTests
     {
         var bus = new SignalBus();
         bus.Assert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
-        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new(10));
 
         bus.Reset();
 
@@ -243,7 +247,7 @@ public class SignalBusTests
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
         // Device 2 never asserted, so deassert should have no effect
-        bus.Deassert(SignalLine.IRQ, deviceId: 2, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.IRQ, deviceId: 2, cycle: new(10));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True, "IRQ should remain asserted");
     }
@@ -270,12 +274,12 @@ public class SignalBusTests
         var bus = new SignalBus();
 
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
-        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(5));
+        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: new(5));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.True);
 
         // Single deassert should deassert
-        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new(10));
 
         Assert.That(bus.IsAsserted(SignalLine.IRQ), Is.False);
     }
@@ -287,11 +291,11 @@ public class SignalBusTests
     public void SignalBus_SignalChanged_FiresOnTransition()
     {
         var bus = new SignalBus();
-        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Cycle Cycle)>();
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Core.Cycle Cycle)>();
         bus.SignalChanged += (line, asserted, deviceId, cycle) =>
             events.Add((line, asserted, deviceId, cycle));
 
-        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(100));
+        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: new(100));
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
@@ -299,7 +303,7 @@ public class SignalBusTests
             Assert.That(events[0].Line, Is.EqualTo(SignalLine.IRQ));
             Assert.That(events[0].Asserted, Is.True);
             Assert.That(events[0].DeviceId, Is.EqualTo(1));
-            Assert.That(events[0].Cycle, Is.EqualTo(new Cycle(100)));
+            Assert.That(events[0].Cycle, Is.EqualTo(new Core.Cycle(100)));
         });
     }
 
@@ -312,12 +316,12 @@ public class SignalBusTests
         var bus = new SignalBus();
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
-        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Cycle Cycle)>();
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Core.Cycle Cycle)>();
         bus.SignalChanged += (line, asserted, deviceId, cycle) =>
             events.Add((line, asserted, deviceId, cycle));
 
         // Second device asserts - line already asserted, no state change
-        bus.Assert(SignalLine.IRQ, deviceId: 2, cycle: new Cycle(10));
+        bus.Assert(SignalLine.IRQ, deviceId: 2, cycle: new(10));
 
         Assert.That(events, Is.Empty, "Event should not fire when state doesn't change");
     }
@@ -331,11 +335,11 @@ public class SignalBusTests
         var bus = new SignalBus();
         bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
 
-        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Cycle Cycle)>();
+        var events = new List<(SignalLine Line, bool Asserted, int DeviceId, Core.Cycle Cycle)>();
         bus.SignalChanged += (line, asserted, deviceId, cycle) =>
             events.Add((line, asserted, deviceId, cycle));
 
-        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(50));
+        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new(50));
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
@@ -360,7 +364,7 @@ public class SignalBusTests
         bus.ConsumeNmiEdge();
 
         // Assert again from another device while still asserted
-        bus.Assert(SignalLine.NMI, deviceId: 2, cycle: new Cycle(10));
+        bus.Assert(SignalLine.NMI, deviceId: 2, cycle: new(10));
 
         Assert.That(bus.ConsumeNmiEdge(), Is.False, "No new edge should be detected when line was already asserted");
     }
@@ -374,10 +378,10 @@ public class SignalBusTests
         var bus = new SignalBus();
         bus.Assert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
         bus.ConsumeNmiEdge();
-        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new Cycle(10));
+        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: new(10));
 
         // Now assert again - should detect new edge
-        bus.Assert(SignalLine.NMI, deviceId: 1, cycle: new Cycle(20));
+        bus.Assert(SignalLine.NMI, deviceId: 1, cycle: new(20));
 
         Assert.That(bus.ConsumeNmiEdge(), Is.True, "New edge should be detected after full deassert/assert cycle");
     }

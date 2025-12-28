@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// A composite bus target that dispatches to sub-targets based on address offset.

@@ -4,9 +4,6 @@
 
 namespace BadMango.Emulator.UI.ViewModels;
 
-using BadMango.Emulator.UI.Models;
-using BadMango.Emulator.UI.Services;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 

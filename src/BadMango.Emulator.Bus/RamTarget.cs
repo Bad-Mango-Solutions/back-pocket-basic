@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using System.Runtime.CompilerServices;
 
+using Interfaces;
+
 /// <summary>
 /// A bus target implementation for RAM (Random Access Memory).
 /// </summary>

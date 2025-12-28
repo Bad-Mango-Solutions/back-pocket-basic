@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// A concrete implementation of <see cref="IProvisioningBundle"/> for configuring machine bring-up.
 /// </summary>

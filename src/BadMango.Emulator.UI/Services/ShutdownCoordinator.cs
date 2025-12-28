@@ -6,8 +6,6 @@ namespace BadMango.Emulator.UI.Services;
 
 using Avalonia.Controls.ApplicationLifetimes;
 
-using BadMango.Emulator.UI.Models;
-
 using Microsoft.Extensions.Logging;
 
 /// <summary>

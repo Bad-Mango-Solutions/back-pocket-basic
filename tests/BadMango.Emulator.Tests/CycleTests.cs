@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using Core;
+
 /// <summary>
 /// Unit tests for the <see cref="Cycle"/> record struct.
 /// </summary>

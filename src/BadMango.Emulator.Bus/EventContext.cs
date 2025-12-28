@@ -4,6 +4,10 @@
 
 namespace BadMango.Emulator.Bus;
 
+using BadMango.Emulator.Core.Interfaces.Signaling;
+
+using Interfaces;
+
 /// <summary>
 /// Standard implementation of <see cref="IEventContext"/> for device initialization and event handling.
 /// </summary>

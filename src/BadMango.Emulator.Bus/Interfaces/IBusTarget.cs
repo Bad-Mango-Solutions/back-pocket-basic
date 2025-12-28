@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Represents a target that can be accessed through the memory bus.

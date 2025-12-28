@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Represents the result of machine bring-up, containing all configured components.

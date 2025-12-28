@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using BadMango.Emulator.Core.Signaling;
+
 /// <summary>
 /// Represents a signal edge transition event.
 /// </summary>

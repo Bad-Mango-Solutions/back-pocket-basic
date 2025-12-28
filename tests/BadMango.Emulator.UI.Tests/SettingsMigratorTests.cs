@@ -6,7 +6,6 @@ namespace BadMango.Emulator.UI.Tests;
 
 using System.Text.Json;
 
-using BadMango.Emulator.Configuration.Models;
 using BadMango.Emulator.Configuration.Services;
 
 /// <summary>

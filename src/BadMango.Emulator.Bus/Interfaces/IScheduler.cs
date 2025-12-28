@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Central authority for discrete-event scheduling with a single authoritative cycle counter.

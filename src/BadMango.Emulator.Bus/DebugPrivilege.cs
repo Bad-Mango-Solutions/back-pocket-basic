@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// A marker object that gates access to debug-only memory operations.
 /// </summary>

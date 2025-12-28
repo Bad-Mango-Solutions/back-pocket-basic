@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-using BadMango.Emulator.Core;
-
 using Core.Cpu;
 using Core.Debugger;
 

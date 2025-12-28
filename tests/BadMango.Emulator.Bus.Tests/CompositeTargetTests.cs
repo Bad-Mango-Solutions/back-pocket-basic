@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using Interfaces;
+
 /// <summary>
 /// Unit tests for <see cref="ICompositeTarget"/> and <see cref="MainBus"/> composite target dispatch.
 /// </summary>

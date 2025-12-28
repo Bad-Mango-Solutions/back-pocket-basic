@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using System.Runtime.CompilerServices;
 
+using Interfaces;
+
 /// <summary>
 /// The main memory bus implementation for routing CPU and DMA memory operations.
 /// </summary>

@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// A concrete implementation of <see cref="IBringUpResult"/> for machine bring-up results.
 /// </summary>

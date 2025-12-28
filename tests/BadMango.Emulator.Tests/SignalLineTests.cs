@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using BadMango.Emulator.Core.Signaling;
+
 /// <summary>
 /// Unit tests for the <see cref="SignalLine"/> enum.
 /// </summary>

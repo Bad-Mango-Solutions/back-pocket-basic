@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// Default implementation of <see cref="IDeviceRegistry"/> for device metadata management.
 /// </summary>

@@ -2,7 +2,11 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Core.Interfaces.Signaling;
+
+using BadMango.Emulator.Core.Signaling;
+
+using Core;
 
 /// <summary>
 /// Signal hub manages device-to-CPU lines. Devices assert/deassert; CPU samples.

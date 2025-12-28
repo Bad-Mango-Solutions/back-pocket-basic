@@ -2,7 +2,9 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
+namespace BadMango.Emulator.Bus.Interfaces;
+
+using BadMango.Emulator.Core.Interfaces.Signaling;
 
 /// <summary>
 /// Provides context for scheduled device event callbacks, giving access to system services.

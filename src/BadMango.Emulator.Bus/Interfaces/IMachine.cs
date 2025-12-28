@@ -2,9 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Bus;
-
-using BadMango.Emulator.Core;
+namespace BadMango.Emulator.Bus.Interfaces;
 
 using Core.Interfaces.Cpu;
 

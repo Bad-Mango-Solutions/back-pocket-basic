@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using System.Runtime.CompilerServices;
 
+using Interfaces;
+
 /// <summary>
 /// Represents a scheduled event in the discrete-event scheduler.
 /// </summary>

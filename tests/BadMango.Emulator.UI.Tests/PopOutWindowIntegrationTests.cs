@@ -12,7 +12,6 @@ using BadMango.Emulator.UI.Abstractions.Events;
 using BadMango.Emulator.UI.Models;
 using BadMango.Emulator.UI.Services;
 using BadMango.Emulator.UI.ViewModels;
-using BadMango.Emulator.UI.Views;
 
 using Moq;
 

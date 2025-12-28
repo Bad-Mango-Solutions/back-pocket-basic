@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using Interfaces;
+
 /// <summary>
 /// Unit tests for the <see cref="BringUpHandlerBase"/> and related classes.
 /// </summary>

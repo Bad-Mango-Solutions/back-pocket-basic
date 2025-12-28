@@ -19,7 +19,6 @@ using BadMango.Emulator.UI.ViewModels;
 using BadMango.Emulator.UI.ViewModels.Settings;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Serilog;

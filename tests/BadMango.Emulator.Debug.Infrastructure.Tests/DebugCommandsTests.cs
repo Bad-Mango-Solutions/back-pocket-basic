@@ -4,12 +4,13 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-using BadMango.Emulator.Bus;
-using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
+
+using Bus.Interfaces;
+
 using Moq;
 
 using Bus = BadMango.Emulator.Bus;

@@ -6,6 +6,10 @@ namespace BadMango.Emulator.Bus;
 
 using System.Runtime.CompilerServices;
 
+using BadMango.Emulator.Core.Interfaces.Signaling;
+
+using Interfaces;
+
 /// <summary>
 /// Cycle-accurate event scheduler implementation for discrete-event emulation.
 /// </summary>

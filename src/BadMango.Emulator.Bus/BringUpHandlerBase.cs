@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// Abstract base class for machine bring-up handlers providing common functionality.
 /// </summary>

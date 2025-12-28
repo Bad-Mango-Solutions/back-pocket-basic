@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// Represents a single entry in a mapping stack for a page or page range.
 /// </summary>

@@ -6,7 +6,6 @@ namespace BadMango.Emulator.Debug;
 
 using Autofac;
 
-using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
