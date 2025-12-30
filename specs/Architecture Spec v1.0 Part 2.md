@@ -252,41 +252,42 @@ public readonly record struct CpuStepResult(
 /// </summary>
 public interface ICpu
 {
+    // ─── Identity ───────────────────────────────────────────────────────
     CpuFamily Family { get; }
-    CpuMode CurrentMode { get; }
+    ArchitecturalMode CurrentMode { get; }
+    
+    // ─── State Access ───────────────────────────────────────────────────
+    ref Registers Registers { get; }
     bool Halted { get; }
-    ulong CycleCount { get; }
+    bool IsStopRequested { get; }
     
-    /// <summary>Executes a single instruction.</summary>
+    // ─── Context (Bus, Scheduler, Signals) ──────────────────────────────
+    IEventContext Context { get; }
+    
+    // ─── Lifecycle ──────────────────────────────────────────────────────
     CpuStepResult Step();
-    
-    /// <summary>
-    /// Resets the CPU to initial state.
-    /// Reads the reset vector and sets PC accordingly.
-    /// </summary>
     void Reset();
-    
-    void SignalIRQ();
-    void SignalNMI();
-    
-    // ─── Stop/Halt Coordination ─────────────────────────────────────────
-    
-    /// <summary>
-    /// Requests the CPU to stop execution at the next safe point.
-    /// The CPU will complete the current instruction before stopping.
-    /// </summary>
     void RequestStop();
-    
-    /// <summary>
-    /// Clears a previous stop request, allowing execution to continue.
-    /// </summary>
     void ClearStopRequest();
     
-    /// <summary>
-    /// Gets whether a stop has been requested.
-    /// </summary>
-    bool IsStopRequested { get; }
+    // ─── Debug/Observability ────────────────────────────────────────────
+    InstructionTrace?  LastInstruction { get; }
 }
+
+/// <summary>
+/// Debug information about the last executed instruction. 
+/// Separated from core CPU state per architectural discussion.
+/// </summary>
+public readonly record struct InstructionTrace(
+    byte OpCode,
+    byte SubOpCode,
+    CpuInstructions Instruction,
+    CpuAddressingModes AddressingMode,
+    byte OperandSize,
+    OperandBuffer Operands,
+    Addr? EffectiveAddress,
+    Cycle StartCycle,
+    Cycle InstructionCycles);
 ```
 
 ---

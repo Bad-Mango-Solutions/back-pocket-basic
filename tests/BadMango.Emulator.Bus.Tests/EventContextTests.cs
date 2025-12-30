@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
 
 using Interfaces;
 
@@ -102,7 +103,7 @@ public class EventContextTests
 
         Assert.That((ulong)context.Now, Is.EqualTo(0ul));
 
-        scheduler.RunUntil(500ul);
+        scheduler.Advance(500ul);
 
         Assert.That((ulong)context.Now, Is.EqualTo(500ul));
     }

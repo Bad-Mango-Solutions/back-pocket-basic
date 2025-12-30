@@ -30,14 +30,18 @@ public class ISchedulerTests
     /// Verifies that ScheduleAt can be called.
     /// </summary>
     [Test]
-    public void IScheduler_Schedule_CanBeCalled()
+    public void IScheduler_ScheduleAt_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
-        var mockActor = new Mock<ISchedulable>();
+        Action<IEventContext> callback = _ => { };
+        var expectedHandle = new EventHandle(1);
+        mockScheduler.Setup(s => s.ScheduleAt(500ul, ScheduledEventKind.DeviceTimer, 0, callback, null))
+            .Returns(expectedHandle);
 
-        mockScheduler.Object.ScheduleAt(mockActor.Object, 500ul);
+        var handle = mockScheduler.Object.ScheduleAt(500ul, ScheduledEventKind.DeviceTimer, 0, callback, null);
 
-        mockScheduler.Verify(s => s.ScheduleAt(mockActor.Object, 500ul), Times.Once);
+        Assert.That(handle, Is.EqualTo(expectedHandle));
+        mockScheduler.Verify(s => s.ScheduleAt(500ul, ScheduledEventKind.DeviceTimer, 0, callback, null), Times.Once);
     }
 
     /// <summary>
@@ -47,37 +51,28 @@ public class ISchedulerTests
     public void IScheduler_ScheduleAfter_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
-        var mockActor = new Mock<ISchedulable>();
+        Action<IEventContext> callback = _ => { };
+        var expectedHandle = new EventHandle(2);
+        mockScheduler.Setup(s => s.ScheduleAfter(100ul, ScheduledEventKind.AudioTick, 1, callback, "tag"))
+            .Returns(expectedHandle);
 
-        mockScheduler.Object.ScheduleAfter(mockActor.Object, 100ul);
+        var handle = mockScheduler.Object.ScheduleAfter(100ul, ScheduledEventKind.AudioTick, 1, callback, "tag");
 
-        mockScheduler.Verify(s => s.ScheduleAfter(mockActor.Object, 100ul), Times.Once);
+        Assert.That(handle, Is.EqualTo(expectedHandle));
+        mockScheduler.Verify(s => s.ScheduleAfter(100ul, ScheduledEventKind.AudioTick, 1, callback, "tag"), Times.Once);
     }
 
     /// <summary>
-    /// Verifies that Drain can be called.
+    /// Verifies that DispatchDue can be called.
     /// </summary>
     [Test]
-    public void IScheduler_Drain_CanBeCalled()
+    public void IScheduler_DispatchDue_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
 
-        mockScheduler.Object.Drain();
+        mockScheduler.Object.DispatchDue();
 
-        mockScheduler.Verify(s => s.Drain(), Times.Once);
-    }
-
-    /// <summary>
-    /// Verifies that RunUntil can be called.
-    /// </summary>
-    [Test]
-    public void IScheduler_RunUntil_CanBeCalled()
-    {
-        var mockScheduler = new Mock<IScheduler>();
-
-        mockScheduler.Object.RunUntil(5000ul);
-
-        mockScheduler.Verify(s => s.RunUntil(5000ul), Times.Once);
+        mockScheduler.Verify(s => s.DispatchDue(), Times.Once);
     }
 
     /// <summary>
@@ -87,25 +82,96 @@ public class ISchedulerTests
     public void IScheduler_Cancel_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
-        var mockActor = new Mock<ISchedulable>();
-        mockScheduler.Setup(s => s.Cancel(mockActor.Object)).Returns(true);
+        var handle = new EventHandle(42);
+        mockScheduler.Setup(s => s.Cancel(handle)).Returns(true);
 
-        var result = mockScheduler.Object.Cancel(mockActor.Object);
+        var result = mockScheduler.Object.Cancel(handle);
 
         Assert.That(result, Is.True);
-        mockScheduler.Verify(s => s.Cancel(mockActor.Object), Times.Once);
+        mockScheduler.Verify(s => s.Cancel(handle), Times.Once);
     }
 
     /// <summary>
     /// Verifies that Advance can be called.
     /// </summary>
     [Test]
-    public void IScheduler_AdvanceCycles_CanBeCalled()
+    public void IScheduler_Advance_CanBeCalled()
     {
         var mockScheduler = new Mock<IScheduler>();
 
         mockScheduler.Object.Advance(100ul);
 
         mockScheduler.Verify(s => s.Advance(100ul), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that PeekNextDue can be called.
+    /// </summary>
+    [Test]
+    public void IScheduler_PeekNextDue_CanBeCalled()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.Setup(s => s.PeekNextDue()).Returns((Core.Cycle?)100ul);
+
+        var result = mockScheduler.Object.PeekNextDue();
+
+        Assert.That(result, Is.EqualTo((Core.Cycle?)100ul));
+        mockScheduler.Verify(s => s.PeekNextDue(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that PeekNextDue can return null.
+    /// </summary>
+    [Test]
+    public void IScheduler_PeekNextDue_CanReturnNull()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.Setup(s => s.PeekNextDue()).Returns((Core.Cycle?)null);
+
+        var result = mockScheduler.Object.PeekNextDue();
+
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that JumpToNextEventAndDispatch can be called.
+    /// </summary>
+    [Test]
+    public void IScheduler_JumpToNextEventAndDispatch_CanBeCalled()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.Setup(s => s.JumpToNextEventAndDispatch()).Returns(true);
+
+        var result = mockScheduler.Object.JumpToNextEventAndDispatch();
+
+        Assert.That(result, Is.True);
+        mockScheduler.Verify(s => s.JumpToNextEventAndDispatch(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that Reset can be called.
+    /// </summary>
+    [Test]
+    public void IScheduler_Reset_CanBeCalled()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+
+        mockScheduler.Object.Reset();
+
+        mockScheduler.Verify(s => s.Reset(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that PendingEventCount can be read.
+    /// </summary>
+    [Test]
+    public void IScheduler_PendingEventCount_CanBeRead()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.Setup(s => s.PendingEventCount).Returns(5);
+
+        var count = mockScheduler.Object.PendingEventCount;
+
+        Assert.That(count, Is.EqualTo(5));
     }
 }

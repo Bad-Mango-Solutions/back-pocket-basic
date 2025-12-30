@@ -54,6 +54,7 @@ public class IScheduledDeviceTests
         var mockSignals = new Mock<ISignalBus>();
         var mockBus = new Mock<IMemoryBus>();
         var context = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(context);
 
         var device = new TestScheduledDevice();
         device.Initialize(context);
@@ -71,13 +72,14 @@ public class IScheduledDeviceTests
         var mockSignals = new Mock<ISignalBus>();
         var mockBus = new Mock<IMemoryBus>();
         var context = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(context);
 
         var device = new TestScheduledDevice();
         device.Initialize(context);
 
         Assert.That(device.EventFired, Is.False);
 
-        scheduler.RunUntil(100ul);
+        scheduler.Advance(100ul);
 
         Assert.That(device.EventFired, Is.True);
     }
@@ -92,6 +94,7 @@ public class IScheduledDeviceTests
         var mockSignals = new Mock<ISignalBus>();
         var mockBus = new Mock<IMemoryBus>();
         var context = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(context);
 
         var device1 = new TestScheduledDevice("Device1", 50ul);
         var device2 = new TestScheduledDevice("Device2", 100ul);
@@ -101,7 +104,7 @@ public class IScheduledDeviceTests
 
         Assert.That(scheduler.PendingEventCount, Is.EqualTo(2));
 
-        scheduler.RunUntil(75ul);
+        scheduler.Advance(75ul);
 
         Assert.Multiple(() =>
         {
@@ -109,7 +112,7 @@ public class IScheduledDeviceTests
             Assert.That(device2.EventFired, Is.False);
         });
 
-        scheduler.RunUntil(150ul);
+        scheduler.Advance(75ul);
 
         Assert.Multiple(() =>
         {
@@ -128,13 +131,14 @@ public class IScheduledDeviceTests
         var signals = new SignalBus();
         var mockBus = new Mock<IMemoryBus>();
         var context = new EventContext(scheduler, signals, mockBus.Object);
+        scheduler.SetEventContext(context);
 
         var device = new InterruptRaisingDevice();
         device.Initialize(context);
 
         Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.False);
 
-        scheduler.RunUntil(100ul);
+        scheduler.Advance(100ul);
 
         Assert.That(signals.IsAsserted(SignalLine.IRQ), Is.True);
     }
@@ -142,11 +146,10 @@ public class IScheduledDeviceTests
     /// <summary>
     /// Test device that schedules an event during initialization.
     /// </summary>
-    private sealed class TestScheduledDevice : IScheduledDevice, ISchedulable
+    private sealed class TestScheduledDevice : IScheduledDevice
     {
         private readonly string name;
         private readonly ulong scheduledCycle;
-        private IEventContext? context;
 
         public TestScheduledDevice(string name = "TestDevice", ulong scheduledCycle = 100ul)
         {
@@ -160,36 +163,28 @@ public class IScheduledDeviceTests
 
         public void Initialize(IEventContext context)
         {
-            this.context = context;
-            context.Scheduler.ScheduleAt(this, scheduledCycle);
-        }
-
-        public ulong Execute(ulong currentCycle, IScheduler scheduler)
-        {
-            EventFired = true;
-            return 0;
+            context.Scheduler.ScheduleAt(scheduledCycle, ScheduledEventKind.DeviceTimer, 0, _ => EventFired = true, tag: this);
         }
     }
 
     /// <summary>
     /// Device that raises an IRQ when its scheduled event fires.
     /// </summary>
-    private sealed class InterruptRaisingDevice : IScheduledDevice, ISchedulable
+    private sealed class InterruptRaisingDevice : IScheduledDevice
     {
-        private IEventContext? context;
-
         public string Name => "InterruptDevice";
 
         public void Initialize(IEventContext context)
         {
-            this.context = context;
-            context.Scheduler.ScheduleAt(this, 100ul);
-        }
-
-        public ulong Execute(ulong currentCycle, IScheduler scheduler)
-        {
-            context?.Signals.Assert(SignalLine.IRQ, 1, new Cycle(currentCycle));
-            return 0;
+            _ = context.Scheduler.ScheduleAt(
+                100ul,
+                ScheduledEventKind.InterruptLineChange,
+                0,
+                ctx =>
+                {
+                    ctx.Signals.Assert(SignalLine.IRQ, 1, ctx.Now);
+                },
+                tag: this);
         }
     }
 }

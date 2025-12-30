@@ -6,9 +6,7 @@ namespace BadMango.Emulator.Core.Cpu;
 
 using System.Runtime.InteropServices;
 
-/// <summary>
-/// Fixed-size buffer for instruction operands (up to 4 bytes for 65816/65832 support).
-/// </summary>
+/// <summary>Fixed-size buffer for instruction operands (up to 4 bytes for 65816/65832 support).</summary>
 /// <remarks>
 /// This is a value type that avoids heap allocation for the operand buffer.
 /// </remarks>
@@ -49,9 +47,7 @@ public struct OperandBuffer
         }
     }
 
-    /// <summary>
-    /// Converts the operand buffer to a byte array.
-    /// </summary>
+    /// <summary>Converts the operand buffer to a byte array.</summary>
     /// <returns>A new byte array containing the operand bytes.</returns>
     public readonly byte[] ToArray() => [byte0, byte1, byte2, byte3];
 }
