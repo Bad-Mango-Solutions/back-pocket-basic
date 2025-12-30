@@ -54,11 +54,31 @@
     <File Path="specs/Architecture Spec v1.0 Part 1.md" />
     <File Path="specs/Architecture Spec v1.0 Part 2.md" />
     <File Path="specs/Architecture Spec v1.0 Part 3.md" />
+    <File Path="specs/Consolidated Types Reference.md" />
     <File Path="specs/Debugger Infrastructure Migration.md" />
+    <File Path="specs/Display Rendering Integration Specification.md" />
     <File Path="specs/Emulator UI Specification.md" />
     <File Path="specs/Implementation Roadmap - Bus Architecture.md" />
     <File Path="specs/Keyboard Mapping Specification.md" />
     <File Path="specs/Unified Development Schedule.md" />
+  </Folder>
+  <Folder Name="/specs/reference/">
+    <File Path="specs/Apple Desktop Bus Specification.md" />
+    <File Path="specs/Apple II 80-Column Card Specification.md" />
+    <File Path="specs/Apple II Ethernet Networking Specification.md" />
+    <File Path="specs/Apple II Monitor ROM Reference.md" />
+    <File Path="specs/Apple II Printing Specification.md" />
+    <File Path="specs/Apple II Serial Communications Specification.md" />
+    <File Path="specs/Apple II Soft Switches Reference.md" />
+    <File Path="specs/Apple II Startup Sequence Reference.md" />
+    <File Path="specs/Apple II Video Display Specification.md" />
+    <File Path="specs/Apple IIgs Startup Sequence Reference.md" />
+    <File Path="specs/Apple IIgs Video Display Specification.md" />
+    <File Path="specs/Applesoft BASIC ROM Reference.md" />
+    <File Path="specs/DOS 3.3 Reference.md" />
+    <File Path="specs/Emulator Network Services Specification.md" />
+    <File Path="specs/ProDOS 8 Reference.md" />
+    <File Path="specs/SmartPort Specification.md" />
   </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/basic/">

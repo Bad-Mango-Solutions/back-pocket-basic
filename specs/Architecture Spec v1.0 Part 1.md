@@ -12,6 +12,7 @@ This document consolidates the complete architectural vision for the Back Pocket
 - [Part I: Project Hierarchy & Target Machines](#part-i-project-hierarchy--target-machines)
   - [1.1 Machine Taxonomy](#11-machine-taxonomy)
   - [1.2 Compatibility Layers](#12-compatibility-layers)
+  - [1.3 Historical Context & Hardware Understanding](#13-historical-context--hardware-understanding)
 - [Part II: CPU Architecture](#part-ii-cpu-architecture)
   - [2.1 CPU Family Inheritance](#21-cpu-family-inheritance)
   - [2.2 Register Models](#22-register-models)
@@ -113,7 +114,7 @@ This document consolidates the complete architectural vision for the Back Pocket
 │                    PocketME (65832)                     │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │              PocketGS (65C816)                  │    │
-│  │  ┌─────────────────────────────────────────┐    │    │
+│  │  ┌─────────────────────────────────────────────┐    │    │
 │  │  │     Pocket2e/2c (65C02)                 │    │    │
 │  │  │  ┌───────────────────────────────────┐  │    │    │
 │  │  │  │     6502 Emulation Mode           │  │    │    │
@@ -122,6 +123,78 @@ This document consolidates the complete architectural vision for the Back Pocket
 │  └─────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### 1.3 Historical Context & Hardware Understanding
+
+Understanding the Apple II's hardware architecture is essential for implementing an accurate emulator.
+The design decisions in the original hardware directly influence how we structure the emulator.
+
+#### 1.3.1 Why Memory-Mapped I/O?
+
+The 6502 processor family has no separate I/O instructions (unlike x86's `IN`/`OUT`). All device
+communication happens through memory addresses. When the CPU reads from address $C030, it's not
+reading RAM—it's triggering the speaker hardware. This is called **memory-mapped I/O (MMIO)**.
+
+The Apple II dedicates the address range $C000-$CFFF to I/O operations. Any access to this region
+doesn't touch RAM; instead, it communicates with hardware devices. This design has implications
+for emulation:
+
+- **Side effects on read**: Reading $C030 toggles the speaker. Reading $C000 returns the keyboard
+  data. These reads must trigger device behavior, not just return stored values.
+- **Write-only switches**: Some addresses respond to writes but return garbage on reads.
+- **Strobe addresses**: Some addresses respond to any access (read or write) the same way.
+
+#### 1.3.2 The "Soft Switch" Concept
+
+Many Apple II hardware states are controlled by **soft switches**—memory-mapped flip-flops that
+toggle between states. Unlike hardware DIP switches that require physical manipulation, soft
+switches change state through software memory accesses.
+
+For example, the text/graphics mode toggle:
+- Access $C050: Set graphics mode (TEXT off)
+- Access $C051: Set text mode (TEXT on)
+
+The actual access type (read vs. write) often doesn't matter—just touching the address changes
+the state. This is why the spec marks many soft switches as "R/W" (any access works).
+
+**Emulation impact**: The bus must invoke device handlers even for reads that don't "return"
+meaningful data. A read from $C050 returns a floating bus value, but the read itself has the
+side effect of switching to graphics mode.
+
+#### 1.3.3 The Floating Bus
+
+When the Apple II CPU reads from an address with no connected device (or a device that doesn't
+drive the data bus), the result is unpredictable—typically the last value that happened to be
+on the data bus. This is called the **floating bus**.
+
+In practice, the floating bus often contains video-related data because the video circuitry is
+constantly reading memory to generate the display. Some software exploits this for copy protection
+or timing tricks.
+
+**Emulation approaches**:
+1. **Simple**: Return $FF or $00 for unmapped reads
+2. **Moderate**: Return a consistent "last value" per access
+3. **Accurate**: Emulate the actual video fetch pattern (cycle-accurate emulation)
+
+For Pocket2e, we choose option 1 or 2 by default, with option 3 available for strict compatibility.
+
+#### 1.3.4 Why 7 Slots?
+
+The Apple II has 7 expansion slots (numbered 1-7, with slot 0 being a special internal slot on
+some models). This wasn't arbitrary—it was the maximum that could be addressed with the available
+address space allocation:
+
+- Each slot gets 16 bytes of I/O space: $C080 + (slot × 16) = $C090, $C0A0, ..., $C0F0
+- Each slot gets 256 bytes of ROM space: $C100 + (slot × 256) = $C100, $C200, ..., $C700
+- Slots 1-7 share one 2KB expansion ROM area: $C800-$CFFF
+
+The addressing scheme means:
+- Slot 1 I/O: $C090-$C09F, ROM: $C100-$C1FF
+- Slot 6 I/O: $C0E0-$C0EF, ROM: $C600-$C6FF
+- Any slot's expansion ROM: $C800-$CFFF (one at a time)
+
+This hierarchical allocation enables a consistent device discovery protocol that software can use
+to probe for installed cards.
 
 ---
 
@@ -133,7 +206,7 @@ This document consolidates the complete architectural vision for the Back Pocket
 public interface ICpu
 {
     CpuFamily Family { get; }
-    CpuMode CurrentMode { get; }
+    ArchitecturalMode CurrentMode { get; }
     bool Halted { get; }
     ulong CycleCount { get; }
     
@@ -145,25 +218,9 @@ public interface ICpu
 
 public enum CpuFamily
 {
-    Cpu6502,      // Original MOS 6502
     Cpu65C02,     // WDC 65C02 (Pocket2e target)
     Cpu65C816,    // WDC 65C816 (PocketGS target)
     Cpu65832      // Speculative 32-bit (PocketME target)
-}
-
-public enum CpuMode :  byte
-{
-    // 65C02: Always in this mode
-    Compat6502 = 0,
-    
-    // 65C816 modes
-    Emulation = 1,      // E=1:  6502 compatible
-    Native16 = 2,       // E=0: 16-bit native
-    
-    // 65832 modes (from privileged spec v0. 6)
-    M0_65C02 = 0x10,    // Legacy 6502 semantics
-    M1_65816 = 0x11,    // Legacy 65816 semantics
-    M2_65832 = 0x12     // Native 32-bit mode
 }
 ```
 
@@ -542,6 +599,34 @@ Every bus operation carries complete context:
 
 ```csharp
 /// <summary>
+/// Defines the bus access semantics for memory operations.
+/// </summary>
+/// <remarks>
+/// This determines whether the bus prefers atomic wide operations or
+/// decomposes multi-byte accesses into individual byte cycles.
+/// </remarks>
+public enum BusAccessMode : byte
+{
+    /// <summary>
+    /// Native mode: prefers atomic wide operations when the target supports them.
+    /// </summary>
+    /// <remarks>
+    /// Used by 65832 native mode for better performance with modern memory.
+    /// </remarks>
+    Atomic = 0,
+
+    /// <summary>
+    /// Compatibility mode: decomposes wide accesses into byte-wise cycles.
+    /// </summary>
+    /// <remarks>
+    /// Matches 65C02/65816 expectations where peripherals observe individual
+    /// memory access cycles. Required for accurate emulation of devices
+    /// that depend on seeing each byte access separately.
+    /// </remarks>
+    Decomposed = 1,
+}
+
+/// <summary>
 /// Complete context for a single bus access.
 /// The CPU computes intent; the bus enforces consequences.
 /// </summary>
@@ -549,7 +634,7 @@ public readonly record struct BusAccess(
     Addr Address,           // Virtual address being accessed
     DWord Value,            // Write payload (low bits used by Width)
     byte WidthBits,         // 8, 16, or 32 (effective width after E/M/X)
-    CpuMode Mode,           // Compat or Native
+    BusAccessMode Mode,     // Atomic or Decomposed
     bool EmulationE,        // E flag state (Compat mode only)
     AccessIntent Intent,    // Data/Fetch/Debug/DMA
     int SourceId,           // Who initiated (CPU=0, DMA channels, debugger)
@@ -1100,6 +1185,11 @@ public byte FetchOpcode()
 
 ## Document History
 
-| Version | Date       | Changes                            |
-| ------- | ---------- | ---------------------------------- |
-| 1.0     | 2025-12-26 | Initial consolidated specification |
+| Version | Date       | Changes                                                        |
+| ------- | ---------- | -------------------------------------------------------------- |
+| 1.0     | 2025-12-26 | Initial consolidated specification                             |
+| 1.1     | 2025-12-28 | Added section 1.3: Historical Context & Hardware Understanding |
+|         |            | - Why memory-mapped I/O matters for Apple II                   |
+|         |            | - Soft switch concept explanation                              |
+|         |            | - Floating bus behavior and emulation approaches               |
+|         |            | - Why 7 slots and their addressing scheme                      |
