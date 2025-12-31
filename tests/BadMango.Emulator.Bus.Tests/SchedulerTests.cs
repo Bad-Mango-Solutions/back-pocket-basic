@@ -851,13 +851,7 @@ public class SchedulerTests
         // Now advance and dispatch - this should trigger cleanup since we have >1000 cancelled handles
         scheduler.Advance(100ul);
 
-        // After cleanup, trying to cancel again should return false (handle not in set)
-        // The cleanup should have occurred because we exceeded the threshold
-        var cancelResult = scheduler.Cancel(handles[0]);
-
-        // Since cleanup occurred, the handle should no longer be in the cancelled set
-        // So cancelling again should add it (return true) if the event is still in queue
-        // But since we already dispatched past cycle 100, the event should be gone
+        // After advancing past the first event, some events should have been processed and removed
         Assert.That(scheduler.PendingEventCount, Is.LessThan(1100), "Some events should have been dispatched");
     }
 
@@ -886,11 +880,13 @@ public class SchedulerTests
 
         // The cleanup should have occurred when we tried to dispatch
         // We can verify this by trying to peek at the next event - it should skip cancelled ones
+        // and return the first valid event. Since all events are cancelled and we haven't reached
+        // any event times yet (all at 1000+), this demonstrates the cleanup is working.
         var nextDue = scheduler.PeekNextDue();
 
-        // Since all events were cancelled, either nextDue is null (all cleaned up)
-        // or it's the first non-cancelled event (if any)
-        // The important thing is that the operation completes without memory issues
-        Assert.That(nextDue, Is.Not.Null.Or.Null, "Operation should complete successfully");
+        // Since we haven't reached any event times yet, nextDue should be the first event (at cycle 1000)
+        // The important thing is that PeekNextDue completes successfully even with many cancelled events
+        Assert.That(nextDue, Is.Not.Null, "PeekNextDue should complete and find next event");
+        Assert.That(nextDue!.Value.Value, Is.GreaterThanOrEqualTo(1000ul), "Next event should be at or after cycle 1000");
     }
 }
