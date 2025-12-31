@@ -9,6 +9,8 @@ using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Emulation.Memory;
 
+using Bus;
+
 using Core.Cpu;
 using Core.Interfaces;
 using Core.Interfaces.Cpu;
@@ -41,9 +43,27 @@ public static class MachineFactory
     {
         return memoryConfig.Type.ToLowerInvariant() switch
         {
-            "basic" => new BasicMemory(memoryConfig.Size),
+            "basic" => CreateMemoryBusAdapter(memoryConfig.Size),
             _ => throw new NotSupportedException($"Memory type '{memoryConfig.Type}' is not supported."),
         };
+    }
+
+    private static IMemory CreateMemoryBusAdapter(uint size)
+    {
+        var bus = new MainBus(addressSpaceBits: 16);
+        var physical = new PhysicalMemory(size, "ram");
+        var ram = new RamTarget(physical.Slice(0, size));
+        bus.MapPageRange(
+            startPage: 0,
+            pageCount: (int)(size >> 12),
+            deviceId: 0,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.All,
+            caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            target: ram,
+            physicalBase: 0);
+        var adapter = new MemoryBusAdapter(bus);
+        return adapter;
     }
 
     private static (ICpu Cpu, OpcodeTable OpcodeTable) CreateCpu(CpuProfileSection cpuConfig, IMemory memory)
