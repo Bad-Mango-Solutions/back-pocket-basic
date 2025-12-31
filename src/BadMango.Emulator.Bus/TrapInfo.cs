@@ -17,10 +17,15 @@ namespace BadMango.Emulator.Bus;
 /// The <see cref="Category"/> field allows bulk enable/disable of traps by type,
 /// useful for compatibility testing where users want to force ROM execution.
 /// </para>
+/// <para>
+/// The <see cref="Operation"/> field specifies which memory operation triggers
+/// the trap (read, write, or call/execute).
+/// </para>
 /// </remarks>
 /// <param name="Address">The ROM address where this trap is registered.</param>
 /// <param name="Name">Human-readable name for the trap (e.g., "HOME", "COUT").</param>
 /// <param name="Category">Classification of the trap for filtering.</param>
+/// <param name="Operation">The type of operation that triggers this trap.</param>
 /// <param name="Handler">The native implementation delegate.</param>
 /// <param name="Description">Optional detailed description for tooling.</param>
 /// <param name="IsEnabled">Whether this trap is currently enabled.</param>
@@ -32,6 +37,7 @@ public readonly record struct TrapInfo(
     Addr Address,
     string Name,
     TrapCategory Category,
+    TrapOperation Operation,
     TrapHandler Handler,
     string? Description,
     bool IsEnabled,

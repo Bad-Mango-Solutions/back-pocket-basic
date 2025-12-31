@@ -19,24 +19,24 @@ public enum TrapCategory
     MonitorRom,
 
     /// <summary>
-    /// Applesoft BASIC interpreter routines.
+    /// BASIC interpreter routines (parsing, execution, math functions, etc.).
     /// </summary>
-    ApplesoftBasic,
+    BasicInterpreter,
 
     /// <summary>
-    /// DOS 3.3 file system routines.
+    /// Operating system routines (file system, disk access, etc.).
     /// </summary>
-    Dos33,
-
-    /// <summary>
-    /// ProDOS file system routines.
-    /// </summary>
-    ProDos,
+    OperatingSystem,
 
     /// <summary>
     /// Slot firmware (peripheral card ROMs).
     /// </summary>
     SlotFirmware,
+
+    /// <summary>
+    /// Onboard device routines (video, sound, keyboard, etc.).
+    /// </summary>
+    OnboardDevice,
 
     /// <summary>
     /// User-defined traps for custom extensions.
