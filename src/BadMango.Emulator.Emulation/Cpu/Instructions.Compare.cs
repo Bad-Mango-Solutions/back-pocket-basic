@@ -47,9 +47,9 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CMP;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CMP };
 
-                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     cpu.State.OperandSize = 1;
                     cpu.State.SetOperand(0, value);
@@ -94,9 +94,9 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CPX;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CPX };
 
-                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     cpu.State.OperandSize = 1;
                     cpu.State.SetOperand(0, value);
@@ -141,9 +141,9 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CPY;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CPY };
 
-                if (cpu.State.AddressingMode == CpuAddressingModes.Immediate)
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
                 {
                     cpu.State.OperandSize = 1;
                     cpu.State.SetOperand(0, value);

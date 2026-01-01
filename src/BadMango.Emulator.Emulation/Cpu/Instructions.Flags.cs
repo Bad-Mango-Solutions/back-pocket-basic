@@ -32,7 +32,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CLC;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLC };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -57,7 +57,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.SEC;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEC };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -82,7 +82,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CLI;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLI };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -107,7 +107,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.SEI;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEI };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -132,7 +132,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CLD;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLD };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -157,7 +157,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.SED;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SED };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -182,7 +182,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.CLV;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLV };
                 cpu.State.InstructionCycles += opCycles;
             }
 

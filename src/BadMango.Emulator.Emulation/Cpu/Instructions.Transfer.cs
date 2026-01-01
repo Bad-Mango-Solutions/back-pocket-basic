@@ -35,7 +35,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TAX;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAX };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -63,7 +63,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TAY;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAY };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -91,7 +91,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TXA;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXA };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -119,7 +119,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TYA;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TYA };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -144,7 +144,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TXS;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXS };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -172,7 +172,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TSX;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSX };
                 cpu.State.InstructionCycles += opCycles;
             }
 

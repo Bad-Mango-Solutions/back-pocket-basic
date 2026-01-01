@@ -50,6 +50,7 @@ public class Cpu65C02 : ICpu
 
     private CpuState state; // CPU state including all registers and cycles
     private HaltState haltReason; // Halt state managed directly by CPU, not in CpuState
+    private InstructionTrace trace; // Instruction trace for debug information
     private bool stopRequested;
     private IDebugStepListener? debugListener;
 
@@ -145,6 +146,16 @@ public class Cpu65C02 : ICpu
     }
 
     /// <inheritdoc/>
+    public InstructionTrace Trace
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => trace;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => trace = value;
+    }
+
+    /// <inheritdoc/>
     public void Reset()
     {
         // Reset the scheduler's timing to cycle 0
@@ -192,12 +203,21 @@ public class Cpu65C02 : ICpu
         // Notify debug listener before execution
         if (debugListener is not null)
         {
-            state.ClearDebugStateInformation();
+            // Initialize trace for this instruction
+            var opcodeBuffer = new OpcodeBuffer();
+            opcodeBuffer[0] = opcode;
+            trace = new InstructionTrace(
+                StartPC: pcBefore,
+                OpCode: opcodeBuffer,
+                Instruction: CpuInstructions.None,
+                AddressingMode: CpuAddressingModes.None,
+                OperandSize: 0,
+                Operands: default,
+                EffectiveAddress: 0,
+                StartCycle: context.Now,
+                InstructionCycles: new Cycle(1)); // Opcode fetch cycle
 
-            // Set up state for instruction tracking
             state.IsDebuggerAttached = true;
-            state.Opcode = opcode;
-            state.InstructionCycles = 1; // Opcode fetch cycle
 
             var beforeArgs = new DebugStepEventArgs
             {
@@ -227,14 +247,14 @@ public class Cpu65C02 : ICpu
             {
                 PC = pcBefore,
                 Opcode = opcode,
-                Instruction = state.Instruction,
-                AddressingMode = state.AddressingMode,
-                OperandSize = state.OperandSize,
-                Operands = state.Operands,
-                EffectiveAddress = state.EffectiveAddress,
+                Instruction = trace.Instruction,
+                AddressingMode = trace.AddressingMode,
+                OperandSize = trace.OperandSize,
+                Operands = trace.Operands,
+                EffectiveAddress = trace.EffectiveAddress,
                 Registers = state.Registers,
                 Cycles = context.Now.Value,
-                InstructionCycles = state.InstructionCycles,
+                InstructionCycles = (byte)trace.InstructionCycles.Value,
                 Halted = Halted,
                 HaltReason = haltReason,
             };
@@ -242,11 +262,6 @@ public class Cpu65C02 : ICpu
 
             // Reset debug state for next instruction
             state.IsDebuggerAttached = false;
-            state.Instruction = CpuInstructions.None;
-            state.AddressingMode = CpuAddressingModes.None;
-            state.OperandSize = 0;
-            state.EffectiveAddress = 0;
-            state.InstructionCycles = 0;
         }
 
         // Clear TCU after advancing scheduler (cycles have been committed)

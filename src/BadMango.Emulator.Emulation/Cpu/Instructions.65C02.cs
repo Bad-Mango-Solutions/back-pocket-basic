@@ -32,7 +32,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.STZ;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STZ };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -78,7 +78,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TSB;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSB };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -124,7 +124,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.TRB;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TRB };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -153,7 +153,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.WAI;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.WAI };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -182,7 +182,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.STP;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STP };
                 cpu.State.InstructionCycles += opCycles;
             }
 

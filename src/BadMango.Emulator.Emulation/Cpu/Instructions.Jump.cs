@@ -31,7 +31,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.JMP;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JMP };
             }
         };
     }
@@ -62,7 +62,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.JSR;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JSR };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -92,7 +92,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.RTS;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTS };
                 cpu.State.InstructionCycles += opCycles;
             }
 
@@ -124,7 +124,7 @@ public static partial class Instructions
 
             if (cpu.State.IsDebuggerAttached)
             {
-                cpu.State.Instruction = CpuInstructions.RTI;
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTI };
                 cpu.State.InstructionCycles += opCycles;
             }
 

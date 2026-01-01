@@ -131,6 +131,13 @@ public class Cpu65832 : ICpu
     public ref CpuState State => throw new NotImplementedException();
 
     /// <inheritdoc/>
+    public InstructionTrace Trace
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public byte Read8(Addr address)
     {
         throw new NotImplementedException();

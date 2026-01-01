@@ -46,6 +46,18 @@ public interface ICpu
     ref CpuState State { get; }
 
     /// <summary>
+    /// Gets or sets the instruction trace for debug tracing.
+    /// </summary>
+    /// <value>The current instruction trace structure.</value>
+    /// <remarks>
+    /// This property provides access to the instruction trace for instruction handlers
+    /// and addressing modes to record debug information during execution.
+    /// Use the <c>with</c> keyword to create modified copies when setting.
+    /// Only meaningful when <see cref="IsDebuggerAttached"/> is true.
+    /// </remarks>
+    InstructionTrace Trace { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the CPU is halted.
     /// </summary>
     /// <remarks>

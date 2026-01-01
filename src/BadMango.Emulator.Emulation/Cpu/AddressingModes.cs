@@ -36,15 +36,16 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Implied(ICpu cpu)
     {
-        ref var state = ref cpu.State;
-
         // No addressing needed, no PC increment, no cycles
         // Mode-agnostic
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.EffectiveAddress = 0;
-            state.OperandSize = 0;
-            state.AddressingMode = CpuAddressingModes.Implied;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.Implied,
+                EffectiveAddress = 0,
+                OperandSize = 0,
+            };
         }
 
         return 0;
@@ -68,9 +69,9 @@ public static class AddressingModes
         Addr address = state.Registers.PC.GetDWord();
         state.Registers.PC.Advance();
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.Immediate;
+            cpu.Trace = cpu.Trace with { AddressingMode = CpuAddressingModes.Immediate };
         }
 
         return address;
@@ -99,13 +100,18 @@ public static class AddressingModes
         state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + zpOffset);
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.ZeroPage;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.ZeroPage,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -141,13 +147,18 @@ public static class AddressingModes
         state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.ZeroPageX;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.ZeroPageX,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -183,13 +194,18 @@ public static class AddressingModes
         state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.ZeroPageY;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.ZeroPageY,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -214,14 +230,19 @@ public static class AddressingModes
 
         Addr effectiveAddr = ((Addr)state.Registers.DBR << 16) | address;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.Absolute;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(address & 0xFF));
-            state.SetOperand(1, (byte)((address >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(address & 0xFF);
+            operands[1] = (byte)((address >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.Absolute,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -251,14 +272,19 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.AbsoluteX;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(baseAddr & 0xFF));
-            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(baseAddr & 0xFF);
+            operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.AbsoluteX,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -288,14 +314,19 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.AbsoluteY;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(baseAddr & 0xFF));
-            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(baseAddr & 0xFF);
+            operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.AbsoluteY,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -335,13 +366,18 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.IndirectX;
-            state.EffectiveAddress = address;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.IndirectX,
+                EffectiveAddress = address,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return address;
@@ -384,13 +420,18 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.IndirectY;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.IndirectY,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -414,14 +455,19 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.AbsoluteX;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(baseAddr & 0xFF));
-            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(baseAddr & 0xFF);
+            operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.AbsoluteX,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -445,14 +491,19 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.AbsoluteY;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(baseAddr & 0xFF));
-            state.SetOperand(1, (byte)((baseAddr >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(baseAddr & 0xFF);
+            operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.AbsoluteY,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -492,13 +543,18 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.IndirectY;
-            state.EffectiveAddress = effectiveAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, zpOffset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.IndirectY,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return effectiveAddr;
@@ -512,13 +568,14 @@ public static class AddressingModes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Addr Accumulator(ICpu cpu)
     {
-        ref var state = ref cpu.State;
-
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.Accumulator;
-            state.EffectiveAddress = 0;
-            state.OperandSize = 0;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.Accumulator,
+                EffectiveAddress = 0,
+                OperandSize = 0,
+            };
         }
 
         return 0;
@@ -543,13 +600,18 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.Relative;
-            state.EffectiveAddress = targetAddr;
-            state.OperandSize = 1;
-            state.SetOperand(0, (byte)offset);
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)offset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.Relative,
+                EffectiveAddress = targetAddr,
+                OperandSize = 1,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return targetAddr;
@@ -576,14 +638,19 @@ public static class AddressingModes
 
         state.Registers.TCU += addrCycles;
 
-        if (state.IsDebuggerAttached)
+        if (cpu.IsDebuggerAttached)
         {
-            state.AddressingMode = CpuAddressingModes.Indirect;
-            state.EffectiveAddress = targetAddr;
-            state.OperandSize = 2;
-            state.SetOperand(0, (byte)(pointerAddr & 0xFF));
-            state.SetOperand(1, (byte)((pointerAddr >> 8) & 0xFF));
-            state.InstructionCycles += addrCycles;
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(pointerAddr & 0xFF);
+            operands[1] = (byte)((pointerAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.Indirect,
+                EffectiveAddress = targetAddr,
+                OperandSize = 2,
+                Operands = operands,
+                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
+            };
         }
 
         return targetAddr;

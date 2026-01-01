@@ -123,7 +123,7 @@ public struct CpuState
     /// </summary>
     public Addr EffectiveAddress
     {
-        readonly get => trace.EffectiveAddress ?? 0;
+        readonly get => trace.EffectiveAddress;
         set => trace = trace with { EffectiveAddress = value };
     }
 
@@ -187,7 +187,7 @@ public struct CpuState
             AddressingMode: CpuAddressingModes.None,
             OperandSize: 0,
             Operands: default,
-            EffectiveAddress: null,
+            EffectiveAddress: 0,
             StartCycle: new Cycle(Cycles),
             InstructionCycles: Cycle.Zero);
     }

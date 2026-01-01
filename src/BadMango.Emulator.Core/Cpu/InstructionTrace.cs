@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 /// <remarks>
 /// This record is used to log and analyze the behavior of the CPU during emulation,
 /// providing insights into the executed instructions and their associated data.
+/// Use the <c>with</c> keyword to create modified copies of this immutable struct.
 /// </remarks>
 /// <param name="StartPC">The starting program counter (PC) value for the instruction.</param>
 /// <param name="OpCode">The opcode of the instruction.</param>
@@ -31,6 +32,6 @@ public readonly record struct InstructionTrace(
     CpuAddressingModes AddressingMode,
     byte OperandSize,
     OperandBuffer Operands,
-    Addr? EffectiveAddress,
+    Addr EffectiveAddress,
     Cycle StartCycle,
     Cycle InstructionCycles);
