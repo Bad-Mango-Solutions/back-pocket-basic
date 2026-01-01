@@ -217,7 +217,7 @@ public class Cpu65C02 : ICpu
                 Operands: default,
                 EffectiveAddress: 0,
                 StartCycle: context.Now,
-                InstructionCycles: new Cycle(1)); // Opcode fetch cycle
+                InstructionCycles: Cycle.Zero); // TCU is the source of truth for cycles
 
             var beforeArgs = new DebugStepEventArgs
             {
@@ -243,6 +243,9 @@ public class Cpu65C02 : ICpu
         // Notify debug listener after execution
         if (debugListener is not null)
         {
+            // Apply TCU to the trace (this is a debug-only operation)
+            trace = trace with { InstructionCycles = instructionCycles };
+
             var afterArgs = new DebugStepEventArgs
             {
                 PC = pcBefore,
@@ -254,7 +257,7 @@ public class Cpu65C02 : ICpu
                 EffectiveAddress = trace.EffectiveAddress,
                 Registers = registers,
                 Cycles = context.Now.Value,
-                InstructionCycles = (byte)trace.InstructionCycles.Value,
+                InstructionCycles = (byte)instructionCycles.Value,
                 Halted = Halted,
                 HaltReason = haltReason,
             };

@@ -108,7 +108,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -154,7 +153,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -200,7 +198,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -236,7 +233,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -277,7 +273,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -318,7 +313,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -368,7 +362,6 @@ public static class AddressingModes
                 EffectiveAddress = address,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -421,7 +414,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -456,7 +448,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -491,7 +482,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -541,7 +531,6 @@ public static class AddressingModes
                 EffectiveAddress = effectiveAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -597,7 +586,6 @@ public static class AddressingModes
                 EffectiveAddress = targetAddr,
                 OperandSize = 1,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
@@ -635,7 +623,6 @@ public static class AddressingModes
                 EffectiveAddress = targetAddr,
                 OperandSize = 2,
                 Operands = operands,
-                InstructionCycles = cpu.Trace.InstructionCycles + addrCycles,
             };
         }
 
