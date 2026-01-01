@@ -96,7 +96,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + zpOffset);
 
         if (state.IsDebuggerAttached)
@@ -138,7 +138,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         if (state.IsDebuggerAttached)
@@ -180,7 +180,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
         Addr effectiveAddr = (Addr)(directPage + effectiveOffset);
 
         if (state.IsDebuggerAttached)
@@ -210,7 +210,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         state.Registers.PC.Advance(2);
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         Addr effectiveAddr = ((Addr)state.Registers.DBR << 16) | address;
 
@@ -249,7 +249,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -286,7 +286,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -333,7 +333,7 @@ public static class AddressingModes
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -382,7 +382,7 @@ public static class AddressingModes
             addrCycles++;
         }
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -412,7 +412,7 @@ public static class AddressingModes
         Addr effectiveAddr = baseAddr + state.Registers.X.GetByte();
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -443,7 +443,7 @@ public static class AddressingModes
         Addr effectiveAddr = baseAddr + state.Registers.Y.GetByte();
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -490,7 +490,7 @@ public static class AddressingModes
 
         addrCycles++; // 1 extra cycle for write (always taken)
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -541,7 +541,7 @@ public static class AddressingModes
 
         Addr targetAddr = (Addr)(state.Registers.PC.GetAddr() + offset);
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {
@@ -574,7 +574,7 @@ public static class AddressingModes
 
         addrCycles += 2; // 2 cycles to read target
 
-        state.Cycles += addrCycles;
+        state.Registers.TCU += addrCycles;
 
         if (state.IsDebuggerAttached)
         {

@@ -68,7 +68,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
             cpu.State.Registers.P.SetZeroAndNegative(value, size);
             cpu.State.Registers.A.SetValue(value, size);
         };
@@ -103,7 +103,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
             cpu.State.Registers.P.SetZeroAndNegative(value, size);
             cpu.State.Registers.X.SetValue(value, size);
         };
@@ -138,7 +138,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
             cpu.State.Registers.P.SetZeroAndNegative(value, size);
             cpu.State.Registers.Y.SetValue(value, size);
         };
@@ -166,7 +166,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -192,7 +192,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -218,7 +218,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -242,7 +242,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -283,7 +283,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 }

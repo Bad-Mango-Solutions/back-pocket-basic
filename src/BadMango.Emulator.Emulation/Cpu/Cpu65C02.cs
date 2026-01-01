@@ -136,6 +136,9 @@ public class Cpu65C02 : ICpu
     /// <inheritdoc/>
     public void Reset()
     {
+        // Reset the scheduler's timing to cycle 0
+        context.Scheduler.Reset();
+
         state = new()
         {
             Registers = new(true, Read16(Cpu65C02Constants.ResetVector)),
@@ -149,14 +152,21 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Step()
     {
-        ulong cyclesBefore = state.Cycles;
+        // Clear TCU at the start of each instruction
+        state.Registers.TCU = Cycle.Zero;
 
         // Check for pending interrupts at instruction boundary using the signal bus
         bool interruptProcessed = CheckInterrupts();
         if (interruptProcessed)
         {
-            // Interrupt was processed, cycles were updated by ProcessInterrupt
-            return (int)(state.Cycles - cyclesBefore);
+            // Interrupt was processed, TCU was updated by ProcessInterrupt
+            // Advance the scheduler by the TCU value
+            Cycle interruptCycles = state.Registers.TCU;
+            context.Scheduler.Advance(interruptCycles);
+
+            // Clear TCU after advancing scheduler
+            state.Registers.TCU = Cycle.Zero;
+            return (int)interruptCycles.Value;
         }
 
         if (Halted)
@@ -167,6 +177,9 @@ public class Cpu65C02 : ICpu
         // Capture state before execution for debug listener
         Addr pcBefore = state.Registers.PC.GetAddr();
         byte opcode = FetchByte();
+
+        // Advance TCU by one for the opcode fetch
+        state.Registers.TCU += 1;
 
         // Notify debug listener before execution
         if (debugListener is not null)
@@ -183,7 +196,7 @@ public class Cpu65C02 : ICpu
                 PC = pcBefore,
                 Opcode = opcode,
                 Registers = state.Registers,
-                Cycles = cyclesBefore,
+                Cycles = context.Now.Value,
                 Halted = false,
                 HaltReason = HaltState.None,
             };
@@ -192,6 +205,12 @@ public class Cpu65C02 : ICpu
 
         // Execute opcode - handlers now access memory through this CPU instance
         opcodeTable.Execute(opcode, this);
+
+        // Capture TCU before advancing scheduler (for return value)
+        Cycle instructionCycles = state.Registers.TCU;
+
+        // Advance the scheduler by the TCU value (total cycles for this instruction)
+        context.Scheduler.Advance(instructionCycles);
 
         // Notify debug listener after execution
         if (debugListener is not null)
@@ -206,7 +225,7 @@ public class Cpu65C02 : ICpu
                 Operands = state.Operands,
                 EffectiveAddress = state.EffectiveAddress,
                 Registers = state.Registers,
-                Cycles = state.Cycles,
+                Cycles = context.Now.Value,
                 InstructionCycles = state.InstructionCycles,
                 Halted = state.Halted,
                 HaltReason = state.HaltReason,
@@ -222,7 +241,10 @@ public class Cpu65C02 : ICpu
             state.InstructionCycles = 0;
         }
 
-        return (int)(state.Cycles - cyclesBefore);
+        // Clear TCU after advancing scheduler (cycles have been committed)
+        state.Registers.TCU = Cycle.Zero;
+
+        return (int)instructionCycles.Value;
     }
 
     /// <inheritdoc/>
@@ -249,6 +271,13 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref CpuState GetState()
     {
+        // Sync state.Cycles from the scheduler plus any pending TCU cycles.
+        // TCU holds cycles accumulated during instruction execution.
+        // When called via Step(), TCU will have already been cleared for the next instruction,
+        // so this effectively returns scheduler.Now.
+        // When called after a direct handler invocation (unit test pattern), TCU holds
+        // the cycles that haven't been flushed to the scheduler yet.
+        state.Cycles = context.Now.Value + state.Registers.TCU.Value;
         return ref state;
     }
 
@@ -256,19 +285,26 @@ public class Cpu65C02 : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetState(CpuState newState)
     {
+        // If the new state has a different cycle count, advance the scheduler to match
+        // This maintains backward compatibility with code that sets cycles via state
+        if (newState.Cycles > context.Now.Value)
+        {
+            context.Scheduler.Advance(new Cycle(newState.Cycles - context.Now.Value));
+        }
+
         state = newState;
     }
 
     /// <inheritdoc/>
     public void SignalIRQ()
     {
-        signals.Assert(SignalLine.IRQ, CpuSourceId, new Cycle(state.Cycles));
+        signals.Assert(SignalLine.IRQ, CpuSourceId, context.Now);
     }
 
     /// <inheritdoc/>
     public void SignalNMI()
     {
-        signals.Assert(SignalLine.NMI, CpuSourceId, new Cycle(state.Cycles));
+        signals.Assert(SignalLine.NMI, CpuSourceId, context.Now);
     }
 
     /// <inheritdoc/>
@@ -418,7 +454,7 @@ public class Cpu65C02 : ICpu
         var pc = state.Registers.PC.GetAddr();
         state.Registers.PC.Advance();
         byte value = Read8(pc);
-        state.Cycles++;
+        // Note: TCU is advanced in Step() after the fetch
         return value;
     }
 
@@ -502,7 +538,7 @@ public class Cpu65C02 : ICpu
         state.Registers.PC.SetAddr(Read16(vector));
 
         // Account for 7 cycles for interrupt processing
-        state.Cycles += 7;
+        state.Registers.TCU += 7;
     }
 
     /// <summary>
@@ -551,7 +587,7 @@ public class Cpu65C02 : ICpu
             EmulationFlag: true, // 65C02 is always in emulation mode
             Intent: AccessIntent.DataRead,
             SourceId: CpuSourceId,
-            Cycle: state.Cycles,
+            Cycle: context.Now,
             Flags: AccessFlags.None);
     }
 
@@ -569,7 +605,7 @@ public class Cpu65C02 : ICpu
             EmulationFlag: true,
             Intent: AccessIntent.DataWrite,
             SourceId: CpuSourceId,
-            Cycle: state.Cycles,
+            Cycle: context.Now,
             Flags: AccessFlags.None);
     }
 

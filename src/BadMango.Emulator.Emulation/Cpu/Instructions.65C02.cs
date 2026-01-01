@@ -36,7 +36,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -82,7 +82,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -128,7 +128,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -157,7 +157,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 
@@ -186,7 +186,7 @@ public static partial class Instructions
                 cpu.State.InstructionCycles += opCycles;
             }
 
-            cpu.State.Cycles += opCycles;
+            cpu.State.Registers.TCU += opCycles;
         };
     }
 }
