@@ -88,9 +88,10 @@ public class Cpu65C02 : ICpu
         var scheduler = new Scheduler();
         var signalBus = new SignalBus();
 
-        // Map the entire 64KB address space to a RAM target that wraps the IMemory
+        // Map the memory address space to a RAM target that wraps the IMemory
         var adapter = new MemoryToTargetAdapter(memory);
-        mainBus.MapPageRange(0, 16, 0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, adapter, 0);
+        var pageCount = (int)(memory.Size >> 12); // 4KB pages (Size / 4096)
+        mainBus.MapPageRange(0, pageCount, 0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, adapter, 0);
 
         context = new EventContext(scheduler, signalBus, mainBus);
         bus = mainBus;
