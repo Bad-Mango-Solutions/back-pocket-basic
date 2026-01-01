@@ -58,15 +58,15 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         memory.Write(0x1000, 0x42); // Value to load
-        var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
+        SetupCpu(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
 
         // Act - Execute LDA Immediate (opcode 0xA9)
         var handler = opcodeTable.GetHandler(0xA9);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42), "LDA should load the value");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be incremented");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "LDA should load the value");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be incremented");
     }
 
     /// <summary>
@@ -81,14 +81,14 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // Test LDA Zero Page (0xA5)
         memory.Write(0x1000, 0x50); // ZP address
         memory.Write(0x0050, 0x99); // Value at ZP
-        var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
+        SetupCpu(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
 
         // Act
         var handler = opcodeTable.GetHandler(0xA5);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x99), "LDA ZP should load from zero page");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x99), "LDA ZP should load from zero page");
     }
 
     /// <summary>
@@ -100,11 +100,11 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // Arrange
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         memory.Write(0x1000, 0x50); // ZP address
-        var state = CreateState(pc: 0x1000, a: 0x42, p: 0, cycles: 0);
+        SetupCpu(pc: 0x1000, a: 0x42, p: 0, cycles: 0);
 
         // Act - Execute STA Zero Page (0x85)
         var handler = opcodeTable.GetHandler(0x85);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
         Assert.That(memory.Read(0x0050), Is.EqualTo(0x42), "STA should store accumulator value");
@@ -140,25 +140,25 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // Set up a simple program: LDA #$42, STA $50
         memory.Write(0x1000, 0x42); // Value for LDA immediate
         memory.Write(0x1001, 0x50); // ZP address for STA
-        var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
+        SetupCpu(pc: 0x1000, a: 0x00, p: 0, cycles: 0);
 
         // Act - Execute LDA #$42 (opcode 0xA9)
         var ldaHandler = opcodeTable.GetHandler(0xA9);
-        cpu.SetState(state); ldaHandler(cpu); state = cpu.GetState();
+        ldaHandler(cpu);
 
         // Then execute STA $50 (opcode 0x85)
         var staHandler = opcodeTable.GetHandler(0x85);
-        cpu.SetState(state); staHandler(cpu); state = cpu.GetState();
+        staHandler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42), "Accumulator should contain loaded value");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "Accumulator should contain loaded value");
         Assert.That(memory.Read(0x0050), Is.EqualTo(0x42), "Memory should contain stored value");
     }
 
     /// <summary>
-    /// Creates a CpuState for testing with the specified register values.
+    /// Sets up the CPU registers for testing with the specified values.
     /// </summary>
-    private static CpuState CreateState(
+    private void SetupCpu(
         Word pc = 0,
         byte a = 0,
         byte x = 0,
@@ -167,14 +167,13 @@ public class Cpu65C02GenericBuilderIntegrationTests
         ProcessorStatusFlags p = 0,
         ulong cycles = 0)
     {
-        var state = new CpuState { Cycles = cycles };
-        state.Registers.Reset(true);  // Initialize for 65C02 8-bit mode
-        state.Registers.PC.SetWord(pc);
-        state.Registers.A.SetByte(a);
-        state.Registers.X.SetByte(x);
-        state.Registers.Y.SetByte(y);
-        state.Registers.SP.SetByte(sp);
-        state.Registers.P = p;
-        return state;
+        cpu.Registers.Reset(true);  // Initialize for 65C02 8-bit mode
+        cpu.Registers.PC.SetWord(pc);
+        cpu.Registers.A.SetByte(a);
+        cpu.Registers.X.SetByte(x);
+        cpu.Registers.Y.SetByte(y);
+        cpu.Registers.SP.SetByte(sp);
+        cpu.Registers.P = p;
+        cpu.SetCycles(cycles);
     }
 }

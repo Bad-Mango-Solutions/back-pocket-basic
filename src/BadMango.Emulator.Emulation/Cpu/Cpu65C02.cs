@@ -325,25 +325,6 @@ public class Cpu65C02 : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public CpuState GetState()
-    {
-        return new CpuState
-        {
-            Registers = registers,
-            Cycles = GetCycles(),
-        };
-    }
-
-    /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetState(CpuState state)
-    {
-        registers = state.Registers;
-        SetCycles(state.Cycles);
-    }
-
-    /// <inheritdoc/>
     public void SignalIRQ()
     {
         signals.Assert(SignalLine.IRQ, CpuSourceId, context.Now);

@@ -560,7 +560,7 @@ public class ComprehensiveDebugFunctionalTests
         });
 
         // Verify total cycles add up
-        var totalCycles = cpu.GetState().Cycles;
+        var totalCycles = cpu.GetCycles();
         var sumOfInstructionCycles = listener.StepRecords.Sum(r => r.AfterStep.InstructionCycles);
         Assert.That(totalCycles, Is.EqualTo(sumOfInstructionCycles), "Total cycles should match sum of instruction cycles");
     }

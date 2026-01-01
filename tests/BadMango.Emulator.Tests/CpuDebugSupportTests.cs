@@ -472,14 +472,14 @@ public class CpuDebugSupportTests
 
         // Execute without debugger
         int cyclesWithout = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
-        ulong totalCyclesWithout = cpu.GetState().Cycles;
+        ulong totalCyclesWithout = cpu.GetCycles();
 
         // Reset and execute with debugger
         cpu.Reset();
         var listener = new TestDebugListener();
         cpu.AttachDebugger(listener);
         int cyclesWith = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
-        ulong totalCyclesWith = cpu.GetState().Cycles;
+        ulong totalCyclesWith = cpu.GetCycles();
 
         Assert.Multiple(() =>
         {

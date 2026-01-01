@@ -51,9 +51,9 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should process IRQ instead of executing NOP
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(state.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
         byte p = memory.Read(0x01FD);      // P is at top of stack
@@ -82,8 +82,8 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should execute NOP normally
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
     #endregion
@@ -110,8 +110,8 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should process NMI even with I flag set
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -135,8 +135,8 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should process NMI, not IRQ
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
     #endregion
@@ -186,7 +186,7 @@ public class InterruptAndHaltTests
 
         // Assert
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after IRQ");
-        Assert.That(cpu.GetState().Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
         Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
     }
 
@@ -211,9 +211,9 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should resume and process NMI
 
         // Assert
-        var state = cpu.GetState();
+        
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after NMI");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -357,7 +357,7 @@ public class InterruptAndHaltTests
         // Assert - BRK should not halt, PC should be at IRQ vector
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
         Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
-        Assert.That(cpu.GetState().Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>
@@ -407,14 +407,14 @@ public class InterruptAndHaltTests
         // Deassert IRQ before executing RTI, simulating device acknowledgment
         // In a real system, the interrupt handler would read the device's status
         // register which clears the interrupt. For this test, we manually deassert.
-        cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(cpu.GetState().Cycles));
+        cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(cpu.GetCycles()));
 
         cpu.Step(); // Execute RTI
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
-        Assert.That(state.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
+        Assert.That(cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }
 
     #endregion

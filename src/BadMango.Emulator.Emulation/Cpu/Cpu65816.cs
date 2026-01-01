@@ -80,18 +80,6 @@ public class Cpu65816 : ICpu
     }
 
     /// <inheritdoc/>
-    public CpuState GetState()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void SetState(CpuState state)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
     public void SignalIRQ()
     {
         throw new NotImplementedException();

@@ -47,16 +47,16 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x00);
-        var state = CreateState(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDA(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x00));
-        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
+        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
     }
 
     /// <summary>
@@ -67,16 +67,16 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x80);
-        var state = CreateState(pc: 0x1000, a: 0x00, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0x00, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDA(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x80));
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
-        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x80));
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
+        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
     }
 
     /// <summary>
@@ -87,16 +87,16 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x42);
-        var state = CreateState(pc: 0x1000, a: 0x00, p: FlagZ | FlagN, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0x00, p: FlagZ | FlagN, cycles: 10);
 
         // Act
         var handler = Instructions.LDA(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42));
-        Assert.That(state.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
+        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
     }
 
     #endregion
@@ -111,16 +111,16 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x00);
-        var state = CreateState(pc: 0x1000, x: 0xFF, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDX(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x00));
-        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x00));
+        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
     }
 
     /// <summary>
@@ -131,15 +131,15 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x90);
-        var state = CreateState(pc: 0x1000, x: 0x00, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, x: 0x00, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDX(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x90));
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x90));
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
     }
 
     #endregion
@@ -154,15 +154,15 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0x00);
-        var state = CreateState(pc: 0x1000, y: 0xFF, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDY(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x00));
-        Assert.That(state.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0x00));
+        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -173,15 +173,15 @@ public class InstructionsTests
     {
         // Arrange
         memory.Write(0x1000, 0xA0);
-        var state = CreateState(pc: 0x1000, y: 0x00, p: 0, cycles: 10);
+        SetupCpu(pc: 0x1000, y: 0x00, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.LDY(AddressingModes.Immediate);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0xA0));
-        Assert.That(state.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
+        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0xA0));
+        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
     }
 
     #endregion
@@ -195,12 +195,12 @@ public class InstructionsTests
     public void STA_StoresAccumulatorToMemory()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, a: 0x42, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0x42, cycles: 10);
         memory.Write(0x1000, 0x50); // ZP address
 
         // Act
         var handler = Instructions.STA(AddressingModes.ZeroPage);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
         Assert.That(memory.Read(0x0050), Is.EqualTo(0x42));
@@ -213,15 +213,15 @@ public class InstructionsTests
     public void STA_DoesNotAffectFlags()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, a: 0x00, p: FlagZ | FlagN, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0x00, p: FlagZ | FlagN, cycles: 10);
         memory.Write(0x1000, 0x60); // ZP address
 
         // Act
         var handler = Instructions.STA(AddressingModes.ZeroPage);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be modified");
+        Assert.That(cpu.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be modified");
     }
 
     #endregion
@@ -235,20 +235,20 @@ public class InstructionsTests
     public void NOP_DoesNothingButConsumesCycles()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, a: 0x42, x: 0x12, y: 0x34, sp: 0xFD, p: FlagZ | FlagN, cycles: 10);
+        SetupCpu(pc: 0x1000, a: 0x42, x: 0x12, y: 0x34, sp: 0xFD, p: FlagZ | FlagN, cycles: 10);
 
         // Act
         var handler = Instructions.NOP(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1000), "PC should not change");
-        Assert.That(state.Registers.A.GetByte(), Is.EqualTo(0x42), "RegisterAccumulator should not change");
-        Assert.That(state.Registers.X.GetByte(), Is.EqualTo(0x12), "X should not change");
-        Assert.That(state.Registers.Y.GetByte(), Is.EqualTo(0x34), "Y should not change");
-        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFD), "SP should not change");
-        Assert.That(state.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not change");
-        Assert.That(state.Cycles, Is.EqualTo(11), "Should consume 1 cycle");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1000), "PC should not change");
+        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "RegisterAccumulator should not change");
+        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x12), "X should not change");
+        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0x34), "Y should not change");
+        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFD), "SP should not change");
+        Assert.That(cpu.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not change");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11), "Should consume 1 cycle");
     }
 
     #endregion
@@ -262,16 +262,16 @@ public class InstructionsTests
     public void CLC_ClearsCarryFlag()
     {
         // Arrange
-        var state = CreateState(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
+        SetupCpu(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.CLC(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry flag should be clear");
-        Assert.That(state.Registers.P & ~FlagC, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagC), "Other flags should be unchanged");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry flag should be clear");
+        Assert.That(cpu.Registers.P & ~FlagC, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagC), "Other flags should be unchanged");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -281,15 +281,15 @@ public class InstructionsTests
     public void SEC_SetsCarryFlag()
     {
         // Arrange
-        var state = CreateState(p: 0, cycles: 10); // All flags clear
+        SetupCpu(p: 0, cycles: 10); // All flags clear
 
         // Act
         var handler = Instructions.SEC(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry flag should be set");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry flag should be set");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -299,16 +299,16 @@ public class InstructionsTests
     public void CLI_ClearsInterruptDisableFlag()
     {
         // Arrange
-        var state = CreateState(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
+        SetupCpu(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.CLI(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo((ProcessorStatusFlags)0), "Interrupt disable flag should be clear");
-        Assert.That(state.Registers.P & ~FlagI, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagI), "Other flags should be unchanged");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagI, Is.EqualTo((ProcessorStatusFlags)0), "Interrupt disable flag should be clear");
+        Assert.That(cpu.Registers.P & ~FlagI, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagI), "Other flags should be unchanged");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -318,15 +318,15 @@ public class InstructionsTests
     public void SEI_SetsInterruptDisableFlag()
     {
         // Arrange
-        var state = CreateState(p: 0, cycles: 10); // All flags clear
+        SetupCpu(p: 0, cycles: 10); // All flags clear
 
         // Act
         var handler = Instructions.SEI(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -336,16 +336,16 @@ public class InstructionsTests
     public void CLD_ClearsDecimalModeFlag()
     {
         // Arrange
-        var state = CreateState(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
+        SetupCpu(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.CLD(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagD, Is.EqualTo((ProcessorStatusFlags)0), "Decimal mode flag should be clear");
-        Assert.That(state.Registers.P & ~FlagD, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagD), "Other flags should be unchanged");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagD, Is.EqualTo((ProcessorStatusFlags)0), "Decimal mode flag should be clear");
+        Assert.That(cpu.Registers.P & ~FlagD, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagD), "Other flags should be unchanged");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -355,15 +355,15 @@ public class InstructionsTests
     public void SED_SetsDecimalModeFlag()
     {
         // Arrange
-        var state = CreateState(p: 0, cycles: 10); // All flags clear
+        SetupCpu(p: 0, cycles: 10); // All flags clear
 
         // Act
         var handler = Instructions.SED(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagD, Is.EqualTo(FlagD), "Decimal mode flag should be set");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagD, Is.EqualTo(FlagD), "Decimal mode flag should be set");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     /// <summary>
@@ -373,16 +373,16 @@ public class InstructionsTests
     public void CLV_ClearsOverflowFlag()
     {
         // Arrange
-        var state = CreateState(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
+        SetupCpu(p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.CLV(AddressingModes.Implied);
-        cpu.SetState(state); handler(cpu); state = cpu.GetState();
+        handler(cpu);
 
         // Assert
-        Assert.That(state.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "Overflow flag should be clear");
-        Assert.That(state.Registers.P & ~FlagV, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagV), "Other flags should be unchanged");
-        Assert.That(state.Cycles, Is.EqualTo(11));
+        Assert.That(cpu.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "Overflow flag should be clear");
+        Assert.That(cpu.Registers.P & ~FlagV, Is.EqualTo((ProcessorStatusFlags)0xFF & ~FlagV), "Other flags should be unchanged");
+        Assert.That(cpu.GetCycles(), Is.EqualTo(11));
     }
 
     #endregion
@@ -399,17 +399,14 @@ public class InstructionsTests
         memory.WriteWord(0xFFFC, 0x1000);
         memory.Write(0x1000, 0x18); // CLC opcode
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        cpu.SetState(state);
+        cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry flag should be clear");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry flag should be clear");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -427,9 +424,8 @@ public class InstructionsTests
         cpu.Step();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry flag should be set");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry flag should be set");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -442,17 +438,17 @@ public class InstructionsTests
         memory.WriteWord(0xFFFC, 0x1000);
         memory.Write(0x1000, 0x58); // CLI opcode
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        cpu.SetState(state);
+        
+        cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo((ProcessorStatusFlags)0), "Interrupt disable flag should be clear");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        
+        Assert.That(cpu.Registers.P & FlagI, Is.EqualTo((ProcessorStatusFlags)0), "Interrupt disable flag should be clear");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -470,9 +466,9 @@ public class InstructionsTests
         cpu.Step();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        
+        Assert.That(cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -485,17 +481,17 @@ public class InstructionsTests
         memory.WriteWord(0xFFFC, 0x1000);
         memory.Write(0x1000, 0xD8); // CLD opcode
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        cpu.SetState(state);
+        
+        cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagD, Is.EqualTo((ProcessorStatusFlags)0), "Decimal mode flag should be clear");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        
+        Assert.That(cpu.Registers.P & FlagD, Is.EqualTo((ProcessorStatusFlags)0), "Decimal mode flag should be clear");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -513,9 +509,9 @@ public class InstructionsTests
         cpu.Step();
 
         // Assert
-        var state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagD, Is.EqualTo(FlagD), "Decimal mode flag should be set");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        
+        Assert.That(cpu.Registers.P & FlagD, Is.EqualTo(FlagD), "Decimal mode flag should be set");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     /// <summary>
@@ -528,17 +524,17 @@ public class InstructionsTests
         memory.WriteWord(0xFFFC, 0x1000);
         memory.Write(0x1000, 0xB8); // CLV opcode
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        cpu.SetState(state);
+        
+        cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "Overflow flag should be clear");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x1001));
+        
+        Assert.That(cpu.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "Overflow flag should be clear");
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
 
     #endregion
@@ -560,20 +556,20 @@ public class InstructionsTests
 
         // Set initial state
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.PC.SetWord(0x1000);
-        state.Registers.SP.SetByte(0xFD); // Stack pointer starts at 0xFD
-        state.Registers.P = (ProcessorStatusFlags)0x24; // Some flags set
-        cpu.SetState(state);
+        
+        cpu.Registers.PC.SetWord(0x1000);
+        cpu.Registers.SP.SetByte(0xFD); // Stack pointer starts at 0xFD
+        cpu.Registers.P = (ProcessorStatusFlags)0x24; // Some flags set
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
+        
 
         // Check stack pointer decremented by 3
-        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFA), "SP should be decremented by 3");
+        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFA), "SP should be decremented by 3");
 
         // Check pushed values on stack
         // BRK pushes PC+1 (0x1002 since BRK increments PC), then P with B flag set
@@ -585,10 +581,10 @@ public class InstructionsTests
             Assert.That(memory.Read(0x01FB) & FlagB, Is.EqualTo(FlagB), "B flag should be set in pushed P register");
 
             // Check PC set to interrupt vector
-            Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x8000), "PC should be set to IRQ vector");
+            Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x8000), "PC should be set to IRQ vector");
 
             // Check I flag set
-            Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
+            Assert.That(cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
 
             // BRK does not halt - execution continues from interrupt vector
             Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
@@ -606,18 +602,18 @@ public class InstructionsTests
         memory.Write(0x1000, 0x00); // BRK
 
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.PC.SetWord(0x1000);
-        state.Registers.SP.SetByte(0xFF);
-        state.Registers.P = (ProcessorStatusFlags)0x00; // I flag clear initially
-        cpu.SetState(state);
+        
+        cpu.Registers.PC.SetWord(0x1000);
+        cpu.Registers.SP.SetByte(0xFF);
+        cpu.Registers.P = (ProcessorStatusFlags)0x00; // I flag clear initially
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "I flag should be set");
+        
+        Assert.That(cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "I flag should be set");
     }
 
     /// <summary>
@@ -634,28 +630,28 @@ public class InstructionsTests
         memory.Write(0x2000, 0x00); // BRK
 
         cpu.Reset();
-        var state = cpu.GetState();
-        state.Registers.PC.SetWord(0x2000);
-        state.Registers.SP.SetByte(0xFD);
-        state.Registers.P = (ProcessorStatusFlags)0x20;
-        cpu.SetState(state);
+        
+        cpu.Registers.PC.SetWord(0x2000);
+        cpu.Registers.SP.SetByte(0xFD);
+        cpu.Registers.P = (ProcessorStatusFlags)0x20;
+        
 
         // Act
         cpu.Step();
 
         // Assert
-        state = cpu.GetState();
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0xA000), "Should jump to interrupt vector");
+        
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0xA000), "Should jump to interrupt vector");
         Assert.That(cpu.Halted, Is.False, "Should not be halted - execution continues from interrupt vector");
-        Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");
+        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");
     }
 
     #endregion
 
     /// <summary>
-    /// Creates a CpuState for testing with the specified register values.
+    /// Sets up the CPU registers for testing with the specified values.
     /// </summary>
-    private static CpuState CreateState(
+    private void SetupCpu(
         Word pc = 0,
         byte a = 0,
         byte x = 0,
@@ -665,14 +661,13 @@ public class InstructionsTests
         ulong cycles = 0,
         bool compat = true)
     {
-        var state = new CpuState { Cycles = cycles };
-        state.Registers.Reset(compat);
-        state.Registers.PC.SetWord(pc);
-        state.Registers.A.SetByte(a);
-        state.Registers.X.SetByte(x);
-        state.Registers.Y.SetByte(y);
-        state.Registers.SP.SetByte(sp);
-        state.Registers.P = p;
-        return state;
+        cpu.Registers.Reset(compat);
+        cpu.Registers.PC.SetWord(pc);
+        cpu.Registers.A.SetByte(a);
+        cpu.Registers.X.SetByte(x);
+        cpu.Registers.Y.SetByte(y);
+        cpu.Registers.SP.SetByte(sp);
+        cpu.Registers.P = p;
+        cpu.SetCycles(cycles);
     }
 }

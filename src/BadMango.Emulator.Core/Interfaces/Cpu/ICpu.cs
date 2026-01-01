@@ -213,27 +213,6 @@ public interface ICpu
     void SetCycles(ulong cycles);
 
     /// <summary>
-    /// Gets a snapshot of the current CPU state including registers and cycles.
-    /// </summary>
-    /// <returns>A <see cref="CpuState"/> structure containing the current state.</returns>
-    /// <remarks>
-    /// This method is primarily provided for testing and debugging purposes.
-    /// For runtime CPU operation, prefer accessing <see cref="Registers"/> and
-    /// <see cref="GetCycles"/> directly.
-    /// </remarks>
-    CpuState GetState();
-
-    /// <summary>
-    /// Sets the CPU state from a snapshot.
-    /// </summary>
-    /// <param name="state">The state to apply to the CPU.</param>
-    /// <remarks>
-    /// This method is primarily provided for testing and debugging purposes.
-    /// It sets the registers and cycle count from the provided state snapshot.
-    /// </remarks>
-    void SetState(CpuState state);
-
-    /// <summary>
     /// Signals an IRQ (Interrupt Request) to the CPU.
     /// </summary>
     /// <remarks>
