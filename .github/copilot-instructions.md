@@ -19,7 +19,7 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **Unit tests required.** Every new feature or bug fix must include unit tests that cover the relevant code paths. Ensure tests are comprehensive and validate expected behavior.
 - **Adhere to SOLID principles.** Design classes and modules following SOLID principles to ensure a clean and maintainable codebase.
 - **Code formatting.** Maintain consistent code formatting as per the project's style guidelines to enhance readability and collaboration.
-- **Important:** SA1518 must not be suppressed. Always fix the underlying issue rather than suppressing this warning. Fixing the issue means ensuring that there are absolutely no trailing newlines at the end of a .cs file.
+- **Important:** SA1518 must not be suppressed. Always fix the underlying issue rather than suppressing this warning. **There must not be any newlines at the end of a .cs file; it must *always* end with `}`, `]` (in AssemblyInfo.cs), or `;` (in GlobalUsings.cs).**
 - **Important:** SA1600 and related XML doc warnings must not be suppressed. Always provide XML documentation for all public members and types to ensure clarity and maintainability.
 
 ### Coding Best Practices
