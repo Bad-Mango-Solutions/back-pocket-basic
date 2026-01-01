@@ -48,7 +48,8 @@ public class Cpu65C02 : ICpu
     private readonly ISignalBus signals;
     private readonly OpcodeTable opcodeTable;
 
-    private CpuState state; // CPU state including all registers, cycles, and halt state
+    private CpuState state; // CPU state including all registers and cycles
+    private HaltState haltReason; // Halt state managed directly by CPU, not in CpuState
     private bool stopRequested;
     private IDebugStepListener? debugListener;
 
@@ -116,7 +117,17 @@ public class Cpu65C02 : ICpu
     public bool Halted
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => state.Halted;
+        get => haltReason != HaltState.None;
+    }
+
+    /// <inheritdoc/>
+    public HaltState HaltReason
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => haltReason;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => haltReason = value;
     }
 
     /// <inheritdoc/>
@@ -143,8 +154,8 @@ public class Cpu65C02 : ICpu
         {
             Registers = new(true, Read16(Cpu65C02Constants.ResetVector)),
             Cycles = 0,
-            HaltReason = HaltState.None,
         };
+        haltReason = HaltState.None;
         stopRequested = false;
     }
 
@@ -224,8 +235,8 @@ public class Cpu65C02 : ICpu
                 Registers = state.Registers,
                 Cycles = context.Now.Value,
                 InstructionCycles = state.InstructionCycles,
-                Halted = state.Halted,
-                HaltReason = state.HaltReason,
+                Halted = Halted,
+                HaltReason = haltReason,
             };
             debugListener.OnAfterStep(in afterArgs);
 
@@ -248,7 +259,7 @@ public class Cpu65C02 : ICpu
     public void Execute(uint startAddress)
     {
         state.Registers.PC.SetAddr(startAddress);
-        state.HaltReason = HaltState.None;
+        haltReason = HaltState.None;
         stopRequested = false;
 
         while (!Halted && !stopRequested)
@@ -359,7 +370,7 @@ public class Cpu65C02 : ICpu
             // Handle bus fault - for now, return 0xFF (floating bus) and halt on unmapped
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
-                state.HaltReason = HaltState.Stp;
+                haltReason = HaltState.Stp;
             }
 
             return 0xFF;
@@ -393,7 +404,7 @@ public class Cpu65C02 : ICpu
         {
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
-                state.HaltReason = HaltState.Stp;
+                haltReason = HaltState.Stp;
             }
 
             return 0xFFFF;
@@ -472,7 +483,7 @@ public class Cpu65C02 : ICpu
     private bool CheckInterrupts()
     {
         // STP cannot be resumed by interrupts
-        if (state.HaltReason == HaltState.Stp)
+        if (haltReason == HaltState.Stp)
         {
             return false;
         }
@@ -481,9 +492,9 @@ public class Cpu65C02 : ICpu
         if (signals.ConsumeNmiEdge())
         {
             // Resume from WAI if halted
-            if (state.HaltReason == HaltState.Wai)
+            if (haltReason == HaltState.Wai)
             {
-                state.HaltReason = HaltState.None;
+                haltReason = HaltState.None;
             }
 
             ProcessInterrupt(Cpu65C02Constants.NmiVector);
@@ -494,9 +505,9 @@ public class Cpu65C02 : ICpu
         if (signals.IsAsserted(SignalLine.IRQ) && !state.Registers.P.IsInterruptDisabled())
         {
             // Resume from WAI if halted
-            if (state.HaltReason == HaltState.Wai)
+            if (haltReason == HaltState.Wai)
             {
-                state.HaltReason = HaltState.None;
+                haltReason = HaltState.None;
             }
 
             ProcessInterrupt(Cpu65C02Constants.IrqVector);
@@ -554,7 +565,7 @@ public class Cpu65C02 : ICpu
         {
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
-                state.HaltReason = HaltState.Stp;
+                haltReason = HaltState.Stp;
             }
 
             return 0xFFFFFFFF;

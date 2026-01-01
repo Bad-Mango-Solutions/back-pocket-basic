@@ -431,7 +431,7 @@ public class CpuDebugSupportTests
         Assert.Multiple(() =>
         {
             Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Stp));
+            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp));
         });
     }
 
@@ -450,7 +450,7 @@ public class CpuDebugSupportTests
         Assert.Multiple(() =>
         {
             Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Wai));
+            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Wai));
         });
     }
 

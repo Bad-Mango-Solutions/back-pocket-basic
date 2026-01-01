@@ -48,7 +48,22 @@ public interface ICpu
     /// <summary>
     /// Gets a value indicating whether the CPU is halted.
     /// </summary>
+    /// <remarks>
+    /// This property returns true if the CPU is in any halt state (Wai or Stp).
+    /// For more granular halt state information, use <see cref="HaltReason"/>.
+    /// </remarks>
     bool Halted { get; }
+
+    /// <summary>
+    /// Gets or sets the reason the CPU is halted.
+    /// </summary>
+    /// <remarks>
+    /// Distinguishes between different halt states:
+    /// - None: CPU is running
+    /// - Wai: Halted by WAI instruction (wait for interrupt)
+    /// - Stp: Halted by STP instruction (permanent halt until reset).
+    /// </remarks>
+    HaltState HaltReason { get; set; }
 
     /// <summary>
     /// Gets a value indicating whether a debugger is currently attached.

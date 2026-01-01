@@ -159,8 +159,7 @@ public class InterruptAndHaltTests
 
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        var state = cpu.GetState();
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.Wai), "Halt reason should be WAI");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Wai), "Halt reason should be WAI");
     }
 
     /// <summary>
@@ -186,10 +185,9 @@ public class InterruptAndHaltTests
         cpu.Step(); // Should resume and process IRQ
 
         // Assert
-        var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after IRQ");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
+        Assert.That(cpu.GetState().Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
     }
 
     /// <summary>
@@ -262,8 +260,7 @@ public class InterruptAndHaltTests
 
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        var state = cpu.GetState();
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should be STP");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should be STP");
     }
 
     /// <summary>
@@ -287,8 +284,7 @@ public class InterruptAndHaltTests
         // Assert
         Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
         Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed");
-        var state = cpu.GetState();
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should still be STP");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should still be STP");
     }
 
     /// <summary>
@@ -332,8 +328,7 @@ public class InterruptAndHaltTests
 
         // Assert
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after reset");
-        var state = cpu.GetState();
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None after reset");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None after reset");
     }
 
     #endregion
@@ -357,10 +352,9 @@ public class InterruptAndHaltTests
         cpu.Step(); // Execute BRK - jumps to IRQ vector
 
         // Assert - BRK should not halt, PC should be at IRQ vector
-        var state = cpu.GetState();
         Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
-        Assert.That(state.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
-        Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
+        Assert.That(cpu.GetState().Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>

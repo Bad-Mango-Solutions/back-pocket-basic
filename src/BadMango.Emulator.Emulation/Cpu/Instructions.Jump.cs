@@ -119,7 +119,7 @@ public static partial class Instructions
             byte hi = cpu.Read8(cpu.State.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC high byte
             cpu.State.Registers.PC.SetWord((Word)((hi << 8) | lo));
-            cpu.State.HaltReason = HaltState.None;
+            cpu.HaltReason = HaltState.None;
             opCycles += 2; // Internal operations
 
             if (cpu.State.IsDebuggerAttached)

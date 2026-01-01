@@ -148,7 +148,7 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.HaltReason = HaltState.Wai;
+            cpu.HaltReason = HaltState.Wai;
             opCycles += 2;
 
             if (cpu.State.IsDebuggerAttached)
@@ -177,7 +177,7 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.State.HaltReason = HaltState.Stp;
+            cpu.HaltReason = HaltState.Stp;
             opCycles += 2;
 
             if (cpu.State.IsDebuggerAttached)

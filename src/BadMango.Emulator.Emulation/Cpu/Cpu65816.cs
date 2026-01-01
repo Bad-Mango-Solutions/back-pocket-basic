@@ -31,6 +31,13 @@ public class Cpu65816 : ICpu
     public bool Halted => throw new NotImplementedException();
 
     /// <inheritdoc/>
+    public HaltState HaltReason
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public bool IsDebuggerAttached => throw new NotImplementedException();
 
     /// <inheritdoc/>

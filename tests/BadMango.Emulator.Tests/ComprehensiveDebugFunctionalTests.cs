@@ -115,7 +115,7 @@ public class ComprehensiveDebugFunctionalTests
 
         // Verify the program halted on STP
         Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        Assert.That(cpu.GetState().HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
+        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
 
         // Verify final result: 5! = 120 = $78
         Assert.That(memory.Read(resultAddr), Is.EqualTo(120), "5! should equal 120");

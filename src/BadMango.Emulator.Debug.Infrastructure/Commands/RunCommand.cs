@@ -96,7 +96,7 @@ public sealed class RunCommand : CommandHandlerBase
             {
                 if (debugContext.Cpu.Halted)
                 {
-                    stopReason = $"CPU halted ({debugContext.Cpu.GetState().HaltReason})";
+                    stopReason = $"CPU halted ({debugContext.Cpu.HaltReason})";
                     break;
                 }
 

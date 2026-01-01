@@ -591,7 +591,7 @@ public class InstructionsTests
             Assert.That(state.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
 
             // BRK does not halt - execution continues from interrupt vector
-            Assert.That(state.Halted, Is.False, "CPU should not be halted after BRK");
+            Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
         });
     }
 
@@ -646,7 +646,7 @@ public class InstructionsTests
         // Assert
         state = cpu.GetState();
         Assert.That(state.Registers.PC.GetWord(), Is.EqualTo(0xA000), "Should jump to interrupt vector");
-        Assert.That(state.Halted, Is.False, "Should not be halted - execution continues from interrupt vector");
+        Assert.That(cpu.Halted, Is.False, "Should not be halted - execution continues from interrupt vector");
         Assert.That(state.Registers.SP.GetByte(), Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");
     }
 

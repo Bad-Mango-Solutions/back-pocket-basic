@@ -1031,14 +1031,14 @@ public class NewInstructionsTests
     public void WAI_HaltsProcessor()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, haltReason: HaltState.None, p: 0, cycles: 10);
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.WAI(AddressingModes.Implied);
         cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
-        Assert.That(state.Halted, Is.True, "Processor should be halted");
+        Assert.That(cpu.Halted, Is.True, "Processor should be halted");
     }
 
     /// <summary>
@@ -1048,14 +1048,14 @@ public class NewInstructionsTests
     public void STP_HaltsProcessor()
     {
         // Arrange
-        var state = CreateState(pc: 0x1000, haltReason: HaltState.None, p: 0, cycles: 10);
+        var state = CreateState(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STP(AddressingModes.Implied);
         cpu.SetState(state); handler(cpu); state = cpu.GetState();
 
         // Assert
-        Assert.That(state.Halted, Is.True, "Processor should be halted");
+        Assert.That(cpu.Halted, Is.True, "Processor should be halted");
     }
 
     #endregion
@@ -1071,10 +1071,9 @@ public class NewInstructionsTests
         byte sp = 0,
         ProcessorStatusFlags p = 0,
         ulong cycles = 0,
-        HaltState haltReason = HaltState.None,
         bool compat = true)
     {
-        var state = new CpuState { Cycles = cycles, HaltReason = haltReason };
+        var state = new CpuState { Cycles = cycles };
         state.Registers.Reset(compat);
         state.Registers.PC.SetWord(pc);
         state.Registers.A.SetByte(a);

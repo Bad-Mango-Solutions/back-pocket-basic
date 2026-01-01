@@ -254,6 +254,6 @@ public static class Cpu65C02OpcodeTableBuilder
     /// </summary>
     private static void IllegalOpcode(ICpu cpu)
     {
-        cpu.State.HaltReason = HaltState.Stp; // Halt on illegal opcode (stop execution)
+        cpu.HaltReason = HaltState.Stp; // Halt on illegal opcode (stop execution)
     }
 }

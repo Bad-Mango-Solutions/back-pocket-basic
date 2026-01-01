@@ -43,28 +43,7 @@ public struct CpuState
         Cycles = 0;
         trace = default;
         ClearDebugStateInformation();
-        HaltReason = HaltState.None;
     }
-
-    /// <summary>
-    /// Gets a value indicating whether the CPU is halted.
-    /// </summary>
-    /// <remarks>
-    /// This property returns true if the CPU is in any halt state (Brk, Wai, or Stp).
-    /// For more granular halt state information, use <see cref="HaltReason"/>.
-    /// </remarks>
-    public readonly bool Halted => HaltReason != HaltState.None;
-
-    /// <summary>
-    /// Gets or sets the reason the CPU is halted.
-    /// </summary>
-    /// <remarks>
-    /// Distinguishes between different halt states:
-    /// - None: CPU is running
-    /// - Wai: Halted by WAI instruction (wait for interrupt)
-    /// - Stp: Halted by STP instruction (permanent halt until reset).
-    /// </remarks>
-    public HaltState HaltReason { get; set; }
 
     /// <summary>
     /// Gets the program counter at the start of the instruction.
