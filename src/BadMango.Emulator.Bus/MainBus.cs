@@ -934,7 +934,7 @@ public sealed class MainBus : IMemoryBus
     /// <inheritdoc />
     public void AddLayeredMapping(LayeredMapping mapping)
     {
-        if (!layers.ContainsKey(mapping.Layer.Name))
+        if (!layers.TryGetValue(mapping.Layer.Name, out var layer))
         {
             throw new ArgumentException($"Layer '{mapping.Layer.Name}' does not exist.", nameof(mapping));
         }
@@ -951,7 +951,7 @@ public sealed class MainBus : IMemoryBus
         layeredMappings[mapping.Layer.Name].Add(mapping);
 
         // If the layer is active, recompute affected pages
-        if (layers[mapping.Layer.Name].IsActive)
+        if (layer.IsActive)
         {
             RecomputeAffectedPages(startPage, pageCount);
         }
@@ -1061,37 +1061,18 @@ public sealed class MainBus : IMemoryBus
     /// <inheritdoc />
     public IEnumerable<LayeredMapping> GetAllMappingsAt(Addr address)
     {
-        foreach (var kvp in layeredMappings)
-        {
-            foreach (var mapping in kvp.Value)
-            {
-                if (mapping.ContainsAddress(address))
-                {
-                    yield return mapping;
-                }
-            }
-        }
+        return layeredMappings.Values
+            .SelectMany(mappings => mappings)
+            .Where(mapping => mapping.ContainsAddress(address));
     }
 
     /// <inheritdoc />
     public IEnumerable<MappingLayer> GetLayersAt(Addr address)
     {
-        var layersAtAddress = new List<MappingLayer>();
-
-        foreach (var kvp in layeredMappings)
-        {
-            foreach (var mapping in kvp.Value)
-            {
-                if (mapping.ContainsAddress(address))
-                {
-                    layersAtAddress.Add(layers[kvp.Key]);
-                    break; // Move to next layer
-                }
-            }
-        }
-
-        // Order by priority descending (highest first)
-        return layersAtAddress.OrderByDescending(l => l.Priority);
+        return layeredMappings
+            .Where(kvp => kvp.Value.Any(mapping => mapping.ContainsAddress(address)))
+            .Select(kvp => layers[kvp.Key])
+            .OrderByDescending(l => l.Priority);
     }
 
     /// <summary>
