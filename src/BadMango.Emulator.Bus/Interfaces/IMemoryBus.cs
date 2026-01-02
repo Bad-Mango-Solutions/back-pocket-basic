@@ -594,7 +594,7 @@ public interface IMemoryBus
     /// variants within a layer.
     /// </para>
     /// <para>
-    /// The Language Card has two 4KB banks for D000−DFFF — only one is active at a time.
+    /// The Language Card has two 4KB banks for D000-DFFF; only one is active at a time.
     /// Auxiliary memory has similar patterns. Swap groups implement this behavior.
     /// </para>
     /// </remarks>
@@ -643,7 +643,7 @@ public interface IMemoryBus
     /// the previously active variant.
     /// </para>
     /// <para>
-    /// Switching is atomic — there is no intermediate state where page entries
+    /// Switching is atomic: there is no intermediate state where page entries
     /// are partially updated, preventing torn reads during the switch.
     /// </para>
     /// </remarks>

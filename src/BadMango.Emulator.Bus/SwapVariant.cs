@@ -18,7 +18,7 @@ using Interfaces;
 /// </para>
 /// <para>
 /// This is used for scenarios like the Apple II Language Card, which has two 4KB banks
-/// for the D000−DFFF range — only one bank is active at a time.
+/// for the D000-DFFF range; only one bank is active at a time.
 /// </para>
 /// </remarks>
 /// <param name="Name">The unique name identifying this variant within its swap group.</param>

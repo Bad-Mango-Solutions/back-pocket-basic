@@ -15,7 +15,7 @@ namespace BadMango.Emulator.Bus;
 /// variants within a layer.
 /// </para>
 /// <para>
-/// The Language Card has two 4KB banks for D000−DFFF — only one is active at a time.
+/// The Language Card has two 4KB banks for D000-DFFF; only one is active at a time.
 /// Auxiliary memory has similar patterns. Swap groups implement this behavior.
 /// </para>
 /// </remarks>
