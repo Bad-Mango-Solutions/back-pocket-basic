@@ -457,4 +457,118 @@ public interface IMemoryBus
     /// </para>
     /// </remarks>
     void Clear();
+
+    /// <summary>
+    /// Creates a new mapping layer with the specified name and priority.
+    /// </summary>
+    /// <param name="name">A unique name for the layer.</param>
+    /// <param name="priority">The priority of the layer. Higher values override lower values for the same address.</param>
+    /// <returns>The newly created layer.</returns>
+    /// <exception cref="ArgumentException">Thrown when a layer with the same name already exists.</exception>
+    /// <remarks>
+    /// <para>
+    /// Layers are used to implement overlays such as Language Card ROM/RAM switching
+    /// and auxiliary memory banks. Each layer can contain multiple mappings that
+    /// become effective when the layer is activated.
+    /// </para>
+    /// </remarks>
+    MappingLayer CreateLayer(string name, int priority);
+
+    /// <summary>
+    /// Gets a layer by name.
+    /// </summary>
+    /// <param name="name">The name of the layer to retrieve.</param>
+    /// <returns>The layer if found; otherwise, <see langword="null"/>.</returns>
+    MappingLayer? GetLayer(string name);
+
+    /// <summary>
+    /// Adds a mapping to a layer.
+    /// </summary>
+    /// <param name="mapping">The layered mapping to add.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the mapping's layer does not exist or when addresses are not page-aligned.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The mapping does not take effect immediately. It becomes effective when the
+    /// containing layer is activated via <see cref="ActivateLayer"/>.
+    /// </para>
+    /// </remarks>
+    void AddLayeredMapping(LayeredMapping mapping);
+
+    /// <summary>
+    /// Activates a layer, making its mappings effective.
+    /// </summary>
+    /// <param name="layerName">The name of the layer to activate.</param>
+    /// <exception cref="KeyNotFoundException">Thrown when no layer with the specified name exists.</exception>
+    /// <remarks>
+    /// <para>
+    /// When a layer is activated, the bus recomputes effective page entries for all
+    /// addresses covered by the layer's mappings. Higher priority active layers
+    /// override lower priority layers for overlapping addresses.
+    /// </para>
+    /// </remarks>
+    void ActivateLayer(string layerName);
+
+    /// <summary>
+    /// Deactivates a layer, removing its mappings from the effective page table.
+    /// </summary>
+    /// <param name="layerName">The name of the layer to deactivate.</param>
+    /// <exception cref="KeyNotFoundException">Thrown when no layer with the specified name exists.</exception>
+    /// <remarks>
+    /// <para>
+    /// When a layer is deactivated, affected page entries are recomputed using the
+    /// remaining active layers. This may reveal underlying layers' mappings.
+    /// </para>
+    /// </remarks>
+    void DeactivateLayer(string layerName);
+
+    /// <summary>
+    /// Checks if a layer is currently active.
+    /// </summary>
+    /// <param name="layerName">The name of the layer to check.</param>
+    /// <returns><see langword="true"/> if the layer is active; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when no layer with the specified name exists.</exception>
+    bool IsLayerActive(string layerName);
+
+    /// <summary>
+    /// Sets the permissions for all mappings in a layer.
+    /// </summary>
+    /// <param name="layerName">The name of the layer to modify.</param>
+    /// <param name="perms">The new permissions to apply.</param>
+    /// <exception cref="KeyNotFoundException">Thrown when no layer with the specified name exists.</exception>
+    /// <remarks>
+    /// <para>
+    /// This method updates the permissions for all mappings in the layer and
+    /// recomputes affected page entries if the layer is active.
+    /// </para>
+    /// </remarks>
+    void SetLayerPermissions(string layerName, PagePerms perms);
+
+    /// <summary>
+    /// Gets the effective page entry for an address, considering all active layers.
+    /// </summary>
+    /// <param name="address">The virtual address to query.</param>
+    /// <returns>The effective page entry from the highest priority active layer, or the base page entry if no layers cover this address.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method returns the same entry that would be used for actual memory
+    /// operations. It reflects the current state of all active layers.
+    /// </para>
+    /// </remarks>
+    PageEntry GetEffectiveMapping(Addr address);
+
+    /// <summary>
+    /// Gets all mappings that cover the specified address, from all layers.
+    /// </summary>
+    /// <param name="address">The virtual address to query.</param>
+    /// <returns>An enumerable of all layered mappings covering the address, regardless of active state.</returns>
+    IEnumerable<LayeredMapping> GetAllMappingsAt(Addr address);
+
+    /// <summary>
+    /// Gets all layers that have mappings covering the specified address.
+    /// </summary>
+    /// <param name="address">The virtual address to query.</param>
+    /// <returns>An enumerable of layers with mappings at this address, ordered by priority (highest first).</returns>
+    IEnumerable<MappingLayer> GetLayersAt(Addr address);
 }
