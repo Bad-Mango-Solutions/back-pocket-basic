@@ -576,6 +576,262 @@ public class MainBusTests
     }
 
     /// <summary>
+    /// Verifies ValidateAlignment throws for non-page-aligned address.
+    /// </summary>
+    [Test]
+    public void ValidateAlignment_NonAlignedAddress_ThrowsArgumentException()
+    {
+        var bus = new MainBus();
+
+        var ex = Assert.Throws<ArgumentException>(() => bus.ValidateAlignment(0x0100, 0x1000));
+        Assert.That(ex.ParamName, Is.EqualTo("address"));
+    }
+
+    /// <summary>
+    /// Verifies ValidateAlignment throws for non-page-aligned size.
+    /// </summary>
+    [Test]
+    public void ValidateAlignment_NonAlignedSize_ThrowsArgumentException()
+    {
+        var bus = new MainBus();
+
+        var ex = Assert.Throws<ArgumentException>(() => bus.ValidateAlignment(0x1000, 0x0100));
+        Assert.That(ex.ParamName, Is.EqualTo("size"));
+    }
+
+    /// <summary>
+    /// Verifies ValidateAlignment succeeds for page-aligned values.
+    /// </summary>
+    [Test]
+    public void ValidateAlignment_AlignedValues_DoesNotThrow()
+    {
+        var bus = new MainBus();
+
+        Assert.DoesNotThrow(() => bus.ValidateAlignment(0x1000, 0x2000));
+    }
+
+    /// <summary>
+    /// Verifies MapRegion maps the I/O page correctly at 0xC000.
+    /// </summary>
+    [Test]
+    public void MapRegion_IoPage_MapsCorrectly()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize, "TestIO");
+        var target = new RamTarget(memory.Slice(0, PageSize));
+
+        bus.MapRegion(
+            virtualBase: 0xC000,
+            size: 0x1000,
+            deviceId: 10,
+            regionTag: RegionTag.Io,
+            perms: PagePerms.ReadWrite,
+            caps: TargetCaps.HasSideEffects,
+            target: target,
+            physicalBase: 0);
+
+        var entry = bus.GetPageEntry(0xC000);
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.DeviceId, Is.EqualTo(10));
+            Assert.That(entry.RegionTag, Is.EqualTo(RegionTag.Io));
+            Assert.That(entry.Target, Is.SameAs(target));
+        });
+    }
+
+    /// <summary>
+    /// Verifies MapRegion throws for non-page-aligned virtual base.
+    /// </summary>
+    [Test]
+    public void MapRegion_NonAlignedVirtualBase_ThrowsArgumentException()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, PageSize));
+
+        var ex = Assert.Throws<ArgumentException>(() => bus.MapRegion(
+            virtualBase: 0xC100,
+            size: 0x1000,
+            deviceId: 1,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.ReadWrite,
+            caps: TargetCaps.None,
+            target: target,
+            physicalBase: 0));
+        Assert.That(ex.ParamName, Is.EqualTo("address"));
+    }
+
+    /// <summary>
+    /// Verifies MapRegion throws for non-page-aligned size.
+    /// </summary>
+    [Test]
+    public void MapRegion_NonAlignedSize_ThrowsArgumentException()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, PageSize));
+
+        var ex = Assert.Throws<ArgumentException>(() => bus.MapRegion(
+            virtualBase: 0xC000,
+            size: 0x0100,
+            deviceId: 1,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.ReadWrite,
+            caps: TargetCaps.None,
+            target: target,
+            physicalBase: 0));
+        Assert.That(ex.ParamName, Is.EqualTo("size"));
+    }
+
+    /// <summary>
+    /// Verifies MapRegion throws when region exceeds address space.
+    /// </summary>
+    [Test]
+    public void MapRegion_ExceedsAddressSpace_ThrowsArgumentOutOfRangeException()
+    {
+        var bus = new MainBus(); // 16-bit address space = 16 pages
+        var memory = new PhysicalMemory(PageSize * 2, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, (uint)(PageSize * 2)));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => bus.MapRegion(
+            virtualBase: 0xF000,
+            size: 0x2000, // Would go beyond 64KB
+            deviceId: 1,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.ReadWrite,
+            caps: TargetCaps.None,
+            target: target,
+            physicalBase: 0));
+    }
+
+    /// <summary>
+    /// Verifies MapRegion maps multiple pages with incrementing physical addresses.
+    /// </summary>
+    [Test]
+    public void MapRegion_MultiplePages_IncrementsPhysicalBase()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize * 4, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, (uint)(PageSize * 4)));
+
+        bus.MapRegion(
+            virtualBase: 0x4000,
+            size: 0x4000, // 4 pages
+            deviceId: 1,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.ReadWrite,
+            caps: TargetCaps.None,
+            target: target,
+            physicalBase: 0x1000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.GetPageEntry(0x4000).PhysicalBase, Is.EqualTo(0x1000u));
+            Assert.That(bus.GetPageEntry(0x5000).PhysicalBase, Is.EqualTo(0x2000u));
+            Assert.That(bus.GetPageEntry(0x6000).PhysicalBase, Is.EqualTo(0x3000u));
+            Assert.That(bus.GetPageEntry(0x7000).PhysicalBase, Is.EqualTo(0x4000u));
+        });
+    }
+
+    /// <summary>
+    /// Verifies MapPageAt maps page 0x0D correctly at address 0xD000.
+    /// </summary>
+    [Test]
+    public void MapPageAt_PageD_MapsCorrectly()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, PageSize));
+
+        var entry = new PageEntry(
+            DeviceId: 42,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.ReadWrite,
+            Caps: TargetCaps.SupportsPeek,
+            Target: target,
+            PhysicalBase: 0);
+
+        bus.MapPageAt(0xD000, entry);
+
+        var retrievedEntry = bus.GetPageEntry(0xD000);
+        Assert.Multiple(() =>
+        {
+            Assert.That(retrievedEntry.DeviceId, Is.EqualTo(42));
+            Assert.That(retrievedEntry.Target, Is.SameAs(target));
+        });
+
+        // Verify page index is correct (0xD = 13)
+        var byIndex = bus.GetPageEntryByIndex(0x0D);
+        Assert.That(byIndex.DeviceId, Is.EqualTo(42));
+    }
+
+    /// <summary>
+    /// Verifies MapPageAt throws for non-page-aligned address.
+    /// </summary>
+    [Test]
+    public void MapPageAt_NonAlignedAddress_ThrowsArgumentException()
+    {
+        var bus = new MainBus();
+        var entry = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, null!, 0);
+
+        var ex = Assert.Throws<ArgumentException>(() => bus.MapPageAt(0xD100, entry));
+        Assert.That(ex.ParamName, Is.EqualTo("virtualAddress"));
+    }
+
+    /// <summary>
+    /// Verifies MapPageAt throws for address beyond address space.
+    /// </summary>
+    [Test]
+    public void MapPageAt_BeyondAddressSpace_ThrowsArgumentOutOfRangeException()
+    {
+        var bus = new MainBus(); // 16-bit = 64KB = 16 pages
+        var entry = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, null!, 0);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => bus.MapPageAt(0x10000, entry));
+    }
+
+    /// <summary>
+    /// Verifies SetPageEntry is functionally equivalent to MapPage.
+    /// </summary>
+    [Test]
+    public void SetPageEntry_EquivalentToMapPage()
+    {
+        var bus = new MainBus();
+        var memory = new PhysicalMemory(PageSize, "TestRAM");
+        var target = new RamTarget(memory.Slice(0, PageSize));
+
+        var entry = new PageEntry(
+            DeviceId: 99,
+            RegionTag: RegionTag.Stack,
+            Perms: PagePerms.ReadWrite,
+            Caps: TargetCaps.None,
+            Target: target,
+            PhysicalBase: 0);
+
+        bus.SetPageEntry(3, entry);
+
+        var retrievedEntry = bus.GetPageEntryByIndex(3);
+        Assert.Multiple(() =>
+        {
+            Assert.That(retrievedEntry.DeviceId, Is.EqualTo(99));
+            Assert.That(retrievedEntry.RegionTag, Is.EqualTo(RegionTag.Stack));
+            Assert.That(retrievedEntry.Target, Is.SameAs(target));
+        });
+    }
+
+    /// <summary>
+    /// Verifies SetPageEntry throws for invalid page index.
+    /// </summary>
+    [Test]
+    public void SetPageEntry_InvalidIndex_ThrowsArgumentOutOfRangeException()
+    {
+        var bus = new MainBus();
+        var entry = new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, null!, 0);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => bus.SetPageEntry(100, entry));
+    }
+
+    /// <summary>
     /// Helper method to create test bus access structures.
     /// </summary>
     private static BusAccess CreateTestAccess(

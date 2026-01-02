@@ -730,6 +730,67 @@ public sealed class MainBus : IMemoryBus
         }
     }
 
+    /// <inheritdoc />
+    public void MapRegion(
+        Addr virtualBase,
+        Addr size,
+        int deviceId,
+        RegionTag regionTag,
+        PagePerms perms,
+        TargetCaps caps,
+        IBusTarget target,
+        Addr physicalBase)
+    {
+        ValidateAlignment(virtualBase, size);
+
+        int startPage = (int)(virtualBase >> PageShift);
+        int pageCount = (int)(size >> PageShift);
+
+        if (startPage + pageCount > pageTable.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), size, $"Region (0x{virtualBase:X} + 0x{size:X}) exceeds address space.");
+        }
+
+        MapPageRange(startPage, pageCount, deviceId, regionTag, perms, caps, target, physicalBase);
+    }
+
+    /// <inheritdoc />
+    public void MapPageAt(Addr virtualAddress, PageEntry entry)
+    {
+        if ((virtualAddress & PageMask) != 0)
+        {
+            throw new ArgumentException($"Virtual address 0x{virtualAddress:X} is not page-aligned.", nameof(virtualAddress));
+        }
+
+        int pageIndex = (int)(virtualAddress >> PageShift);
+        if (pageIndex >= pageTable.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(virtualAddress), virtualAddress, $"Virtual address 0x{virtualAddress:X} is beyond address space.");
+        }
+
+        MapPage(pageIndex, entry);
+    }
+
+    /// <inheritdoc />
+    public void SetPageEntry(int pageIndex, PageEntry entry)
+    {
+        MapPage(pageIndex, entry);
+    }
+
+    /// <inheritdoc />
+    public void ValidateAlignment(Addr address, Addr size)
+    {
+        if ((address & PageMask) != 0)
+        {
+            throw new ArgumentException($"Address 0x{address:X} is not page-aligned.", nameof(address));
+        }
+
+        if ((size & PageMask) != 0)
+        {
+            throw new ArgumentException($"Size 0x{size:X} is not page-aligned.", nameof(size));
+        }
+    }
+
     /// <summary>
     /// Atomically remaps a page to a different target.
     /// Used for language card and auxiliary memory bank switching.

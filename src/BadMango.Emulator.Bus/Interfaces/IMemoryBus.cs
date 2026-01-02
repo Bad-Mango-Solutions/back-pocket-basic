@@ -315,6 +315,81 @@ public interface IMemoryBus
         Addr physicalBase);
 
     /// <summary>
+    /// Maps a contiguous memory region starting at a virtual address.
+    /// </summary>
+    /// <param name="virtualBase">The starting virtual address (must be page-aligned).</param>
+    /// <param name="size">The size of the region in bytes (must be page-aligned).</param>
+    /// <param name="deviceId">The device identifier for all pages.</param>
+    /// <param name="regionTag">The region type for all pages.</param>
+    /// <param name="perms">The permissions for all pages.</param>
+    /// <param name="caps">The capabilities for all pages.</param>
+    /// <param name="target">The bus target for all pages.</param>
+    /// <param name="physicalBase">The physical base address for the first page.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="virtualBase"/> or <paramref name="size"/> is not page-aligned.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the region extends beyond the address space.
+    /// </exception>
+    /// <remarks>
+    /// This address-based API simplifies mapping by accepting virtual addresses directly
+    /// instead of requiring callers to compute page indices. For example,
+    /// MapRegion(0xC000, 0x1000, ...) maps the I/O page starting at $C000.
+    /// </remarks>
+    void MapRegion(
+        Addr virtualBase,
+        Addr size,
+        int deviceId,
+        RegionTag regionTag,
+        PagePerms perms,
+        TargetCaps caps,
+        IBusTarget target,
+        Addr physicalBase);
+
+    /// <summary>
+    /// Maps a single page at the specified virtual address.
+    /// </summary>
+    /// <param name="virtualAddress">The virtual address of the page to map (must be page-aligned).</param>
+    /// <param name="entry">The page entry describing the mapping.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="virtualAddress"/> is not page-aligned.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the address is beyond the address space.
+    /// </exception>
+    /// <remarks>
+    /// This address-based API simplifies page mapping by accepting a virtual address directly
+    /// instead of requiring callers to compute page indices. For example,
+    /// MapPageAt(0xD000, entry) maps page $0D.
+    /// </remarks>
+    void MapPageAt(Addr virtualAddress, PageEntry entry);
+
+    /// <summary>
+    /// Sets a page entry by index (allocates L2 table if needed for sparse tables).
+    /// </summary>
+    /// <param name="pageIndex">The index of the page to set.</param>
+    /// <param name="entry">The page entry describing the mapping.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="pageIndex"/> is out of range.
+    /// </exception>
+    /// <remarks>
+    /// This method is functionally equivalent to <see cref="MapPage"/> but provides
+    /// clearer semantics for sparse page table implementations where L2 tables may
+    /// need to be allocated on first write.
+    /// </remarks>
+    void SetPageEntry(int pageIndex, PageEntry entry);
+
+    /// <summary>
+    /// Validates that an address and size are properly page-aligned.
+    /// </summary>
+    /// <param name="address">The address to validate.</param>
+    /// <param name="size">The size to validate.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="address"/> or <paramref name="size"/> is not page-aligned.
+    /// </exception>
+    void ValidateAlignment(Addr address, Addr size);
+
+    /// <summary>
     /// Gets the page entry by index for direct inspection.
     /// </summary>
     /// <param name="pageIndex">The page index.</param>
