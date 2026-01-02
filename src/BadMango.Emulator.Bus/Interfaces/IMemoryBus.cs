@@ -571,4 +571,89 @@ public interface IMemoryBus
     /// <param name="address">The virtual address to query.</param>
     /// <returns>An enumerable of layers with mappings at this address, ordered by priority (highest first).</returns>
     IEnumerable<MappingLayer> GetLayersAt(Addr address);
+
+    /// <summary>
+    /// Creates a new swap group for mutually-exclusive bank switching.
+    /// </summary>
+    /// <param name="groupName">A unique name for the swap group.</param>
+    /// <param name="virtualBase">The starting virtual address for the swap group's address range (must be page-aligned).</param>
+    /// <param name="size">The size of the address range in bytes (must be page-aligned).</param>
+    /// <returns>The unique identifier assigned to the new swap group.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a swap group with the same name already exists,
+    /// or when <paramref name="virtualBase"/> or <paramref name="size"/> is not page-aligned.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the address range extends beyond the address space.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// Swap groups model hardware bank switching where multiple memory regions
+    /// can occupy the same virtual address range, but only one is active at a time.
+    /// This is distinct from layers (which stack); swap groups are mutually exclusive
+    /// variants within a layer.
+    /// </para>
+    /// <para>
+    /// The Language Card has two 4KB banks for D000-DFFF; only one is active at a time.
+    /// Auxiliary memory has similar patterns. Swap groups implement this behavior.
+    /// </para>
+    /// </remarks>
+    uint CreateSwapGroup(string groupName, Addr virtualBase, Addr size);
+
+    /// <summary>
+    /// Gets the unique identifier of a swap group by name.
+    /// </summary>
+    /// <param name="groupName">The name of the swap group.</param>
+    /// <returns>The unique identifier of the swap group.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when no swap group with the specified name exists.</exception>
+    uint GetSwapGroupId(string groupName);
+
+    /// <summary>
+    /// Adds a variant to a swap group.
+    /// </summary>
+    /// <param name="groupId">The unique identifier of the swap group.</param>
+    /// <param name="variantName">A unique name for the variant within the swap group.</param>
+    /// <param name="target">The bus target for this variant.</param>
+    /// <param name="physBase">The physical base address within the target's address space.</param>
+    /// <param name="perms">Permission flags for this variant's pages.</param>
+    /// <exception cref="KeyNotFoundException">Thrown when no swap group with the specified ID exists.</exception>
+    /// <exception cref="ArgumentException">Thrown when a variant with the same name already exists in the swap group.</exception>
+    /// <remarks>
+    /// <para>
+    /// Variants represent mutually exclusive memory configurations within a swap group.
+    /// After adding variants, use <see cref="SelectSwapVariant"/> to make one active.
+    /// </para>
+    /// </remarks>
+    void AddSwapVariant(uint groupId, string variantName, IBusTarget target, Addr physBase, PagePerms perms);
+
+    /// <summary>
+    /// Selects the active variant in a swap group.
+    /// </summary>
+    /// <param name="groupId">The unique identifier of the swap group.</param>
+    /// <param name="variantName">The name of the variant to select.</param>
+    /// <exception cref="KeyNotFoundException">
+    /// Thrown when no swap group with the specified ID exists,
+    /// or when no variant with the specified name exists in the swap group.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This operation atomically updates the page table entries for the swap group's
+    /// address range to point to the selected variant's target and physical base.
+    /// Only one variant can be active at a time; selecting a variant deactivates
+    /// the previously active variant.
+    /// </para>
+    /// <para>
+    /// Switching is atomic: there is no intermediate state where page entries
+    /// are partially updated, preventing torn reads during the switch.
+    /// </para>
+    /// </remarks>
+    void SelectSwapVariant(uint groupId, string variantName);
+
+    /// <summary>
+    /// Gets the name of the currently active variant in a swap group.
+    /// </summary>
+    /// <param name="groupId">The unique identifier of the swap group.</param>
+    /// <returns>The name of the active variant, or <see langword="null"/> if no variant is active.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when no swap group with the specified ID exists.</exception>
+    string? GetActiveSwapVariant(uint groupId);
 }
