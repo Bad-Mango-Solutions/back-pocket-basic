@@ -26,6 +26,10 @@ public class ISlotManagerTests
     /// <summary>
     /// Verifies that ISlotManager interface defines GetSlotRomRegion method.
     /// </summary>
+    /// <remarks>
+    /// Note: At runtime, nullable reference types (IBusTarget?) are the same CLR type as IBusTarget.
+    /// The nullability is compile-time metadata only.
+    /// </remarks>
     [Test]
     public void Interface_HasGetSlotRomRegionMethod()
     {
@@ -37,6 +41,10 @@ public class ISlotManagerTests
     /// <summary>
     /// Verifies that ISlotManager interface defines GetExpansionRomRegion method.
     /// </summary>
+    /// <remarks>
+    /// Note: At runtime, nullable reference types (IBusTarget?) are the same CLR type as IBusTarget.
+    /// The nullability is compile-time metadata only.
+    /// </remarks>
     [Test]
     public void Interface_HasGetExpansionRomRegionMethod()
     {
