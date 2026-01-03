@@ -60,7 +60,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Initialize_SetsInitialState()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         Assert.Multiple(() =>
         {
@@ -76,7 +76,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C080_EnablesRamRead_DisablesWrite_SelectsBank2()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x00);
 
@@ -94,7 +94,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C081_SingleRead_DisablesRamRead_DoesNotEnableWrite()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x01);
 
@@ -112,7 +112,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C081_DoubleRead_EnablesRamWrite()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // First read primes the R×2 protocol
         SimulateRead(controller, 0x01);
@@ -134,7 +134,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C082_DisablesRamReadWrite_SelectsBank2()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // First enable everything
         SimulateRead(controller, 0x03);
@@ -157,7 +157,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C083_DoubleRead_EnablesRamReadWrite_SelectsBank2()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x03);
         SimulateRead(controller, 0x03);
@@ -176,7 +176,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C088_EnablesRamRead_DisablesWrite_SelectsBank1()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x08);
 
@@ -194,7 +194,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C089_DoubleRead_EnablesRamWrite_SelectsBank1()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x09);
         SimulateRead(controller, 0x09);
@@ -213,7 +213,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C08A_DisablesRamReadWrite_SelectsBank1()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x0A);
 
@@ -231,7 +231,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Switch_C08B_DoubleRead_EnablesRamReadWrite_SelectsBank1()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, 0x0B);
         SimulateRead(controller, 0x0B);
@@ -250,7 +250,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Rx2Protocol_RequiresConsecutiveReadsOfSameAddress()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Read odd address to prime R×2
         SimulateRead(controller, 0x01);
@@ -273,7 +273,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Rx2Protocol_EvenReadClearsPrewriteState()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Prime R×2 with odd address
         SimulateRead(controller, 0x01);
@@ -293,7 +293,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Rx2Protocol_WriteClearsPrewriteState()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Prime R×2 with odd address read
         SimulateRead(controller, 0x01);
@@ -331,7 +331,7 @@ public class LanguageCardControllerTests
     [TestCase(0x0F, true, false)]
     public void AllSwitches_DecodeCorrectly(byte offset, bool expectedRamRead, bool expectedBank2)
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, offset);
 
@@ -356,7 +356,7 @@ public class LanguageCardControllerTests
     [TestCase(0x0F)] // $C08F
     public void WriteEnableAddresses_EnableWriteAfterDoubleRead(byte offset)
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         SimulateRead(controller, offset);
         Assert.That(controller.IsRamWriteEnabled, Is.False, "Should not be enabled after single read");
@@ -379,7 +379,7 @@ public class LanguageCardControllerTests
     [TestCase(0x0E)] // $C08E
     public void NonWriteEnableAddresses_DoNotEnableWrite(byte offset)
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Multiple reads of even address should never enable write
         SimulateRead(controller, offset);
@@ -443,7 +443,7 @@ public class LanguageCardControllerTests
     [Test]
     public void Reset_RestoresPowerOnState()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Enable everything
         SimulateRead(controller, 0x0B); // Bank 1, RAM, prewrite
@@ -473,7 +473,7 @@ public class LanguageCardControllerTests
     [Test]
     public void SideEffectFreeRead_DoesNotChangeState()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Enable RAM read
         SimulateRead(controller, 0x00);
@@ -490,7 +490,7 @@ public class LanguageCardControllerTests
     [Test]
     public void WriteAccess_DoesNotEnableWrite()
     {
-        var (controller, bus) = CreateInitializedController();
+        var (controller, _) = CreateInitializedController();
 
         // Write to write-enable address - should not enable write
         SimulateWrite(controller, 0x01);
@@ -607,6 +607,7 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Creates a fully initialized Language Card controller with required infrastructure.
     /// </summary>
+    /// <returns>A tuple containing the initialized controller and the configured memory bus.</returns>
     private static (LanguageCardController Controller, MainBus Bus) CreateInitializedController()
     {
         var bus = new MainBus();
@@ -679,6 +680,8 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Creates a mock event context with the specified bus.
     /// </summary>
+    /// <param name="bus">The memory bus to configure in the mock context.</param>
+    /// <returns>A mock <see cref="IEventContext"/> with the specified bus.</returns>
     private static IEventContext CreateMockEventContext(IMemoryBus bus)
     {
         var mockContext = new Mock<IEventContext>();
@@ -689,6 +692,8 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Simulates a read access to a Language Card soft switch.
     /// </summary>
+    /// <param name="controller">The Language Card controller to invoke.</param>
+    /// <param name="offset">The offset within the soft switch range (0x00-0x0F).</param>
     private static void SimulateRead(LanguageCardController controller, byte offset)
     {
         var context = CreateTestAccess((uint)(0xC080 + offset), AccessIntent.DataRead);
@@ -698,6 +703,8 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Simulates a side-effect-free read access to a Language Card soft switch.
     /// </summary>
+    /// <param name="controller">The Language Card controller to invoke.</param>
+    /// <param name="offset">The offset within the soft switch range (0x00-0x0F).</param>
     private static void SimulateSideEffectFreeRead(LanguageCardController controller, byte offset)
     {
         var context = CreateTestAccess((uint)(0xC080 + offset), AccessIntent.DataRead, AccessFlags.NoSideEffects);
@@ -707,6 +714,8 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Simulates a write access to a Language Card soft switch.
     /// </summary>
+    /// <param name="controller">The Language Card controller to invoke.</param>
+    /// <param name="offset">The offset within the soft switch range (0x00-0x0F).</param>
     private static void SimulateWrite(LanguageCardController controller, byte offset)
     {
         var context = CreateTestAccess((uint)(0xC080 + offset), AccessIntent.DataWrite);
@@ -716,6 +725,10 @@ public class LanguageCardControllerTests
     /// <summary>
     /// Helper method to create test bus access structures.
     /// </summary>
+    /// <param name="address">The memory address for the access.</param>
+    /// <param name="intent">The access intent (read or write).</param>
+    /// <param name="flags">Optional access flags.</param>
+    /// <returns>A <see cref="BusAccess"/> configured with the specified parameters.</returns>
     private static BusAccess CreateTestAccess(
         Addr address,
         AccessIntent intent,
