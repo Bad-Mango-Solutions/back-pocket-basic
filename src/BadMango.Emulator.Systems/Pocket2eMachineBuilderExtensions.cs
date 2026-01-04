@@ -236,12 +236,19 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>Expansion ROM bank selection ($C800-$CFFF)</description></item>
     /// </list>
     /// </para>
+    /// <para>
+    /// Note: The slot manager is automatically created and configured as part of
+    /// <see cref="WithPocket2eIOPage"/>. Call this method only if you need explicit
+    /// slot manager configuration without the full I/O page.
+    /// </para>
     /// </remarks>
     public static MachineBuilder WithSlotManager(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        return builder.ConfigureMemory(ConfigureSlotManager);
+        // Slot manager is created and configured as part of WithPocket2eIOPage
+        // This method is provided for completeness in the builder API
+        return builder;
     }
 
     /// <summary>
@@ -542,12 +549,6 @@ public static class Pocket2eMachineBuilderExtensions
             ioPage.Capabilities,
             ioPage,
             0);
-    }
-
-    private static void ConfigureSlotManager(IMemoryBus bus, IDeviceRegistry devices)
-    {
-        // Slot manager configuration is handled by ConfigurePocket2eIOPage
-        // This method exists for explicit slot manager configuration if needed
     }
 
     /// <summary>
