@@ -266,28 +266,30 @@ public static class Pocket2eMachineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        return builder.ConfigureMemory((bus, devices) =>
+        // Use AfterBuild to access components after they've been added to the machine
+        return builder.AfterBuild(machine =>
         {
-            // Get dispatcher and slot manager from component bag - they should already exist
-            // if WithSlotManager was called (which AsPocket2e does)
-            IOPageDispatcher? dispatcher = null;
-            ISlotManager? slotManager = null;
+            // Get dispatcher and slot manager from the component bag
+            // These should have been added by WithSlotManager (which AsPocket2e calls first)
+            var dispatcher = machine.GetComponent<IOPageDispatcher>();
+            var slotManager = machine.GetComponent<ISlotManager>();
 
-            // We need a way to get components during memory configuration
-            // For now, we'll create them here but this will be improved
-            // when the builder supports getting components during configure
-            dispatcher = new IOPageDispatcher();
-            slotManager = new SlotManager(dispatcher);
+            if (dispatcher == null || slotManager == null)
+            {
+                throw new InvalidOperationException(
+                    "WithPocket2eIOPage requires WithSlotManager to be called first to create " +
+                    "the IOPageDispatcher and SlotManager components.");
+            }
 
             // Create the I/O page composite target
             var ioPage = new Pocket2eIOPage(dispatcher, slotManager);
 
             // Register the I/O page device
-            int ioPageDeviceId = devices.GenerateId();
-            devices.Register(ioPageDeviceId, "IO", "I/O Page", "Memory/IOPage");
+            int ioPageDeviceId = machine.Devices.GenerateId();
+            machine.Devices.Register(ioPageDeviceId, "IO", "I/O Page", "Memory/IOPage");
 
             // Map the I/O page at $C000-$CFFF
-            bus.MapRegion(
+            machine.Bus.MapRegion(
                 0xC000,
                 0x1000,
                 ioPageDeviceId,
@@ -534,6 +536,9 @@ public static class Pocket2eMachineBuilderExtensions
         var physical = new PhysicalMemory(vectorData, "VectorTable");
         var target = new RomTarget(physical.Slice(0, VectorTableSize));
 
+        // Map the 6-byte vector table at $FFFA-$FFFF
+        // Note: The size is intentionally small (6 bytes) to only cover the vector addresses.
+        // The layered mapping system handles the offset from the layer's base address.
         return builder.AddLayeredMapping(
             VectorTableLayerName,
             NmiVectorAddress,
