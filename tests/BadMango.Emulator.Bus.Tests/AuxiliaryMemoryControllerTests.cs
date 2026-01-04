@@ -506,6 +506,76 @@ public class AuxiliaryMemoryControllerTests
         Assert.That(bus.Read8(readAccessText), Is.EqualTo(0x41), "Main text page should be visible");
     }
 
+    /// <summary>
+    /// Verifies general memory switching with RAMRD/RAMWRT in page 0.
+    /// </summary>
+    [Test]
+    public void GeneralMemoryPage0Switching_WithRAMRDRAMWRT_EndToEnd()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Address in general region within page 0 ($0200-$03FF)
+        var readAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
+        var writeAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
+
+        // Write to main memory
+        bus.Write8(writeAccess, 0x55);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x55), "Write to main memory should work");
+
+        // Enable RAMRD - auxiliary should now be visible for reads
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x00), "Auxiliary memory should be visible for reads");
+
+        // Write still goes to main (RAMWRT not enabled)
+        bus.Write8(writeAccess, 0x66);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x00), "Write should still go to main memory");
+
+        // Enable RAMWRT - writes now go to auxiliary
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+        bus.Write8(writeAccess, 0x77);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x77), "Write to auxiliary memory should work");
+
+        // Disable RAMRD - should see main memory for reads
+        SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x66), "Main memory should be visible for reads");
+
+        // Disable RAMWRT - writes now go to main
+        SimulateWrite(dispatcher, 0x04, 0x00); // WRMAINRAM
+        bus.Write8(writeAccess, 0x88);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x88), "Write to main memory should work");
+    }
+
+    /// <summary>
+    /// Verifies general memory switching with RAMRD/RAMWRT for pages 1-11.
+    /// </summary>
+    [Test]
+    public void GeneralMemoryPages1To11Switching_WithRAMRDRAMWRT_EndToEnd()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Address in general region in page 1 ($1000-$1FFF)
+        var readAccess = CreateTestAccess(0x1500, AccessIntent.DataRead);
+        var writeAccess = CreateTestAccess(0x1500, AccessIntent.DataWrite);
+
+        // Write to main memory
+        bus.Write8(writeAccess, 0x33);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x33), "Write to main memory should work");
+
+        // Enable RAMRD - auxiliary should now be visible for reads
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x00), "Auxiliary memory should be visible for reads");
+
+        // Enable RAMWRT - writes now go to auxiliary
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+        bus.Write8(writeAccess, 0x44);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x44), "Write to auxiliary memory should work");
+
+        // Disable both - back to main memory
+        SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        SimulateWrite(dispatcher, 0x04, 0x00); // WRMAINRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x33), "Main memory should retain original value");
+    }
+
     // ─── Helper Methods ─────────────────────────────────────────────────────────
 
     private static (AuxiliaryMemoryController Controller, MainBus Bus, IOPageDispatcher Dispatcher) CreateInitializedController()
@@ -551,6 +621,104 @@ public class AuxiliaryMemoryControllerTests
         var mainRam = new PhysicalMemory(0xB000, "MainRAM");
         var mainRamTarget = new RamTarget(mainRam.Slice(0, 0xB000));
         bus.MapPageRange(1, 11, 1, RegionTag.Ram, PagePerms.All, TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, mainRamTarget, 0);
+        bus.SaveBaseMappingRange(1, 11);
+
+        // Create auxiliary hi-res memory (8KB each)
+        var auxHires1Memory = new PhysicalMemory(0x2000, "AuxHiRes1");
+        var auxHires1Target = new RamTarget(auxHires1Memory.Slice(0, 0x2000));
+
+        var auxHires2Memory = new PhysicalMemory(0x2000, "AuxHiRes2");
+        var auxHires2Target = new RamTarget(auxHires2Memory.Slice(0, 0x2000));
+
+        // Create hi-res layers
+        var auxHires1Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage1, AuxiliaryMemoryController.LayerPriority);
+        var auxHires2Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage2, AuxiliaryMemoryController.LayerPriority);
+
+        bus.AddLayeredMapping(new LayeredMapping(
+            VirtualBase: 0x2000, Size: 0x2000, Layer: auxHires1Layer,
+            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            Target: auxHires1Target, PhysBase: 0));
+
+        bus.AddLayeredMapping(new LayeredMapping(
+            VirtualBase: 0x4000, Size: 0x2000, Layer: auxHires2Layer,
+            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            Target: auxHires2Target, PhysBase: 0));
+
+        controller.RegisterHandlers(dispatcher);
+        var context = CreateMockEventContext(bus);
+        controller.Initialize(context);
+
+        return (controller, bus, dispatcher);
+    }
+
+    /// <summary>
+    /// Creates a fully initialized auxiliary memory controller with general auxiliary memory support.
+    /// </summary>
+    /// <returns>A tuple containing the initialized controller, the configured memory bus, and the I/O dispatcher.</returns>
+    private static (AuxiliaryMemoryController Controller, MainBus Bus, IOPageDispatcher Dispatcher) CreateInitializedControllerWithGeneralAux()
+    {
+        var bus = new MainBus();
+        var dispatcher = new IOPageDispatcher();
+
+        // Create main RAM for page 0 (4KB)
+        var mainPage0Memory = new PhysicalMemory(0x1000, "MainPage0");
+        var mainPage0Target = new RamTarget(mainPage0Memory.Slice(0, 0x1000));
+
+        // Create auxiliary memory with exact sizes
+        var auxZpMemory = new PhysicalMemory(0x0100, "AuxZP");
+        var auxZpTarget = new RamTarget(auxZpMemory.Slice(0, 0x0100));
+
+        var auxStackMemory = new PhysicalMemory(0x0100, "AuxStack");
+        var auxStackTarget = new RamTarget(auxStackMemory.Slice(0, 0x0100));
+
+        var auxTextMemory = new PhysicalMemory(0x0400, "AuxText");
+        var auxTextTarget = new RamTarget(auxTextMemory.Slice(0, 0x0400));
+
+        // Create auxiliary general memory for page 0 (4KB for general regions)
+        var auxGeneralPage0Memory = new PhysicalMemory(0x1000, "AuxGeneralPage0");
+        var auxGeneralPage0Target = new RamTarget(auxGeneralPage0Memory.Slice(0, 0x1000));
+
+        // Create controller first
+        var controller = new AuxiliaryMemoryController();
+
+        // Create composite target for page 0 with general aux support
+        var page0Target = new AuxiliaryMemoryPage0Target(
+            mainPage0Target,
+            auxZpTarget,
+            auxStackTarget,
+            auxTextTarget,
+            controller,
+            auxGeneralPage0Target);
+
+        // Map page 0 to composite target
+        bus.MapPage(0, new PageEntry(
+            DeviceId: 1,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            Target: page0Target,
+            PhysicalBase: 0));
+
+        // Create main RAM for pages 1-11 ($1000-$BFFF = 44KB)
+        var mainRamPages1to11 = new PhysicalMemory(0xB000, "MainRAMPages1to11");
+        var mainRamPages1to11Target = new RamTarget(mainRamPages1to11.Slice(0, 0xB000));
+
+        // Create auxiliary RAM for pages 1-11 ($1000-$BFFF = 44KB)
+        var auxRamPages1to11 = new PhysicalMemory(0xB000, "AuxRAMPages1to11");
+        var auxRamPages1to11Target = new RamTarget(auxRamPages1to11.Slice(0, 0xB000));
+
+        // Create a general target that handles RAMRD/RAMWRT switching for pages 1-11
+        var generalTarget = new AuxiliaryMemoryGeneralTarget(
+            mainRamPages1to11Target,
+            auxRamPages1to11Target,
+            controller,
+            baseOffset: 0x1000);
+
+        // Map pages 1-11 to the general switching target
+        bus.MapPageRange(1, 11, 1, RegionTag.Ram, PagePerms.All,
+            TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, generalTarget, 0x1000);
         bus.SaveBaseMappingRange(1, 11);
 
         // Create auxiliary hi-res memory (8KB each)

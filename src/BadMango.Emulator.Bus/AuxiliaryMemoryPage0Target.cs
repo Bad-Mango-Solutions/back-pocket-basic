@@ -53,6 +53,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     private readonly IBusTarget auxZeroPage;
     private readonly IBusTarget auxStack;
     private readonly IBusTarget auxTextPage;
+    private readonly IBusTarget? auxGeneral;
     private readonly AuxiliaryMemoryController controller;
 
     /// <summary>
@@ -63,15 +64,21 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     /// <param name="auxStack">The auxiliary stack memory (256 bytes at offset 0).</param>
     /// <param name="auxTextPage">The auxiliary text page memory (1KB at offset 0).</param>
     /// <param name="controller">The auxiliary memory controller that manages switch states.</param>
+    /// <param name="auxGeneral">
+    /// Optional auxiliary general memory for $0200-$03FF and $0800-$0FFF regions (4KB at offset 0).
+    /// When provided, these regions will be switched via RAMRD/RAMWRT.
+    /// When <see langword="null"/>, general regions always use main memory.
+    /// </param>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when any parameter is <see langword="null"/>.
+    /// Thrown when any required parameter is <see langword="null"/>.
     /// </exception>
     public AuxiliaryMemoryPage0Target(
         IBusTarget mainMemory,
         IBusTarget auxZeroPage,
         IBusTarget auxStack,
         IBusTarget auxTextPage,
-        AuxiliaryMemoryController controller)
+        AuxiliaryMemoryController controller,
+        IBusTarget? auxGeneral = null)
     {
         ArgumentNullException.ThrowIfNull(mainMemory);
         ArgumentNullException.ThrowIfNull(auxZeroPage);
@@ -83,6 +90,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
         this.auxZeroPage = auxZeroPage;
         this.auxStack = auxStack;
         this.auxTextPage = auxTextPage;
+        this.auxGeneral = auxGeneral;
         this.controller = controller;
     }
 
@@ -163,10 +171,11 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
         }
 
         // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMRD
-        // Note: RAMRD/RAMWRT for general regions ($0200-$BFFF) requires additional
-        // auxiliary memory targets not currently provided to this composite target.
-        // When those are needed, the constructor should accept an auxGeneral parameter.
-        // For now, general regions always use main memory regardless of RAMRD state.
+        if (auxGeneral is not null && controller.IsRamRdEnabled)
+        {
+            return (auxGeneral, offset);
+        }
+
         return (mainMemory, offset);
     }
 
@@ -204,10 +213,11 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
         }
 
         // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMWRT
-        // Note: RAMRD/RAMWRT for general regions ($0200-$BFFF) requires additional
-        // auxiliary memory targets not currently provided to this composite target.
-        // When those are needed, the constructor should accept an auxGeneral parameter.
-        // For now, general regions always use main memory regardless of RAMWRT state.
+        if (auxGeneral is not null && controller.IsRamWrtEnabled)
+        {
+            return (auxGeneral, offset);
+        }
+
         return (mainMemory, offset);
     }
 }
