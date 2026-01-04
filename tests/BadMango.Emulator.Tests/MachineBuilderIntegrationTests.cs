@@ -236,8 +236,8 @@ public class MachineBuilderIntegrationTests
             .WithRom(rom, 0xC000, "ROM")
             .Build();
 
-        // Load the original factorial.bin at $1000 (its designed load address)
-        // The binary contains: JMP $1008 which is the loop start
+        // Factorial code designed to run at $1000
+        // Computes 5! = 120 (0x78), stores result at $0010, then halts with STP
         byte[] factorialBin =
         [
             0xA9, 0x01,       // $1000: LDA #$01      ; result = 1
