@@ -34,9 +34,16 @@ using Interfaces;
 /// <item><description>Initialize devices with event context</description></item>
 /// <item><description>Assemble machine</description></item>
 /// </list>
+/// <para>
+/// The event context also serves as a component bucket, allowing arbitrary components
+/// to be registered and retrieved by type. This provides extensibility without
+/// modifying the core interface.
+/// </para>
 /// </remarks>
 public sealed class EventContext : IEventContext
 {
+    private readonly List<object> components = [];
+
     /// <summary>
     /// Initializes a new instance of the <see cref="EventContext"/> class.
     /// </summary>
@@ -70,4 +77,64 @@ public sealed class EventContext : IEventContext
 
     /// <inheritdoc />
     public IMemoryBus Bus { get; }
+
+    /// <inheritdoc />
+    public T? GetComponent<T>()
+        where T : class
+    {
+        foreach (var component in components)
+        {
+            if (component is T typed)
+            {
+                return typed;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<T> GetComponents<T>()
+        where T : class
+    {
+        foreach (var component in components)
+        {
+            if (component is T typed)
+            {
+                yield return typed;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public bool HasComponent<T>()
+        where T : class
+    {
+        foreach (var component in components)
+        {
+            if (component is T)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Adds a component to the context's component bucket.
+    /// </summary>
+    /// <typeparam name="T">The type of component being added.</typeparam>
+    /// <param name="component">The component instance to add.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="component"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// Components can be retrieved later using <see cref="GetComponent{T}"/>,
+    /// <see cref="GetComponents{T}"/>, or checked via <see cref="HasComponent{T}"/>.
+    /// </remarks>
+    public void AddComponent<T>(T component)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(component, nameof(component));
+        components.Add(component);
+    }
 }
