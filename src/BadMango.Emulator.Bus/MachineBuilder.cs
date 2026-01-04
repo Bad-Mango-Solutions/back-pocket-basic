@@ -362,15 +362,9 @@ public sealed class MachineBuilder
         var tempContext = new EventContext(scheduler, signals, bus);
 
         // Create CPU
-        ICpu cpu;
-        if (cpuFactory != null)
-        {
-            cpu = cpuFactory(tempContext);
-        }
-        else
-        {
-            cpu = CreateDefaultCpu(cpuFamily, tempContext);
-        }
+        ICpu cpu = cpuFactory != null
+            ? cpuFactory(tempContext)
+            : CreateDefaultCpu(cpuFamily, tempContext);
 
         // Create machine
         var machine = new Machine(cpu, bus, scheduler, signals, devices);
