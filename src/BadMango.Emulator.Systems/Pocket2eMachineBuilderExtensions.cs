@@ -161,7 +161,7 @@ public static class Pocket2eMachineBuilderExtensions
     /// </para>
     /// <para>
     /// These are placeholder values; actual values depend on the ROM image being used.
-    /// For accurate emulation, use <see cref="WithVectorTable(MachineBuilder, uint, uint, uint)"/>
+    /// For accurate emulation, use <see cref="WithVectorTable(MachineBuilder, Addr, Addr, Addr)"/>
     /// with vectors from your specific ROM.
     /// </para>
     /// </remarks>
