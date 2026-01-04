@@ -20,7 +20,7 @@ public class ISlotManagerTests
     {
         var property = typeof(ISlotManager).GetProperty(nameof(ISlotManager.Slots));
         Assert.That(property, Is.Not.Null);
-        Assert.That(property.PropertyType, Is.EqualTo(typeof(IReadOnlyDictionary<int, IPeripheral>)));
+        Assert.That(property.PropertyType, Is.EqualTo(typeof(IReadOnlyDictionary<int, ISlotCard>)));
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ public class ISlotManagerTests
             var parameters = method.GetParameters();
             Assert.That(parameters, Has.Length.EqualTo(2));
             Assert.That(parameters[0].ParameterType, Is.EqualTo(typeof(int)));
-            Assert.That(parameters[1].ParameterType, Is.EqualTo(typeof(IPeripheral)));
+            Assert.That(parameters[1].ParameterType, Is.EqualTo(typeof(ISlotCard)));
         });
     }
 
@@ -73,7 +73,7 @@ public class ISlotManagerTests
     /// Verifies that ISlotManager interface defines GetCard method.
     /// </summary>
     /// <remarks>
-    /// Note: At runtime, nullable reference types (IPeripheral?) are the same CLR type as IPeripheral.
+    /// Note: At runtime, nullable reference types (ISlotCard?) are the same CLR type as ISlotCard.
     /// The nullability is compile-time metadata only.
     /// </remarks>
     [Test]
@@ -81,7 +81,7 @@ public class ISlotManagerTests
     {
         var method = typeof(ISlotManager).GetMethod(nameof(ISlotManager.GetCard));
         Assert.That(method, Is.Not.Null);
-        Assert.That(method.ReturnType, Is.EqualTo(typeof(IPeripheral)));
+        Assert.That(method.ReturnType, Is.EqualTo(typeof(ISlotCard)));
     }
 
     /// <summary>

@@ -45,80 +45,14 @@ public class IPeripheralTests
     }
 
     /// <summary>
-    /// Verifies that IPeripheral interface defines SlotNumber property with getter and setter.
+    /// Verifies that IPeripheral interface defines Kind property.
     /// </summary>
     [Test]
-    public void Interface_HasSlotNumberPropertyWithGetAndSet()
+    public void Interface_HasKindProperty()
     {
-        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.SlotNumber));
+        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.Kind));
         Assert.That(property, Is.Not.Null);
-        Assert.Multiple(() =>
-        {
-            Assert.That(property.PropertyType, Is.EqualTo(typeof(int)));
-            Assert.That(property.CanRead, Is.True);
-            Assert.That(property.CanWrite, Is.True);
-        });
-    }
-
-    /// <summary>
-    /// Verifies that IPeripheral interface defines IOHandlers property.
-    /// </summary>
-    [Test]
-    public void Interface_HasIOHandlersProperty()
-    {
-        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.IOHandlers));
-        Assert.That(property, Is.Not.Null);
-        Assert.That(property.PropertyType, Is.EqualTo(typeof(SlotIOHandlers)));
-    }
-
-    /// <summary>
-    /// Verifies that IPeripheral interface defines ROMRegion property.
-    /// </summary>
-    /// <remarks>
-    /// Note: At runtime, nullable reference types (IBusTarget?) are the same CLR type as IBusTarget.
-    /// </remarks>
-    [Test]
-    public void Interface_HasROMRegionProperty()
-    {
-        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.ROMRegion));
-        Assert.That(property, Is.Not.Null);
-        Assert.That(property.PropertyType, Is.EqualTo(typeof(IBusTarget)));
-    }
-
-    /// <summary>
-    /// Verifies that IPeripheral interface defines ExpansionROMRegion property.
-    /// </summary>
-    /// <remarks>
-    /// Note: At runtime, nullable reference types (IBusTarget?) are the same CLR type as IBusTarget.
-    /// </remarks>
-    [Test]
-    public void Interface_HasExpansionROMRegionProperty()
-    {
-        var property = typeof(IPeripheral).GetProperty(nameof(IPeripheral.ExpansionROMRegion));
-        Assert.That(property, Is.Not.Null);
-        Assert.That(property.PropertyType, Is.EqualTo(typeof(IBusTarget)));
-    }
-
-    /// <summary>
-    /// Verifies that IPeripheral interface defines OnExpansionROMSelected method.
-    /// </summary>
-    [Test]
-    public void Interface_HasOnExpansionROMSelectedMethod()
-    {
-        var method = typeof(IPeripheral).GetMethod(nameof(IPeripheral.OnExpansionROMSelected));
-        Assert.That(method, Is.Not.Null);
-        Assert.That(method.ReturnType, Is.EqualTo(typeof(void)));
-    }
-
-    /// <summary>
-    /// Verifies that IPeripheral interface defines OnExpansionROMDeselected method.
-    /// </summary>
-    [Test]
-    public void Interface_HasOnExpansionROMDeselectedMethod()
-    {
-        var method = typeof(IPeripheral).GetMethod(nameof(IPeripheral.OnExpansionROMDeselected));
-        Assert.That(method, Is.Not.Null);
-        Assert.That(method.ReturnType, Is.EqualTo(typeof(void)));
+        Assert.That(property.PropertyType, Is.EqualTo(typeof(PeripheralKind)));
     }
 
     /// <summary>

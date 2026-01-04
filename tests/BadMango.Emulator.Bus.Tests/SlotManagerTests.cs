@@ -548,14 +548,15 @@ public class SlotManagerTests
     }
 
     /// <summary>
-    /// Creates a mock peripheral for testing.
+    /// Creates a mock slot card for testing.
     /// </summary>
-    /// <returns>A mock peripheral instance.</returns>
-    private static Mock<IPeripheral> CreateMockPeripheral()
+    /// <returns>A mock slot card instance.</returns>
+    private static Mock<ISlotCard> CreateMockPeripheral()
     {
-        var mock = new Mock<IPeripheral>();
+        var mock = new Mock<ISlotCard>();
         mock.Setup(c => c.Name).Returns("Test Card");
         mock.Setup(c => c.DeviceType).Returns("TestDevice");
+        mock.Setup(c => c.Kind).Returns(PeripheralKind.SlotCard);
         mock.SetupProperty(c => c.SlotNumber);
         mock.Setup(c => c.IOHandlers).Returns((SlotIOHandlers?)null);
         mock.Setup(c => c.ROMRegion).Returns((IBusTarget?)null);

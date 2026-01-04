@@ -39,9 +39,9 @@ public sealed class SlotManager : ISlotManager
     private const int SlotCount = 7;
 
     private readonly IOPageDispatcher dispatcher;
-    private readonly IPeripheral?[] slots;
-    private readonly Dictionary<int, IPeripheral> slotsView;
-    private readonly IReadOnlyDictionary<int, IPeripheral> slotsReadOnly;
+    private readonly ISlotCard?[] slots;
+    private readonly Dictionary<int, ISlotCard> slotsView;
+    private readonly IReadOnlyDictionary<int, ISlotCard> slotsReadOnly;
     private int? activeExpansionSlot;
 
     /// <summary>
@@ -55,19 +55,19 @@ public sealed class SlotManager : ISlotManager
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         this.dispatcher = dispatcher;
-        this.slots = new IPeripheral?[SlotCount];
-        this.slotsView = new Dictionary<int, IPeripheral>();
-        this.slotsReadOnly = new ReadOnlyDictionary<int, IPeripheral>(this.slotsView);
+        this.slots = new ISlotCard?[SlotCount];
+        this.slotsView = new Dictionary<int, ISlotCard>();
+        this.slotsReadOnly = new ReadOnlyDictionary<int, ISlotCard>(this.slotsView);
     }
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<int, IPeripheral> Slots => slotsReadOnly;
+    public IReadOnlyDictionary<int, ISlotCard> Slots => slotsReadOnly;
 
     /// <inheritdoc />
     public int? ActiveExpansionSlot => activeExpansionSlot;
 
     /// <inheritdoc />
-    public void Install(int slot, IPeripheral card)
+    public void Install(int slot, ISlotCard card)
     {
         ValidateSlotNumber(slot);
         ArgumentNullException.ThrowIfNull(card);
@@ -120,7 +120,7 @@ public sealed class SlotManager : ISlotManager
     }
 
     /// <inheritdoc />
-    public IPeripheral? GetCard(int slot)
+    public ISlotCard? GetCard(int slot)
     {
         ValidateSlotNumber(slot);
         return slots[slot - MinSlot];
