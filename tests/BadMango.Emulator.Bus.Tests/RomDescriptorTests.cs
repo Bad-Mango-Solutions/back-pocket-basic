@@ -49,19 +49,19 @@ public class RomDescriptorTests
     }
 
     /// <summary>
-    /// Verifies PocketIIeFull factory method.
+    /// Verifies Pocket2eFull factory method.
     /// </summary>
     [Test]
-    public void PocketIIeFull_CreatesCorrectDescriptor()
+    public void Pocket2eFull_CreatesCorrectDescriptor()
     {
         var data = new byte[RomDescriptor.FullRomSize];
 
-        var descriptor = RomDescriptor.PocketIIeFull(data);
+        var descriptor = RomDescriptor.Pocket2eFull(data);
 
         Assert.Multiple(() =>
         {
             Assert.That(descriptor.LoadAddress, Is.EqualTo(RomDescriptor.FullRomBase));
-            Assert.That(descriptor.Name, Is.EqualTo("Pocket IIe Full ROM"));
+            Assert.That(descriptor.Name, Is.EqualTo("Pocket2e Full ROM"));
             Assert.That(descriptor.Description, Is.Not.Null);
         });
     }

@@ -387,6 +387,9 @@ public sealed class MachineBuilder
         // Initialize devices
         machine.InitializeDevices();
 
+        // Install pending slot cards now that SlotManager is available
+        InstallPendingSlotCards(machine);
+
         // Activate all created layers
         foreach (var (name, _) in layerPriorities)
         {
@@ -394,6 +397,35 @@ public sealed class MachineBuilder
         }
 
         return machine;
+    }
+
+    private static void InstallPendingSlotCards(Machine machine)
+    {
+        // Get the slot manager from the component bag
+        var slotManager = machine.GetComponent<ISlotManager>();
+        if (slotManager == null)
+        {
+            return;
+        }
+
+        // Find and install all pending slot cards
+        // We use reflection to avoid tight coupling to the Systems assembly
+        foreach (var component in machine.GetComponents<object>())
+        {
+            var type = component.GetType();
+            if (type.Name == "PendingSlotCard")
+            {
+                var slotProp = type.GetProperty("Slot");
+                var cardProp = type.GetProperty("Card");
+
+                if (slotProp != null && cardProp != null)
+                {
+                    var slot = (int)slotProp.GetValue(component)!;
+                    var card = (ISlotCard)cardProp.GetValue(component)!;
+                    slotManager.Install(slot, card);
+                }
+            }
+        }
     }
 
     private static void MapRom(MainBus bus, DeviceRegistry devices, RomDescriptor rom)

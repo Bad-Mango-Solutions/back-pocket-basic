@@ -244,6 +244,38 @@ public class MachineTests
         Assert.That(machine.Now.Value, Is.EqualTo(100));
     }
 
+    /// <summary>
+    /// Verifies that Run stops when CPU returns Halted state.
+    /// </summary>
+    [Test]
+    public void Run_WhenCpuHalts_TransitionsToStopped()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Make Step return Running for a few cycles, then Halted
+        mockCpu.SetupSequence(c => c.Step())
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Halted, 1));
+
+        var machine = CreateTestMachine(mockCpu);
+
+        var states = new List<MachineState>();
+        machine.StateChanged += s => states.Add(s);
+
+        machine.Run();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
+            Assert.That(states, Contains.Item(MachineState.Running));
+            Assert.That(states, Contains.Item(MachineState.Stopped));
+        });
+
+        // Verify Step was called 3 times
+        mockCpu.Verify(c => c.Step(), Times.Exactly(3));
+    }
+
     private static Machine CreateTestMachine(Mock<ICpu>? mockCpu = null)
     {
         mockCpu ??= CreateMockCpu();

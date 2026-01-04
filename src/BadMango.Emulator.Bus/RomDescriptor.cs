@@ -66,12 +66,12 @@ public readonly record struct RomDescriptor(
     /// The full ROM includes I/O space handlers, Applesoft BASIC, and the Monitor.
     /// This is the typical ROM configuration for Apple IIe and compatible machines.
     /// </remarks>
-    public static RomDescriptor PocketIIeFull(byte[] data)
+    public static RomDescriptor Pocket2eFull(byte[] data)
     {
         return new RomDescriptor(
             data,
             FullRomBase,
-            "Pocket IIe Full ROM",
+            "Pocket2e Full ROM",
             "Complete 16KB ROM image including I/O handlers, BASIC, and Monitor");
     }
 

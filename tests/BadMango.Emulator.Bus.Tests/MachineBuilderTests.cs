@@ -259,7 +259,7 @@ public class MachineBuilderTests
         var mockCpu = CreateMockCpu();
         var callbackInvoked = false;
 
-        var machine = new MachineBuilder()
+        _ = new MachineBuilder()
             .WithCpuFactory(_ => mockCpu.Object)
             .ConfigureMemory((bus, devices) =>
             {
@@ -316,7 +316,7 @@ public class MachineBuilderTests
         var mockDevice = new Mock<IScheduledDevice>();
         mockDevice.Setup(d => d.Name).Returns("TestDevice");
 
-        var machine = new MachineBuilder()
+        _ = new MachineBuilder()
             .WithCpuFactory(_ => mockCpu.Object)
             .AddDevice(mockDevice.Object)
             .Build();

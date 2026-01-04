@@ -181,43 +181,21 @@ public sealed class Machine : IMachine
     public T? GetComponent<T>()
         where T : class
     {
-        foreach (var component in components)
-        {
-            if (component is T typed)
-            {
-                return typed;
-            }
-        }
-
-        return null;
+        return components.OfType<T>().FirstOrDefault();
     }
 
     /// <inheritdoc />
     public IEnumerable<T> GetComponents<T>()
         where T : class
     {
-        foreach (var component in components)
-        {
-            if (component is T typed)
-            {
-                yield return typed;
-            }
-        }
+        return components.OfType<T>();
     }
 
     /// <inheritdoc />
     public bool HasComponent<T>()
         where T : class
     {
-        foreach (var component in components)
-        {
-            if (component is T)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return components.OfType<T>().Any();
     }
 
     /// <summary>

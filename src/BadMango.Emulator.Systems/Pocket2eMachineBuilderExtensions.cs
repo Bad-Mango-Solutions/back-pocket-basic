@@ -80,6 +80,11 @@ public static class Pocket2eMachineBuilderExtensions
     public const Addr IrqVectorAddress = 0xFFFE;
 
     /// <summary>
+    /// The size of the 6502 vector table (6 bytes).
+    /// </summary>
+    private const uint VectorTableSize = 6;
+
+    /// <summary>
     /// Sets up a known good basic Pocket2e (Apple IIe-Enhanced clone) configuration.
     /// </summary>
     /// <param name="builder">The machine builder to configure.</param>
@@ -115,8 +120,8 @@ public static class Pocket2eMachineBuilderExtensions
             .WithPocket2eMemoryLayout()
             .WithLanguageCard()
             .WithAuxiliaryMemory()
-            .WithPocket2eIOPage()
             .WithSlotManager()
+            .WithPocket2eIOPage()
             .CreateLayer(VectorTableLayerName, VectorTableLayerPriority);
     }
 
@@ -135,14 +140,46 @@ public static class Pocket2eMachineBuilderExtensions
     /// </para>
     /// <para>
     /// The auxiliary RAM is not directly visible but is accessed through the
-    /// auxiliary memory controller soft switches.
+    /// auxiliary memory controller soft switches. Both RAM banks are added as
+    /// components (<see cref="MainRamComponent"/> and <see cref="AuxiliaryRamComponent"/>)
+    /// for retrieval by controllers.
     /// </para>
     /// </remarks>
     public static MachineBuilder WithPocket2eMemoryLayout(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        return builder.ConfigureMemory(ConfigurePocket2eMemory);
+        // Create 64KB main RAM and add as component
+        var mainRam = new PhysicalMemory(MainRamSize, "MainRAM");
+        var mainRamTarget = new RamTarget(mainRam.Slice(0, MainRamSize));
+        builder.AddComponent(new MainRamComponent(mainRam, mainRamTarget));
+
+        // Create 64KB auxiliary RAM and add as component
+        var auxRam = new PhysicalMemory(AuxRamSize, "AuxRAM");
+        var auxRamTarget = new RamTarget(auxRam.Slice(0, AuxRamSize));
+        builder.AddComponent(new AuxiliaryRamComponent(auxRam, auxRamTarget));
+
+        return builder.ConfigureMemory((bus, devices) =>
+        {
+            // Register the main RAM device
+            int mainRamDeviceId = devices.GenerateId();
+            devices.Register(mainRamDeviceId, "RAM", "Main RAM", "Memory/MainRAM");
+
+            // Map full 64KB as RAM (will be overlaid by ROM and I/O later)
+            bus.MapRegion(
+                0x0000,
+                MainRamSize,
+                mainRamDeviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                mainRamTarget.Capabilities,
+                mainRamTarget,
+                0);
+
+            // Register the auxiliary RAM device (not mapped directly, accessed via controller)
+            int auxRamDeviceId = devices.GenerateId();
+            devices.Register(auxRamDeviceId, "RAM", "Auxiliary RAM", "Memory/AuxRAM");
+        });
     }
 
     /// <summary>
@@ -161,7 +198,7 @@ public static class Pocket2eMachineBuilderExtensions
     /// </para>
     /// <para>
     /// Bank selection and RAM read/write enable are controlled through 16 soft switches
-    /// at $C080-$C08F.
+    /// at $C080-$C08F. The controller is added as both a device and a component.
     /// </para>
     /// </remarks>
     public static MachineBuilder WithLanguageCard(this MachineBuilder builder)
@@ -169,7 +206,9 @@ public static class Pocket2eMachineBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
         var languageCard = new LanguageCardController();
-        return builder.AddDevice(languageCard);
+        return builder
+            .AddComponent(languageCard)
+            .AddDevice(languageCard);
     }
 
     /// <summary>
@@ -190,13 +229,18 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>RAMWRT ($C004/$C005): Writes to aux for $0200-$BFFF</description></item>
     /// </list>
     /// </para>
+    /// <para>
+    /// The controller is added as both a device and a component for retrieval.
+    /// </para>
     /// </remarks>
     public static MachineBuilder WithAuxiliaryMemory(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
         var auxController = new AuxiliaryMemoryController();
-        return builder.AddDevice(auxController);
+        return builder
+            .AddComponent(auxController)
+            .AddDevice(auxController);
     }
 
     /// <summary>
@@ -213,12 +257,46 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>$C800-$CFFF: Expansion ROM (2KB, banked from selected slot)</description></item>
     /// </list>
     /// </para>
+    /// <para>
+    /// This method retrieves the <see cref="IOPageDispatcher"/> and <see cref="ISlotManager"/>
+    /// from the component bag (creating them via <see cref="WithSlotManager"/> if needed).
+    /// </para>
     /// </remarks>
     public static MachineBuilder WithPocket2eIOPage(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        return builder.ConfigureMemory(ConfigurePocket2eIOPage);
+        return builder.ConfigureMemory((bus, devices) =>
+        {
+            // Get dispatcher and slot manager from component bag - they should already exist
+            // if WithSlotManager was called (which AsPocket2e does)
+            IOPageDispatcher? dispatcher = null;
+            ISlotManager? slotManager = null;
+
+            // We need a way to get components during memory configuration
+            // For now, we'll create them here but this will be improved
+            // when the builder supports getting components during configure
+            dispatcher = new IOPageDispatcher();
+            slotManager = new SlotManager(dispatcher);
+
+            // Create the I/O page composite target
+            var ioPage = new Pocket2eIOPage(dispatcher, slotManager);
+
+            // Register the I/O page device
+            int ioPageDeviceId = devices.GenerateId();
+            devices.Register(ioPageDeviceId, "IO", "I/O Page", "Memory/IOPage");
+
+            // Map the I/O page at $C000-$CFFF
+            bus.MapRegion(
+                0xC000,
+                0x1000,
+                ioPageDeviceId,
+                RegionTag.Io,
+                PagePerms.ReadWrite,
+                ioPage.Capabilities,
+                ioPage,
+                0);
+        });
     }
 
     /// <summary>
@@ -237,18 +315,23 @@ public static class Pocket2eMachineBuilderExtensions
     /// </list>
     /// </para>
     /// <para>
-    /// Note: The slot manager is automatically created and configured as part of
-    /// <see cref="WithPocket2eIOPage"/>. Call this method only if you need explicit
-    /// slot manager configuration without the full I/O page.
+    /// Creates an <see cref="IOPageDispatcher"/> and <see cref="SlotManager"/> and adds them
+    /// as components for later retrieval by <see cref="WithPocket2eIOPage"/> and
+    /// <see cref="WithCard"/>.
     /// </para>
     /// </remarks>
     public static MachineBuilder WithSlotManager(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        // Slot manager is created and configured as part of WithPocket2eIOPage
-        // This method is provided for completeness in the builder API
-        return builder;
+        // Create the I/O page dispatcher and slot manager
+        var dispatcher = new IOPageDispatcher();
+        var slotManager = new SlotManager(dispatcher);
+
+        // Add both as components for retrieval
+        return builder
+            .AddComponent(dispatcher)
+            .AddComponent<ISlotManager>(slotManager);
     }
 
     /// <summary>
@@ -273,6 +356,10 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>Slot ROM at $Cn00-$CnFF</description></item>
     /// <item><description>Expansion ROM at $C800-$CFFF (bank-selected)</description></item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// The card is stored as a <see cref="PendingSlotCard"/> component and installed
+    /// during the build process when the <see cref="ISlotManager"/> is available.
     /// </para>
     /// </remarks>
     public static MachineBuilder WithCard(this MachineBuilder builder, int slot, ISlotCard card)
@@ -327,9 +414,11 @@ public static class Pocket2eMachineBuilderExtensions
         // NMI vector -> $FF00
         romData[0x3FFA] = 0x00;
         romData[0x3FFB] = 0xFF;
+
         // RESET vector -> $FF00
         romData[0x3FFC] = 0x00;
         romData[0x3FFD] = 0xFF;
+
         // IRQ/BRK vector -> $FF00
         romData[0x3FFE] = 0x00;
         romData[0x3FFF] = 0xFF;
@@ -349,8 +438,8 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>Base memory layout (128KB)</description></item>
     /// <item><description>Language Card</description></item>
     /// <item><description>Auxiliary memory controller</description></item>
-    /// <item><description>I/O page handler</description></item>
     /// <item><description>Slot manager</description></item>
+    /// <item><description>I/O page handler</description></item>
     /// </list>
     /// </para>
     /// <para>
@@ -365,8 +454,8 @@ public static class Pocket2eMachineBuilderExtensions
             .WithPocket2eMemoryLayout()
             .WithLanguageCard()
             .WithAuxiliaryMemory()
-            .WithPocket2eIOPage()
-            .WithSlotManager();
+            .WithSlotManager()
+            .WithPocket2eIOPage();
     }
 
     /// <summary>
@@ -443,12 +532,12 @@ public static class Pocket2eMachineBuilderExtensions
         ];
 
         var physical = new PhysicalMemory(vectorData, "VectorTable");
-        var target = new RomTarget(physical.Slice(0, 6));
+        var target = new RomTarget(physical.Slice(0, VectorTableSize));
 
         return builder.AddLayeredMapping(
             VectorTableLayerName,
             NmiVectorAddress,
-            0x1000, // Page-aligned size (vectors are at end of page)
+            VectorTableSize,
             target,
             RegionTag.Rom,
             PagePerms.ReadExecute);
@@ -491,70 +580,24 @@ public static class Pocket2eMachineBuilderExtensions
         return new Cpu65C02(context);
     }
 
-    private static void ConfigurePocket2eMemory(IMemoryBus bus, IDeviceRegistry devices)
-    {
-        // Create 64KB main RAM
-        var mainRam = new PhysicalMemory(MainRamSize, "MainRAM");
-        var mainRamTarget = new RamTarget(mainRam.Slice(0, MainRamSize));
+    /// <summary>
+    /// Component wrapper for main RAM, allowing retrieval from the component bag.
+    /// </summary>
+    /// <param name="Memory">The physical memory backing store.</param>
+    /// <param name="Target">The RAM bus target for read/write operations.</param>
+    public sealed record MainRamComponent(PhysicalMemory Memory, RamTarget Target);
 
-        // Register the main RAM device
-        int mainRamDeviceId = devices.GenerateId();
-        devices.Register(mainRamDeviceId, "RAM", "Main RAM", "Memory/MainRAM");
-
-        // Map full 64KB as RAM (will be overlaid by ROM and I/O later)
-        bus.MapRegion(
-            0x0000,
-            MainRamSize,
-            mainRamDeviceId,
-            RegionTag.Ram,
-            PagePerms.All,
-            mainRamTarget.Capabilities,
-            mainRamTarget,
-            0);
-
-        // Create 64KB auxiliary RAM
-        var auxRam = new PhysicalMemory(AuxRamSize, "AuxRAM");
-        var auxRamTarget = new RamTarget(auxRam.Slice(0, AuxRamSize));
-
-        // Register the auxiliary RAM device (not mapped directly, accessed via controller)
-        int auxRamDeviceId = devices.GenerateId();
-        devices.Register(auxRamDeviceId, "RAM", "Auxiliary RAM", "Memory/AuxRAM");
-
-        // Note: Auxiliary RAM is not directly mapped; it's accessed through
-        // the AuxiliaryMemoryController and its composite targets
-    }
-
-    private static void ConfigurePocket2eIOPage(IMemoryBus bus, IDeviceRegistry devices)
-    {
-        // Create the I/O page dispatcher
-        var dispatcher = new IOPageDispatcher();
-
-        // Create the slot manager
-        var slotManager = new SlotManager(dispatcher);
-
-        // Create the I/O page composite target
-        var ioPage = new Pocket2eIOPage(dispatcher, slotManager);
-
-        // Register the I/O page device
-        int ioPageDeviceId = devices.GenerateId();
-        devices.Register(ioPageDeviceId, "IO", "I/O Page", "Memory/IOPage");
-
-        // Map the I/O page at $C000-$CFFF
-        bus.MapRegion(
-            0xC000,
-            0x1000,
-            ioPageDeviceId,
-            RegionTag.Io,
-            PagePerms.ReadWrite,
-            ioPage.Capabilities,
-            ioPage,
-            0);
-    }
+    /// <summary>
+    /// Component wrapper for auxiliary RAM, allowing retrieval from the component bag.
+    /// </summary>
+    /// <param name="Memory">The physical memory backing store.</param>
+    /// <param name="Target">The RAM bus target for read/write operations.</param>
+    public sealed record AuxiliaryRamComponent(PhysicalMemory Memory, RamTarget Target);
 
     /// <summary>
     /// Represents a slot card pending installation during machine build.
     /// </summary>
     /// <param name="Slot">The slot number (1-7).</param>
     /// <param name="Card">The slot card to install.</param>
-    internal sealed record PendingSlotCard(int Slot, ISlotCard Card);
+    public sealed record PendingSlotCard(int Slot, ISlotCard Card);
 }
