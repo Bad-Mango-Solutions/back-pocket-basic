@@ -32,7 +32,7 @@ public sealed class ThunderclockCard : IClockDevice
 
     // Thunderclock state
     private int readIndex;
-    private byte[] timeData = new byte[8];
+    private readonly byte[] timeData = new byte[8];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ThunderclockCard"/> class.
