@@ -41,6 +41,7 @@ public sealed class MachineBuilder
     private readonly List<Action<IMemoryBus, IDeviceRegistry>> memoryConfigurations = [];
     private readonly Dictionary<string, int> layerPriorities = new(StringComparer.Ordinal);
     private readonly List<(string LayerName, Addr VirtualBase, Addr Size, IBusTarget Target, RegionTag Tag, PagePerms Perms)> layeredMappings = [];
+    private readonly List<ICompositeLayer> compositeLayers = [];
     private readonly List<Action<IMachine>> postBuildCallbacks = [];
 
     private int addressSpaceBits = 16;
@@ -244,6 +245,35 @@ public sealed class MachineBuilder
         }
 
         layeredMappings.Add((layerName, virtualBase, size, target, tag, perms));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a composite layer to the machine.
+    /// </summary>
+    /// <param name="layer">The composite layer to add.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="layer"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// Composite layers provide dynamic target resolution based on address and access type.
+    /// They are useful for complex memory overlays like the Language Card which has:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Multiple switchable RAM banks</description></item>
+    /// <item><description>Dynamic read/write enable states</description></item>
+    /// <item><description>Pre-write state machine for write protection</description></item>
+    /// </list>
+    /// <para>
+    /// The composite layer is also added as a component for retrieval via
+    /// <see cref="IEventContext.GetComponent{T}"/>.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder AddCompositeLayer(ICompositeLayer layer)
+    {
+        ArgumentNullException.ThrowIfNull(layer, nameof(layer));
+        compositeLayers.Add(layer);
+        components.Add(layer);
         return this;
     }
 

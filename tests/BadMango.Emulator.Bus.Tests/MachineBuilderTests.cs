@@ -463,6 +463,43 @@ public class MachineBuilderTests
         });
     }
 
+    /// <summary>
+    /// Verifies that composite layers can be added to the builder.
+    /// </summary>
+    [Test]
+    public void AddCompositeLayer_AddsLayerAndComponent()
+    {
+        var mockCpu = CreateMockCpu();
+        var mockLayer = new Mock<ICompositeLayer>();
+        mockLayer.Setup(l => l.Name).Returns("TestLayer");
+        mockLayer.Setup(l => l.Priority).Returns(100);
+        mockLayer.Setup(l => l.AddressRange).Returns((0xD000u, 0x3000u));
+
+        var machine = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AddCompositeLayer(mockLayer.Object)
+            .Build();
+
+        var retrieved = machine.GetComponent<ICompositeLayer>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(retrieved, Is.Not.Null);
+            Assert.That(retrieved!.Name, Is.EqualTo("TestLayer"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that null composite layer throws.
+    /// </summary>
+    [Test]
+    public void AddCompositeLayer_NullLayer_ThrowsArgumentNullException()
+    {
+        var builder = new MachineBuilder();
+
+        Assert.Throws<ArgumentNullException>(() => builder.AddCompositeLayer(null!));
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();
