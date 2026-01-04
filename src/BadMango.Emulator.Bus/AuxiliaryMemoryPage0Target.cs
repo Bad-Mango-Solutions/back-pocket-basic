@@ -162,10 +162,12 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
                 : (mainMemory, offset);
         }
 
-        // General RAM regions: Controlled by RAMRD
-        return controller.IsRamRdEnabled
-            ? (mainMemory, offset) // Note: General aux RAM not yet implemented; would need auxGeneral target
-            : (mainMemory, offset);
+        // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMRD
+        // Note: RAMRD/RAMWRT for general regions ($0200-$BFFF) requires additional
+        // auxiliary memory targets not currently provided to this composite target.
+        // When those are needed, the constructor should accept an auxGeneral parameter.
+        // For now, general regions always use main memory regardless of RAMRD state.
+        return (mainMemory, offset);
     }
 
     /// <summary>
@@ -201,9 +203,11 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
                 : (mainMemory, offset);
         }
 
-        // General RAM regions: Controlled by RAMWRT
-        return controller.IsRamWrtEnabled
-            ? (mainMemory, offset) // Note: General aux RAM not yet implemented; would need auxGeneral target
-            : (mainMemory, offset);
+        // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMWRT
+        // Note: RAMRD/RAMWRT for general regions ($0200-$BFFF) requires additional
+        // auxiliary memory targets not currently provided to this composite target.
+        // When those are needed, the constructor should accept an auxGeneral parameter.
+        // For now, general regions always use main memory regardless of RAMWRT state.
+        return (mainMemory, offset);
     }
 }
