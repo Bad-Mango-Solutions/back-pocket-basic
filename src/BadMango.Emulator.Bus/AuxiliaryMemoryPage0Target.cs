@@ -161,13 +161,25 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
                 : (mainMemory, offset);
         }
 
-        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2
+        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2 when 80STORE is enabled,
+        // otherwise follows RAMRD like general regions
         if (offset >= TextPageStart && offset < TextPageEnd)
         {
-            bool useAux = controller.Is80StoreEnabled && controller.IsPage2Selected;
-            return useAux
-                ? (auxTextPage, offset - TextPageStart)
-                : (mainMemory, offset);
+            if (controller.Is80StoreEnabled)
+            {
+                // When 80STORE is enabled, PAGE2 controls text page switching
+                return controller.IsPage2Selected
+                    ? (auxTextPage, offset - TextPageStart)
+                    : (mainMemory, offset);
+            }
+
+            // When 80STORE is disabled, text page follows RAMRD like general regions
+            if (auxGeneral is not null && controller.IsRamRdEnabled)
+            {
+                return (auxGeneral, offset);
+            }
+
+            return (mainMemory, offset);
         }
 
         // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMRD
@@ -203,13 +215,25 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
                 : (mainMemory, offset);
         }
 
-        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2
+        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2 when 80STORE is enabled,
+        // otherwise follows RAMWRT like general regions
         if (offset >= TextPageStart && offset < TextPageEnd)
         {
-            bool useAux = controller.Is80StoreEnabled && controller.IsPage2Selected;
-            return useAux
-                ? (auxTextPage, offset - TextPageStart)
-                : (mainMemory, offset);
+            if (controller.Is80StoreEnabled)
+            {
+                // When 80STORE is enabled, PAGE2 controls text page switching
+                return controller.IsPage2Selected
+                    ? (auxTextPage, offset - TextPageStart)
+                    : (mainMemory, offset);
+            }
+
+            // When 80STORE is disabled, text page follows RAMWRT like general regions
+            if (auxGeneral is not null && controller.IsRamWrtEnabled)
+            {
+                return (auxGeneral, offset);
+            }
+
+            return (mainMemory, offset);
         }
 
         // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMWRT

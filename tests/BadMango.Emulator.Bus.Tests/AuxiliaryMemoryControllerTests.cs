@@ -576,6 +576,304 @@ public class AuxiliaryMemoryControllerTests
         Assert.That(bus.Read8(readAccess), Is.EqualTo(0x33), "Main memory should retain original value");
     }
 
+    // ─── Permutation Tests: Aux Memory + LC + Various Switch Combinations ───────
+
+    /// <summary>
+    /// Verifies that ALTZP works independently of RAMRD/RAMWRT state.
+    /// </summary>
+    [Test]
+    public void Permutation_ALTZP_IndependentOfRAMRDRAMWRT()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Zero page address
+        var zpReadAccess = CreateTestAccess(0x0042, AccessIntent.DataRead);
+        var zpWriteAccess = CreateTestAccess(0x0042, AccessIntent.DataWrite);
+
+        // General address (page 0, $0300 region)
+        var generalReadAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
+        var generalWriteAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
+
+        // Write initial values
+        bus.Write8(zpWriteAccess, 0xAA);
+        bus.Write8(generalWriteAccess, 0xBB);
+
+        // Enable RAMRD/RAMWRT - should affect general region but not ZP
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+
+        Assert.That(bus.Read8(zpReadAccess), Is.EqualTo(0xAA), "ZP should still be main (ALTZP off)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "General should be aux (RAMRD on)");
+
+        // Now enable ALTZP - should affect ZP independently
+        SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
+        Assert.That(bus.Read8(zpReadAccess), Is.EqualTo(0x00), "ZP should be aux (ALTZP on)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "General should still be aux (RAMRD on)");
+
+        // Disable RAMRD/RAMWRT - ZP should still be aux
+        SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        SimulateWrite(dispatcher, 0x04, 0x00); // WRMAINRAM
+        Assert.That(bus.Read8(zpReadAccess), Is.EqualTo(0x00), "ZP should still be aux (ALTZP still on)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0xBB), "General should be main (RAMRD off)");
+    }
+
+    /// <summary>
+    /// Verifies that 80STORE+PAGE2 overrides RAMRD/RAMWRT for text page.
+    /// </summary>
+    [Test]
+    public void Permutation_80STORE_PAGE2_OverridesRAMRDRAMWRT_ForTextPage()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Text page address
+        var textReadAccess = CreateTestAccess(0x0500, AccessIntent.DataRead);
+        var textWriteAccess = CreateTestAccess(0x0500, AccessIntent.DataWrite);
+
+        // General address outside text page (page 0, $0300 region)
+        var generalReadAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
+        var generalWriteAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
+
+        // Write initial values
+        bus.Write8(textWriteAccess, 0x41); // 'A' to main text
+        bus.Write8(generalWriteAccess, 0x42); // 'B' to main general
+
+        // Enable RAMRD/RAMWRT for general regions
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+
+        // Text page should also be affected by RAMRD when 80STORE is off
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0x00), "Text should be aux (RAMRD, 80STORE off)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "General should be aux (RAMRD on)");
+
+        // Now enable 80STORE - text page should switch to PAGE2 control
+        SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0x41), "Text should be main (80STORE on, PAGE2 off)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "General should still be aux (RAMRD on)");
+
+        // Enable PAGE2 - text page should go to aux
+        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0x00), "Text should be aux (80STORE+PAGE2)");
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "General should still be aux (RAMRD on)");
+    }
+
+    /// <summary>
+    /// Verifies that all aux memory switches can be toggled independently.
+    /// </summary>
+    [Test]
+    public void Permutation_AllSwitchesIndependent()
+    {
+        var (controller, _, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Test all combinations of switches being on/off
+        bool[] states = [false, true];
+
+        foreach (bool altzp in states)
+        {
+            foreach (bool store80 in states)
+            {
+                foreach (bool ramrd in states)
+                {
+                    foreach (bool ramwrt in states)
+                    {
+                        // Set the state
+                        SimulateWrite(dispatcher, (byte)(altzp ? 0x09 : 0x08), 0x00);
+                        SimulateWrite(dispatcher, (byte)(store80 ? 0x01 : 0x00), 0x00);
+                        SimulateWrite(dispatcher, (byte)(ramrd ? 0x03 : 0x02), 0x00);
+                        SimulateWrite(dispatcher, (byte)(ramwrt ? 0x05 : 0x04), 0x00);
+
+                        // Verify the state
+                        Assert.Multiple(() =>
+                        {
+                            Assert.That(controller.IsAltZpEnabled, Is.EqualTo(altzp), $"ALTZP mismatch at {altzp},{store80},{ramrd},{ramwrt}");
+                            Assert.That(controller.Is80StoreEnabled, Is.EqualTo(store80), $"80STORE mismatch at {altzp},{store80},{ramrd},{ramwrt}");
+                            Assert.That(controller.IsRamRdEnabled, Is.EqualTo(ramrd), $"RAMRD mismatch at {altzp},{store80},{ramrd},{ramwrt}");
+                            Assert.That(controller.IsRamWrtEnabled, Is.EqualTo(ramwrt), $"RAMWRT mismatch at {altzp},{store80},{ramrd},{ramwrt}");
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that hi-res layer activation respects the three-switch combination.
+    /// </summary>
+    [Test]
+    public void Permutation_HiResLayerActivation_RequiresAllThreeSwitches()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedController();
+
+        // Test all permutations of 80STORE, HIRES, PAGE2
+        // Layer should only activate when ALL THREE are enabled
+        var testCases = new[]
+        {
+            (store80: false, hires: false, page2: false, expected: false),
+            (store80: true,  hires: false, page2: false, expected: false),
+            (store80: false, hires: true,  page2: false, expected: false),
+            (store80: false, hires: false, page2: true,  expected: false),
+            (store80: true,  hires: true,  page2: false, expected: false),
+            (store80: true,  hires: false, page2: true,  expected: false),
+            (store80: false, hires: true,  page2: true,  expected: false),
+            (store80: true,  hires: true,  page2: true,  expected: true),
+        };
+
+        foreach (var (store80, hires, page2, expected) in testCases)
+        {
+            // Set the switches
+            SimulateWrite(dispatcher, (byte)(store80 ? 0x01 : 0x00), 0x00);
+            SimulateWrite(dispatcher, (byte)(hires ? 0x57 : 0x56), 0x00);
+            SimulateWrite(dispatcher, (byte)(page2 ? 0x55 : 0x54), 0x00);
+
+            Assert.That(
+                bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1),
+                Is.EqualTo(expected),
+                $"HiRes1 layer mismatch at 80STORE={store80}, HIRES={hires}, PAGE2={page2}");
+            Assert.That(
+                bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2),
+                Is.EqualTo(expected),
+                $"HiRes2 layer mismatch at 80STORE={store80}, HIRES={hires}, PAGE2={page2}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies correct memory access patterns with asymmetric RAMRD/RAMWRT settings.
+    /// </summary>
+    [Test]
+    public void Permutation_AsymmetricRAMRDRAMWRT_CorrectRouting()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        var readAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
+        var writeAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
+
+        // Write initial value to main
+        bus.Write8(writeAccess, 0x11);
+
+        // Case 1: RAMRD off, RAMWRT on - reads from main, writes to aux
+        SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "Should read from main");
+        bus.Write8(writeAccess, 0x22);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "Main should be unchanged, write went to aux");
+
+        // Case 2: RAMRD on, RAMWRT off - reads from aux, writes to main
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        SimulateWrite(dispatcher, 0x04, 0x00); // WRMAINRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x22), "Should read 0x22 from aux");
+        bus.Write8(writeAccess, 0x33);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x22), "Aux should be unchanged, write went to main");
+
+        // Verify main has the new value
+        SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x33), "Main should have 0x33");
+    }
+
+    /// <summary>
+    /// Verifies stack switching is independent of text page switching.
+    /// </summary>
+    [Test]
+    public void Permutation_StackIndependentOfTextPage()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedController();
+
+        var stackReadAccess = CreateTestAccess(0x0142, AccessIntent.DataRead);
+        var stackWriteAccess = CreateTestAccess(0x0142, AccessIntent.DataWrite);
+        var textReadAccess = CreateTestAccess(0x0500, AccessIntent.DataRead);
+        var textWriteAccess = CreateTestAccess(0x0500, AccessIntent.DataWrite);
+
+        // Write initial values
+        bus.Write8(stackWriteAccess, 0xAA);
+        bus.Write8(textWriteAccess, 0xBB);
+
+        // Enable ALTZP - stack should switch, text should not
+        SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
+        Assert.That(bus.Read8(stackReadAccess), Is.EqualTo(0x00), "Stack should be aux (ALTZP on)");
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0xBB), "Text should be main (80STORE off)");
+
+        // Enable 80STORE + PAGE2 - text should switch, stack unchanged
+        SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
+        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
+        Assert.That(bus.Read8(stackReadAccess), Is.EqualTo(0x00), "Stack should still be aux (ALTZP on)");
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0x00), "Text should be aux (80STORE+PAGE2)");
+
+        // Disable ALTZP - stack back to main, text stays aux
+        SimulateWrite(dispatcher, 0x08, 0x00); // SETSTDZP
+        Assert.That(bus.Read8(stackReadAccess), Is.EqualTo(0xAA), "Stack should be main (ALTZP off)");
+        Assert.That(bus.Read8(textReadAccess), Is.EqualTo(0x00), "Text should still be aux (80STORE+PAGE2)");
+    }
+
+    /// <summary>
+    /// Verifies that reset restores all switches and layers to initial state.
+    /// </summary>
+    [Test]
+    public void Permutation_Reset_RestoresAllSwitchesAndLayers()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        // Enable everything
+        SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
+        SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
+        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
+        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
+
+        // Verify everything is enabled
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.True);
+        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.True);
+        Assert.That(controller.IsAltZpEnabled, Is.True);
+        Assert.That(controller.Is80StoreEnabled, Is.True);
+        Assert.That(controller.IsRamRdEnabled, Is.True);
+        Assert.That(controller.IsRamWrtEnabled, Is.True);
+        Assert.That(controller.IsPage2Selected, Is.True);
+        Assert.That(controller.IsHiResEnabled, Is.True);
+
+        // Reset
+        controller.Reset();
+
+        // Verify everything is back to initial state
+        Assert.Multiple(() =>
+        {
+            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False, "HiRes1 should be inactive");
+            Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False, "HiRes2 should be inactive");
+            Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled");
+            Assert.That(controller.Is80StoreEnabled, Is.False, "80STORE should be disabled");
+            Assert.That(controller.IsRamRdEnabled, Is.False, "RAMRD should be disabled");
+            Assert.That(controller.IsRamWrtEnabled, Is.False, "RAMWRT should be disabled");
+            Assert.That(controller.IsPage2Selected, Is.False, "PAGE2 should be disabled");
+            Assert.That(controller.IsHiResEnabled, Is.False, "HIRES should be disabled");
+        });
+    }
+
+    /// <summary>
+    /// Verifies rapid switch toggling maintains correct state.
+    /// </summary>
+    [Test]
+    public void Permutation_RapidSwitchToggling_MaintainsCorrectState()
+    {
+        var (controller, bus, dispatcher) = CreateInitializedControllerWithGeneralAux();
+
+        var generalReadAccess = CreateTestAccess(0x0300, AccessIntent.DataRead);
+        var generalWriteAccess = CreateTestAccess(0x0300, AccessIntent.DataWrite);
+
+        // Write to main
+        bus.Write8(generalWriteAccess, 0x11);
+
+        // Rapid toggling
+        for (int i = 0; i < 100; i++)
+        {
+            SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+            SimulateWrite(dispatcher, 0x02, 0x00); // RDMAINRAM
+        }
+
+        // Should end at main
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x11), "Should read from main after toggling");
+
+        // End with RAMRD on
+        SimulateWrite(dispatcher, 0x03, 0x00); // RDCARDRAM
+        Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "Should read from aux after final toggle");
+    }
+
     // ─── Helper Methods ─────────────────────────────────────────────────────────
 
     private static (AuxiliaryMemoryController Controller, MainBus Bus, IOPageDispatcher Dispatcher) CreateInitializedController()
