@@ -76,4 +76,45 @@ public interface IDeviceRegistry
     /// unique IDs but don't have predefined values.
     /// </remarks>
     int GenerateId();
+
+    /// <summary>
+    /// Registers a new device with the specified metadata and structured page ID.
+    /// </summary>
+    /// <param name="id">The structural instance identifier for the device.</param>
+    /// <param name="pageId">The structured device page identifier for 65832 compatibility.</param>
+    /// <param name="kind">The type or category of device (e.g., "SlotCard", "Ram", "MegaII").</param>
+    /// <param name="name">Human-readable name for display in tools and logs.</param>
+    /// <param name="wiringPath">Hierarchical path describing the device's location in the system.</param>
+    /// <exception cref="ArgumentException">Thrown if a device with the same ID is already registered.</exception>
+    void Register(int id, DevicePageId pageId, string kind, string name, string wiringPath);
+
+    /// <summary>
+    /// Attempts to retrieve device information by structured page ID.
+    /// </summary>
+    /// <param name="pageId">The structured device page identifier to look up.</param>
+    /// <param name="info">When successful, contains the device information; otherwise, the default value.</param>
+    /// <returns><see langword="true"/> if the device was found; otherwise, <see langword="false"/>.</returns>
+    bool TryGetByPageId(DevicePageId pageId, out DeviceInfo info);
+
+    /// <summary>
+    /// Gets device information by structured page ID.
+    /// </summary>
+    /// <param name="pageId">The structured device page identifier to look up.</param>
+    /// <returns>The device information if found.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if no device with the specified page ID is registered.</exception>
+    DeviceInfo GetByPageId(DevicePageId pageId);
+
+    /// <summary>
+    /// Enumerates all registered devices of a specific class.
+    /// </summary>
+    /// <param name="deviceClass">The device class to filter by.</param>
+    /// <returns>An enumerable of device info records for the specified class.</returns>
+    IEnumerable<DeviceInfo> GetByClass(DevicePageClass deviceClass);
+
+    /// <summary>
+    /// Checks whether a device with the specified page ID is registered.
+    /// </summary>
+    /// <param name="pageId">The structured device page identifier to check.</param>
+    /// <returns><see langword="true"/> if the device is registered; otherwise, <see langword="false"/>.</returns>
+    bool ContainsPageId(DevicePageId pageId);
 }

@@ -19,15 +19,29 @@ namespace BadMango.Emulator.Bus;
 /// </para>
 /// </remarks>
 /// <param name="Id">The structural instance identifier for the device.</param>
+/// <param name="PageId">Structured device page identifier for 65832 compatibility.</param>
 /// <param name="Kind">The type or category of device (e.g., "SlotCard", "Ram", "MegaII").</param>
 /// <param name="Name">Human-readable name for display in tools and logs.</param>
 /// <param name="WiringPath">Hierarchical path describing the device's location in the system (e.g., "main/slots/6/disk2").</param>
 public readonly record struct DeviceInfo(
     int Id,
+    DevicePageId PageId,
     string Kind,
     string Name,
     string WiringPath)
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DeviceInfo"/> struct without a page ID.
+    /// </summary>
+    /// <param name="Id">The structural instance identifier for the device.</param>
+    /// <param name="Kind">The type or category of device.</param>
+    /// <param name="Name">Human-readable name for display in tools and logs.</param>
+    /// <param name="WiringPath">Hierarchical path describing the device's location.</param>
+    public DeviceInfo(int Id, string Kind, string Name, string WiringPath)
+        : this(Id, default, Kind, Name, WiringPath)
+    {
+    }
+
     /// <summary>
     /// Gets a display string combining name and kind.
     /// </summary>
