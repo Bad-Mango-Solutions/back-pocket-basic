@@ -604,5 +604,5 @@ public static class Pocket2eMachineBuilderExtensions
     /// </summary>
     /// <param name="Slot">The slot number (1-7).</param>
     /// <param name="Card">The slot card to install.</param>
-    public sealed record PendingSlotCard(int Slot, ISlotCard Card);
+    public sealed record PendingSlotCard(int Slot, ISlotCard Card) : IPendingSlotCard;
 }

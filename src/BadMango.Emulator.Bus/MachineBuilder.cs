@@ -475,23 +475,10 @@ public sealed class MachineBuilder
             return;
         }
 
-        // Find and install all pending slot cards
-        // We use reflection to avoid tight coupling to the Systems assembly
-        foreach (var component in machine.GetComponents<object>())
+        // Find and install all pending slot cards using the interface (no reflection needed)
+        foreach (var pendingCard in machine.GetComponents<IPendingSlotCard>())
         {
-            var type = component.GetType();
-            if (type.Name == "PendingSlotCard")
-            {
-                var slotProp = type.GetProperty("Slot");
-                var cardProp = type.GetProperty("Card");
-
-                if (slotProp != null && cardProp != null)
-                {
-                    var slot = (int)slotProp.GetValue(component)!;
-                    var card = (ISlotCard)cardProp.GetValue(component)!;
-                    slotManager.Install(slot, card);
-                }
-            }
+            slotManager.Install(pendingCard.Slot, pendingCard.Card);
         }
     }
 
@@ -516,33 +503,17 @@ public sealed class MachineBuilder
 
     private static ICpu CreateDefaultCpu(CpuFamily family, IEventContext context)
     {
+        // CPU creation requires a CPU factory to avoid reflection-based coupling.
+        // Use WithCpuFactory() to provide a CPU implementation, or use a system-specific
+        // extension method like AsPocket2e() which provides its own CPU factory.
         return family switch
         {
-            CpuFamily.Cpu65C02 => CreateCpu65C02(context),
+            CpuFamily.Cpu65C02 => throw new InvalidOperationException(
+                "No CPU factory configured. Use WithCpuFactory() to provide a 65C02 implementation, " +
+                "or use AsPocket2e() which includes a CPU factory."),
             CpuFamily.Cpu65C816 => throw new NotSupportedException("65C816 CPU is not yet implemented."),
             CpuFamily.Cpu65832 => throw new NotSupportedException("65832 CPU is not yet implemented."),
             _ => throw new NotSupportedException($"CPU family '{family}' is not supported."),
         };
-    }
-
-    private static ICpu CreateCpu65C02(IEventContext context)
-    {
-        // Use reflection to create the CPU to avoid tight coupling to the Emulation assembly
-        var cpuType = Type.GetType("BadMango.Emulator.Emulation.Cpu.Cpu65C02, BadMango.Emulator.Emulation");
-        if (cpuType == null)
-        {
-            throw new InvalidOperationException(
-                "Cannot create 65C02 CPU: BadMango.Emulator.Emulation assembly not found. " +
-                "Use WithCpuFactory to provide a custom CPU implementation.");
-        }
-
-        var constructor = cpuType.GetConstructor([typeof(IEventContext)]);
-        if (constructor == null)
-        {
-            throw new InvalidOperationException(
-                "Cannot create 65C02 CPU: Constructor accepting IEventContext not found.");
-        }
-
-        return (ICpu)constructor.Invoke([context]);
     }
 }
