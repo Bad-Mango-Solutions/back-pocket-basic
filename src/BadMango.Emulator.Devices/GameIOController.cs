@@ -18,7 +18,7 @@ using Interfaces;
 /// The Apple II game port provides:
 /// </para>
 /// <list type="bullet">
-/// <item><description>4 pushbuttons at $C061-$C063 (bit 7 = pressed)</description></item>
+/// <item><description>4 pushbuttons at $C060-$C063 (bit 7 = pressed)</description></item>
 /// <item><description>4 analog paddle inputs read via timing loops after triggering $C070</description></item>
 /// </list>
 /// <para>

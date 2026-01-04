@@ -261,4 +261,184 @@ public class DeviceRegistryTests
 
         Assert.That(info.ToString(), Is.EqualTo("Disk II (SlotCard)"));
     }
+
+    /// <summary>
+    /// Verifies that Register with PageId adds device to both lookups.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_RegisterWithPageId_AddsToBothLookups()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(1, 0);
+
+        registry.Register(1, pageId, "Storage", "Disk Drive", "main/storage/1");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.Contains(1), Is.True);
+            Assert.That(registry.ContainsPageId(pageId), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that Register throws ArgumentException for duplicate page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_Register_ThrowsOnDuplicatePageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(1, 0);
+
+        registry.Register(1, pageId, "Storage", "Drive 1", "main/storage/1");
+
+        Assert.Throws<ArgumentException>(() =>
+            registry.Register(2, pageId, "Storage", "Drive 2", "main/storage/2"));
+    }
+
+    /// <summary>
+    /// Verifies that Register allows same integer ID with different page IDs fails on duplicate ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_Register_ThrowsOnDuplicateIdEvenWithDifferentPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId1 = DevicePageId.CreateStorage(1, 0);
+        var pageId2 = DevicePageId.CreateStorage(2, 0);
+
+        registry.Register(1, pageId1, "Storage", "Drive 1", "main/storage/1");
+
+        Assert.Throws<ArgumentException>(() =>
+            registry.Register(1, pageId2, "Storage", "Drive 2", "main/storage/2"));
+    }
+
+    /// <summary>
+    /// Verifies that TryGetByPageId returns true for registered device with page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_TryGetByPageId_ReturnsTrueForRegisteredDevice()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateSlotROM(6, 0);
+
+        registry.Register(42, pageId, "SlotCard", "Disk II", "main/slots/6/disk2");
+
+        bool found = registry.TryGetByPageId(pageId, out var info);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(found, Is.True);
+            Assert.That(info.Id, Is.EqualTo(42));
+            Assert.That(info.PageId, Is.EqualTo(pageId));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryGetByPageId returns false for unregistered page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_TryGetByPageId_ReturnsFalseForUnregisteredPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(99, 0);
+
+        bool found = registry.TryGetByPageId(pageId, out _);
+
+        Assert.That(found, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that GetByPageId returns device for registered page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_GetByPageId_ReturnsDeviceForRegisteredPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateTimer(0, 0);
+
+        registry.Register(10, pageId, "Timer", "System Timer", "main/timer");
+
+        var info = registry.GetByPageId(pageId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(info.Id, Is.EqualTo(10));
+            Assert.That(info.Name, Is.EqualTo("System Timer"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetByPageId throws KeyNotFoundException for unregistered page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_GetByPageId_ThrowsForUnregisteredPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(99, 0);
+
+        Assert.Throws<KeyNotFoundException>(() => registry.GetByPageId(pageId));
+    }
+
+    /// <summary>
+    /// Verifies that GetByClass returns devices with matching class.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_GetByClass_ReturnsDevicesWithMatchingClass()
+    {
+        var registry = new DeviceRegistry();
+        registry.Register(1, DevicePageId.CreateStorage(1, 0), "Storage", "Drive 1", "path1");
+        registry.Register(2, DevicePageId.CreateStorage(2, 0), "Storage", "Drive 2", "path2");
+        registry.Register(3, DevicePageId.CreateTimer(0, 0), "Timer", "Timer", "path3");
+
+        var storageDevices = registry.GetByClass(DevicePageClass.Storage).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(storageDevices, Has.Count.EqualTo(2));
+            Assert.That(storageDevices.All(d => d.PageId.Class == DevicePageClass.Storage), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that ContainsPageId returns true for registered page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_ContainsPageId_ReturnsTrueForRegisteredPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(1, 0);
+
+        registry.Register(1, pageId, "Storage", "Drive", "path");
+
+        Assert.That(registry.ContainsPageId(pageId), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsPageId returns false for unregistered page ID.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_ContainsPageId_ReturnsFalseForUnregisteredPageId()
+    {
+        var registry = new DeviceRegistry();
+        var pageId = DevicePageId.CreateStorage(99, 0);
+
+        Assert.That(registry.ContainsPageId(pageId), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that Register with invalid page ID does not add to page ID lookup.
+    /// </summary>
+    [Test]
+    public void DeviceRegistry_RegisterWithInvalidPageId_DoesNotAddToPageIdLookup()
+    {
+        var registry = new DeviceRegistry();
+        var invalidPageId = DevicePageId.Default; // Invalid page ID
+
+        registry.Register(1, invalidPageId, "Device", "Test Device", "path");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.Contains(1), Is.True);
+            Assert.That(registry.ContainsPageId(invalidPageId), Is.False);
+        });
+    }
 }

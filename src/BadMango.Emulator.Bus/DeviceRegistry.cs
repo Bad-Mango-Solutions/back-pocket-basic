@@ -71,6 +71,11 @@ public sealed class DeviceRegistry : IDeviceRegistry
             throw new ArgumentException($"Device with ID {id} is already registered.", nameof(id));
         }
 
+        if (pageId.IsValid && devicesByPageId.ContainsKey(pageId.RawValue))
+        {
+            throw new ArgumentException($"Device with page ID {pageId} is already registered.", nameof(pageId));
+        }
+
         var info = new DeviceInfo(id, pageId, kind, name, wiringPath);
         devicesById[id] = info;
 

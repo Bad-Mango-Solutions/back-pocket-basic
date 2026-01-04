@@ -118,14 +118,15 @@ public sealed class KeyboardController : IKeyboardDevice
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        foreach (char c in text)
+        // Convert characters to Apple II ASCII and enqueue non-zero values
+        var keysToEnqueue = text
+            .Select(c => ConvertToAppleAscii(c))
+            .Where(ascii => ascii != 0)
+            .Select(ascii => (ascii, delayMs));
+
+        foreach (var entry in keysToEnqueue)
         {
-            // Convert character to Apple II ASCII
-            byte ascii = ConvertToAppleAscii(c);
-            if (ascii != 0)
-            {
-                typeQueue.Enqueue((ascii, delayMs));
-            }
+            typeQueue.Enqueue(entry);
         }
 
         // Start processing the queue if not already in progress
