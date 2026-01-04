@@ -384,6 +384,85 @@ public class MachineBuilderTests
         });
     }
 
+    /// <summary>
+    /// Verifies that AfterBuild callback is invoked after machine is built.
+    /// </summary>
+    [Test]
+    public void AfterBuild_CallbackIsInvokedAfterBuild()
+    {
+        var mockCpu = CreateMockCpu();
+        IMachine? receivedMachine = null;
+        var callbackInvoked = false;
+
+        var machine = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AfterBuild(m =>
+            {
+                callbackInvoked = true;
+                receivedMachine = m;
+            })
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callbackInvoked, Is.True);
+            Assert.That(receivedMachine, Is.SameAs(machine));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that multiple AfterBuild callbacks are invoked in order.
+    /// </summary>
+    [Test]
+    public void AfterBuild_MultipleCallbacks_InvokedInOrder()
+    {
+        var mockCpu = CreateMockCpu();
+        var invocationOrder = new List<int>();
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AfterBuild(_ => invocationOrder.Add(1))
+            .AfterBuild(_ => invocationOrder.Add(2))
+            .AfterBuild(_ => invocationOrder.Add(3))
+            .Build();
+
+        Assert.That(invocationOrder, Is.EqualTo(new[] { 1, 2, 3 }));
+    }
+
+    /// <summary>
+    /// Verifies that AfterBuild null callback throws.
+    /// </summary>
+    [Test]
+    public void AfterBuild_NullCallback_ThrowsArgumentNullException()
+    {
+        var builder = new MachineBuilder();
+
+        Assert.Throws<ArgumentNullException>(() => builder.AfterBuild(null!));
+    }
+
+    /// <summary>
+    /// Verifies that AfterBuild callback can access components.
+    /// </summary>
+    [Test]
+    public void AfterBuild_CallbackCanAccessComponents()
+    {
+        var mockCpu = CreateMockCpu();
+        var testComponent = new TestComponent { Name = "TestValue" };
+        TestComponent? retrievedComponent = null;
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AddComponent(testComponent)
+            .AfterBuild(m => retrievedComponent = m.GetComponent<TestComponent>())
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(retrievedComponent, Is.Not.Null);
+            Assert.That(retrievedComponent!.Name, Is.EqualTo("TestValue"));
+        });
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();

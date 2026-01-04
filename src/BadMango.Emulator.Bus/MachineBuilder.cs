@@ -41,6 +41,7 @@ public sealed class MachineBuilder
     private readonly List<Action<IMemoryBus, IDeviceRegistry>> memoryConfigurations = [];
     private readonly Dictionary<string, int> layerPriorities = new(StringComparer.Ordinal);
     private readonly List<(string LayerName, Addr VirtualBase, Addr Size, IBusTarget Target, RegionTag Tag, PagePerms Perms)> layeredMappings = [];
+    private readonly List<Action<IMachine>> postBuildCallbacks = [];
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -291,6 +292,35 @@ public sealed class MachineBuilder
     }
 
     /// <summary>
+    /// Registers a callback to be invoked after the machine is built but before it is returned.
+    /// </summary>
+    /// <param name="callback">The callback to invoke with the built machine.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// Post-build callbacks are invoked in the order they were registered, after:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>All components have been added to the machine</description></item>
+    /// <item><description>All scheduled devices have been initialized</description></item>
+    /// <item><description>All pending slot cards have been installed</description></item>
+    /// <item><description>All layers have been activated</description></item>
+    /// </list>
+    /// <para>
+    /// This is useful for extension methods that need to perform additional setup
+    /// after the machine is fully assembled, such as registering motherboard devices
+    /// with the I/O dispatcher.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder AfterBuild(Action<IMachine> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        postBuildCallbacks.Add(callback);
+        return this;
+    }
+
+    /// <summary>
     /// Builds the machine with all configured components.
     /// </summary>
     /// <returns>A fully assembled and initialized <see cref="IMachine"/> instance.</returns>
@@ -309,6 +339,7 @@ public sealed class MachineBuilder
     /// <item><description>Creates the CPU</description></item>
     /// <item><description>Assembles the machine</description></item>
     /// <item><description>Initializes all scheduled devices</description></item>
+    /// <item><description>Runs post-build callbacks</description></item>
     /// </list>
     /// </remarks>
     public IMachine Build()
@@ -394,6 +425,12 @@ public sealed class MachineBuilder
         foreach (var (name, _) in layerPriorities)
         {
             bus.ActivateLayer(name);
+        }
+
+        // Run post-build callbacks
+        foreach (var callback in postBuildCallbacks)
+        {
+            callback(machine);
         }
 
         return machine;
