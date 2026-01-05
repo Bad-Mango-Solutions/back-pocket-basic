@@ -484,7 +484,9 @@ public class Cpu65C02 : ICpu
 
         if (result.Failed)
         {
-            return 0xFF; // Return floating bus value on failure
+            // Return 0xFF for any bus fault (unmapped, permission denied, etc.)
+            // This matches Apple II floating bus behavior and is safe for debug reads
+            return 0xFF;
         }
 
         return result.Value;
@@ -496,7 +498,13 @@ public class Cpu65C02 : ICpu
     {
         var access = CreateDebugWriteAccess(address);
         bus.TryWrite8(access, value);
-        // Silently ignore failures - debug writes to unmapped regions are acceptable
+
+        // Debug writes silently ignore failures for these reasons:
+        // 1. Unmapped regions: acceptable in test scenarios
+        // 2. Permission denied: handled by bus bypassing check for DebugWrite
+        // 3. Target doesn't support poke: RomTarget constructed with ReadOnlyMemory
+        // If a test expects poke to work and it doesn't, the test will fail
+        // on subsequent read verification, which is the appropriate failure point.
     }
 
     /// <inheritdoc/>
