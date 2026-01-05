@@ -43,8 +43,8 @@ public class TrapRegistryTests
     [Test]
     public void Constructor_Default_CreatesEmptyRegistry()
     {
-        var registry = new TrapRegistry();
-        Assert.That(registry.Count, Is.EqualTo(0));
+        var testRegistry = new TrapRegistry();
+        Assert.That(testRegistry.Count, Is.EqualTo(0));
     }
 
     /// <summary>
@@ -54,8 +54,8 @@ public class TrapRegistryTests
     public void Constructor_WithSlotManager_Succeeds()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var registry = new TrapRegistry(mockSlotManager.Object);
-        Assert.That(registry.Count, Is.EqualTo(0));
+        var testRegistry = new TrapRegistry(mockSlotManager.Object);
+        Assert.That(testRegistry.Count, Is.EqualTo(0));
     }
 
     /// <summary>
@@ -66,8 +66,8 @@ public class TrapRegistryTests
     {
         var mockSlotManager = new Mock<ISlotManager>();
         var languageCard = new LanguageCardController();
-        var registry = new TrapRegistry(mockSlotManager.Object, languageCard);
-        Assert.That(registry.Count, Is.EqualTo(0));
+        var testRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        Assert.That(testRegistry.Count, Is.EqualTo(0));
     }
 
     // ─── Registration Tests ─────────────────────────────────────────────────────
@@ -1082,6 +1082,189 @@ public class TrapRegistryTests
             Assert.That(lcRamTrap.Name, Is.EqualTo("LC_RAM_ENTRY"));
             Assert.That(lcRamTrap.TargetsLcRam, Is.True);
         });
+    }
+
+    /// <summary>
+    /// Verifies that GetTrapInfo with MemoryContext parameter returns correct trap.
+    /// </summary>
+    [Test]
+    public void GetTrapInfo_WithMemoryContext_ReturnsCorrectTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        var romInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, MemoryContexts.Rom);
+        var lcInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, MemoryContexts.LanguageCardRam);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(romInfo, Is.Not.Null);
+            Assert.That(romInfo!.Value.Name, Is.EqualTo("ROM_ENTRY"));
+            Assert.That(romInfo.Value.TargetsLcRam, Is.False);
+
+            Assert.That(lcInfo, Is.Not.Null);
+            Assert.That(lcInfo!.Value.Name, Is.EqualTo("LC_RAM_ENTRY"));
+            Assert.That(lcInfo.Value.TargetsLcRam, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetTrapsAtAddress returns all traps at the address.
+    /// </summary>
+    [Test]
+    public void GetTrapsAtAddress_ReturnsBothRomAndLcRamTraps()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        var traps = registry.GetTrapsAtAddress(0xD000).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(traps, Has.Count.EqualTo(2));
+            Assert.That(traps.Any(t => t.Name == "ROM_ENTRY" && !t.TargetsLcRam), Is.True);
+            Assert.That(traps.Any(t => t.Name == "LC_RAM_ENTRY" && t.TargetsLcRam), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that SetEnabled with MemoryContext enables/disables correct trap.
+    /// </summary>
+    [Test]
+    public void SetEnabled_WithMemoryContext_EnablesDisablesCorrectTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        // Disable LC RAM trap
+        registry.SetEnabled(0xD000, TrapOperation.Call, enabled: false, MemoryContexts.LanguageCardRam);
+
+        var romInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, MemoryContexts.Rom);
+        var lcInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, MemoryContexts.LanguageCardRam);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(romInfo!.Value.IsEnabled, Is.True, "ROM trap should still be enabled");
+            Assert.That(lcInfo!.Value.IsEnabled, Is.False, "LC RAM trap should be disabled");
+        });
+
+        // Re-enable LC RAM trap
+        registry.SetEnabled(0xD000, TrapOperation.Call, enabled: true, MemoryContexts.LanguageCardRam);
+        lcInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, MemoryContexts.LanguageCardRam);
+        Assert.That(lcInfo!.Value.IsEnabled, Is.True, "LC RAM trap should be re-enabled");
+    }
+
+    /// <summary>
+    /// Verifies that Clear also clears disabled categories.
+    /// </summary>
+    [Test]
+    public void Clear_AlsoClearsDisabledCategories()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+        registry.Register(0xD000, "TEST", TrapCategory.BasicInterpreter, handler);
+
+        // Disable the category
+        registry.SetCategoryEnabled(TrapCategory.BasicInterpreter, false);
+
+        // Clear all
+        registry.Clear();
+
+        // Register a new trap in the same category
+        registry.Register(0xD000, "TEST2", TrapCategory.BasicInterpreter, handler);
+
+        // Execute should work because the category should be re-enabled after clear
+        var result = registry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
+        Assert.That(result.Handled, Is.True, "Category should not be disabled after Clear()");
+    }
+
+    /// <summary>
+    /// Verifies that RegisterWithContext registers trap with custom memory context.
+    /// </summary>
+    [Test]
+    public void RegisterWithContext_CustomContext_RegistersTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+        var customContext = MemoryContexts.Custom("PRODOS_RAM");
+
+        registry.RegisterWithContext(0xD000, customContext, "PRODOS_ENTRY", TrapCategory.OperatingSystem, handler);
+
+        Assert.That(registry.Count, Is.EqualTo(1));
+
+        var trapInfo = registry.GetTrapInfo(0xD000, TrapOperation.Call, customContext);
+        Assert.That(trapInfo, Is.Not.Null);
+        Assert.That(trapInfo!.Value.Name, Is.EqualTo("PRODOS_ENTRY"));
+        Assert.That(trapInfo.Value.MemoryContext, Is.EqualTo(customContext));
+    }
+
+    /// <summary>
+    /// Verifies that GetRegisteredContexts returns all unique contexts.
+    /// </summary>
+    [Test]
+    public void GetRegisteredContexts_ReturnsAllUniqueContexts()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        var customContext = MemoryContexts.Custom("CUSTOM");
+
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_ENTRY", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterWithContext(0xE000, customContext, "CUSTOM_ENTRY", TrapCategory.UserDefined, handler);
+
+        var contexts = registry.GetRegisteredContexts().ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(contexts, Has.Count.EqualTo(3));
+            Assert.That(contexts, Does.Contain(MemoryContexts.Rom));
+            Assert.That(contexts, Does.Contain(MemoryContexts.LanguageCardRam));
+            Assert.That(contexts, Does.Contain(customContext));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that UnregisterContextTraps removes all traps in a context.
+    /// </summary>
+    [Test]
+    public void UnregisterContextTraps_RemovesAllTrapsInContext()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        var customContext = MemoryContexts.Custom("CUSTOM");
+
+        registry.RegisterWithContext(0xD000, customContext, "ENTRY1", TrapCategory.UserDefined, handler);
+        registry.RegisterWithContext(0xE000, customContext, "ENTRY2", TrapCategory.UserDefined, handler);
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+
+        Assert.That(registry.Count, Is.EqualTo(3));
+
+        registry.UnregisterContextTraps(customContext);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.Count, Is.EqualTo(1));
+            Assert.That(registry.HasTrap(0xFC58), Is.True, "ROM trap should still exist");
+            Assert.That(registry.HasTrap(0xD000), Is.False, "Custom context trap should be removed");
+            Assert.That(registry.HasTrap(0xE000), Is.False, "Custom context trap should be removed");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that multiple traps can coexist at same address with different contexts.
+    /// </summary>
+    [Test]
+    public void Register_MultipleContextsSameAddress_AllCoexist()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.Register(0xD000, "ROM", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterWithContext(0xD000, MemoryContexts.AuxiliaryRam, "AUX_RAM", TrapCategory.BasicInterpreter, handler);
+
+        Assert.That(registry.Count, Is.EqualTo(3));
+
+        var traps = registry.GetTrapsAtAddress(0xD000).ToList();
+        Assert.That(traps, Has.Count.EqualTo(3));
     }
 
     // ─── Helper Methods ─────────────────────────────────────────────────────────

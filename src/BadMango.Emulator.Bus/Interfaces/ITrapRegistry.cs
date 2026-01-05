@@ -20,6 +20,19 @@ using BadMango.Emulator.Core.Interfaces.Cpu;
 /// <item><description><b>Call traps</b> - Triggered when execution reaches the address (instruction fetch).</description></item>
 /// </list>
 /// <para>
+/// <b>Memory Context Support:</b>
+/// </para>
+/// <para>
+/// Traps can be registered for specific memory contexts, allowing different handlers
+/// for the same address depending on which memory bank is active:
+/// </para>
+/// <list type="bullet">
+/// <item><description><b>ROM</b> - Default context for fixed ROM addresses.</description></item>
+/// <item><description><b>Language Card RAM</b> - For $D000-$FFFF when LC RAM is enabled.</description></item>
+/// <item><description><b>Auxiliary RAM</b> - For alternate RAM banks (Apple IIe/IIc).</description></item>
+/// <item><description><b>Custom contexts</b> - For ProDOS /RAM, custom memory maps, etc.</description></item>
+/// </list>
+/// <para>
 /// <b>Call Trap Mechanics:</b>
 /// </para>
 /// <para>
@@ -41,16 +54,9 @@ using BadMango.Emulator.Core.Interfaces.Cpu;
 /// </item>
 /// </list>
 /// <para>
-/// Traps can be:
-/// </para>
-/// <list type="bullet">
-/// <item><description>Registered at specific addresses with metadata.</description></item>
-/// <item><description>Enabled/disabled individually or by category.</description></item>
-/// <item><description>Slot-dependent (only fire when a specific slot's expansion ROM is active).</description></item>
-/// </list>
-/// <para>
-/// The registry provides O(1) lookup performance using an internal array indexed
-/// by address, suitable for the hot path in memory access and instruction fetch.
+/// The registry provides O(1) lookup performance using an internal dictionary indexed
+/// by address, operation, and memory context, suitable for the hot path in memory
+/// access and instruction fetch.
 /// </para>
 /// </remarks>
 public interface ITrapRegistry
@@ -61,7 +67,7 @@ public interface ITrapRegistry
     int Count { get; }
 
     /// <summary>
-    /// Registers a call trap handler at a specific address.
+    /// Registers a call trap handler at a specific address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The ROM address to intercept on execution.</param>
     /// <param name="name">Human-readable name for the trap (e.g., "HOME", "COUT").</param>
@@ -69,15 +75,8 @@ public interface ITrapRegistry
     /// <param name="handler">The native implementation delegate.</param>
     /// <param name="description">Optional detailed description for tooling.</param>
     /// <exception cref="InvalidOperationException">
-    /// Thrown if a call trap is already registered at the specified address.
+    /// Thrown if a call trap is already registered at the specified address in the ROM context.
     /// </exception>
-    /// <remarks>
-    /// <para>
-    /// This is the most common trap type, used for intercepting ROM routine entry points.
-    /// The trap fires when the CPU's Program Counter reaches this address during
-    /// instruction fetch.
-    /// </para>
-    /// </remarks>
     void Register(
         Addr address,
         string name,
@@ -86,7 +85,7 @@ public interface ITrapRegistry
         string? description = null);
 
     /// <summary>
-    /// Registers a trap handler for a specific operation type at an address.
+    /// Registers a trap handler for a specific operation type at an address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The address to intercept.</param>
     /// <param name="operation">The operation type that triggers the trap.</param>
@@ -95,19 +94,53 @@ public interface ITrapRegistry
     /// <param name="handler">The native implementation delegate.</param>
     /// <param name="description">Optional detailed description for tooling.</param>
     /// <exception cref="InvalidOperationException">
-    /// Thrown if a trap for the same operation is already registered at the address.
+    /// Thrown if a trap for the same operation is already registered at the address in the ROM context.
     /// </exception>
-    /// <remarks>
-    /// <para>
-    /// Use this method to register read or write traps, or when you need explicit
-    /// control over the operation type. For call traps, the simpler
-    /// <see cref="Register(Addr, string, TrapCategory, TrapHandler, string?)"/>
-    /// overload is preferred.
-    /// </para>
-    /// </remarks>
     void Register(
         Addr address,
         TrapOperation operation,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null);
+
+    /// <summary>
+    /// Registers a call trap handler at a specific address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The address to intercept on execution.</param>
+    /// <param name="memoryContext">The memory context this trap targets.</param>
+    /// <param name="name">Human-readable name for the trap.</param>
+    /// <param name="category">Classification of the trap for filtering.</param>
+    /// <param name="handler">The native implementation delegate.</param>
+    /// <param name="description">Optional detailed description for tooling.</param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if a call trap is already registered at the address in the specified context.
+    /// </exception>
+    void RegisterWithContext(
+        Addr address,
+        MemoryContext memoryContext,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null);
+
+    /// <summary>
+    /// Registers a trap handler for a specific operation type at an address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The address to intercept.</param>
+    /// <param name="operation">The operation type that triggers the trap.</param>
+    /// <param name="memoryContext">The memory context this trap targets.</param>
+    /// <param name="name">Human-readable name for the trap.</param>
+    /// <param name="category">Classification of the trap for filtering.</param>
+    /// <param name="handler">The native implementation delegate.</param>
+    /// <param name="description">Optional detailed description for tooling.</param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if a trap for the same operation is already registered at the address in the specified context.
+    /// </exception>
+    void RegisterWithContext(
+        Addr address,
+        TrapOperation operation,
+        MemoryContext memoryContext,
         string name,
         TrapCategory category,
         TrapHandler handler,
@@ -122,13 +155,6 @@ public interface ITrapRegistry
     /// <param name="category">Classification of the trap for filtering.</param>
     /// <param name="handler">The native implementation delegate.</param>
     /// <param name="description">Optional detailed description for tooling.</param>
-    /// <remarks>
-    /// <para>
-    /// Slot-dependent traps only fire when the specified slot's expansion ROM is active
-    /// in the $C800-$CFFF region. The handler should still verify slot state as a
-    /// defense-in-depth measure.
-    /// </para>
-    /// </remarks>
     void RegisterSlotDependent(
         Addr address,
         int slot,
@@ -164,16 +190,10 @@ public interface ITrapRegistry
     /// <param name="category">Classification of the trap for filtering.</param>
     /// <param name="handler">The native implementation delegate.</param>
     /// <param name="description">Optional detailed description for tooling.</param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if a Language Card RAM trap is already registered at the specified address.
-    /// </exception>
     /// <remarks>
-    /// <para>
-    /// Language Card RAM traps only fire when Language Card RAM is enabled for reading.
-    /// This allows different trap handlers to be registered for the same address in
-    /// ROM vs LC RAM, similar to how different slot cards can have different expansion
-    /// ROM traps.
-    /// </para>
+    /// This is a convenience method equivalent to calling
+    /// <see cref="RegisterWithContext(Addr, MemoryContext, string, TrapCategory, TrapHandler, string?)"/>
+    /// with <see cref="MemoryContexts.LanguageCardRam"/>.
     /// </remarks>
     void RegisterLanguageCardRam(
         Addr address,
@@ -200,7 +220,7 @@ public interface ITrapRegistry
         string? description = null);
 
     /// <summary>
-    /// Unregisters a call trap at the specified address.
+    /// Unregisters a call trap at the specified address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The ROM address to unregister.</param>
     /// <returns>
@@ -210,7 +230,7 @@ public interface ITrapRegistry
     bool Unregister(Addr address);
 
     /// <summary>
-    /// Unregisters a trap for a specific operation at the specified address.
+    /// Unregisters a trap for a specific operation at the specified address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The address to unregister.</param>
     /// <param name="operation">The operation type to unregister.</param>
@@ -219,6 +239,29 @@ public interface ITrapRegistry
     /// <see langword="false"/> if no trap was registered for that operation at that address.
     /// </returns>
     bool Unregister(Addr address, TrapOperation operation);
+
+    /// <summary>
+    /// Unregisters a call trap at the specified address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The address to unregister.</param>
+    /// <param name="memoryContext">The memory context of the trap to unregister.</param>
+    /// <returns>
+    /// <see langword="true"/> if a trap was unregistered;
+    /// <see langword="false"/> if no trap was registered at that address in the specified context.
+    /// </returns>
+    bool UnregisterWithContext(Addr address, MemoryContext memoryContext);
+
+    /// <summary>
+    /// Unregisters a trap for a specific operation at the specified address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The address to unregister.</param>
+    /// <param name="operation">The operation type to unregister.</param>
+    /// <param name="memoryContext">The memory context of the trap to unregister.</param>
+    /// <returns>
+    /// <see langword="true"/> if a trap was unregistered;
+    /// <see langword="false"/> if no trap was registered for that operation at that address in the specified context.
+    /// </returns>
+    bool UnregisterWithContext(Addr address, TrapOperation operation, MemoryContext memoryContext);
 
     /// <summary>
     /// Unregisters a Language Card RAM trap at the specified address.
@@ -248,11 +291,13 @@ public interface ITrapRegistry
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="slot"/> is not in the range 1-7.
     /// </exception>
-    /// <remarks>
-    /// This method is useful when removing a slot card to clean up all
-    /// associated trap handlers.
-    /// </remarks>
     void UnregisterSlotTraps(int slot);
+
+    /// <summary>
+    /// Unregisters all traps in a specific memory context.
+    /// </summary>
+    /// <param name="memoryContext">The memory context whose traps should be removed.</param>
+    void UnregisterContextTraps(MemoryContext memoryContext);
 
     /// <summary>
     /// Attempts to execute a call trap at the specified address.
@@ -264,14 +309,8 @@ public interface ITrapRegistry
     /// <returns>
     /// A <see cref="TrapResult"/> with the handler's result, or
     /// <see cref="TrapResult.NotHandled"/> if no call trap is registered or enabled
-    /// at the address.
+    /// at the address for the current memory context.
     /// </returns>
-    /// <remarks>
-    /// <para>
-    /// This method is called from the CPU's instruction fetch hot path. It performs
-    /// O(1) lookup and returns immediately if no trap is registered or enabled.
-    /// </para>
-    /// </remarks>
     TrapResult TryExecute(Addr address, ICpu cpu, IMemoryBus bus, IEventContext context);
 
     /// <summary>
@@ -285,33 +324,33 @@ public interface ITrapRegistry
     /// <returns>
     /// A <see cref="TrapResult"/> with the handler's result, or
     /// <see cref="TrapResult.NotHandled"/> if no trap is registered or enabled
-    /// for the specified operation at the address.
+    /// for the specified operation at the address for the current memory context.
     /// </returns>
     TrapResult TryExecute(Addr address, TrapOperation operation, ICpu cpu, IMemoryBus bus, IEventContext context);
 
     /// <summary>
-    /// Checks if a call trap is registered at the specified address.
+    /// Checks if a call trap is registered at the specified address (any context).
     /// </summary>
     /// <param name="address">The address to check.</param>
     /// <returns>
-    /// <see langword="true"/> if a call trap is registered (regardless of enabled state);
+    /// <see langword="true"/> if a call trap is registered (regardless of enabled state or context);
     /// otherwise, <see langword="false"/>.
     /// </returns>
     bool HasTrap(Addr address);
 
     /// <summary>
-    /// Checks if a trap is registered for a specific operation at the address.
+    /// Checks if a trap is registered for a specific operation at the address (any context).
     /// </summary>
     /// <param name="address">The address to check.</param>
     /// <param name="operation">The operation type to check.</param>
     /// <returns>
-    /// <see langword="true"/> if a trap is registered for the operation (regardless of enabled state);
+    /// <see langword="true"/> if a trap is registered for the operation (regardless of enabled state or context);
     /// otherwise, <see langword="false"/>.
     /// </returns>
     bool HasTrap(Addr address, TrapOperation operation);
 
     /// <summary>
-    /// Gets call trap information for the specified address.
+    /// Gets call trap information for the specified address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The address to look up.</param>
     /// <returns>
@@ -320,7 +359,7 @@ public interface ITrapRegistry
     TrapInfo? GetTrapInfo(Addr address);
 
     /// <summary>
-    /// Gets trap information for a specific operation at the address.
+    /// Gets trap information for a specific operation at the address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The address to look up.</param>
     /// <param name="operation">The operation type to look up.</param>
@@ -330,7 +369,37 @@ public interface ITrapRegistry
     TrapInfo? GetTrapInfo(Addr address, TrapOperation operation);
 
     /// <summary>
-    /// Enables or disables a call trap at a specific address.
+    /// Gets trap information for a specific operation at the address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The address to look up.</param>
+    /// <param name="operation">The operation type to look up.</param>
+    /// <param name="memoryContext">The memory context to look up.</param>
+    /// <returns>
+    /// The trap information if registered; otherwise, <see langword="null"/>.
+    /// </returns>
+    TrapInfo? GetTrapInfo(Addr address, TrapOperation operation, MemoryContext memoryContext);
+
+    /// <summary>
+    /// Gets all traps registered at the specified address for call operations (all contexts).
+    /// </summary>
+    /// <param name="address">The address to look up.</param>
+    /// <returns>
+    /// An enumerable of all traps at the address across all memory contexts.
+    /// </returns>
+    IEnumerable<TrapInfo> GetTrapsAtAddress(Addr address);
+
+    /// <summary>
+    /// Gets all traps registered at the specified address for a specific operation (all contexts).
+    /// </summary>
+    /// <param name="address">The address to look up.</param>
+    /// <param name="operation">The operation type to look up.</param>
+    /// <returns>
+    /// An enumerable of all traps at the address for the specified operation across all contexts.
+    /// </returns>
+    IEnumerable<TrapInfo> GetTrapsAtAddress(Addr address, TrapOperation operation);
+
+    /// <summary>
+    /// Enables or disables a call trap at a specific address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The trap address.</param>
     /// <param name="enabled">
@@ -343,7 +412,7 @@ public interface ITrapRegistry
     bool SetEnabled(Addr address, bool enabled);
 
     /// <summary>
-    /// Enables or disables a trap for a specific operation at an address.
+    /// Enables or disables a trap for a specific operation at an address in the default (ROM) context.
     /// </summary>
     /// <param name="address">The trap address.</param>
     /// <param name="operation">The operation type.</param>
@@ -355,6 +424,21 @@ public interface ITrapRegistry
     /// <see langword="false"/> if no trap is registered for that operation at that address.
     /// </returns>
     bool SetEnabled(Addr address, TrapOperation operation, bool enabled);
+
+    /// <summary>
+    /// Enables or disables a trap for a specific operation at an address in a specific memory context.
+    /// </summary>
+    /// <param name="address">The trap address.</param>
+    /// <param name="operation">The operation type.</param>
+    /// <param name="enabled">
+    /// <see langword="true"/> to enable; <see langword="false"/> to disable.
+    /// </param>
+    /// <param name="memoryContext">The memory context of the trap.</param>
+    /// <returns>
+    /// <see langword="true"/> if the trap exists and was updated;
+    /// <see langword="false"/> if no trap is registered for that operation at that address in the specified context.
+    /// </returns>
+    bool SetEnabled(Addr address, TrapOperation operation, bool enabled, MemoryContext memoryContext);
 
     /// <summary>
     /// Enables or disables all traps in a category.
@@ -379,7 +463,13 @@ public interface ITrapRegistry
     IEnumerable<TrapInfo> GetAllTraps();
 
     /// <summary>
-    /// Clears all registered traps.
+    /// Gets all memory contexts that have registered traps.
+    /// </summary>
+    /// <returns>An enumerable of all registered memory contexts.</returns>
+    IEnumerable<MemoryContext> GetRegisteredContexts();
+
+    /// <summary>
+    /// Clears all registered traps and resets all category enable/disable states.
     /// </summary>
     void Clear();
 }
