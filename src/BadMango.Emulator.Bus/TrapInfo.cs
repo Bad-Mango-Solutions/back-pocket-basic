@@ -33,6 +33,10 @@ namespace BadMango.Emulator.Bus;
 /// For slot-dependent traps, the slot number this trap is associated with.
 /// <see langword="null"/> for non-slot-dependent traps.
 /// </param>
+/// <param name="TargetsLcRam">
+/// <see langword="true"/> if this trap targets Language Card RAM;
+/// <see langword="false"/> if it targets ROM (the default).
+/// </param>
 public readonly record struct TrapInfo(
     Addr Address,
     string Name,
@@ -41,7 +45,8 @@ public readonly record struct TrapInfo(
     TrapHandler Handler,
     string? Description,
     bool IsEnabled,
-    int? SlotNumber)
+    int? SlotNumber,
+    bool TargetsLcRam = false)
 {
     /// <summary>
     /// Gets a value indicating whether this trap is slot-dependent.

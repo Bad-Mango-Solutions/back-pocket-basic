@@ -172,6 +172,48 @@ public sealed class TrapRegistry : ITrapRegistry
     }
 
     /// <inheritdoc />
+    public void RegisterLanguageCardRam(
+        Addr address,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null)
+    {
+        RegisterLanguageCardRam(address, TrapOperation.Call, name, category, handler, description);
+    }
+
+    /// <inheritdoc />
+    public void RegisterLanguageCardRam(
+        Addr address,
+        TrapOperation operation,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(handler);
+
+        var key = new TrapKey(address, operation, TargetsLcRam: true);
+        if (traps.ContainsKey(key))
+        {
+            throw new InvalidOperationException(
+                $"A Language Card RAM trap for operation '{operation}' is already registered at address ${address:X4}.");
+        }
+
+        traps[key] = new TrapEntry
+        {
+            Address = address,
+            Operation = operation,
+            Name = name,
+            Category = category,
+            Handler = handler,
+            Description = description,
+            TargetsLcRam = true,
+        };
+    }
+
+    /// <inheritdoc />
     public bool Unregister(Addr address)
     {
         return Unregister(address, TrapOperation.Call);
@@ -181,6 +223,19 @@ public sealed class TrapRegistry : ITrapRegistry
     public bool Unregister(Addr address, TrapOperation operation)
     {
         var key = new TrapKey(address, operation);
+        return traps.Remove(key);
+    }
+
+    /// <inheritdoc />
+    public bool UnregisterLanguageCardRam(Addr address)
+    {
+        return UnregisterLanguageCardRam(address, TrapOperation.Call);
+    }
+
+    /// <inheritdoc />
+    public bool UnregisterLanguageCardRam(Addr address, TrapOperation operation)
+    {
+        var key = new TrapKey(address, operation, TargetsLcRam: true);
         return traps.Remove(key);
     }
 
@@ -209,7 +264,11 @@ public sealed class TrapRegistry : ITrapRegistry
     /// <inheritdoc />
     public TrapResult TryExecute(Addr address, TrapOperation operation, ICpu cpu, IMemoryBus bus, IEventContext context)
     {
-        var key = new TrapKey(address, operation);
+        // Determine which memory context is active for addresses in LC space ($D000-$FFFF)
+        bool lcRamActive = address >= 0xD000 && languageCard is not null && languageCard.IsRamReadEnabled;
+
+        // Try the appropriate trap based on memory context
+        var key = new TrapKey(address, operation, TargetsLcRam: lcRamActive);
         if (!traps.TryGetValue(key, out var entry))
         {
             return TrapResult.NotHandled;
@@ -227,7 +286,7 @@ public sealed class TrapRegistry : ITrapRegistry
             return TrapResult.NotHandled;
         }
 
-        // Check context conditions
+        // Check context conditions (for slot-dependent traps)
         if (!CheckContext(entry))
         {
             return TrapResult.NotHandled;
@@ -248,8 +307,10 @@ public sealed class TrapRegistry : ITrapRegistry
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address, TrapOperation operation)
     {
-        var key = new TrapKey(address, operation);
-        return traps.ContainsKey(key);
+        // Check for either ROM trap or LC RAM trap at this address
+        var romKey = new TrapKey(address, operation, TargetsLcRam: false);
+        var lcKey = new TrapKey(address, operation, TargetsLcRam: true);
+        return traps.ContainsKey(romKey) || traps.ContainsKey(lcKey);
     }
 
     /// <inheritdoc />
@@ -357,6 +418,11 @@ public sealed class TrapRegistry : ITrapRegistry
     /// </summary>
     /// <param name="entry">The trap entry to check.</param>
     /// <returns><see langword="true"/> if the trap should fire; otherwise, <see langword="false"/>.</returns>
+    /// <remarks>
+    /// This method checks slot-dependent conditions. Language Card state is handled
+    /// in the TryExecute method by selecting the appropriate trap key based on
+    /// whether LC RAM is active.
+    /// </remarks>
     private bool CheckContext(TrapEntry entry)
     {
         // Check slot dependency for slot ROM traps
@@ -383,23 +449,19 @@ public sealed class TrapRegistry : ITrapRegistry
             }
         }
 
-        // Check Language Card state for $D000-$FFFF traps
-        if (entry.Address >= 0xD000 && languageCard is not null)
-        {
-            // If LC RAM is enabled for reading, the ROM isn't visible
-            if (languageCard.IsRamReadEnabled)
-            {
-                return false;
-            }
-        }
-
         return true;
     }
 
     /// <summary>
-    /// Key for the trap dictionary combining address and operation type.
+    /// Key for the trap dictionary combining address, operation type, and memory context.
     /// </summary>
-    private readonly record struct TrapKey(Addr Address, TrapOperation Operation);
+    /// <param name="Address">The memory address.</param>
+    /// <param name="Operation">The operation type (read, write, call).</param>
+    /// <param name="TargetsLcRam">
+    /// <see langword="true"/> if this trap targets Language Card RAM;
+    /// <see langword="false"/> if it targets ROM.
+    /// </param>
+    private readonly record struct TrapKey(Addr Address, TrapOperation Operation, bool TargetsLcRam = false);
 
     /// <summary>
     /// Internal storage for a registered trap entry.
@@ -452,6 +514,12 @@ public sealed class TrapRegistry : ITrapRegistry
         public bool RequiresExpansionRom { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether this trap targets Language Card RAM
+        /// rather than ROM.
+        /// </summary>
+        public bool TargetsLcRam { get; set; }
+
+        /// <summary>
         /// Creates a TrapInfo from this entry.
         /// </summary>
         /// <returns>The trap information.</returns>
@@ -463,6 +531,7 @@ public sealed class TrapRegistry : ITrapRegistry
             Handler,
             Description,
             IsEnabled,
-            SlotNumber);
+            SlotNumber,
+            TargetsLcRam);
     }
 }

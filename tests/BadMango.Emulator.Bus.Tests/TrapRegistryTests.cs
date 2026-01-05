@@ -833,6 +833,257 @@ public class TrapRegistryTests
         Assert.That(traps, Has.Count.EqualTo(2));
     }
 
+    // ─── Language Card RAM Trap Tests ───────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that RegisterLanguageCardRam adds a trap targeting LC RAM.
+    /// </summary>
+    [Test]
+    public void RegisterLanguageCardRam_ValidTrap_IncrementsCount()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        Assert.That(registry.Count, Is.EqualTo(1));
+    }
+
+    /// <summary>
+    /// Verifies that separate traps can be registered for ROM and LC RAM at the same address.
+    /// </summary>
+    [Test]
+    public void RegisterLanguageCardRam_SameAddressAsRom_AllowsBothTraps()
+    {
+        TrapHandler romHandler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+        TrapHandler lcHandler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(20));
+
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, romHandler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, lcHandler);
+
+        Assert.That(registry.Count, Is.EqualTo(2));
+    }
+
+    /// <summary>
+    /// Verifies that LC RAM trap fires when Language Card RAM is enabled.
+    /// </summary>
+    [Test]
+    public void TryExecute_LcRamTrap_LanguageCardRamEnabled_ExecutesTrap()
+    {
+        var mockSlotManager = new Mock<ISlotManager>();
+        var (languageCard, _) = CreateInitializedLanguageCard();
+
+        // Enable RAM read by accessing $C080
+        SimulateLanguageCardRead(languageCard, 0x00);
+        Assert.That(languageCard.IsRamReadEnabled, Is.True, "Precondition: RAM should be enabled");
+
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        bool handlerCalled = false;
+        TrapHandler handler = (cpu, bus, ctx) =>
+        {
+            handlerCalled = true;
+            return TrapResult.Success(new Cycle(10));
+        };
+
+        contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        var result = contextRegistry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Handled, Is.True, "LC RAM trap should execute when LC RAM is active");
+            Assert.That(handlerCalled, Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that LC RAM trap does not fire when Language Card RAM is disabled.
+    /// </summary>
+    [Test]
+    public void TryExecute_LcRamTrap_LanguageCardRamDisabled_DoesNotExecute()
+    {
+        var mockSlotManager = new Mock<ISlotManager>();
+        var (languageCard, _) = CreateInitializedLanguageCard();
+
+        // By default, RAM read is disabled (ROM is visible)
+        Assert.That(languageCard.IsRamReadEnabled, Is.False, "Precondition: RAM should be disabled");
+
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        bool handlerCalled = false;
+        TrapHandler handler = (cpu, bus, ctx) =>
+        {
+            handlerCalled = true;
+            return TrapResult.Success(new Cycle(10));
+        };
+
+        contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        var result = contextRegistry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Handled, Is.False, "LC RAM trap should not execute when ROM is visible");
+            Assert.That(handlerCalled, Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the correct trap fires based on Language Card state when both ROM and LC RAM traps exist.
+    /// </summary>
+    [Test]
+    public void TryExecute_BothRomAndLcRamTraps_SelectsCorrectTrap()
+    {
+        var mockSlotManager = new Mock<ISlotManager>();
+        var (languageCard, _) = CreateInitializedLanguageCard();
+
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+
+        bool romHandlerCalled = false;
+        bool lcHandlerCalled = false;
+
+        TrapHandler romHandler = (cpu, bus, ctx) =>
+        {
+            romHandlerCalled = true;
+            return TrapResult.Success(new Cycle(10));
+        };
+
+        TrapHandler lcHandler = (cpu, bus, ctx) =>
+        {
+            lcHandlerCalled = true;
+            return TrapResult.Success(new Cycle(20));
+        };
+
+        contextRegistry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, romHandler);
+        contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, lcHandler);
+
+        // With ROM visible (LC RAM disabled), ROM trap should fire
+        var result1 = contextRegistry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result1.Handled, Is.True, "ROM trap should execute when ROM is visible");
+            Assert.That(romHandlerCalled, Is.True, "ROM handler should be called");
+            Assert.That(lcHandlerCalled, Is.False, "LC handler should not be called");
+        });
+
+        // Reset flags
+        romHandlerCalled = false;
+        lcHandlerCalled = false;
+
+        // Enable LC RAM
+        SimulateLanguageCardRead(languageCard, 0x00);
+        Assert.That(languageCard.IsRamReadEnabled, Is.True);
+
+        // Now LC RAM trap should fire
+        var result2 = contextRegistry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result2.Handled, Is.True, "LC RAM trap should execute when LC RAM is active");
+            Assert.That(lcHandlerCalled, Is.True, "LC handler should be called");
+            Assert.That(romHandlerCalled, Is.False, "ROM handler should not be called");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that UnregisterLanguageCardRam removes the LC RAM trap.
+    /// </summary>
+    [Test]
+    public void UnregisterLanguageCardRam_RemovesLcRamTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        bool result = registry.UnregisterLanguageCardRam(0xD000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.True);
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that UnregisterLanguageCardRam only removes LC RAM trap, not ROM trap.
+    /// </summary>
+    [Test]
+    public void UnregisterLanguageCardRam_OnlyRemovesLcRamTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        registry.UnregisterLanguageCardRam(0xD000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.Count, Is.EqualTo(1));
+            Assert.That(registry.HasTrap(0xD000), Is.True, "ROM trap should still exist");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that HasTrap returns true when either ROM or LC RAM trap exists.
+    /// </summary>
+    [Test]
+    public void HasTrap_ReturnsTrueForEitherRomOrLcRamTrap()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        // Only LC RAM trap
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        Assert.That(registry.HasTrap(0xD000), Is.True, "Should return true for LC RAM trap");
+
+        // Add ROM trap too
+        registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, handler);
+        Assert.That(registry.HasTrap(0xD000), Is.True, "Should return true when both traps exist");
+
+        // Remove ROM trap
+        registry.Unregister(0xD000);
+        Assert.That(registry.HasTrap(0xD000), Is.True, "Should still return true for LC RAM trap");
+
+        // Remove LC RAM trap
+        registry.UnregisterLanguageCardRam(0xD000);
+        Assert.That(registry.HasTrap(0xD000), Is.False, "Should return false when no traps exist");
+    }
+
+    /// <summary>
+    /// Verifies that RegisterLanguageCardRam throws when duplicate LC RAM trap exists.
+    /// </summary>
+    [Test]
+    public void RegisterLanguageCardRam_DuplicateLcRamTrap_ThrowsInvalidOperationException()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY2", TrapCategory.BasicInterpreter, handler));
+    }
+
+    /// <summary>
+    /// Verifies that TrapInfo includes TargetsLcRam flag.
+    /// </summary>
+    [Test]
+    public void GetTrapInfo_LcRamTrap_ReturnsCorrectInfo()
+    {
+        var mockSlotManager = new Mock<ISlotManager>();
+        var (languageCard, _) = CreateInitializedLanguageCard();
+
+        // Enable LC RAM to make LC RAM trap visible
+        SimulateLanguageCardRead(languageCard, 0x00);
+
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler, "Test LC RAM trap");
+
+        var allTraps = contextRegistry.GetAllTraps().ToList();
+        var lcRamTrap = allTraps.First();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(lcRamTrap.Address, Is.EqualTo((Addr)0xD000));
+            Assert.That(lcRamTrap.Name, Is.EqualTo("LC_RAM_ENTRY"));
+            Assert.That(lcRamTrap.TargetsLcRam, Is.True);
+        });
+    }
+
     // ─── Helper Methods ─────────────────────────────────────────────────────────
 
     /// <summary>

@@ -157,6 +157,49 @@ public interface ITrapRegistry
         string? description = null);
 
     /// <summary>
+    /// Registers a call trap handler that targets Language Card RAM at a specific address.
+    /// </summary>
+    /// <param name="address">The address in Language Card RAM space ($D000-$FFFF).</param>
+    /// <param name="name">Human-readable name for the trap.</param>
+    /// <param name="category">Classification of the trap for filtering.</param>
+    /// <param name="handler">The native implementation delegate.</param>
+    /// <param name="description">Optional detailed description for tooling.</param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if a Language Card RAM trap is already registered at the specified address.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// Language Card RAM traps only fire when Language Card RAM is enabled for reading.
+    /// This allows different trap handlers to be registered for the same address in
+    /// ROM vs LC RAM, similar to how different slot cards can have different expansion
+    /// ROM traps.
+    /// </para>
+    /// </remarks>
+    void RegisterLanguageCardRam(
+        Addr address,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null);
+
+    /// <summary>
+    /// Registers a Language Card RAM trap handler for a specific operation type.
+    /// </summary>
+    /// <param name="address">The address in Language Card RAM space ($D000-$FFFF).</param>
+    /// <param name="operation">The operation type that triggers the trap.</param>
+    /// <param name="name">Human-readable name for the trap.</param>
+    /// <param name="category">Classification of the trap for filtering.</param>
+    /// <param name="handler">The native implementation delegate.</param>
+    /// <param name="description">Optional detailed description for tooling.</param>
+    void RegisterLanguageCardRam(
+        Addr address,
+        TrapOperation operation,
+        string name,
+        TrapCategory category,
+        TrapHandler handler,
+        string? description = null);
+
+    /// <summary>
     /// Unregisters a call trap at the specified address.
     /// </summary>
     /// <param name="address">The ROM address to unregister.</param>
@@ -176,6 +219,27 @@ public interface ITrapRegistry
     /// <see langword="false"/> if no trap was registered for that operation at that address.
     /// </returns>
     bool Unregister(Addr address, TrapOperation operation);
+
+    /// <summary>
+    /// Unregisters a Language Card RAM trap at the specified address.
+    /// </summary>
+    /// <param name="address">The address to unregister.</param>
+    /// <returns>
+    /// <see langword="true"/> if a trap was unregistered;
+    /// <see langword="false"/> if no LC RAM trap was registered at that address.
+    /// </returns>
+    bool UnregisterLanguageCardRam(Addr address);
+
+    /// <summary>
+    /// Unregisters a Language Card RAM trap for a specific operation at the specified address.
+    /// </summary>
+    /// <param name="address">The address to unregister.</param>
+    /// <param name="operation">The operation type to unregister.</param>
+    /// <returns>
+    /// <see langword="true"/> if a trap was unregistered;
+    /// <see langword="false"/> if no LC RAM trap was registered for that operation at that address.
+    /// </returns>
+    bool UnregisterLanguageCardRam(Addr address, TrapOperation operation);
 
     /// <summary>
     /// Unregisters all traps associated with a specific slot.
