@@ -43,6 +43,7 @@ public sealed class MachineBuilder
     private readonly List<(string LayerName, Addr VirtualBase, Addr Size, IBusTarget Target, RegionTag Tag, PagePerms Perms)> layeredMappings = [];
     private readonly List<ICompositeLayer> compositeLayers = [];
     private readonly List<Action<IMachine>> postBuildCallbacks = [];
+    private readonly List<Action<IMachine>> beforeDeviceInitCallbacks = [];
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -351,6 +352,43 @@ public sealed class MachineBuilder
     }
 
     /// <summary>
+    /// Registers a callback to be invoked after the machine is assembled but before devices are initialized.
+    /// </summary>
+    /// <param name="callback">The callback to invoke with the built machine.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// Before-device-init callbacks are invoked in the order they were registered, after:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Memory bus is created and configured</description></item>
+    /// <item><description>ROMs are mapped</description></item>
+    /// <item><description>Layers are created and layered mappings added</description></item>
+    /// <item><description>CPU is created</description></item>
+    /// <item><description>Machine is assembled with all components</description></item>
+    /// </list>
+    /// <para>
+    /// But before:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Devices are initialized</description></item>
+    /// <item><description>Slot cards are installed</description></item>
+    /// <item><description>Layers are activated</description></item>
+    /// </list>
+    /// <para>
+    /// This is useful for mapping I/O regions that need to be in place before slot cards
+    /// are installed and their handlers registered.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder BeforeDeviceInit(Action<IMachine> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        beforeDeviceInitCallbacks.Add(callback);
+        return this;
+    }
+
+    /// <summary>
     /// Builds the machine with all configured components.
     /// </summary>
     /// <returns>A fully assembled and initialized <see cref="IMachine"/> instance.</returns>
@@ -445,17 +483,22 @@ public sealed class MachineBuilder
         // Set event context for scheduler
         scheduler.SetEventContext(machine);
 
+        // Run before-device-init callbacks (e.g., I/O page mapping)
+        foreach (var callback in beforeDeviceInitCallbacks)
+        {
+            callback(machine);
+        }
+
         // Initialize devices
         machine.InitializeDevices();
 
         // Install pending slot cards now that SlotManager is available
         InstallPendingSlotCards(machine);
 
-        // Activate all created layers
-        foreach (var (name, _) in layerPriorities)
-        {
-            bus.ActivateLayer(name);
-        }
+        // Note: Layers are NOT auto-activated here. Devices that control layers
+        // (like LanguageCardController) are responsible for managing their layer's
+        // active state. This prevents layers from being incorrectly activated
+        // before their controlling device has set the proper initial state.
 
         // Run post-build callbacks
         foreach (var callback in postBuildCallbacks)

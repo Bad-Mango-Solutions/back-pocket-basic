@@ -273,6 +273,11 @@ public class MachineBuilderTests
     /// <summary>
     /// Verifies that layers can be created.
     /// </summary>
+    /// <remarks>
+    /// Layers are created but NOT auto-activated during build. This allows
+    /// controlling devices (like LanguageCardController) to manage their
+    /// layer's active state based on soft switch configuration.
+    /// </remarks>
     [Test]
     public void CreateLayer_CreatesLayerWithPriority()
     {
@@ -290,7 +295,7 @@ public class MachineBuilderTests
             Assert.That(layer, Is.Not.Null);
             Assert.That(layer!.Value.Name, Is.EqualTo("TestLayer"));
             Assert.That(layer.Value.Priority, Is.EqualTo(100));
-            Assert.That(layer.Value.IsActive, Is.True);
+            Assert.That(layer.Value.IsActive, Is.False, "Layers are not auto-activated");
         });
     }
 

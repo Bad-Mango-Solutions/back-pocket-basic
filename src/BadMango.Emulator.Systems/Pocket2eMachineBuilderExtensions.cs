@@ -200,10 +200,82 @@ public static class Pocket2eMachineBuilderExtensions
     /// Bank selection and RAM read/write enable are controlled through 16 soft switches
     /// at $C080-$C08F. The controller is added as both a device and a component.
     /// </para>
+    /// <para>
+    /// This method creates the swap group and layer required by the Language Card:
+    /// <list type="bullet">
+    /// <item><description>Swap group for $D000-$DFFF bank switching (ROM/Bank1/Bank2)</description></item>
+    /// <item><description>Layer for $E000-$FFFF RAM overlay</description></item>
+    /// </list>
+    /// </para>
     /// </remarks>
     public static MachineBuilder WithLanguageCard(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+
+        // Create the Language Card RAM banks (4KB Bank1, 4KB Bank2, 8KB E000-FFFF)
+        var lcBank1Ram = new PhysicalMemory(0x1000, "LC_Bank1");
+        var lcBank2Ram = new PhysicalMemory(0x1000, "LC_Bank2");
+        var lcHighRam = new PhysicalMemory(0x2000, "LC_E000");
+
+        var lcBank1Target = new RamTarget(lcBank1Ram.Slice(0, 0x1000));
+        var lcBank2Target = new RamTarget(lcBank2Ram.Slice(0, 0x1000));
+        var lcHighTarget = new RamTarget(lcHighRam.Slice(0, 0x2000));
+
+        // Add RAM components for potential retrieval
+        builder.AddComponent(new LcBank1RamComponent(lcBank1Ram, lcBank1Target));
+        builder.AddComponent(new LcBank2RamComponent(lcBank2Ram, lcBank2Target));
+        builder.AddComponent(new LcHighRamComponent(lcHighRam, lcHighTarget));
+
+        // Create the layer for E000-FFFF and add the layered mapping
+        builder
+            .CreateLayer(LanguageCardController.LayerName, LanguageCardController.LayerPriority)
+            .AddLayeredMapping(
+                LanguageCardController.LayerName,
+                0xE000,
+                0x2000,
+                lcHighTarget,
+                RegionTag.Ram,
+                PagePerms.All);
+
+        // Configure memory with swap group for D000-DFFF
+        builder.ConfigureMemory((bus, devices) =>
+        {
+            // Create swap group for $D000-$DFFF bank switching
+            uint groupId = bus.CreateSwapGroup(
+                LanguageCardController.SwapGroupName,
+                0xD000,
+                0x1000);
+
+            // Get main ROM region for the ROM variant (reads ROM when LC RAM is disabled)
+            // The ROM variant shows through to whatever is mapped at D000-DFFF in base layer
+            var romPlaceholder = new RomTarget(
+                new PhysicalMemory(0x1000, "LC_ROM_Placeholder").Slice(0, 0x1000));
+            bus.AddSwapVariant(
+                groupId,
+                LanguageCardController.RomVariantName,
+                romPlaceholder,
+                0,
+                PagePerms.ReadExecute);
+
+            // Add Bank1 variant
+            bus.AddSwapVariant(
+                groupId,
+                LanguageCardController.Bank1VariantName,
+                lcBank1Target,
+                0,
+                PagePerms.All);
+
+            // Add Bank2 variant
+            bus.AddSwapVariant(
+                groupId,
+                LanguageCardController.Bank2VariantName,
+                lcBank2Target,
+                0,
+                PagePerms.All);
+
+            // Select ROM variant by default
+            bus.SelectSwapVariant(groupId, LanguageCardController.RomVariantName);
+        });
 
         var languageCard = new LanguageCardController();
         return builder
@@ -261,13 +333,19 @@ public static class Pocket2eMachineBuilderExtensions
     /// This method retrieves the <see cref="IOPageDispatcher"/> and <see cref="ISlotManager"/>
     /// from the component bag (creating them via <see cref="WithSlotManager"/> if needed).
     /// </para>
+    /// <para>
+    /// The I/O page is mapped using <see cref="MachineBuilder.BeforeDeviceInit"/> to ensure
+    /// it is in place before slot cards are installed and their handlers registered.
+    /// </para>
     /// </remarks>
     public static MachineBuilder WithPocket2eIOPage(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        // Use AfterBuild to access components after they've been added to the machine
-        return builder.AfterBuild(machine =>
+        // Use BeforeDeviceInit to map the I/O page before devices are initialized
+        // and slot cards are installed. This ensures the I/O page is in place
+        // when slot card handlers need to be accessed.
+        return builder.BeforeDeviceInit(machine =>
         {
             // Get dispatcher and slot manager from the component bag
             // These should have been added by WithSlotManager (which AsPocket2e calls first)
@@ -598,6 +676,27 @@ public static class Pocket2eMachineBuilderExtensions
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
     public sealed record AuxiliaryRamComponent(PhysicalMemory Memory, RamTarget Target);
+
+    /// <summary>
+    /// Component wrapper for Language Card Bank 1 RAM.
+    /// </summary>
+    /// <param name="Memory">The physical memory backing store.</param>
+    /// <param name="Target">The RAM bus target for read/write operations.</param>
+    public sealed record LcBank1RamComponent(PhysicalMemory Memory, RamTarget Target);
+
+    /// <summary>
+    /// Component wrapper for Language Card Bank 2 RAM.
+    /// </summary>
+    /// <param name="Memory">The physical memory backing store.</param>
+    /// <param name="Target">The RAM bus target for read/write operations.</param>
+    public sealed record LcBank2RamComponent(PhysicalMemory Memory, RamTarget Target);
+
+    /// <summary>
+    /// Component wrapper for Language Card high RAM ($E000-$FFFF).
+    /// </summary>
+    /// <param name="Memory">The physical memory backing store.</param>
+    /// <param name="Target">The RAM bus target for read/write operations.</param>
+    public sealed record LcHighRamComponent(PhysicalMemory Memory, RamTarget Target);
 
     /// <summary>
     /// Represents a slot card pending installation during machine build.

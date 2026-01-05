@@ -106,6 +106,10 @@ public sealed class Machine : IMachine
         // Reset CPU
         Cpu.Reset();
 
+        // Reset slot manager if present
+        var slotManager = GetComponent<ISlotManager>();
+        slotManager?.Reset();
+
         // Reset scheduler
         Scheduler.Reset();
 

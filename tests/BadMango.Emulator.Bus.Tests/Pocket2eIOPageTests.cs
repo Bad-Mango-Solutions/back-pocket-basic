@@ -554,13 +554,19 @@ public class Pocket2eIOPageTests
     #region ResolveTarget Tests
 
     /// <summary>
-    /// Verifies ResolveTarget returns null for soft switch region.
+    /// Verifies ResolveTarget returns self for soft switch region.
     /// </summary>
+    /// <remarks>
+    /// The soft switch region (offsets 0-0xFF) is handled directly by the
+    /// Pocket2eIOPage's Read8/Write8 methods via the IOPageDispatcher.
+    /// ResolveTarget returns <c>this</c> so the bus calls Read8/Write8 on
+    /// the Pocket2eIOPage, which then dispatches to the appropriate handler.
+    /// </remarks>
     [Test]
-    public void ResolveTarget_SoftSwitchRegion_ReturnsNull()
+    public void ResolveTarget_SoftSwitchRegion_ReturnsSelf()
     {
         IBusTarget? target = ioPage.ResolveTarget(0x030, AccessIntent.DataRead);
-        Assert.That(target, Is.Null);
+        Assert.That(target, Is.SameAs(ioPage), "Soft switch region should return self");
     }
 
     /// <summary>
