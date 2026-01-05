@@ -8,6 +8,7 @@ using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Cpu;
+using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Systems;
 
 /// <summary>
@@ -23,6 +24,11 @@ using BadMango.Emulator.Systems;
 /// <item><description>Memory context switching (ROM vs LC RAM) selects the correct trap</description></item>
 /// <item><description>Language Card state changes are properly detected by the trap registry</description></item>
 /// </list>
+/// <para>
+/// Unlike unit tests that call TryExecute directly, these integration tests
+/// execute real 65C02 machine code using the CPU emulator, verifying that
+/// traps are triggered during actual instruction execution.
+/// </para>
 /// </remarks>
 [TestFixture]
 public class TrapRegistryIntegrationTests
@@ -31,6 +37,11 @@ public class TrapRegistryIntegrationTests
     /// COUT routine address in Apple II ROM ($FDED).
     /// </summary>
     private const ushort CoutAddress = 0xFDED;
+
+    /// <summary>
+    /// HOME routine address in Apple II ROM ($FC58).
+    /// </summary>
+    private const ushort HomeAddress = 0xFC58;
 
     /// <summary>
     /// Language Card soft switch to enable RAM read/write with Bank 2 ($C083).
@@ -49,7 +60,8 @@ public class TrapRegistryIntegrationTests
     private const ushort TestProgramAddress = 0x0300;
 
     /// <summary>
-    /// Integration test that validates memory context-aware trap selection.
+    /// Integration test that validates memory context-aware trap selection
+    /// by executing actual JSR instructions through the CPU emulator.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -70,6 +82,7 @@ public class TrapRegistryIntegrationTests
     /// <item><description>Memory context resolution selects the correct trap</description></item>
     /// <item><description>Traps fire during actual CPU instruction execution</description></item>
     /// <item><description>Soft switches correctly toggle Language Card state</description></item>
+    /// <item><description>CPU performs automatic RTS after trap handler returns</description></item>
     /// </list>
     /// </remarks>
     [Test]
@@ -120,18 +133,22 @@ public class TrapRegistryIntegrationTests
             },
             "LC RAM COUT trap for testing");
 
+        // Attach trap registry to CPU
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
+
         machine.Reset();
 
         // ─── Arrange: Write test ML program ─────────────────────────────────────
-        // The test program:
+        // The test program at $0300:
         // $0300: JSR $FDED    ; Call COUT (will trigger ROM trap)
-        // $0303: RTS          ; Return (we'll check here and continue manually)
+        // $0303: DB           ; STP - halt after first JSR
 
         // Write JSR $FDED (opcode $20, low byte $ED, high byte $FD)
         machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
         machine.Cpu.Write8(TestProgramAddress + 1, 0xED); // Low byte of $FDED
         machine.Cpu.Write8(TestProgramAddress + 2, 0xFD); // High byte of $FDED
-        machine.Cpu.Write8(TestProgramAddress + 3, 0x60); // RTS
+        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP - halt
 
         // Write a stub at COUT that just returns (in case trap doesn't fire)
         // This also serves as the ROM content that would execute if no trap
@@ -144,21 +161,22 @@ public class TrapRegistryIntegrationTests
         // Verify Language Card state is ROM visible (default)
         Assert.That(languageCard.IsRamReadEnabled, Is.False, "LC RAM should be disabled initially");
 
-        // Execute trap check at COUT address - this simulates what CPU would do on JSR
-        var trapResult = trapRegistry.TryExecute(
-            CoutAddress,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Execute JSR instruction - this jumps to $FDED
+        // First Step(): Execute JSR - PC moves to $FDED
+        // Second Step(): Trap check at $FDED fires, auto-RTS back to $0303
+        machine.Step(); // Execute JSR - PC now at $FDED
+        machine.Step(); // Trap fires at $FDED, auto-RTS
 
         // ─── Assert 1: ROM trap fired ───────────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(trapResult.Handled, Is.True, "ROM trap should have been handled");
             Assert.That(romTrapInvoked, Is.True, "ROM trap should have been invoked");
             Assert.That(lcRamTrapInvoked, Is.False, "LC RAM trap should NOT have been invoked yet");
             Assert.That(trapInvocationOrder, Has.Count.EqualTo(1));
             Assert.That(trapInvocationOrder[0], Is.EqualTo("ROM"));
+
+            // After trap + auto-RTS, PC should be at $0303 (next instruction after JSR)
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(TestProgramAddress + 3), "PC should be at instruction after JSR");
         });
 
         // ─── Act 2: Switch Language Card to RAM mode via soft switches ──────────
@@ -171,19 +189,27 @@ public class TrapRegistryIntegrationTests
         // Verify Language Card is now in RAM mode
         Assert.That(languageCard.IsRamReadEnabled, Is.True, "LC RAM should be enabled after soft switch");
 
+        // Reset flags for next test
+        romTrapInvoked = false;
+        lcRamTrapInvoked = false;
+
+        // Set up another JSR $FDED at current PC location
+        ushort program2Address = TestProgramAddress + 0x10; // $0310
+        machine.Cpu.Write8(program2Address, 0x20);     // JSR
+        machine.Cpu.Write8((ushort)(program2Address + 1), 0xED); // Low byte of $FDED
+        machine.Cpu.Write8((ushort)(program2Address + 2), 0xFD); // High byte of $FDED
+        machine.Cpu.Write8((ushort)(program2Address + 3), 0xDB); // STP - halt
+
         // ─── Act 3: Execute with LC RAM visible ─────────────────────────────────
-        // Now execute another trap check - should select LC RAM trap
-        trapResult = trapRegistry.TryExecute(
-            CoutAddress,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        machine.Cpu.SetPC(program2Address);
+        machine.Step(); // Execute JSR - PC now at $FDED
+        machine.Step(); // LC RAM trap should fire, auto-RTS
 
         // ─── Assert 2: LC RAM trap fired ────────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(trapResult.Handled, Is.True, "LC RAM trap should have been handled");
             Assert.That(lcRamTrapInvoked, Is.True, "LC RAM trap should have been invoked");
+            Assert.That(romTrapInvoked, Is.False, "ROM trap should NOT have been invoked");
             Assert.That(trapInvocationOrder, Has.Count.EqualTo(2));
             Assert.That(trapInvocationOrder[1], Is.EqualTo("LC_RAM"));
         });
@@ -194,27 +220,36 @@ public class TrapRegistryIntegrationTests
 
         Assert.That(languageCard.IsRamReadEnabled, Is.False, "LC RAM should be disabled after soft switch");
 
-        // Execute trap check again - should select ROM trap
-        trapResult = trapRegistry.TryExecute(
-            CoutAddress,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Reset flags
+        romTrapInvoked = false;
+        lcRamTrapInvoked = false;
+
+        // Set up third JSR
+        ushort program3Address = TestProgramAddress + 0x20; // $0320
+        machine.Cpu.Write8(program3Address, 0x20);     // JSR
+        machine.Cpu.Write8((ushort)(program3Address + 1), 0xED); // Low byte of $FDED
+        machine.Cpu.Write8((ushort)(program3Address + 2), 0xFD); // High byte of $FDED
+        machine.Cpu.Write8((ushort)(program3Address + 3), 0xDB); // STP - halt
+
+        machine.Cpu.SetPC(program3Address);
+        machine.Step(); // Execute JSR - PC now at $FDED
+        machine.Step(); // ROM trap should fire again, auto-RTS
 
         // ─── Assert 3: ROM trap fired again ─────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(trapResult.Handled, Is.True, "ROM trap should have been handled again");
+            Assert.That(romTrapInvoked, Is.True, "ROM trap should have been invoked again");
+            Assert.That(lcRamTrapInvoked, Is.False, "LC RAM trap should NOT have been invoked");
             Assert.That(trapInvocationOrder, Has.Count.EqualTo(3));
             Assert.That(trapInvocationOrder[2], Is.EqualTo("ROM"));
         });
     }
 
     /// <summary>
-    /// Verifies that unregistered addresses do not trigger traps.
+    /// Verifies that unregistered addresses execute normally without trap interception.
     /// </summary>
     [Test]
-    public void TrapRegistry_UnregisteredAddress_ReturnsNotHandled()
+    public void TrapRegistry_UnregisteredAddress_ExecutesNormally()
     {
         // Arrange
         var machine = new MachineBuilder()
@@ -226,21 +261,32 @@ public class TrapRegistryIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
+        // Attach trap registry (empty - no traps registered)
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
+
         machine.Reset();
 
-        // Act - Try to execute trap at unregistered address
-        var result = trapRegistry.TryExecute(
-            0xFC58, // HOME - not registered
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Write a JSR to HOME (not registered as a trap)
+        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
+        machine.Cpu.Write8(TestProgramAddress + 1, 0x58); // Low byte of $FC58 (HOME)
+        machine.Cpu.Write8(TestProgramAddress + 2, 0xFC); // High byte of $FC58
+        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP - halt
 
-        // Assert
-        Assert.That(result.Handled, Is.False, "Unregistered address should not be handled");
+        // Write RTS at HOME
+        machine.Cpu.Write8(HomeAddress, 0x60); // RTS
+
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Act - Execute JSR. Since no trap is registered, it should actually JSR to HOME
+        machine.Step(); // JSR - jumps to HOME
+
+        // Assert - PC should now be at HOME (no trap intercept)
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME - trap didn't intercept");
     }
 
     /// <summary>
-    /// Verifies that disabled traps do not fire.
+    /// Verifies that disabled traps do not fire during CPU execution.
     /// </summary>
     [Test]
     public void TrapRegistry_DisabledTrap_DoesNotFire()
@@ -270,20 +316,31 @@ public class TrapRegistryIntegrationTests
         // Disable the trap
         trapRegistry.SetEnabled(CoutAddress, enabled: false);
 
+        // Attach trap registry to CPU
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
+
         machine.Reset();
 
-        // Act
-        var result = trapRegistry.TryExecute(
-            CoutAddress,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Write JSR to COUT
+        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
+        machine.Cpu.Write8(TestProgramAddress + 1, 0xED); // Low byte of $FDED
+        machine.Cpu.Write8(TestProgramAddress + 2, 0xFD); // High byte of $FDED
+        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
+
+        // Write RTS at COUT
+        machine.Cpu.Write8(CoutAddress, 0x60); // RTS
+
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Act - Execute JSR. Trap is disabled, so normal execution should occur
+        machine.Step(); // JSR - should jump to COUT (trap disabled)
 
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(result.Handled, Is.False, "Disabled trap should not be handled");
             Assert.That(trapInvoked, Is.False, "Disabled trap handler should not be invoked");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT - disabled trap didn't intercept");
         });
     }
 
@@ -307,7 +364,7 @@ public class TrapRegistryIntegrationTests
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
         trapRegistry.Register(
-            0xFC58, // HOME
+            HomeAddress,
             "HOME",
             TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
@@ -329,34 +386,57 @@ public class TrapRegistryIntegrationTests
         // Disable entire MonitorRom category
         trapRegistry.SetCategoryEnabled(TrapCategory.MonitorRom, enabled: false);
 
+        // Attach trap registry to CPU
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
+
         machine.Reset();
 
-        // Act
-        var homeResult = trapRegistry.TryExecute(
-            0xFC58,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Write JSR to HOME
+        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
+        machine.Cpu.Write8(TestProgramAddress + 1, 0x58); // Low byte of HOME
+        machine.Cpu.Write8(TestProgramAddress + 2, 0xFC); // High byte of HOME
+        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
 
-        var coutResult = trapRegistry.TryExecute(
-            CoutAddress,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        // Write RTS at HOME and COUT
+        machine.Cpu.Write8(HomeAddress, 0x60); // RTS
+        machine.Cpu.Write8(CoutAddress, 0x60); // RTS
 
-        // Assert
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Act - Execute JSR to HOME (category disabled)
+        machine.Step();
+
+        // Assert - HOME trap should not have fired
         Assert.Multiple(() =>
         {
-            Assert.That(homeResult.Handled, Is.False, "HOME trap should not be handled");
-            Assert.That(coutResult.Handled, Is.False, "COUT trap should not be handled");
-            Assert.That(homeInvoked, Is.False, "HOME handler should not be invoked");
-            Assert.That(coutInvoked, Is.False, "COUT handler should not be invoked");
+            Assert.That(homeInvoked, Is.False, "HOME handler should not be invoked (category disabled)");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME - category disabled");
+        });
+
+        // Now test COUT
+        ushort program2Address = TestProgramAddress + 0x10;
+        machine.Cpu.Write8(program2Address, 0x20);     // JSR
+        machine.Cpu.Write8((ushort)(program2Address + 1), 0xED); // Low byte of COUT
+        machine.Cpu.Write8((ushort)(program2Address + 2), 0xFD); // High byte of COUT
+        machine.Cpu.Write8((ushort)(program2Address + 3), 0xDB); // STP
+
+        machine.Cpu.SetPC(program2Address);
+        machine.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(coutInvoked, Is.False, "COUT handler should not be invoked (category disabled)");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT - category disabled");
         });
     }
 
     /// <summary>
     /// Verifies that GetTrapsAtAddress returns all traps across memory contexts.
     /// </summary>
+    /// <remarks>
+    /// This is a query-only test that doesn't require CPU execution.
+    /// </remarks>
     [Test]
     public void TrapRegistry_GetTrapsAtAddress_ReturnsAllContexts()
     {
@@ -390,6 +470,9 @@ public class TrapRegistryIntegrationTests
     /// <summary>
     /// Verifies that UnregisterContextTraps removes all traps in a specific memory context.
     /// </summary>
+    /// <remarks>
+    /// This is a registration test that doesn't require CPU execution.
+    /// </remarks>
     [Test]
     public void TrapRegistry_UnregisterContextTraps_RemovesOnlyThatContext()
     {
@@ -407,7 +490,7 @@ public class TrapRegistryIntegrationTests
 
         trapRegistry.Register(CoutAddress, "COUT_ROM", TrapCategory.MonitorRom, handler);
         trapRegistry.RegisterLanguageCardRam(CoutAddress, "COUT_LC", TrapCategory.MonitorRom, handler);
-        trapRegistry.Register(0xFC58, "HOME_ROM", TrapCategory.MonitorRom, handler);
+        trapRegistry.Register(HomeAddress, "HOME_ROM", TrapCategory.MonitorRom, handler);
 
         Assert.That(trapRegistry.Count, Is.EqualTo(3), "Should have 3 traps initially");
 
@@ -419,7 +502,7 @@ public class TrapRegistryIntegrationTests
         {
             Assert.That(trapRegistry.Count, Is.EqualTo(2), "Should have 2 traps after removal");
             Assert.That(trapRegistry.HasTrap(CoutAddress), Is.True, "ROM COUT trap should still exist");
-            Assert.That(trapRegistry.HasTrap(0xFC58), Is.True, "ROM HOME trap should still exist");
+            Assert.That(trapRegistry.HasTrap(HomeAddress), Is.True, "ROM HOME trap should still exist");
 
             var coutTraps = trapRegistry.GetTrapsAtAddress(CoutAddress).ToList();
             Assert.That(coutTraps, Has.Count.EqualTo(1), "Should have 1 trap at COUT");
@@ -428,12 +511,16 @@ public class TrapRegistryIntegrationTests
     }
 
     /// <summary>
-    /// Verifies that the trap registry correctly handles custom memory contexts.
+    /// Verifies that the trap registry correctly handles custom memory contexts
+    /// during actual CPU execution.
     /// </summary>
     [Test]
-    public void TrapRegistry_CustomMemoryContext_CanBeRegisteredAndQueried()
+    public void TrapRegistry_CustomMemoryContext_FiresDuringExecution()
     {
         // Arrange
+        var trapInvoked = false;
+        const ushort ProdosMLIAddress = 0xBF00;
+
         var machine = new MachineBuilder()
             .AsPocket2e()
             .WithStubRom()
@@ -452,30 +539,47 @@ public class TrapRegistryIntegrationTests
                 return addr >= 0xBF00 ? customContext : MemoryContexts.Rom;
             });
 
-        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
-
         // Register trap in custom context
         trapRegistry.RegisterWithContext(
-            0xBF00,
+            ProdosMLIAddress,
             customContext,
             "PRODOS_MLI",
             TrapCategory.OperatingSystem,
-            handler);
+            (cpu, bus, ctx) =>
+            {
+                trapInvoked = true;
+                return TrapResult.Success(new Cycle(10));
+            });
+
+        // Attach trap registry to CPU
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
 
         machine.Reset();
 
+        // Write JSR to $BF00 (ProDOS MLI)
+        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
+        machine.Cpu.Write8(TestProgramAddress + 1, 0x00); // Low byte of $BF00
+        machine.Cpu.Write8(TestProgramAddress + 2, 0xBF); // High byte of $BF00
+        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
+
+        // Write RTS at $BF00 (in case trap doesn't fire)
+        machine.Cpu.Write8(ProdosMLIAddress, 0x60); // RTS
+
+        machine.Cpu.SetPC(TestProgramAddress);
+
         // Act
-        var result = trapRegistry.TryExecute(
-            0xBF00,
-            machine.Cpu,
-            machine.Bus,
-            machine.GetComponent<IEventContext>()!);
+        machine.Step(); // Execute JSR - PC now at $BF00
+        machine.Step(); // Custom context trap should fire, auto-RTS
 
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(result.Handled, Is.True, "Custom context trap should be handled");
+            Assert.That(trapInvoked, Is.True, "Custom context trap should have been invoked");
             Assert.That(trapRegistry.GetRegisteredContexts(), Does.Contain(customContext));
+
+            // After trap + auto-RTS, PC should be at the instruction after JSR
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(TestProgramAddress + 3), "PC should be at instruction after JSR");
         });
     }
 }

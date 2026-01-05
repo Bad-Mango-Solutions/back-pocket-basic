@@ -53,6 +53,7 @@ public class Cpu65C02 : ICpu
     private InstructionTrace trace; // Instruction trace for debug information
     private bool stopRequested;
     private IDebugStepListener? debugListener;
+    private ITrapRegistry? trapRegistry;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -156,6 +157,28 @@ public class Cpu65C02 : ICpu
         set => trace = value;
     }
 
+    /// <summary>
+    /// Gets or sets the trap registry for ROM routine interception.
+    /// </summary>
+    /// <value>The trap registry, or <see langword="null"/> if no traps are registered.</value>
+    /// <remarks>
+    /// <para>
+    /// When a trap registry is attached, the CPU will check for traps at each instruction
+    /// fetch address before executing the opcode. If a trap is registered and its handler
+    /// returns <see cref="TrapResult.Handled"/> = <see langword="true"/>, the CPU will
+    /// perform an RTS to return to the calling code instead of executing the ROM instruction.
+    /// </para>
+    /// <para>
+    /// This enables native implementations of ROM routines for performance optimization
+    /// while maintaining compatibility with code that calls those routines.
+    /// </para>
+    /// </remarks>
+    public ITrapRegistry? TrapRegistry
+    {
+        get => trapRegistry;
+        set => trapRegistry = value;
+    }
+
     /// <inheritdoc/>
     public void Reset()
     {
@@ -201,6 +224,43 @@ public class Cpu65C02 : ICpu
 
         // Capture state before execution for debug listener
         Addr pcBefore = registers.PC.GetAddr();
+
+        // Check for trap at this address before fetching the opcode
+        if (trapRegistry is not null)
+        {
+            var trapResult = trapRegistry.TryExecute(pcBefore, this, bus, context);
+            if (trapResult.Handled)
+            {
+                // Trap was handled - perform RTS to return to calling code
+                // The trap handler should have set up any necessary state
+                // Add cycles from the trap result
+                registers.TCU += trapResult.CyclesConsumed;
+
+                // Perform RTS: pull return address from stack and set PC
+                // RTS pulls low byte first, then high byte, and adds 1 to the address
+                Addr lowAddr = PopByte(Cpu65C02Constants.StackBase);
+                byte lowByte = Read8(lowAddr);
+                Addr highAddr = PopByte(Cpu65C02Constants.StackBase);
+                byte highByte = Read8(highAddr);
+                ushort returnAddress = (ushort)((highByte << 8) | lowByte);
+                registers.PC.SetAddr((uint)(returnAddress + 1));
+
+                // Add RTS cycles (6 cycles for RTS)
+                registers.TCU += 6;
+
+                // Capture TCU before advancing scheduler (for return value)
+                Cycle trapCycles = registers.TCU;
+
+                // Advance the scheduler by the TCU value
+                context.Scheduler.Advance(trapCycles);
+
+                // Clear TCU after advancing scheduler
+                registers.TCU = Cycle.Zero;
+
+                return new CpuStepResult(CpuRunState.Running, trapCycles);
+            }
+        }
+
         byte opcode = FetchByte(); // Advances TCU by 1 for the opcode fetch
 
         // Notify debug listener before execution
@@ -495,18 +555,47 @@ public class Cpu65C02 : ICpu
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
         var pc = registers.PC.GetAddr();
         registers.PC.Advance();
-        byte value = Read8(pc);
+        byte value = InstructionFetch8(pc);
 
         // Advance TCU for the opcode fetch cycle
         registers.TCU += 1;
 
         return value;
+    }
+
+    /// <summary>
+    /// Fetches a byte from memory as part of instruction fetch.
+    /// </summary>
+    /// <param name="address">The address to fetch from.</param>
+    /// <returns>The byte value at the address.</returns>
+    /// <remarks>
+    /// This method uses <see cref="AccessIntent.InstructionFetch"/> to allow the bus
+    /// to differentiate between data reads and instruction fetches. This enables
+    /// features like trap interception and NX (no-execute) enforcement.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private byte InstructionFetch8(Addr address)
+    {
+        var access = CreateInstructionFetchAccess(address, 8);
+        var result = bus.TryRead8(access);
+
+        if (result.Failed)
+        {
+            // Handle bus fault - for now, return 0xFF (floating bus) and halt on unmapped
+            if (result.Fault.Kind == FaultKind.Unmapped)
+            {
+                haltReason = HaltState.Stp;
+            }
+
+            return 0xFF;
+        }
+
+        return result.Value;
     }
 
     /// <summary>
@@ -655,6 +744,32 @@ public class Cpu65C02 : ICpu
             Mode: BusAccessMode.Decomposed,
             EmulationFlag: true,
             Intent: AccessIntent.DataWrite,
+            SourceId: CpuSourceId,
+            Cycle: context.Now,
+            Flags: AccessFlags.None);
+    }
+
+    /// <summary>
+    /// Creates a bus access context for instruction fetch operations.
+    /// </summary>
+    /// <param name="address">The address being accessed.</param>
+    /// <param name="widthBits">The width of the access in bits (8, 16, etc.).</param>
+    /// <returns>A configured <see cref="BusAccess"/> for instruction fetch.</returns>
+    /// <remarks>
+    /// Instruction fetches use <see cref="AccessIntent.InstructionFetch"/> to allow the bus
+    /// to differentiate between data reads and code fetches. This enables NX enforcement
+    /// and trap interception at ROM entry points.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BusAccess CreateInstructionFetchAccess(Addr address, byte widthBits)
+    {
+        return new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: widthBits,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.InstructionFetch,
             SourceId: CpuSourceId,
             Cycle: context.Now,
             Flags: AccessFlags.None);
