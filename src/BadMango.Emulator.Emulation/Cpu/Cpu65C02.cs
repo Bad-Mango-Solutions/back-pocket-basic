@@ -231,22 +231,57 @@ public class Cpu65C02 : ICpu
             var trapResult = trapRegistry.TryExecute(pcBefore, this, bus, context);
             if (trapResult.Handled)
             {
-                // Trap was handled - perform RTS to return to calling code
-                // The trap handler should have set up any necessary state
+                // Trap was handled - the handler determines how to return
                 // Add cycles from the trap result
                 registers.TCU += trapResult.CyclesConsumed;
 
-                // Perform RTS: pull return address from stack and set PC
-                // RTS pulls low byte first, then high byte, and adds 1 to the address
-                Addr lowAddr = PopByte(Cpu65C02Constants.StackBase);
-                byte lowByte = Read8(lowAddr);
-                Addr highAddr = PopByte(Cpu65C02Constants.StackBase);
-                byte highByte = Read8(highAddr);
-                ushort returnAddress = (ushort)((highByte << 8) | lowByte);
-                registers.PC.SetAddr((uint)(returnAddress + 1));
+                // Handle return based on the method specified by the trap handler
+                switch (trapResult.ReturnMethod)
+                {
+                    case TrapReturnMethod.Rts:
+                        // Perform RTS: pull return address from stack and set PC
+                        // RTS pulls low byte first, then high byte, and adds 1 to the address
+                        Addr rtsLowAddr = PopByte(Cpu65C02Constants.StackBase);
+                        byte rtsLowByte = Read8(rtsLowAddr);
+                        Addr rtsHighAddr = PopByte(Cpu65C02Constants.StackBase);
+                        byte rtsHighByte = Read8(rtsHighAddr);
+                        ushort rtsReturnAddress = (ushort)((rtsHighByte << 8) | rtsLowByte);
+                        registers.PC.SetAddr((uint)(rtsReturnAddress + 1));
 
-                // Add RTS cycles (6 cycles for RTS)
-                registers.TCU += 6;
+                        // Add RTS cycles (6 cycles for RTS)
+                        registers.TCU += 6;
+                        break;
+
+                    case TrapReturnMethod.Rti:
+                        // Perform RTI: pull status, then return address from stack
+                        // RTI pulls status first, then PC low, then PC high (no +1)
+                        Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
+                        byte status = Read8(statusAddr);
+                        registers.P = (ProcessorStatusFlags)status;
+
+                        Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
+                        byte rtiLowByte = Read8(rtiLowAddr);
+                        Addr rtiHighAddr = PopByte(Cpu65C02Constants.StackBase);
+                        byte rtiHighByte = Read8(rtiHighAddr);
+                        ushort rtiReturnAddress = (ushort)((rtiHighByte << 8) | rtiLowByte);
+                        registers.PC.SetAddr(rtiReturnAddress);
+
+                        // Add RTI cycles (6 cycles for RTI)
+                        registers.TCU += 6;
+                        break;
+
+                    case TrapReturnMethod.None:
+                        // No automatic return - use ReturnAddress if specified,
+                        // otherwise continue at current PC (for JMP targets or when
+                        // the handler has already set PC)
+                        if (trapResult.ReturnAddress.HasValue)
+                        {
+                            registers.PC.SetAddr(trapResult.ReturnAddress.Value);
+                        }
+
+                        // No additional cycles for direct PC manipulation
+                        break;
+                }
 
                 // Capture TCU before advancing scheduler (for return value)
                 Cycle trapCycles = registers.TCU;
