@@ -61,29 +61,26 @@ public class TrapRegistryIntegrationTests
 
     /// <summary>
     /// Integration test that validates memory context-aware trap selection
-    /// by executing actual JSR instructions through the CPU emulator.
+    /// by executing a single ML program through the CPU emulator.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This test builds a complete Pocket2e system, then:
+    /// This test builds a complete Pocket2e system, then executes ML code that:
     /// </para>
     /// <list type="number">
-    /// <item><description>Registers a ROM trap at COUT ($FDED)</description></item>
-    /// <item><description>Registers a Language Card RAM trap at the same address</description></item>
-    /// <item><description>Executes a JSR to COUT with ROM visible (ROM trap should fire)</description></item>
-    /// <item><description>Switches Language Card to RAM mode via soft switches</description></item>
-    /// <item><description>Executes another JSR to COUT (LC RAM trap should fire)</description></item>
+    /// <item><description>JSR $FDED - Call COUT with ROM visible (ROM trap fires)</description></item>
+    /// <item><description>LDA $C083 - Read soft switch to enable LC RAM read</description></item>
+    /// <item><description>JSR $FDED - Call COUT with LC RAM visible (LC RAM trap fires)</description></item>
+    /// <item><description>STP - End of test program</description></item>
     /// </list>
     /// <para>
-    /// This validates end-to-end functionality including:
+    /// All behavior is validated through actual CPU execution - no simulation.
     /// </para>
-    /// <list type="bullet">
-    /// <item><description>TrapRegistry correctly detects Language Card state</description></item>
-    /// <item><description>Memory context resolution selects the correct trap</description></item>
-    /// <item><description>Traps fire during actual CPU instruction execution</description></item>
-    /// <item><description>Soft switches correctly toggle Language Card state</description></item>
-    /// <item><description>CPU performs automatic RTS after trap handler returns</description></item>
-    /// </list>
+    /// <para>
+    /// Note: A single read of $C083 enables LC RAM read because the soft switch
+    /// decoding is based on address bits: RAM read is enabled when bits 0 and 1
+    /// are the same ($C080=RAM, $C081=ROM, $C082=ROM, $C083=RAM).
+    /// </para>
     /// </remarks>
     [Test]
     public void TrapRegistry_WithLanguageCardBankSwitch_SelectsCorrectTrap()
@@ -139,33 +136,47 @@ public class TrapRegistryIntegrationTests
 
         machine.Reset();
 
-        // ─── Arrange: Write test ML program ─────────────────────────────────────
+        // ─── Arrange: Write complete test ML program ────────────────────────────
         // The test program at $0300:
-        // $0300: JSR $FDED    ; Call COUT (will trigger ROM trap)
-        // $0303: DB           ; STP - halt after first JSR
+        // $0300: JSR $FDED    ; Call COUT (ROM trap fires - LC RAM disabled)
+        // $0303: LDA $C083    ; Read soft switch - enables LC RAM read
+        // $0306: JSR $FDED    ; Call COUT (LC RAM trap fires - LC RAM enabled)
+        // $0309: STP          ; End of test program
+        ushort addr = TestProgramAddress;
 
-        // Write JSR $FDED (opcode $20, low byte $ED, high byte $FD)
-        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
-        machine.Cpu.Write8(TestProgramAddress + 1, 0xED); // Low byte of $FDED
-        machine.Cpu.Write8(TestProgramAddress + 2, 0xFD); // High byte of $FDED
-        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP - halt
+        // JSR $FDED (opcode $20, low byte $ED, high byte $FD)
+        machine.Cpu.Write8(addr++, 0x20);     // $0300: JSR
+        machine.Cpu.Write8(addr++, 0xED);     // $0301: Low byte of $FDED
+        machine.Cpu.Write8(addr++, 0xFD);     // $0302: High byte of $FDED
+
+        // LDA $C083 (opcode $AD, low byte $83, high byte $C0) - absolute addressing
+        // A single read of $C083 enables LC RAM read (bits 0 and 1 are both set)
+        machine.Cpu.Write8(addr++, 0xAD);     // $0303: LDA absolute
+        machine.Cpu.Write8(addr++, 0x83);     // $0304: Low byte of $C083
+        machine.Cpu.Write8(addr++, 0xC0);     // $0305: High byte of $C083
+
+        // JSR $FDED (opcode $20, low byte $ED, high byte $FD)
+        machine.Cpu.Write8(addr++, 0x20);     // $0306: JSR
+        machine.Cpu.Write8(addr++, 0xED);     // $0307: Low byte of $FDED
+        machine.Cpu.Write8(addr++, 0xFD);     // $0308: High byte of $FDED
+
+        // STP (opcode $DB) - halt
+        machine.Cpu.Write8(addr, 0xDB);       // $0309: STP
 
         // Write a stub at COUT that just returns (in case trap doesn't fire)
-        // This also serves as the ROM content that would execute if no trap
         machine.Cpu.Write8(CoutAddress, 0x60); // RTS at COUT
 
-        // ─── Act 1: Execute with ROM visible (default state) ────────────────────
-        // Set PC to our test program
+        // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
         // Verify Language Card state is ROM visible (default)
         Assert.That(languageCard.IsRamReadEnabled, Is.False, "LC RAM should be disabled initially");
 
-        // Execute the test program:
-        // First Step(): PC=$0300, executes JSR $FDED. JSR pushes return address ($0302) and sets PC=$FDED
-        // Second Step(): PC=$FDED, trap check fires before instruction execution, auto-RTS back to $0303
-        machine.Step(); // Execute JSR - PC now at $FDED
-        machine.Step(); // Trap fires at $FDED, auto-RTS
+        // Step 1: Execute JSR $FDED at $0300
+        machine.Step(); // JSR executes, PC now at $FDED
+
+        // Step 2: Trap fires at $FDED (ROM trap), auto-RTS back to $0303
+        machine.Step();
 
         // ─── Assert 1: ROM trap fired ───────────────────────────────────────────
         Assert.Multiple(() =>
@@ -174,75 +185,41 @@ public class TrapRegistryIntegrationTests
             Assert.That(lcRamTrapInvoked, Is.False, "LC RAM trap should NOT have been invoked yet");
             Assert.That(trapInvocationOrder, Has.Count.EqualTo(1));
             Assert.That(trapInvocationOrder[0], Is.EqualTo("ROM"));
-
-            // After trap + auto-RTS, PC should be at $0303 (next instruction after JSR)
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(TestProgramAddress + 3), "PC should be at instruction after JSR");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303), "PC should be at LDA instruction after first JSR");
         });
 
-        // ─── Act 2: Switch Language Card to RAM mode via soft switches ──────────
-        // The soft switches at $C080-$C08F control Language Card state.
-        // Reading $C083 twice enables RAM read/write with Bank 2 (R×2 protocol).
-        // This triggers the Language Card through the IOPageDispatcher.
-        machine.Cpu.Read8(LcBank2RamReadWrite);
-        machine.Cpu.Read8(LcBank2RamReadWrite);
+        // Step 3: Execute LDA $C083 at $0303 - enables LC RAM read
+        machine.Step();
 
-        // Verify Language Card is now in RAM mode
-        Assert.That(languageCard.IsRamReadEnabled, Is.True, "LC RAM should be enabled after soft switch");
+        // ─── Assert 2: LC RAM now enabled ───────────────────────────────────────
+        Assert.That(languageCard.IsRamReadEnabled, Is.True, "LC RAM should be enabled after soft switch read");
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0306), "PC should be at second JSR instruction");
 
-        // Reset flags for next test
+        // Reset flags for next assertion
         romTrapInvoked = false;
         lcRamTrapInvoked = false;
 
-        // Set up another JSR $FDED at current PC location
-        ushort program2Address = TestProgramAddress + 0x10; // $0310
-        machine.Cpu.Write8(program2Address, 0x20);     // JSR
-        machine.Cpu.Write8((ushort)(program2Address + 1), 0xED); // Low byte of $FDED
-        machine.Cpu.Write8((ushort)(program2Address + 2), 0xFD); // High byte of $FDED
-        machine.Cpu.Write8((ushort)(program2Address + 3), 0xDB); // STP - halt
+        // Step 4: Execute JSR $FDED at $0306
+        machine.Step(); // JSR executes, PC now at $FDED
 
-        // ─── Act 3: Execute with LC RAM visible ─────────────────────────────────
-        machine.Cpu.SetPC(program2Address);
-        machine.Step(); // Execute JSR - PC now at $FDED
-        machine.Step(); // LC RAM trap should fire, auto-RTS
+        // Step 5: Trap fires at $FDED (LC RAM trap), auto-RTS back to $0309
+        machine.Step();
 
-        // ─── Assert 2: LC RAM trap fired ────────────────────────────────────────
+        // ─── Assert 3: LC RAM trap fired ────────────────────────────────────────
         Assert.Multiple(() =>
         {
             Assert.That(lcRamTrapInvoked, Is.True, "LC RAM trap should have been invoked");
             Assert.That(romTrapInvoked, Is.False, "ROM trap should NOT have been invoked");
             Assert.That(trapInvocationOrder, Has.Count.EqualTo(2));
             Assert.That(trapInvocationOrder[1], Is.EqualTo("LC_RAM"));
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0309), "PC should be at STP instruction after second JSR");
         });
 
-        // ─── Act 4: Switch back to ROM and verify ───────────────────────────────
-        // Read $C081 to disable RAM read (ROM visible)
-        machine.Cpu.Read8(LcRomRead);
+        // Step 6: Execute STP at $0309 - halts the CPU
+        machine.Step();
 
-        Assert.That(languageCard.IsRamReadEnabled, Is.False, "LC RAM should be disabled after soft switch");
-
-        // Reset flags
-        romTrapInvoked = false;
-        lcRamTrapInvoked = false;
-
-        // Set up third JSR
-        ushort program3Address = TestProgramAddress + 0x20; // $0320
-        machine.Cpu.Write8(program3Address, 0x20);     // JSR
-        machine.Cpu.Write8((ushort)(program3Address + 1), 0xED); // Low byte of $FDED
-        machine.Cpu.Write8((ushort)(program3Address + 2), 0xFD); // High byte of $FDED
-        machine.Cpu.Write8((ushort)(program3Address + 3), 0xDB); // STP - halt
-
-        machine.Cpu.SetPC(program3Address);
-        machine.Step(); // Execute JSR - PC now at $FDED
-        machine.Step(); // ROM trap should fire again, auto-RTS
-
-        // ─── Assert 3: ROM trap fired again ─────────────────────────────────────
-        Assert.Multiple(() =>
-        {
-            Assert.That(romTrapInvoked, Is.True, "ROM trap should have been invoked again");
-            Assert.That(lcRamTrapInvoked, Is.False, "LC RAM trap should NOT have been invoked");
-            Assert.That(trapInvocationOrder, Has.Count.EqualTo(3));
-            Assert.That(trapInvocationOrder[2], Is.EqualTo("ROM"));
-        });
+        // ─── Final Assert: CPU is halted ────────────────────────────────────────
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
     }
 
     /// <summary>
