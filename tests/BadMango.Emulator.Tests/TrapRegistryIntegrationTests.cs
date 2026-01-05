@@ -86,12 +86,11 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .AfterDeviceInit(m =>
             {
-                // Install Language Card handlers to slot 0 ($C080-$C08F)
-                // The Language Card is a motherboard device and its handlers need to be
-                // installed at slot 0 of the IOPageDispatcher
+                // Language Card now implements IMotherboardDevice, so we can call
+                // RegisterHandlers directly to install its soft switches at slot 0
                 var dispatcher = m.GetComponent<IOPageDispatcher>()!;
                 var lc = m.GetComponent<LanguageCardController>()!;
-                dispatcher.InstallSlotHandlers(0, lc.IOHandlers);
+                lc.RegisterHandlers(dispatcher);
             })
             .Build();
 

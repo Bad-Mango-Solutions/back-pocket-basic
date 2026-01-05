@@ -28,7 +28,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// directly. Hi-res pages use the layered mapping API since they are page-aligned.
 /// </para>
 /// </remarks>
-public sealed class AuxiliaryMemoryController : IScheduledDevice
+public sealed class AuxiliaryMemoryController : IMotherboardDevice
 {
     /// <summary>
     /// The name of the auxiliary hi-res page 1 layer ($2000-$3FFF).
@@ -61,6 +61,12 @@ public sealed class AuxiliaryMemoryController : IScheduledDevice
 
     /// <inheritdoc />
     public string Name => "Auxiliary Memory Controller";
+
+    /// <inheritdoc />
+    public string DeviceType => "AuxiliaryMemory";
+
+    /// <inheritdoc />
+    public PeripheralKind Kind => PeripheralKind.Motherboard;
 
     // ─── Properties ─────────────────────────────────────────────────────
 
