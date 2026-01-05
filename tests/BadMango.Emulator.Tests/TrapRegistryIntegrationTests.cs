@@ -80,18 +80,11 @@ public class TrapRegistryIntegrationTests
         var lcRamTrapInvoked = false;
         var trapInvocationOrder = new List<string>();
 
-        // Build the Pocket2e machine with Language Card soft switch handlers installed
+        // Build the Pocket2e machine - Language Card soft switch handlers
+        // are automatically registered during Build() via IMotherboardDevice
         var machine = new MachineBuilder()
             .AsPocket2e()
             .WithStubRom()
-            .AfterDeviceInit(m =>
-            {
-                // Language Card now implements IMotherboardDevice, so we can call
-                // RegisterHandlers directly to install its soft switches at slot 0
-                var dispatcher = m.GetComponent<IOPageDispatcher>()!;
-                var lc = m.GetComponent<LanguageCardController>()!;
-                lc.RegisterHandlers(dispatcher);
-            })
             .Build();
 
         // Get required components
