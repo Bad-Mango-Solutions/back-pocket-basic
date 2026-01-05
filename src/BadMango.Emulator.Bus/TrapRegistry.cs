@@ -184,14 +184,7 @@ public sealed class TrapRegistry : ITrapRegistry
         return traps.Remove(key);
     }
 
-    /// <summary>
-    /// Unregisters all traps associated with a specific slot.
-    /// </summary>
-    /// <param name="slot">The slot number (1-7).</param>
-    /// <remarks>
-    /// This method is useful when removing a slot card to clean up all
-    /// associated trap handlers.
-    /// </remarks>
+    /// <inheritdoc />
     public void UnregisterSlotTraps(int slot)
     {
         ValidateSlotNumber(slot);

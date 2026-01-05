@@ -178,6 +178,19 @@ public interface ITrapRegistry
     bool Unregister(Addr address, TrapOperation operation);
 
     /// <summary>
+    /// Unregisters all traps associated with a specific slot.
+    /// </summary>
+    /// <param name="slot">The slot number (1-7).</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="slot"/> is not in the range 1-7.
+    /// </exception>
+    /// <remarks>
+    /// This method is useful when removing a slot card to clean up all
+    /// associated trap handlers.
+    /// </remarks>
+    void UnregisterSlotTraps(int slot);
+
+    /// <summary>
     /// Attempts to execute a call trap at the specified address.
     /// </summary>
     /// <param name="address">The instruction fetch address.</param>
