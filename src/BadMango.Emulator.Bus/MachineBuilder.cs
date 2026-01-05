@@ -44,6 +44,9 @@ public sealed class MachineBuilder
     private readonly List<ICompositeLayer> compositeLayers = [];
     private readonly List<Action<IMachine>> postBuildCallbacks = [];
     private readonly List<Action<IMachine>> beforeDeviceInitCallbacks = [];
+    private readonly List<Action<IMachine>> afterDeviceInitCallbacks = [];
+    private readonly List<Action<IMachine>> beforeSlotCardInstallCallbacks = [];
+    private readonly List<Action<IMachine>> afterSlotCardInstallCallbacks = [];
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -389,6 +392,101 @@ public sealed class MachineBuilder
     }
 
     /// <summary>
+    /// Registers a callback to be invoked after scheduled devices are initialized.
+    /// </summary>
+    /// <param name="callback">The callback to invoke with the built machine.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// After-device-init callbacks are invoked in the order they were registered, after:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>All scheduled devices have been initialized</description></item>
+    /// </list>
+    /// <para>
+    /// But before:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Slot cards are installed</description></item>
+    /// <item><description>AfterBuild callbacks are invoked</description></item>
+    /// </list>
+    /// <para>
+    /// This is useful for configuration that depends on device initialization being complete,
+    /// such as verifying device state or setting up inter-device communication.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder AfterDeviceInit(Action<IMachine> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        afterDeviceInitCallbacks.Add(callback);
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a callback to be invoked before slot cards are installed.
+    /// </summary>
+    /// <param name="callback">The callback to invoke with the built machine.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// Before-slot-card-install callbacks are invoked in the order they were registered, after:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>All scheduled devices have been initialized</description></item>
+    /// <item><description>AfterDeviceInit callbacks have been invoked</description></item>
+    /// </list>
+    /// <para>
+    /// But before:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Slot cards are installed</description></item>
+    /// </list>
+    /// <para>
+    /// This is useful for verifying slot manager state before cards are installed,
+    /// or for setting up preconditions required by slot cards.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder BeforeSlotCardInstall(Action<IMachine> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        beforeSlotCardInstallCallbacks.Add(callback);
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a callback to be invoked after slot cards are installed.
+    /// </summary>
+    /// <param name="callback">The callback to invoke with the built machine.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// After-slot-card-install callbacks are invoked in the order they were registered, after:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>All pending slot cards have been installed</description></item>
+    /// </list>
+    /// <para>
+    /// But before:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>AfterBuild callbacks are invoked</description></item>
+    /// </list>
+    /// <para>
+    /// This is useful for verifying slot card installation or performing setup that
+    /// depends on all cards being installed, such as card-to-card communication setup.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder AfterSlotCardInstall(Action<IMachine> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        afterSlotCardInstallCallbacks.Add(callback);
+        return this;
+    }
+
+    /// <summary>
     /// Builds the machine with all configured components.
     /// </summary>
     /// <returns>A fully assembled and initialized <see cref="IMachine"/> instance.</returns>
@@ -397,7 +495,7 @@ public sealed class MachineBuilder
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The build process:
+    /// The build process and callback order:
     /// </para>
     /// <list type="number">
     /// <item><description>Creates infrastructure (scheduler, signal bus, device registry)</description></item>
@@ -405,9 +503,14 @@ public sealed class MachineBuilder
     /// <item><description>Applies memory configurations and ROM mappings</description></item>
     /// <item><description>Creates mapping layers and layered mappings</description></item>
     /// <item><description>Creates the CPU</description></item>
-    /// <item><description>Assembles the machine</description></item>
+    /// <item><description>Assembles the machine with all components</description></item>
+    /// <item><description>Runs <see cref="BeforeDeviceInit"/> callbacks</description></item>
     /// <item><description>Initializes all scheduled devices</description></item>
-    /// <item><description>Runs post-build callbacks</description></item>
+    /// <item><description>Runs <see cref="AfterDeviceInit"/> callbacks</description></item>
+    /// <item><description>Runs <see cref="BeforeSlotCardInstall"/> callbacks</description></item>
+    /// <item><description>Installs pending slot cards</description></item>
+    /// <item><description>Runs <see cref="AfterSlotCardInstall"/> callbacks</description></item>
+    /// <item><description>Runs <see cref="AfterBuild"/> callbacks</description></item>
     /// </list>
     /// </remarks>
     public IMachine Build()
@@ -492,8 +595,26 @@ public sealed class MachineBuilder
         // Initialize devices
         machine.InitializeDevices();
 
+        // Run after-device-init callbacks
+        foreach (var callback in afterDeviceInitCallbacks)
+        {
+            callback(machine);
+        }
+
+        // Run before-slot-card-install callbacks
+        foreach (var callback in beforeSlotCardInstallCallbacks)
+        {
+            callback(machine);
+        }
+
         // Install pending slot cards now that SlotManager is available
         InstallPendingSlotCards(machine);
+
+        // Run after-slot-card-install callbacks
+        foreach (var callback in afterSlotCardInstallCallbacks)
+        {
+            callback(machine);
+        }
 
         // Note: Layers are NOT auto-activated here. Devices that control layers
         // (like LanguageCardController) are responsible for managing their layer's

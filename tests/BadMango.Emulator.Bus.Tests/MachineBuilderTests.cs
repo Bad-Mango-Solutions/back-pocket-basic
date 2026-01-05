@@ -469,6 +469,127 @@ public class MachineBuilderTests
     }
 
     /// <summary>
+    /// Verifies that AfterDeviceInit callback is invoked after device initialization.
+    /// </summary>
+    [Test]
+    public void AfterDeviceInit_CallbackIsInvokedAfterDeviceInit()
+    {
+        var mockCpu = CreateMockCpu();
+        var callbackInvoked = false;
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AfterDeviceInit(m =>
+            {
+                callbackInvoked = true;
+            })
+            .Build();
+
+        Assert.That(callbackInvoked, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that null AfterDeviceInit callback throws.
+    /// </summary>
+    [Test]
+    public void AfterDeviceInit_NullCallback_ThrowsArgumentNullException()
+    {
+        var builder = new MachineBuilder();
+
+        Assert.Throws<ArgumentNullException>(() => builder.AfterDeviceInit(null!));
+    }
+
+    /// <summary>
+    /// Verifies that BeforeSlotCardInstall callback is invoked before slot card installation.
+    /// </summary>
+    [Test]
+    public void BeforeSlotCardInstall_CallbackIsInvokedBeforeSlotCardInstall()
+    {
+        var mockCpu = CreateMockCpu();
+        var callbackInvoked = false;
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .BeforeSlotCardInstall(m =>
+            {
+                callbackInvoked = true;
+            })
+            .Build();
+
+        Assert.That(callbackInvoked, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that null BeforeSlotCardInstall callback throws.
+    /// </summary>
+    [Test]
+    public void BeforeSlotCardInstall_NullCallback_ThrowsArgumentNullException()
+    {
+        var builder = new MachineBuilder();
+
+        Assert.Throws<ArgumentNullException>(() => builder.BeforeSlotCardInstall(null!));
+    }
+
+    /// <summary>
+    /// Verifies that AfterSlotCardInstall callback is invoked after slot card installation.
+    /// </summary>
+    [Test]
+    public void AfterSlotCardInstall_CallbackIsInvokedAfterSlotCardInstall()
+    {
+        var mockCpu = CreateMockCpu();
+        var callbackInvoked = false;
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .AfterSlotCardInstall(m =>
+            {
+                callbackInvoked = true;
+            })
+            .Build();
+
+        Assert.That(callbackInvoked, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that null AfterSlotCardInstall callback throws.
+    /// </summary>
+    [Test]
+    public void AfterSlotCardInstall_NullCallback_ThrowsArgumentNullException()
+    {
+        var builder = new MachineBuilder();
+
+        Assert.Throws<ArgumentNullException>(() => builder.AfterSlotCardInstall(null!));
+    }
+
+    /// <summary>
+    /// Verifies that build callbacks are invoked in the correct order.
+    /// </summary>
+    [Test]
+    public void Build_CallbacksInvokedInCorrectOrder()
+    {
+        var mockCpu = CreateMockCpu();
+        var callOrder = new List<string>();
+
+        _ = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .BeforeDeviceInit(m => callOrder.Add("BeforeDeviceInit"))
+            .AfterDeviceInit(m => callOrder.Add("AfterDeviceInit"))
+            .BeforeSlotCardInstall(m => callOrder.Add("BeforeSlotCardInstall"))
+            .AfterSlotCardInstall(m => callOrder.Add("AfterSlotCardInstall"))
+            .AfterBuild(m => callOrder.Add("AfterBuild"))
+            .Build();
+
+        Assert.That(callOrder, Is.EqualTo(new[]
+        {
+            "BeforeDeviceInit",
+            "AfterDeviceInit",
+            "BeforeSlotCardInstall",
+            "AfterSlotCardInstall",
+            "AfterBuild",
+        }));
+    }
+
+    /// <summary>
     /// Verifies that composite layers can be added to the builder.
     /// </summary>
     [Test]
