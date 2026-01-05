@@ -246,8 +246,14 @@ public sealed partial class MainBus : IMemoryBus
             return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
-        // Check write permission
-        if (!page.CanWrite)
+        // Check write permission.
+        // Debug writes (AccessIntent.DebugWrite) bypass this check because:
+        // 1. They're used for test setup (patching ROM with stubs)
+        // 2. The target ultimately decides if the write succeeds
+        //    - RomTarget accepts debug writes if constructed with Memory<byte>
+        //    - RomTarget ignores debug writes if constructed with ReadOnlyMemory<byte>
+        // 3. This enables ICpu.Poke8() to work for debugging and testing scenarios
+        if (!page.CanWrite && !access.IsDebugAccess)
         {
             return BusResult.FromFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }

@@ -6,9 +6,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using System.Diagnostics.CodeAnalysis;
 
+using BadMango.Emulator.Bus.Interfaces;
+
 using Core.Cpu;
-using Core.Interfaces.Cpu;
-using Core.Interfaces.Debugging;
 
 /// <summary>
 /// Placeholder for WDC 65816 CPU emulator (Apple IIgs processor).
@@ -19,169 +19,35 @@ using Core.Interfaces.Debugging;
 /// Apple IIgs system emulation.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public class Cpu65816 : ICpu
+public class Cpu65816 : CpuBase
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Cpu65816"/> class.
+    /// </summary>
+    /// <param name="context">The event context providing access to the memory bus, signal bus, and scheduler.</param>
+    public Cpu65816(IEventContext context)
+        : base(context)
+    {
+    }
+
     /// <inheritdoc/>
-    public CpuCapabilities Capabilities => CpuCapabilities.Base6502 |
+    public override CpuCapabilities Capabilities => CpuCapabilities.Base6502 |
                                            CpuCapabilities.SupportsEmulationFlag |
                                            CpuCapabilities.Supports16BitRegisters |
                                            CpuCapabilities.Supports65C02Instructions;
 
     /// <inheritdoc/>
-    public bool Halted => throw new NotImplementedException();
-
-    /// <inheritdoc/>
-    public HaltState HaltReason
-    {
-        get => throw new NotImplementedException();
-        set => throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public bool IsDebuggerAttached => throw new NotImplementedException();
-
-    /// <inheritdoc/>
-    public bool IsStopRequested => throw new NotImplementedException();
-
-    /// <inheritdoc/>
-    public CpuStepResult Step()
+    public override CpuStepResult Step()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public void Execute(uint startAddress)
+    public override void Reset()
     {
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public void Reset()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public Registers GetRegisters()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public ulong GetCycles()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void SetCycles(ulong cycles)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void SignalIRQ()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void SignalNMI()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void AttachDebugger(IDebugStepListener listener)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void DetachDebugger()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void SetPC(Addr address)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public Addr GetPC()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void RequestStop()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void ClearStopRequest()
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public ref Registers Registers => throw new NotImplementedException();
-
-    /// <inheritdoc/>
-    public InstructionTrace Trace
-    {
-        get => throw new NotImplementedException();
-        set => throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public byte Read8(Addr address)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void Write8(Addr address, byte value)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public Word Read16(Addr address)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void Write16(Addr address, Word value)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public DWord ReadValue(Addr address, byte sizeInBits)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public void WriteValue(Addr address, DWord value, byte sizeInBits)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public Addr PushByte(Addr stackBase = 0)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    public Addr PopByte(Addr stackBase = 0)
-    {
-        throw new NotImplementedException();
-    }
+    protected override bool GetEmulationFlag() => Registers.E;
 }

@@ -263,8 +263,20 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
-    /// Verifies that slot card I/O handlers are registered with the dispatcher.
+    /// Verifies that slot card I/O handlers are registered with the dispatcher
+    /// by executing ML code that reads and writes to slot I/O addresses.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The test program at $0300:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>LDA $C0E0 - Read from slot 6 I/O (triggers read handler)</description></item>
+    /// <item><description>LDA #$55 - Load value to write</description></item>
+    /// <item><description>STA $C0E0 - Write to slot 6 I/O (triggers write handler)</description></item>
+    /// <item><description>STP - Halt the CPU</description></item>
+    /// </list>
+    /// </remarks>
     [Test]
     public void WithCard_WithIOHandlers_HandlersAreRouted()
     {
@@ -273,14 +285,17 @@ public class Pocket2eIntegrationTests
         bool readCalled = false;
         bool writeCalled = false;
 
-        handlers.Set(0, (offset, in ctx) =>
-        {
-            readCalled = true;
-            return 0x42;
-        }, (offset, value, in ctx) =>
-        {
-            writeCalled = true;
-        });
+        handlers.Set(
+            0,
+            (offset, in ctx) =>
+            {
+                readCalled = true;
+                return 0x42;
+            },
+            (offset, value, in ctx) =>
+            {
+                writeCalled = true;
+            });
 
         var mockCard = new Mock<ISlotCard>();
         mockCard.SetupProperty(c => c.SlotNumber);
@@ -297,22 +312,70 @@ public class Pocket2eIntegrationTests
 
         machine.Reset();
 
-        // Access slot 6 I/O at $C0E0 (0x80 + 6*0x10 + 0 = 0xE0)
-        var readResult = machine.Cpu.Read8(0xC0E0);
-        machine.Cpu.Write8(0xC0E0, 0x55);
+        // ─── Write ML program at $0300 ──────────────────────────────────────────
+        // $0300: LDA $C0E0    ; Read from slot 6 I/O (triggers read handler)
+        // $0303: LDA #$55     ; Load value to write
+        // $0305: STA $C0E0    ; Write to slot 6 I/O (triggers write handler)
+        // $0308: STP          ; Halt the CPU
+        const ushort TestProgramAddress = 0x0300;
+        ushort addr = TestProgramAddress;
 
-        // Assert
+        // LDA $C0E0 (absolute addressing - opcode $AD)
+        machine.Cpu.Write8(addr++, 0xAD);     // $0300: LDA absolute
+        machine.Cpu.Write8(addr++, 0xE0);     // $0301: Low byte of $C0E0
+        machine.Cpu.Write8(addr++, 0xC0);     // $0302: High byte of $C0E0
+
+        // LDA #$55 (immediate - opcode $A9)
+        machine.Cpu.Write8(addr++, 0xA9);     // $0303: LDA immediate
+        machine.Cpu.Write8(addr++, 0x55);     // $0304: Value $55
+
+        // STA $C0E0 (absolute addressing - opcode $8D)
+        machine.Cpu.Write8(addr++, 0x8D);     // $0305: STA absolute
+        machine.Cpu.Write8(addr++, 0xE0);     // $0306: Low byte of $C0E0
+        machine.Cpu.Write8(addr++, 0xC0);     // $0307: High byte of $C0E0
+
+        // STP (opcode $DB)
+        machine.Cpu.Write8(addr, 0xDB);       // $0308: STP
+
+        // ─── Act: Execute the ML program ────────────────────────────────────────
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Step 1: Execute LDA $C0E0 - triggers read handler
+        machine.Step();
+        Assert.That(readCalled, Is.True, "Read handler should have been called");
+
+        // Step 2: Execute LDA #$55
+        machine.Step();
+
+        // Step 3: Execute STA $C0E0 - triggers write handler
+        machine.Step();
+        Assert.That(writeCalled, Is.True, "Write handler should have been called");
+
+        // Step 4: Execute STP
+        machine.Step();
+
+        // ─── Assert ─────────────────────────────────────────────────────────────
         Assert.Multiple(() =>
         {
             Assert.That(readCalled, Is.True, "Read handler should have been called");
             Assert.That(writeCalled, Is.True, "Write handler should have been called");
-            Assert.That(readResult, Is.EqualTo(0x42), "Should return value from handler");
+            Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
     }
 
     /// <summary>
-    /// Verifies that ThunderclockCard can be installed and accessed.
+    /// Verifies that ThunderclockCard can be installed and accessed
+    /// by executing ML code that reads from the clock I/O address.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The test program at $0300:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>LDA $C0C0 - Read from slot 4 I/O (latches time, returns month)</description></item>
+    /// <item><description>STP - Halt the CPU</description></item>
+    /// </list>
+    /// </remarks>
     [Test]
     public void WithCard_ThunderclockCard_CanReadTime()
     {
@@ -330,12 +393,36 @@ public class Pocket2eIntegrationTests
 
         machine.Reset();
 
-        // Slot 4 I/O is at $C0C0-$C0CF
-        // First read latches time and returns month
-        var month = machine.Cpu.Read8(0xC0C0);
+        // ─── Write ML program at $0300 ──────────────────────────────────────────
+        // $0300: LDA $C0C0    ; Read from slot 4 I/O (latches time, returns month)
+        // $0303: STP          ; Halt the CPU
+        const ushort TestProgramAddress = 0x0300;
+        ushort addr = TestProgramAddress;
 
-        // Assert
-        Assert.That(month, Is.EqualTo(6), "Should return June (month 6)");
+        // LDA $C0C0 (absolute addressing - opcode $AD)
+        machine.Cpu.Write8(addr++, 0xAD);     // $0300: LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // $0301: Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // $0302: High byte of $C0C0
+
+        // STP (opcode $DB)
+        machine.Cpu.Write8(addr, 0xDB);       // $0303: STP
+
+        // ─── Act: Execute the ML program ────────────────────────────────────────
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Step 1: Execute LDA $C0C0 - latches time and returns month
+        machine.Step();
+
+        // Step 2: Execute STP
+        machine.Step();
+
+        // ─── Assert ─────────────────────────────────────────────────────────────
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(6),
+                "Should return June (month 6)");
+            Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
+        });
     }
 
     /// <summary>
@@ -500,8 +587,23 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
-    /// Verifies that zero page can be read and written in Pocket2e.
+    /// Verifies that zero page can be read and written in Pocket2e
+    /// by executing ML code that stores and loads values from zero page.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The test program at $0300:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>LDA #$42 - Load $42 into A</description></item>
+    /// <item><description>STA $00 - Store A to zero page $00</description></item>
+    /// <item><description>LDA #$A5 - Load $A5 into A</description></item>
+    /// <item><description>STA $FF - Store A to zero page $FF</description></item>
+    /// <item><description>LDA $00 - Load from zero page $00 into A (should be $42)</description></item>
+    /// <item><description>LDX $FF - Load from zero page $FF into X (should be $A5)</description></item>
+    /// <item><description>STP - Halt the CPU</description></item>
+    /// </list>
+    /// </remarks>
     [Test]
     public void Pocket2e_ZeroPageReadWrite_Works()
     {
@@ -513,18 +615,59 @@ public class Pocket2eIntegrationTests
 
         machine.Reset();
 
-        // Act
-        machine.Cpu.Write8(0x00, 0x42);
-        machine.Cpu.Write8(0xFF, 0xA5);
+        // ─── Write ML program at $0300 ──────────────────────────────────────────
+        const ushort TestProgramAddress = 0x0300;
+        ushort addr = TestProgramAddress;
 
-        var value1 = machine.Cpu.Read8(0x00);
-        var value2 = machine.Cpu.Read8(0xFF);
+        // LDA #$42 (immediate - opcode $A9)
+        machine.Cpu.Write8(addr++, 0xA9);     // $0300: LDA immediate
+        machine.Cpu.Write8(addr++, 0x42);     // $0301: Value $42
 
-        // Assert
+        // STA $00 (zero page - opcode $85)
+        machine.Cpu.Write8(addr++, 0x85);     // $0302: STA zero page
+        machine.Cpu.Write8(addr++, 0x00);     // $0303: ZP address $00
+
+        // LDA #$A5 (immediate - opcode $A9)
+        machine.Cpu.Write8(addr++, 0xA9);     // $0304: LDA immediate
+        machine.Cpu.Write8(addr++, 0xA5);     // $0305: Value $A5
+
+        // STA $FF (zero page - opcode $85)
+        machine.Cpu.Write8(addr++, 0x85);     // $0306: STA zero page
+        machine.Cpu.Write8(addr++, 0xFF);     // $0307: ZP address $FF
+
+        // LDA $00 (zero page - opcode $A5)
+        machine.Cpu.Write8(addr++, 0xA5);     // $0308: LDA zero page
+        machine.Cpu.Write8(addr++, 0x00);     // $0309: ZP address $00
+
+        // LDX $FF (zero page - opcode $A6)
+        machine.Cpu.Write8(addr++, 0xA6);     // $030A: LDX zero page
+        machine.Cpu.Write8(addr++, 0xFF);     // $030B: ZP address $FF
+
+        // STP (opcode $DB)
+        machine.Cpu.Write8(addr, 0xDB);       // $030C: STP
+
+        // ─── Act: Execute the ML program ────────────────────────────────────────
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Execute all 6 instructions before STP:
+        // LDA #$42, STA $00, LDA #$A5, STA $FF, LDA $00, LDX $FF
+        const int InstructionsBeforeStp = 6;
+        for (int i = 0; i < InstructionsBeforeStp; i++)
+        {
+            machine.Step();
+        }
+
+        // Execute STP
+        machine.Step();
+
+        // ─── Assert ─────────────────────────────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(value1, Is.EqualTo(0x42), "Zero page $00 should contain written value");
-            Assert.That(value2, Is.EqualTo(0xA5), "Zero page $FF should contain written value");
+            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
+                "A should contain value from zero page $00");
+            Assert.That(machine.Cpu.Registers.X.GetByte(), Is.EqualTo(0xA5),
+                "X should contain value from zero page $FF");
+            Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
     }
 
@@ -622,8 +765,29 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
-    /// Verifies that a Pocket2e machine with Thunderclock can be fully assembled and run.
+    /// Verifies that a Pocket2e machine with Thunderclock can be fully assembled and run
+    /// by executing ML code that reads the clock data sequentially.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The test program at $0300 reads all Thunderclock values in sequence:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>LDA $C0C0 - Read month (latches time)</description></item>
+    /// <item><description>STA $50 - Store month at $50</description></item>
+    /// <item><description>LDA $C0C0 - Read day of week</description></item>
+    /// <item><description>STA $51 - Store day of week at $51</description></item>
+    /// <item><description>LDA $C0C0 - Read day</description></item>
+    /// <item><description>STA $52 - Store day at $52</description></item>
+    /// <item><description>LDA $C0C0 - Read hour</description></item>
+    /// <item><description>STA $53 - Store hour at $53</description></item>
+    /// <item><description>LDA $C0C0 - Read minute</description></item>
+    /// <item><description>STA $54 - Store minute at $54</description></item>
+    /// <item><description>LDA $C0C0 - Read second</description></item>
+    /// <item><description>STA $55 - Store second at $55</description></item>
+    /// <item><description>STP - Halt the CPU</description></item>
+    /// </list>
+    /// </remarks>
     [Test]
     public void Pocket2e_WithThunderclock_FullIntegration()
     {
@@ -637,25 +801,82 @@ public class Pocket2eIntegrationTests
             .WithCard(4, thunderclock)
             .Build();
 
-        // Act
         machine.Reset();
 
-        // Read clock data through slot 4 I/O ($C0C0)
-        var month = machine.Cpu.Read8(0xC0C0); // Latches time, returns month
-        var dayOfWeek = machine.Cpu.Read8(0xC0C0);
-        var day = machine.Cpu.Read8(0xC0C0);
-        var hour = machine.Cpu.Read8(0xC0C0);
-        var minute = machine.Cpu.Read8(0xC0C0);
-        var second = machine.Cpu.Read8(0xC0C0);
+        // ─── Write ML program at $0300 ──────────────────────────────────────────
+        // Read all Thunderclock values and store them in zero page
+        const ushort TestProgramAddress = 0x0300;
+        ushort addr = TestProgramAddress;
 
-        // Assert
+        // Read month (latches time)
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x50);     // Store at $50
+
+        // Read day of week
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x51);     // Store at $51
+
+        // Read day
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x52);     // Store at $52
+
+        // Read hour
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x53);     // Store at $53
+
+        // Read minute
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x54);     // Store at $54
+
+        // Read second
+        machine.Cpu.Write8(addr++, 0xAD);     // LDA absolute
+        machine.Cpu.Write8(addr++, 0xC0);     // Low byte of $C0C0
+        machine.Cpu.Write8(addr++, 0xC0);     // High byte of $C0C0
+        machine.Cpu.Write8(addr++, 0x85);     // STA zero page
+        machine.Cpu.Write8(addr++, 0x55);     // Store at $55
+
+        // STP (opcode $DB)
+        machine.Cpu.Write8(addr, 0xDB);       // STP
+
+        // ─── Act: Execute the ML program ────────────────────────────────────────
+        machine.Cpu.SetPC(TestProgramAddress);
+
+        // Execute all 12 instructions before STP (6 reads × 2 instructions each):
+        // (LDA $C0C0, STA $5x) × 6 for month, dayOfWeek, day, hour, minute, second
+        const int InstructionsBeforeStp = 12;
+        for (int i = 0; i < InstructionsBeforeStp; i++)
+        {
+            machine.Step();
+        }
+
+        // Execute STP
+        machine.Step();
+
+        // ─── Assert ─────────────────────────────────────────────────────────────
+        // Read values from zero page using Peek8 (debug read) to not affect soft switches
         Assert.Multiple(() =>
         {
-            Assert.That(month, Is.EqualTo(12), "Month should be December (12)");
-            Assert.That(day, Is.EqualTo(25), "Day should be 25");
-            Assert.That(hour, Is.EqualTo(10), "Hour should be 10");
-            Assert.That(minute, Is.EqualTo(30), "Minute should be 30");
-            Assert.That(second, Is.EqualTo(0), "Second should be 0");
+            Assert.That(machine.Cpu.Peek8(0x50), Is.EqualTo(12), "Month should be December (12)");
+            Assert.That(machine.Cpu.Peek8(0x52), Is.EqualTo(25), "Day should be 25");
+            Assert.That(machine.Cpu.Peek8(0x53), Is.EqualTo(10), "Hour should be 10");
+            Assert.That(machine.Cpu.Peek8(0x54), Is.EqualTo(30), "Minute should be 30");
+            Assert.That(machine.Cpu.Peek8(0x55), Is.EqualTo(0), "Second should be 0");
+            Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
     }
 
