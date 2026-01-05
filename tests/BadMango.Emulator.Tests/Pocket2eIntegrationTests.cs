@@ -840,8 +840,9 @@ public class Pocket2eIntegrationTests
         var rom = new byte[16384];
         Array.Fill(rom, (byte)0xEA); // NOP fill
 
-        // Put STP at $FF00
-        rom[0x3F00] = 0xDB; // STP - halt CPU
+        // Put STP (opcode $DB) at $FF00. The STP instruction halts the 65C02 CPU,
+        // which is used to test machine lifecycle behavior when the CPU stops execution.
+        rom[0x3F00] = 0xDB; // STP - Stop (halt CPU)
 
         // Set vectors to $FF00
         rom[0x3FFA] = 0x00;

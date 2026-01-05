@@ -246,10 +246,12 @@ public static class Pocket2eMachineBuilderExtensions
                 0xD000,
                 0x1000);
 
-            // Get main ROM region for the ROM variant (reads ROM when LC RAM is disabled)
-            // The ROM variant shows through to whatever is mapped at D000-DFFF in base layer
+            // Create ROM variant placeholder for when Language Card RAM is disabled.
+            // This placeholder target is selected but doesn't override the base layer,
+            // allowing the underlying ROM mapping at D000-DFFF to show through.
+            // The actual ROM content comes from the base layer's ROM mapping.
             var romPlaceholder = new RomTarget(
-                new PhysicalMemory(0x1000, "LC_ROM_Placeholder").Slice(0, 0x1000));
+                new PhysicalMemory(0x1000, "LC_PassthroughPlaceholder").Slice(0, 0x1000));
             bus.AddSwapVariant(
                 groupId,
                 LanguageCardController.RomVariantName,
