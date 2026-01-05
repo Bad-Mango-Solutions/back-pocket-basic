@@ -649,8 +649,10 @@ public class Pocket2eIntegrationTests
         // ─── Act: Execute the ML program ────────────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Execute all instructions
-        for (int i = 0; i < 6; i++)
+        // Execute all 6 instructions before STP:
+        // LDA #$42, STA $00, LDA #$A5, STA $FF, LDA $00, LDX $FF
+        const int InstructionsBeforeStp = 6;
+        for (int i = 0; i < InstructionsBeforeStp; i++)
         {
             machine.Step();
         }
@@ -854,8 +856,10 @@ public class Pocket2eIntegrationTests
         // ─── Act: Execute the ML program ────────────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Execute 12 instructions (6 pairs of LDA/STA)
-        for (int i = 0; i < 12; i++)
+        // Execute all 12 instructions before STP (6 reads × 2 instructions each):
+        // (LDA $C0C0, STA $5x) × 6 for month, dayOfWeek, day, hour, minute, second
+        const int InstructionsBeforeStp = 12;
+        for (int i = 0; i < InstructionsBeforeStp; i++)
         {
             machine.Step();
         }
