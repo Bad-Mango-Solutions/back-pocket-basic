@@ -144,7 +144,8 @@ public sealed class Pocket2eIOPage : ICompositeTarget, IScheduledDevice
     {
         return offset switch
         {
-            < SoftSwitchRegionEnd => null, // Soft switches handled directly via Read8/Write8
+            // Soft switches are handled directly by this target's Read8/Write8
+            < SoftSwitchRegionEnd => this,
             < SlotRomRegionEnd => ResolveSlotRomTarget((ushort)offset),
             _ => ResolveExpansionRomTarget((ushort)offset),
         };

@@ -128,4 +128,120 @@ public class EventContextTests
             Assert.That((ulong)context.Now, Is.EqualTo(0ul));
         });
     }
+
+    /// <summary>
+    /// Verifies GetComponent returns component when added.
+    /// </summary>
+    [Test]
+    public void GetComponent_WhenAdded_ReturnsComponent()
+    {
+        var context = CreateTestContext();
+        var component = new TestComponent { Name = "Test" };
+
+        context.AddComponent(component);
+        var result = context.GetComponent<TestComponent>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.Name, Is.EqualTo("Test"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies GetComponent returns null when not found.
+    /// </summary>
+    [Test]
+    public void GetComponent_WhenNotFound_ReturnsNull()
+    {
+        var context = CreateTestContext();
+
+        var result = context.GetComponent<TestComponent>();
+
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies GetComponents returns all matching components.
+    /// </summary>
+    [Test]
+    public void GetComponents_ReturnsAllMatching()
+    {
+        var context = CreateTestContext();
+        context.AddComponent(new TestComponent { Name = "First" });
+        context.AddComponent(new TestComponent { Name = "Second" });
+
+        var result = context.GetComponents<TestComponent>().ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Has.Count.EqualTo(2));
+            Assert.That(result[0].Name, Is.EqualTo("First"));
+            Assert.That(result[1].Name, Is.EqualTo("Second"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies GetComponents returns empty when none found.
+    /// </summary>
+    [Test]
+    public void GetComponents_WhenNoneFound_ReturnsEmpty()
+    {
+        var context = CreateTestContext();
+
+        var result = context.GetComponents<TestComponent>();
+
+        Assert.That(result, Is.Empty);
+    }
+
+    /// <summary>
+    /// Verifies HasComponent returns true when component exists.
+    /// </summary>
+    [Test]
+    public void HasComponent_WhenExists_ReturnsTrue()
+    {
+        var context = CreateTestContext();
+        context.AddComponent(new TestComponent());
+
+        var result = context.HasComponent<TestComponent>();
+
+        Assert.That(result, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies HasComponent returns false when component doesn't exist.
+    /// </summary>
+    [Test]
+    public void HasComponent_WhenNotExists_ReturnsFalse()
+    {
+        var context = CreateTestContext();
+
+        var result = context.HasComponent<TestComponent>();
+
+        Assert.That(result, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies AddComponent throws for null component.
+    /// </summary>
+    [Test]
+    public void AddComponent_NullComponent_ThrowsArgumentNullException()
+    {
+        var context = CreateTestContext();
+
+        Assert.Throws<ArgumentNullException>(() => context.AddComponent<object>(null!));
+    }
+
+    private static EventContext CreateTestContext()
+    {
+        var mockScheduler = new Mock<IScheduler>();
+        var mockSignals = new Mock<ISignalBus>();
+        var mockBus = new Mock<IMemoryBus>();
+        return new EventContext(mockScheduler.Object, mockSignals.Object, mockBus.Object);
+    }
+
+    private sealed class TestComponent
+    {
+        public string Name { get; set; } = string.Empty;
+    }
 }
