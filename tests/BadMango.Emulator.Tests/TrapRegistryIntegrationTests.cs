@@ -161,9 +161,9 @@ public class TrapRegistryIntegrationTests
         // Verify Language Card state is ROM visible (default)
         Assert.That(languageCard.IsRamReadEnabled, Is.False, "LC RAM should be disabled initially");
 
-        // Execute JSR instruction - this jumps to $FDED
-        // First Step(): Execute JSR - PC moves to $FDED
-        // Second Step(): Trap check at $FDED fires, auto-RTS back to $0303
+        // Execute the test program:
+        // First Step(): PC=$0300, executes JSR $FDED. JSR pushes return address ($0302) and sets PC=$FDED
+        // Second Step(): PC=$FDED, trap check fires before instruction execution, auto-RTS back to $0303
         machine.Step(); // Execute JSR - PC now at $FDED
         machine.Step(); // Trap fires at $FDED, auto-RTS
 
