@@ -477,6 +477,30 @@ public class Cpu65C02 : ICpu
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte Peek8(Addr address)
+    {
+        var access = CreateDebugReadAccess(address);
+        var result = bus.TryRead8(access);
+
+        if (result.Failed)
+        {
+            return 0xFF; // Return floating bus value on failure
+        }
+
+        return result.Value;
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Poke8(Addr address, byte value)
+    {
+        var access = CreateDebugWriteAccess(address);
+        bus.TryWrite8(access, value);
+        // Silently ignore failures - debug writes to unmapped regions are acceptable
+    }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Word Read16(Addr address)
     {
         var access = CreateReadAccess(address, 16);
@@ -773,6 +797,54 @@ public class Cpu65C02 : ICpu
             SourceId: CpuSourceId,
             Cycle: context.Now,
             Flags: AccessFlags.None);
+    }
+
+    /// <summary>
+    /// Creates a bus access context for debug read (peek) operations.
+    /// </summary>
+    /// <param name="address">The address being accessed.</param>
+    /// <returns>A configured <see cref="BusAccess"/> for debug read.</returns>
+    /// <remarks>
+    /// Debug reads use <see cref="AccessIntent.DebugRead"/> to read memory without
+    /// triggering side effects such as soft switches or flag clearing.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BusAccess CreateDebugReadAccess(Addr address)
+    {
+        return new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: CpuSourceId,
+            Cycle: context.Now,
+            Flags: AccessFlags.NoSideEffects);
+    }
+
+    /// <summary>
+    /// Creates a bus access context for debug write (poke) operations.
+    /// </summary>
+    /// <param name="address">The address being accessed.</param>
+    /// <returns>A configured <see cref="BusAccess"/> for debug write.</returns>
+    /// <remarks>
+    /// Debug writes use <see cref="AccessIntent.DebugWrite"/> to write memory,
+    /// bypassing ROM write protection and avoiding side effects on I/O addresses.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BusAccess CreateDebugWriteAccess(Addr address)
+    {
+        return new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugWrite,
+            SourceId: CpuSourceId,
+            Cycle: context.Now,
+            Flags: AccessFlags.NoSideEffects);
     }
 
     /// <summary>

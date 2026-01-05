@@ -164,7 +164,8 @@ public class TrapRegistryIntegrationTests
         machine.Cpu.Write8(addr, 0xDB);       // $0309: STP
 
         // Write a stub at COUT that just returns (in case trap doesn't fire)
-        machine.Cpu.Write8(CoutAddress, 0x60); // RTS at COUT
+        // Use Poke8 to write to ROM address
+        machine.Cpu.Poke8(CoutAddress, 0x60); // RTS at COUT
 
         // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
@@ -225,6 +226,18 @@ public class TrapRegistryIntegrationTests
     /// <summary>
     /// Verifies that unregistered addresses execute normally without trap interception.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This test executes an ML program that calls a subroutine (no trap registered):
+    /// </para>
+    /// <list type="number">
+    /// <item><description>JSR $0400 (test subroutine) - no trap, executes actual RTS</description></item>
+    /// <item><description>STP - End of test program</description></item>
+    /// </list>
+    /// <para>
+    /// Uses ROM address (HOME at $FC58) to test execution with Poke8 for ROM writes.
+    /// </para>
+    /// </remarks>
     [Test]
     public void TrapRegistry_UnregisteredAddress_ExecutesNormally()
     {
@@ -244,27 +257,59 @@ public class TrapRegistryIntegrationTests
 
         machine.Reset();
 
-        // Write a JSR to HOME (not registered as a trap)
-        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
-        machine.Cpu.Write8(TestProgramAddress + 1, 0x58); // Low byte of $FC58 (HOME)
-        machine.Cpu.Write8(TestProgramAddress + 2, 0xFC); // High byte of $FC58
-        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP - halt
+        // ─── Arrange: Write complete test ML program ────────────────────────────
+        // The test program at $0300:
+        // $0300: JSR $FC58    ; Call HOME (no trap registered)
+        // $0303: STP          ; End of test program
+        //
+        // Stub at $FC58:
+        // $FC58: RTS          ; Return
+        ushort addr = TestProgramAddress;
 
-        // Write RTS at HOME
-        machine.Cpu.Write8(HomeAddress, 0x60); // RTS
+        // JSR $FC58 (HOME)
+        machine.Cpu.Write8(addr++, 0x20);     // $0300: JSR
+        machine.Cpu.Write8(addr++, 0x58);     // $0301: Low byte of $FC58
+        machine.Cpu.Write8(addr++, 0xFC);     // $0302: High byte of $FC58
 
+        // STP
+        machine.Cpu.Write8(addr, 0xDB);       // $0303: STP
+
+        // Write RTS at HOME using Poke8 (writes to ROM)
+        machine.Cpu.Poke8(HomeAddress, 0x60); // RTS
+
+        // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Act - Execute JSR. Since no trap is registered, it should actually JSR to HOME
-        machine.Step(); // JSR - jumps to HOME
+        // Step 1: Execute JSR $FC58 at $0300 - jumps to HOME
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME after JSR");
 
-        // Assert - PC should now be at HOME (no trap intercept)
-        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME - trap didn't intercept");
+        // Step 2: Execute RTS at HOME - returns to $0303
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303), "PC should be at STP after RTS");
+
+        // Step 3: Execute STP at $0303 - halts the CPU
+        machine.Step();
+
+        // ─── Final Assert: CPU is halted ────────────────────────────────────────
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
     }
 
     /// <summary>
     /// Verifies that disabled traps do not fire during CPU execution.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This test executes an ML program that calls COUT (trap is registered but disabled):
+    /// </para>
+    /// <list type="number">
+    /// <item><description>JSR $FDED (COUT) - trap disabled, executes actual RTS at COUT</description></item>
+    /// <item><description>STP - End of test program</description></item>
+    /// </list>
+    /// <para>
+    /// Uses ROM address (COUT at $FDED) with Poke8 to write the RTS stub.
+    /// </para>
+    /// </remarks>
     [Test]
     public void TrapRegistry_DisabledTrap_DoesNotFire()
     {
@@ -280,6 +325,7 @@ public class TrapRegistryIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
+        // Register trap at COUT (we'll disable it)
         trapRegistry.Register(
             CoutAddress,
             "COUT",
@@ -299,31 +345,63 @@ public class TrapRegistryIntegrationTests
 
         machine.Reset();
 
-        // Write JSR to COUT
-        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
-        machine.Cpu.Write8(TestProgramAddress + 1, 0xED); // Low byte of $FDED
-        machine.Cpu.Write8(TestProgramAddress + 2, 0xFD); // High byte of $FDED
-        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
+        // ─── Arrange: Write complete test ML program ────────────────────────────
+        // The test program at $0300:
+        // $0300: JSR $FDED    ; Call COUT (trap disabled)
+        // $0303: STP          ; End of test program
+        //
+        // Stub at $FDED:
+        // $FDED: RTS          ; Return (executed since trap disabled)
+        ushort addr = TestProgramAddress;
 
-        // Write RTS at COUT
-        machine.Cpu.Write8(CoutAddress, 0x60); // RTS
+        // JSR $FDED (COUT)
+        machine.Cpu.Write8(addr++, 0x20);     // $0300: JSR
+        machine.Cpu.Write8(addr++, 0xED);     // $0301: Low byte of $FDED
+        machine.Cpu.Write8(addr++, 0xFD);     // $0302: High byte of $FDED
 
+        // STP
+        machine.Cpu.Write8(addr, 0xDB);       // $0303: STP
+
+        // Write RTS at COUT using Poke8 (writes to ROM)
+        machine.Cpu.Poke8(CoutAddress, 0x60); // RTS
+
+        // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Act - Execute JSR. Trap is disabled, so normal execution should occur
-        machine.Step(); // JSR - should jump to COUT (trap disabled)
+        // Step 1: Execute JSR $FDED at $0300 - jumps to COUT
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT after JSR");
 
-        // Assert
-        Assert.Multiple(() =>
-        {
-            Assert.That(trapInvoked, Is.False, "Disabled trap handler should not be invoked");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT - disabled trap didn't intercept");
-        });
+        // Step 2: Execute RTS at COUT - returns to $0303
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303), "PC should be at STP after RTS");
+
+        // ─── Assert: Trap should not have fired ─────────────────────────────────
+        Assert.That(trapInvoked, Is.False, "Disabled trap handler should not be invoked");
+
+        // Step 3: Execute STP at $0303 - halts the CPU
+        machine.Step();
+
+        // ─── Final Assert: CPU is halted ────────────────────────────────────────
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
     }
 
     /// <summary>
     /// Verifies that disabled categories prevent all traps in that category from firing.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This test executes a single ML program that calls HOME and COUT:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>JSR $FC58 (HOME) - trap disabled by category, executes actual RTS</description></item>
+    /// <item><description>JSR $FDED (COUT) - trap disabled by category, executes actual RTS</description></item>
+    /// <item><description>STP - End of test program</description></item>
+    /// </list>
+    /// <para>
+    /// Uses ROM addresses with Poke8 to write RTS stubs.
+    /// </para>
+    /// </remarks>
     [Test]
     public void TrapRegistry_DisabledCategory_PreventsAllTrapsInCategory()
     {
@@ -340,6 +418,7 @@ public class TrapRegistryIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
+        // Register traps at ROM addresses
         trapRegistry.Register(
             HomeAddress,
             "HOME",
@@ -369,43 +448,72 @@ public class TrapRegistryIntegrationTests
 
         machine.Reset();
 
-        // Write JSR to HOME
-        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
-        machine.Cpu.Write8(TestProgramAddress + 1, 0x58); // Low byte of HOME
-        machine.Cpu.Write8(TestProgramAddress + 2, 0xFC); // High byte of HOME
-        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
+        // ─── Arrange: Write complete test ML program ────────────────────────────
+        // The test program at $0300:
+        // $0300: JSR $FC58    ; Call HOME (trap disabled)
+        // $0303: JSR $FDED    ; Call COUT (trap disabled)
+        // $0306: STP          ; End of test program
+        //
+        // Stub at $FC58:
+        // $FC58: RTS
+        //
+        // Stub at $FDED:
+        // $FDED: RTS
+        ushort addr = TestProgramAddress;
 
-        // Write RTS at HOME and COUT
-        machine.Cpu.Write8(HomeAddress, 0x60); // RTS
-        machine.Cpu.Write8(CoutAddress, 0x60); // RTS
+        // JSR $FC58 (HOME)
+        machine.Cpu.Write8(addr++, 0x20);     // $0300: JSR
+        machine.Cpu.Write8(addr++, 0x58);     // Low byte of $FC58
+        machine.Cpu.Write8(addr++, 0xFC);     // High byte of $FC58
 
+        // JSR $FDED (COUT)
+        machine.Cpu.Write8(addr++, 0x20);     // $0303: JSR
+        machine.Cpu.Write8(addr++, 0xED);     // Low byte of $FDED
+        machine.Cpu.Write8(addr++, 0xFD);     // High byte of $FDED
+
+        // STP
+        machine.Cpu.Write8(addr, 0xDB);       // $0306: STP
+
+        // Write RTS at ROM addresses using Poke8
+        machine.Cpu.Poke8(HomeAddress, 0x60); // RTS
+        machine.Cpu.Poke8(CoutAddress, 0x60); // RTS
+
+        // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Act - Execute JSR to HOME (category disabled)
+        // Step 1: Execute JSR $FC58 at $0300 - jumps to HOME
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME after JSR");
+
+        // Step 2: Execute RTS at HOME - returns to $0303
         machine.Step();
 
-        // Assert - HOME trap should not have fired
+        // ─── Assert 1: HOME trap should not have fired ──────────────────────────
         Assert.Multiple(() =>
         {
             Assert.That(homeInvoked, Is.False, "HOME handler should not be invoked (category disabled)");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(HomeAddress), "PC should be at HOME - category disabled");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303), "PC should be at second JSR");
         });
 
-        // Now test COUT
-        ushort program2Address = TestProgramAddress + 0x10;
-        machine.Cpu.Write8(program2Address, 0x20);     // JSR
-        machine.Cpu.Write8((ushort)(program2Address + 1), 0xED); // Low byte of COUT
-        machine.Cpu.Write8((ushort)(program2Address + 2), 0xFD); // High byte of COUT
-        machine.Cpu.Write8((ushort)(program2Address + 3), 0xDB); // STP
+        // Step 3: Execute JSR $FDED at $0303 - jumps to COUT
+        machine.Step();
+        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT after JSR");
 
-        machine.Cpu.SetPC(program2Address);
+        // Step 4: Execute RTS at COUT - returns to $0306
         machine.Step();
 
+        // ─── Assert 2: COUT trap should not have fired ──────────────────────────
         Assert.Multiple(() =>
         {
             Assert.That(coutInvoked, Is.False, "COUT handler should not be invoked (category disabled)");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(CoutAddress), "PC should be at COUT - category disabled");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0306), "PC should be at STP");
         });
+
+        // Step 5: Execute STP at $0306 - halts the CPU
+        machine.Step();
+
+        // ─── Final Assert: CPU is halted ────────────────────────────────────────
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
     }
 
     /// <summary>
@@ -534,29 +642,44 @@ public class TrapRegistryIntegrationTests
 
         machine.Reset();
 
-        // Write JSR to $BF00 (ProDOS MLI)
-        machine.Cpu.Write8(TestProgramAddress, 0x20);     // JSR
-        machine.Cpu.Write8(TestProgramAddress + 1, 0x00); // Low byte of $BF00
-        machine.Cpu.Write8(TestProgramAddress + 2, 0xBF); // High byte of $BF00
-        machine.Cpu.Write8(TestProgramAddress + 3, 0xDB); // STP
+        // ─── Arrange: Write complete test ML program ────────────────────────────
+        // The test program at $0300:
+        // $0300: JSR $BF00    ; Call ProDOS MLI (custom context trap fires)
+        // $0303: STP          ; End of test program
+        ushort addr = TestProgramAddress;
+
+        // JSR $BF00 (ProDOS MLI)
+        machine.Cpu.Write8(addr++, 0x20);     // $0300: JSR
+        machine.Cpu.Write8(addr++, 0x00);     // $0301: Low byte of $BF00
+        machine.Cpu.Write8(addr++, 0xBF);     // $0302: High byte of $BF00
+
+        // STP
+        machine.Cpu.Write8(addr, 0xDB);       // $0303: STP
 
         // Write RTS at $BF00 (in case trap doesn't fire)
         machine.Cpu.Write8(ProdosMLIAddress, 0x60); // RTS
 
+        // ─── Act: Execute the entire ML program ─────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
 
-        // Act
-        machine.Step(); // Execute JSR - PC now at $BF00
-        machine.Step(); // Custom context trap should fire, auto-RTS
+        // Step 1: Execute JSR $BF00 at $0300 - jumps to ProDOS MLI
+        machine.Step();
 
-        // Assert
+        // Step 2: Trap fires at $BF00, auto-RTS back to $0303
+        machine.Step();
+
+        // ─── Assert: Custom context trap fired ──────────────────────────────────
         Assert.Multiple(() =>
         {
             Assert.That(trapInvoked, Is.True, "Custom context trap should have been invoked");
             Assert.That(trapRegistry.GetRegisteredContexts(), Does.Contain(customContext));
-
-            // After trap + auto-RTS, PC should be at the instruction after JSR
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(TestProgramAddress + 3), "PC should be at instruction after JSR");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303), "PC should be at STP after trap auto-RTS");
         });
+
+        // Step 3: Execute STP at $0303 - halts the CPU
+        machine.Step();
+
+        // ─── Final Assert: CPU is halted ────────────────────────────────────────
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
     }
 }

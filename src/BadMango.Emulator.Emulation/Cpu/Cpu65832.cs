@@ -150,6 +150,18 @@ public class Cpu65832 : ICpu
     }
 
     /// <inheritdoc/>
+    public byte Peek8(Addr address)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void Poke8(Addr address, byte value)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public Word Read16(Addr address)
     {
         throw new NotImplementedException();

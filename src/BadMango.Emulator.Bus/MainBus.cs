@@ -246,8 +246,8 @@ public sealed partial class MainBus : IMemoryBus
             return BusResult.FromFault(BusFault.Unmapped(access));
         }
 
-        // Check write permission
-        if (!page.CanWrite)
+        // Check write permission (bypass for debug writes - target handles those)
+        if (!page.CanWrite && !access.IsDebugAccess)
         {
             return BusResult.FromFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }

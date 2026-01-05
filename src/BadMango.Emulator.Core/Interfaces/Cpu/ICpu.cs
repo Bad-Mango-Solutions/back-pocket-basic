@@ -113,6 +113,40 @@ public interface ICpu
     void Write8(Addr address, byte value);
 
     /// <summary>
+    /// Reads a byte from memory without triggering side effects (debug/peek access).
+    /// </summary>
+    /// <param name="address">The memory address to read from.</param>
+    /// <returns>The byte value at the specified address.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method uses <see cref="AccessIntent.DebugRead"/> to read memory without
+    /// triggering soft switches, clearing flags, or causing other side effects.
+    /// </para>
+    /// <para>
+    /// Use this for debugging, memory inspection, and test scenarios where you need
+    /// to observe memory state without affecting emulation behavior.
+    /// </para>
+    /// </remarks>
+    byte Peek8(Addr address);
+
+    /// <summary>
+    /// Writes a byte to memory bypassing write protection (debug/poke access).
+    /// </summary>
+    /// <param name="address">The memory address to write to.</param>
+    /// <param name="value">The byte value to write.</param>
+    /// <remarks>
+    /// <para>
+    /// This method uses <see cref="AccessIntent.DebugWrite"/> to write memory,
+    /// bypassing ROM write protection and avoiding side effects on I/O addresses.
+    /// </para>
+    /// <para>
+    /// Use this for debugging, patching ROM content in tests, and scenarios where
+    /// you need to modify memory that would normally be read-only.
+    /// </para>
+    /// </remarks>
+    void Poke8(Addr address, byte value);
+
+    /// <summary>
     /// Reads a 16-bit word from memory at the specified address.
     /// </summary>
     /// <param name="address">The memory address to read from.</param>
