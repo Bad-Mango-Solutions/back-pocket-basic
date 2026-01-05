@@ -28,7 +28,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// write enable requires two consecutive reads of the same odd address.
 /// </para>
 /// </remarks>
-public sealed class LanguageCardController : IMotherboardDevice
+public sealed class LanguageCardController : IScheduledDevice
 {
     /// <summary>
     /// The name of the Language Card RAM layer.
@@ -89,14 +89,10 @@ public sealed class LanguageCardController : IMotherboardDevice
         InitializeHandlers();
     }
 
+    // ─── Properties ─────────────────────────────────────────────────────────────
+
     /// <inheritdoc />
     public string Name => "Language Card Controller";
-
-    /// <inheritdoc />
-    public string DeviceType => "LanguageCard";
-
-    /// <inheritdoc />
-    public PeripheralKind Kind => PeripheralKind.Motherboard;
 
     /// <summary>
     /// Gets a value indicating whether RAM read is enabled.
@@ -129,17 +125,6 @@ public sealed class LanguageCardController : IMotherboardDevice
     /// </summary>
     /// <value>The slot I/O handlers for $C080-$C08F.</value>
     public SlotIOHandlers IOHandlers => handlers;
-
-    // ─── IMotherboardDevice ─────────────────────────────────────────────────────
-
-    /// <inheritdoc />
-    public void RegisterHandlers(IOPageDispatcher dispatcher)
-    {
-        ArgumentNullException.ThrowIfNull(dispatcher);
-
-        // Language Card soft switches are at slot 0's I/O space ($C080-$C08F)
-        dispatcher.InstallSlotHandlers(0, handlers);
-    }
 
     // ─── IScheduledDevice ───────────────────────────────────────────────────────
 

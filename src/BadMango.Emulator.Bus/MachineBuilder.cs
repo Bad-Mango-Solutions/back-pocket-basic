@@ -47,8 +47,6 @@ public sealed class MachineBuilder
     private readonly List<Action<IMachine>> afterDeviceInitCallbacks = [];
     private readonly List<Action<IMachine>> beforeSlotCardInstallCallbacks = [];
     private readonly List<Action<IMachine>> afterSlotCardInstallCallbacks = [];
-    private readonly List<Action<IMachine>> beforeSoftSwitchHandlerRegistrationCallbacks = [];
-    private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -489,71 +487,6 @@ public sealed class MachineBuilder
     }
 
     /// <summary>
-    /// Registers a callback to be invoked before motherboard device soft switch handlers are registered.
-    /// </summary>
-    /// <param name="callback">The callback to invoke with the built machine.</param>
-    /// <returns>This builder instance for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-    /// <remarks>
-    /// <para>
-    /// Before-soft-switch-handler-registration callbacks are invoked in the order they were registered, after:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>All scheduled devices have been initialized</description></item>
-    /// <item><description>AfterDeviceInit callbacks have been invoked</description></item>
-    /// </list>
-    /// <para>
-    /// But before:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Motherboard device soft switch handlers are registered</description></item>
-    /// <item><description>Slot cards are installed</description></item>
-    /// </list>
-    /// <para>
-    /// This is useful for setting up preconditions required by soft switch handlers,
-    /// or for registering custom handlers before the automatic registration.
-    /// </para>
-    /// </remarks>
-    public MachineBuilder BeforeSoftSwitchHandlerRegistration(Action<IMachine> callback)
-    {
-        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
-        beforeSoftSwitchHandlerRegistrationCallbacks.Add(callback);
-        return this;
-    }
-
-    /// <summary>
-    /// Registers a callback to be invoked after motherboard device soft switch handlers are registered.
-    /// </summary>
-    /// <param name="callback">The callback to invoke with the built machine.</param>
-    /// <returns>This builder instance for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-    /// <remarks>
-    /// <para>
-    /// After-soft-switch-handler-registration callbacks are invoked in the order they were registered, after:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>All motherboard device soft switch handlers have been registered</description></item>
-    /// </list>
-    /// <para>
-    /// But before:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Slot cards are installed</description></item>
-    /// <item><description>AfterBuild callbacks are invoked</description></item>
-    /// </list>
-    /// <para>
-    /// This is useful for verifying handler registration or performing setup that
-    /// depends on all motherboard soft switches being available.
-    /// </para>
-    /// </remarks>
-    public MachineBuilder AfterSoftSwitchHandlerRegistration(Action<IMachine> callback)
-    {
-        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
-        afterSoftSwitchHandlerRegistrationCallbacks.Add(callback);
-        return this;
-    }
-
-    /// <summary>
     /// Builds the machine with all configured components.
     /// </summary>
     /// <returns>A fully assembled and initialized <see cref="IMachine"/> instance.</returns>
@@ -574,9 +507,6 @@ public sealed class MachineBuilder
     /// <item><description>Runs <see cref="BeforeDeviceInit"/> callbacks</description></item>
     /// <item><description>Initializes all scheduled devices</description></item>
     /// <item><description>Runs <see cref="AfterDeviceInit"/> callbacks</description></item>
-    /// <item><description>Runs <see cref="BeforeSoftSwitchHandlerRegistration"/> callbacks</description></item>
-    /// <item><description>Registers motherboard device soft switch handlers</description></item>
-    /// <item><description>Runs <see cref="AfterSoftSwitchHandlerRegistration"/> callbacks</description></item>
     /// <item><description>Runs <see cref="BeforeSlotCardInstall"/> callbacks</description></item>
     /// <item><description>Installs pending slot cards</description></item>
     /// <item><description>Runs <see cref="AfterSlotCardInstall"/> callbacks</description></item>
@@ -671,21 +601,6 @@ public sealed class MachineBuilder
             callback(machine);
         }
 
-        // Run before-soft-switch-handler-registration callbacks
-        foreach (var callback in beforeSoftSwitchHandlerRegistrationCallbacks)
-        {
-            callback(machine);
-        }
-
-        // Register soft switch handlers for all motherboard devices
-        RegisterMotherboardDeviceHandlers(machine);
-
-        // Run after-soft-switch-handler-registration callbacks
-        foreach (var callback in afterSoftSwitchHandlerRegistrationCallbacks)
-        {
-            callback(machine);
-        }
-
         // Run before-slot-card-install callbacks
         foreach (var callback in beforeSlotCardInstallCallbacks)
         {
@@ -728,22 +643,6 @@ public sealed class MachineBuilder
         foreach (var pendingCard in machine.GetComponents<IPendingSlotCard>())
         {
             slotManager.Install(pendingCard.Slot, pendingCard.Card);
-        }
-    }
-
-    private static void RegisterMotherboardDeviceHandlers(Machine machine)
-    {
-        // Get the I/O page dispatcher from the component bag
-        var dispatcher = machine.GetComponent<IOPageDispatcher>();
-        if (dispatcher == null)
-        {
-            return;
-        }
-
-        // Find and register handlers for all motherboard devices
-        foreach (var device in machine.GetComponents<IMotherboardDevice>())
-        {
-            device.RegisterHandlers(dispatcher);
         }
     }
 
