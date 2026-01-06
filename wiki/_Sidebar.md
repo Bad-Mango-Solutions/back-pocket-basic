@@ -17,7 +17,7 @@
 - [API Reference](API-Reference)
 
 ## Emulator Framework
-- [Architecture Overview](Architecture-Overview#emulator-framework)
+- [Architecture Overview](Architecture-Overview#7-advanced-emulator-framework)
 - [6502 Emulation](6502-Emulation#multi-cpu-framework)
 
 ## Contributing
