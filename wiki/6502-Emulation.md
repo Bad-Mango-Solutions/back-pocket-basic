@@ -267,8 +267,8 @@ The advanced emulator framework (`BadMango.Emulator.*`) provides a unified archi
 | CPU | Status | Description |
 |-----|--------|-------------|
 | **65C02** | ✅ Implemented | WDC 65C02 with all addressing modes |
-| **65816** | 🚧 Planned | Apple IIgs 16-bit CPU |
-| **65832** | 🚧 Planned | Hypothetical 32-bit extension |
+| **65816** | 🔨 Stub | Apple IIgs 16-bit CPU (placeholder) |
+| **65832** | 🔨 Stub | Hypothetical 32-bit extension (placeholder) |
 
 ### Architecture
 

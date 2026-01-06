@@ -202,7 +202,7 @@ back-pocket-basic/
 ### Technologies Used
 
 - **.NET 10.0** - Runtime and SDK
-- **Avalonia UI 11.x** - Cross-platform GUI framework (Emulator UI)
+- **Avalonia UI 11.2+** - Cross-platform GUI framework (Emulator UI)
 - **Microsoft.Extensions.Hosting** - Application hosting model
 - **Serilog** - Structured logging
 - **Autofac** - Dependency injection

@@ -86,7 +86,7 @@ back-pocket-basic/
 | **BadMango.Basic** | Applesoft BASIC interpreter with integrated 6502 emulation |
 | **BadMango.Basic.Console** | Command-line interface for running BASIC programs |
 | **BadMango.Emulator.Core** | CPU abstractions, interfaces, and common types |
-| **BadMango.Emulator.Emulation** | 65C02/65816/65832 CPU implementations |
+| **BadMango.Emulator.Emulation** | 65C02 implementation (65816/65832 stubs) |
 | **BadMango.Emulator.Bus** | System bus, memory mapping, device routing |
 | **BadMango.Emulator.Devices** | Peripheral hardware emulation |
 | **BadMango.Emulator.Systems** | Complete system configurations (Apple II, IIgs) |
@@ -299,8 +299,8 @@ See [6502 Emulation](6502-Emulation) for details.
 **CPU Implementations**:
 - `CpuBase` - Common CPU infrastructure
 - `Cpu65C02` - Full WDC 65C02 with all addressing modes
-- `Cpu65816` - Apple IIgs 65816 (planned)
-- `Cpu65832` - Hypothetical 32-bit variant (planned)
+- `Cpu65816` - Apple IIgs 65816 (stub/placeholder)
+- `Cpu65832` - Hypothetical 32-bit variant (stub/placeholder)
 
 **Instruction Organization**:
 ```
@@ -489,7 +489,7 @@ Program
 | **Microsoft.Extensions.Hosting** | Application hosting model |
 | **Serilog** | Structured logging |
 | **Autofac** | Dependency injection container |
-| **Avalonia UI** | Cross-platform GUI framework (11.x) |
+| **Avalonia UI** | Cross-platform GUI framework (11.2+) |
 | **CommunityToolkit.Mvvm** | MVVM implementation for UI |
 | **NUnit** | Unit testing framework |
 | **Moq** | Mocking framework for tests |

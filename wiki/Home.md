@@ -68,7 +68,7 @@ Want to contribute? We'd love your help!
 | `BadMango.Basic` | Applesoft BASIC interpreter with integrated 6502 |
 | `BadMango.Basic.Console` | Command-line interface (bpbasic) |
 | `BadMango.Emulator.Core` | CPU abstractions and interfaces |
-| `BadMango.Emulator.Emulation` | 65C02/65816/65832 implementations |
+| `BadMango.Emulator.Emulation` | 65C02 implementation (65816/65832 stubs) |
 | `BadMango.Emulator.Bus` | System bus and memory management |
 | `BadMango.Emulator.Devices` | Peripheral device implementations |
 | `BadMango.Emulator.UI` | Avalonia-based graphical interface |
