@@ -34,7 +34,6 @@ public sealed class MachineProfileSerializer
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     private static readonly JsonSerializerOptions DeserializeOptions = new()

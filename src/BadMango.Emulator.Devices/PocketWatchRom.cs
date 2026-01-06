@@ -22,6 +22,16 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </remarks>
 internal sealed class PocketWatchRom : IBusTarget
 {
+    /// <summary>
+    /// NOP instruction opcode (0xEA).
+    /// </summary>
+    private const byte NopInstruction = 0xEA;
+
+    /// <summary>
+    /// RTS instruction opcode (0x60).
+    /// </summary>
+    private const byte RtsInstruction = 0x60;
+
     private readonly byte[] romData;
 
     /// <summary>
@@ -32,7 +42,7 @@ internal sealed class PocketWatchRom : IBusTarget
         romData = new byte[256];
 
         // Fill with NOP instructions
-        Array.Fill(romData, (byte)0xEA);
+        Array.Fill(romData, NopInstruction);
 
         // Thunderclock identification bytes
         // These identify the card to ProDOS and other software
@@ -46,11 +56,11 @@ internal sealed class PocketWatchRom : IBusTarget
         romData[0x07] = 0x00; // Revision
 
         // Simple RTS at common entry points
-        romData[0xFB] = 0x60; // RTS at $CnFB
-        romData[0xFC] = 0x60; // RTS at $CnFC
-        romData[0xFD] = 0x60; // RTS at $CnFD
-        romData[0xFE] = 0x60; // RTS at $CnFE
-        romData[0xFF] = 0x60; // RTS at $CnFF
+        romData[0xFB] = RtsInstruction; // RTS at $CnFB
+        romData[0xFC] = RtsInstruction; // RTS at $CnFC
+        romData[0xFD] = RtsInstruction; // RTS at $CnFD
+        romData[0xFE] = RtsInstruction; // RTS at $CnFE
+        romData[0xFF] = RtsInstruction; // RTS at $CnFF
     }
 
     /// <inheritdoc />

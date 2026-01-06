@@ -30,6 +30,11 @@ using Interfaces;
 /// </remarks>
 public sealed class PocketWatchCard : IClockDevice
 {
+    /// <summary>
+    /// The default frozen time when no valid frozen time is specified.
+    /// </summary>
+    private static readonly DateTime DefaultFrozenTime = new(1986, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
     private readonly SlotIOHandlers handlers = new();
     private readonly IBusTarget romRegion;
     private readonly PocketWatchConfig config;
@@ -170,7 +175,7 @@ public sealed class PocketWatchCard : IClockDevice
                 else
                 {
                     // Default frozen time if parsing fails
-                    fixedTime = new DateTime(1986, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    fixedTime = DefaultFrozenTime;
                 }
 
                 break;

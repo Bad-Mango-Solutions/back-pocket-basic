@@ -23,6 +23,10 @@ using System.Text.Json.Serialization;
 public sealed class PocketWatchConfig
 {
     /// <summary>
+    /// The default NTP poll interval in seconds (1 hour).
+    /// </summary>
+    public const int DefaultNtpPollIntervalSeconds = 3600;
+    /// <summary>
     /// Gets or sets the time source for the clock.
     /// </summary>
     /// <remarks>
@@ -70,5 +74,5 @@ public sealed class PocketWatchConfig
     /// Only used when <see cref="TimeSource"/> is "ntp".
     /// </remarks>
     [JsonPropertyName("ntpPollInterval")]
-    public int NtpPollInterval { get; set; } = 3600;
+    public int NtpPollInterval { get; set; } = DefaultNtpPollIntervalSeconds;
 }

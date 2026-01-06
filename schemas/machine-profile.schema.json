@@ -13,7 +13,7 @@
         "name": {
             "type": "string",
             "description": "Unique identifier for this profile (e.g., 'pocket2e', 'simple-65c02')",
-            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
         },
         "displayName": {
             "type": "string",
