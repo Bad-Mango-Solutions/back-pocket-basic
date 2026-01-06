@@ -1,0 +1,496 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
+    "title": "Machine Profile",
+    "description": "Schema for defining emulated machine configurations including CPU, memory, slots, ROMs, and devices",
+    "type": "object",
+    "required": ["name", "cpu", "memory"],
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "Reference to this JSON schema"
+        },
+        "name": {
+            "type": "string",
+            "description": "Unique identifier for this profile (e.g., 'pocket2e', 'simple-65c02')",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
+        },
+        "displayName": {
+            "type": "string",
+            "description": "Human-readable name for the profile"
+        },
+        "description": {
+            "type": "string",
+            "description": "Detailed description of the machine configuration"
+        },
+        "cpu": {
+            "$ref": "#/$defs/cpuSection"
+        },
+        "addressSpace": {
+            "type": "integer",
+            "description": "Address space size in bits (16 = 64KB, 24 = 16MB)",
+            "default": 16,
+            "minimum": 12,
+            "maximum": 32
+        },
+        "memory": {
+            "$ref": "#/$defs/memorySection"
+        },
+        "slots": {
+            "$ref": "#/$defs/slotsSection"
+        },
+        "roms": {
+            "type": "array",
+            "description": "ROM definitions for the machine",
+            "items": {
+                "$ref": "#/$defs/romDefinition"
+            }
+        },
+        "devices": {
+            "$ref": "#/$defs/devicesSection"
+        },
+        "boot": {
+            "$ref": "#/$defs/bootSection"
+        }
+    },
+    "$defs": {
+        "hexString": {
+            "type": "string",
+            "description": "Hexadecimal value (e.g., '0x1000', '0xC000')",
+            "pattern": "^0x[0-9A-Fa-f]+$"
+        },
+        "cpuSection": {
+            "type": "object",
+            "description": "CPU configuration",
+            "required": ["type"],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "CPU type identifier",
+                    "enum": ["6502", "65C02", "65816", "65832"]
+                },
+                "clockSpeed": {
+                    "type": "integer",
+                    "description": "Clock speed in Hz (e.g., 1023000 for ~1MHz)"
+                }
+            }
+        },
+        "memorySection": {
+            "type": "object",
+            "description": "Memory configuration including regions, swap groups, and controllers",
+            "properties": {
+                "regions": {
+                    "type": "array",
+                    "description": "Memory regions in the address space",
+                    "items": {
+                        "$ref": "#/$defs/memoryRegion"
+                    }
+                },
+                "swapGroups": {
+                    "type": "array",
+                    "description": "Swap groups for bank switching",
+                    "items": {
+                        "$ref": "#/$defs/swapGroup"
+                    }
+                },
+                "controllers": {
+                    "type": "array",
+                    "description": "Memory controllers that manage dynamic regions",
+                    "items": {
+                        "$ref": "#/$defs/memoryController"
+                    }
+                }
+            }
+        },
+        "memoryRegion": {
+            "type": "object",
+            "description": "A single memory region definition",
+            "required": ["name", "type", "start", "size"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this region"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Region type",
+                    "enum": ["ram", "rom", "io", "composite"]
+                },
+                "start": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Starting address (must be page-aligned)"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size in bytes (must be page-aligned)"
+                },
+                "permissions": {
+                    "type": "string",
+                    "description": "Access permissions (r=read, w=write, x=execute)",
+                    "default": "rwx",
+                    "pattern": "^[rwx-]+$"
+                },
+                "fill": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Fill pattern for RAM initialization (single byte)"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Source file path for ROM data"
+                },
+                "sourceOffset": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Offset within source file to start loading"
+                },
+                "sourceRef": {
+                    "type": "string",
+                    "description": "Reference to a named ROM for shared data"
+                },
+                "handler": {
+                    "type": "string",
+                    "description": "Handler identifier for composite regions (e.g., 'pocket2e-io')"
+                }
+            }
+        },
+        "swapGroup": {
+            "type": "object",
+            "description": "A swap group for bank-switched memory regions",
+            "required": ["name", "controller", "virtualBase", "size", "variants"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this swap group"
+                },
+                "controller": {
+                    "type": "string",
+                    "description": "Controller that manages this swap group"
+                },
+                "virtualBase": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Base address in virtual address space"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size of the swapped region"
+                },
+                "comment": {
+                    "type": "string",
+                    "description": "Optional comment explaining this swap group"
+                },
+                "variants": {
+                    "type": "array",
+                    "description": "Available variants for this swap group",
+                    "items": {
+                        "$ref": "#/$defs/swapVariant"
+                    },
+                    "minItems": 1
+                },
+                "defaultVariant": {
+                    "type": "string",
+                    "description": "Name of the default variant"
+                }
+            }
+        },
+        "swapVariant": {
+            "type": "object",
+            "description": "A variant within a swap group",
+            "required": ["name", "type"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this variant within the group"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Memory type for this variant",
+                    "enum": ["ram", "rom"]
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size override (defaults to swap group size)"
+                },
+                "sourceRef": {
+                    "type": "string",
+                    "description": "Reference to a named ROM"
+                },
+                "sourceOffset": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Offset within the source ROM"
+                },
+                "permissions": {
+                    "type": "string",
+                    "description": "Access permissions",
+                    "default": "rwx",
+                    "pattern": "^[rwx-]+$"
+                }
+            }
+        },
+        "memoryController": {
+            "type": "object",
+            "description": "A memory controller that manages dynamic regions",
+            "required": ["name", "type"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this controller"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Controller type identifier (e.g., 'pocket2e-aux-controller')"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size of memory managed by this controller"
+                },
+                "comment": {
+                    "type": "string",
+                    "description": "Optional comment explaining this controller"
+                },
+                "regions": {
+                    "type": "array",
+                    "description": "Sub-regions managed by this controller",
+                    "items": {
+                        "$ref": "#/$defs/memoryRegion"
+                    }
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Controller-specific configuration",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "slotsSection": {
+            "type": "object",
+            "description": "Expansion slot system configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the slot system is enabled",
+                    "default": true
+                },
+                "internalC3Rom": {
+                    "type": "boolean",
+                    "description": "Use internal ROM for $C300 region (80-column)",
+                    "default": true
+                },
+                "internalCxRom": {
+                    "type": "boolean",
+                    "description": "Use internal ROM for entire $C100-$CFFF region",
+                    "default": false
+                },
+                "cards": {
+                    "type": "array",
+                    "description": "Cards installed in slots",
+                    "items": {
+                        "$ref": "#/$defs/slotCard"
+                    }
+                }
+            }
+        },
+        "slotCard": {
+            "type": "object",
+            "description": "A card installed in an expansion slot",
+            "required": ["slot", "type"],
+            "properties": {
+                "slot": {
+                    "type": "integer",
+                    "description": "Slot number (1-7)",
+                    "minimum": 1,
+                    "maximum": 7
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Card type identifier (e.g., 'pocketwatch', 'disk-ii-compatible')"
+                },
+                "preset": {
+                    "type": "string",
+                    "description": "Preset configuration name"
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Card-specific configuration",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "romDefinition": {
+            "type": "object",
+            "description": "A ROM image definition",
+            "required": ["name", "source"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this ROM (used as sourceRef)"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Source file path (supports library://, app://, absolute, or relative paths)"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Expected size of the ROM"
+                },
+                "regions": {
+                    "type": "array",
+                    "description": "Named regions within this ROM",
+                    "items": {
+                        "$ref": "#/$defs/romRegion"
+                    }
+                },
+                "required": {
+                    "type": "boolean",
+                    "description": "Whether this ROM is required for boot",
+                    "default": true
+                },
+                "on_verification_fail": {
+                    "type": "string",
+                    "description": "Action when hash verification fails",
+                    "enum": ["stop", "fallback"],
+                    "default": "stop"
+                },
+                "hash": {
+                    "$ref": "#/$defs/romHash"
+                }
+            }
+        },
+        "romRegion": {
+            "type": "object",
+            "description": "A named region within a ROM file",
+            "required": ["name", "start", "sourceOffset", "size"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name for this region"
+                },
+                "start": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Starting address where this region is mapped"
+                },
+                "sourceOffset": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Offset within the ROM file"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size of this region"
+                }
+            }
+        },
+        "romHash": {
+            "type": "object",
+            "description": "Hash values for ROM verification",
+            "properties": {
+                "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 hash of the ROM file"
+                },
+                "md5": {
+                    "type": "string",
+                    "description": "MD5 hash of the ROM file"
+                }
+            }
+        },
+        "devicesSection": {
+            "type": "object",
+            "description": "Device configuration",
+            "properties": {
+                "keyboard": {
+                    "$ref": "#/$defs/keyboardConfig"
+                },
+                "speaker": {
+                    "$ref": "#/$defs/speakerConfig"
+                },
+                "video": {
+                    "$ref": "#/$defs/videoConfig"
+                },
+                "gameIO": {
+                    "$ref": "#/$defs/gameIOConfig"
+                }
+            },
+            "additionalProperties": {
+                "type": "object",
+                "description": "Additional device-specific configuration"
+            }
+        },
+        "keyboardConfig": {
+            "type": "object",
+            "description": "Keyboard device configuration",
+            "properties": {
+                "preset": {
+                    "type": "string",
+                    "description": "Keyboard preset (e.g., 'standard', 'enhanced')"
+                },
+                "autoRepeat": {
+                    "type": "boolean",
+                    "description": "Enable key auto-repeat"
+                }
+            }
+        },
+        "speakerConfig": {
+            "type": "object",
+            "description": "Speaker device configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable speaker output",
+                    "default": true
+                },
+                "sampleRate": {
+                    "type": "integer",
+                    "description": "Audio sample rate in Hz",
+                    "default": 48000
+                }
+            }
+        },
+        "videoConfig": {
+            "type": "object",
+            "description": "Video device configuration",
+            "properties": {
+                "preset": {
+                    "type": "string",
+                    "description": "Video preset (e.g., 'standard', 'enhanced')"
+                },
+                "colorMode": {
+                    "type": "string",
+                    "description": "Color mode",
+                    "enum": ["mono", "ntsc", "rgb"]
+                }
+            }
+        },
+        "gameIOConfig": {
+            "type": "object",
+            "description": "Game I/O (joystick/paddle) configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable game I/O",
+                    "default": true
+                },
+                "joystickDeadzone": {
+                    "type": "number",
+                    "description": "Joystick deadzone (0.0-1.0)",
+                    "minimum": 0,
+                    "maximum": 1
+                }
+            }
+        },
+        "bootSection": {
+            "type": "object",
+            "description": "Boot configuration",
+            "properties": {
+                "autoStart": {
+                    "type": "boolean",
+                    "description": "Automatically start machine after loading",
+                    "default": true
+                },
+                "startupSlot": {
+                    "type": "integer",
+                    "description": "Slot to boot from (1-7)",
+                    "minimum": 1,
+                    "maximum": 7
+                }
+            }
+        }
+    }
+}

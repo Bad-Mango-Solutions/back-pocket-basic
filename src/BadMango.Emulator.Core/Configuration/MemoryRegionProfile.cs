@@ -12,8 +12,8 @@ using System.Text.Json.Serialization;
 /// <remarks>
 /// <para>
 /// Memory regions describe individual segments of the machine's address space,
-/// including RAM, ROM, and I/O areas. Each region specifies its type, location,
-/// size, and access permissions.
+/// including RAM, ROM, I/O areas, and composite regions. Each region specifies
+/// its type, location, size, and access permissions.
 /// </para>
 /// <para>
 /// Regions must be page-aligned (4KB boundaries) for compatibility with the
@@ -43,6 +43,7 @@ public sealed class MemoryRegionProfile
     /// <item><description>"ram" - Read/write random access memory</description></item>
     /// <item><description>"rom" - Read-only memory</description></item>
     /// <item><description>"io" - I/O space (for future device mapping)</description></item>
+    /// <item><description>"composite" - Composite region with custom handler</description></item>
     /// </list>
     /// </remarks>
     [JsonPropertyName("type")]
@@ -123,4 +124,26 @@ public sealed class MemoryRegionProfile
     /// </remarks>
     [JsonPropertyName("sourceOffset")]
     public string? SourceOffset { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reference to a named ROM.
+    /// </summary>
+    /// <remarks>
+    /// This references the <see cref="RomProfile.Name"/> of a ROM defined in the
+    /// machine profile's <see cref="MachineProfile.Roms"/> array. Used to share
+    /// ROM data across multiple regions without duplicating the file reference.
+    /// </remarks>
+    [JsonPropertyName("sourceRef")]
+    public string? SourceRef { get; set; }
+
+    /// <summary>
+    /// Gets or sets the handler identifier for composite regions.
+    /// </summary>
+    /// <remarks>
+    /// For "composite" type regions, this specifies the handler that manages
+    /// the region. The builder looks up a handler factory by this name.
+    /// Examples: "pocket2e-io", "slot-rom-handler".
+    /// </remarks>
+    [JsonPropertyName("handler")]
+    public string? Handler { get; set; }
 }

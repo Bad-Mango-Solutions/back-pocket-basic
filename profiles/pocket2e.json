@@ -1,0 +1,159 @@
+{
+    "$schema": "../schemas/machine-profile.schema.json",
+    "name": "pocket2e",
+    "displayName": "Pocket2e",
+    "description": "Pocket2e system with 128KB RAM (64KB main + 64KB aux via bank switching), 80-column support, and full peripheral emulation",
+
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1020484
+    },
+
+    "addressSpace": 16,
+
+    "memory": {
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "fill": "0x00"
+            },
+            {
+                "name": "io-page",
+                "type": "composite",
+                "start": "0xC000",
+                "size": "0x1000",
+                "handler": "pocket2e-io"
+            }
+        ],
+
+        "swapGroups": [
+            {
+                "name": "language-card-d000",
+                "controller": "language-card-controller",
+                "virtualBase": "0xD000",
+                "size": "0x1000",
+                "comment": "Bank switching within 16-bit address space for $D000-$DFFF",
+                "variants": [
+                    {
+                        "name": "rom",
+                        "type": "rom",
+                        "sourceRef": "system-rom",
+                        "sourceOffset": "0x1000",
+                        "permissions": "rx"
+                    },
+                    {
+                        "name": "bank1",
+                        "type": "ram",
+                        "permissions": "rwx"
+                    },
+                    {
+                        "name": "bank2",
+                        "type": "ram",
+                        "permissions": "rwx"
+                    }
+                ],
+                "defaultVariant": "rom"
+            },
+            {
+                "name": "language-card-e000",
+                "controller": "language-card-controller",
+                "virtualBase": "0xE000",
+                "size": "0x2000",
+                "comment": "Bank switching within 16-bit address space for $E000-$FFFF",
+                "variants": [
+                    {
+                        "name": "rom",
+                        "type": "rom",
+                        "sourceRef": "system-rom",
+                        "sourceOffset": "0x2000",
+                        "permissions": "rx"
+                    },
+                    {
+                        "name": "ram",
+                        "type": "ram",
+                        "permissions": "rwx"
+                    }
+                ],
+                "defaultVariant": "rom"
+            }
+        ],
+
+        "controllers": [
+            {
+                "name": "aux-memory",
+                "type": "pocket2e-aux-controller",
+                "size": "0x10000",
+                "comment": "64KB auxiliary RAM, bank-switched into 16-bit address space via soft switches"
+            }
+        ]
+    },
+
+    "slots": {
+        "enabled": true,
+        "internalC3Rom": true,
+        "internalCxRom": false,
+        "cards": [
+            {
+                "slot": 4,
+                "type": "pocketwatch",
+                "config": {
+                    "timeSource": "host",
+                    "timezoneOffset": 0
+                }
+            },
+            {
+                "slot": 6,
+                "type": "disk-ii-compatible",
+                "config": {
+                    "drive1": null,
+                    "drive2": null
+                }
+            }
+        ]
+    },
+
+    "roms": [
+        {
+            "name": "system-rom",
+            "source": "library://roms/pocket2e-system.rom",
+            "size": "0x4000",
+            "required": true,
+            "on_verification_fail": "fallback"
+        },
+        {
+            "name": "video-rom",
+            "source": "library://roms/pocket2e-video.rom",
+            "size": "0x1000",
+            "required": true,
+            "on_verification_fail": "fallback"
+        }
+    ],
+
+    "devices": {
+        "keyboard": {
+            "preset": "enhanced",
+            "autoRepeat": true
+        },
+        "speaker": {
+            "enabled": true,
+            "sampleRate": 48000
+        },
+        "video": {
+            "preset": "enhanced",
+            "colorMode": "ntsc"
+        },
+        "gameIO": {
+            "enabled": true,
+            "joystickDeadzone": 0.1
+        }
+    },
+
+    "boot": {
+        "autoStart": true,
+        "startupSlot": 6
+    }
+}
