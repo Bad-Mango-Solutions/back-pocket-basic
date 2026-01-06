@@ -626,6 +626,63 @@ The interpreter requires:
 - **Serilog** (≥3.1.0)
 - **Autofac** (≥8.0.0)
 
+The emulator UI additionally requires:
+- **Avalonia** (≥11.0.0)
+- **CommunityToolkit.Mvvm** (≥8.0.0)
+
+---
+
+## Emulator Framework API
+
+For advanced emulator integration, the `BadMango.Emulator.*` namespace provides additional APIs:
+
+### CPU Access
+
+```csharp
+using BadMango.Emulator.Emulation.Cpu;
+using BadMango.Emulator.Core.Cpu;
+
+// Create a 65C02 CPU
+var cpu = new Cpu65C02();
+
+// Access registers
+cpu.Registers.A = 0x42;
+cpu.Registers.X = 0x10;
+cpu.Registers.PC = 0x0300;
+
+// Execute a single instruction
+cpu.Step(memory);
+```
+
+### Memory Bus
+
+```csharp
+using BadMango.Emulator.Bus;
+
+// Create a machine
+var builder = new MachineBuilder();
+var machine = builder.Build();
+
+// Access the bus
+var bus = machine.Bus;
+byte value = bus.Read(0x0300);
+bus.Write(0x0300, 0x42);
+```
+
+### Device Integration
+
+```csharp
+using BadMango.Emulator.Devices;
+
+// Access keyboard
+var keyboard = machine.GetDevice<KeyboardController>();
+keyboard.SetKeyDown(0xC1); // 'A' key
+
+// Access speaker
+var speaker = machine.GetDevice<SpeakerController>();
+speaker.Toggle();
+```
+
 ---
 
 ## Related Topics
@@ -633,6 +690,7 @@ The interpreter requires:
 - **[Architecture Overview](Architecture-Overview)** - Internal design
 - **[Development Setup](Development-Setup)** - Contributing
 - **[Language Reference](Language-Reference)** - BASIC commands
+- **[6502 Emulation](6502-Emulation)** - CPU and multi-CPU framework
 
 ## Support
 

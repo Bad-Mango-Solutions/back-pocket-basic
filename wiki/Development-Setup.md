@@ -190,24 +190,42 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 ```
 back-pocket-basic/
-├── .github/              # GitHub workflows and templates
+├── .github/                    # GitHub workflows and templates
 ├── src/
-│   ├── BadMango.Basic/
-│   │   ├── AST/          # Abstract Syntax Tree
-│   │   ├── Emulation/    # 6502 and hardware emulation
-│   │   ├── Execution/    # Interpreter
-│   │   ├── IO/           # I/O abstraction
-│   │   ├── Lexer/        # Tokenization
-│   │   ├── Parser/       # Parsing
-│   │   ├── Runtime/      # Runtime state
-│   │   └── Tokens/       # Token definitions
-│   └── BadMango.Basic.Console/  # CLI application
+│   ├── BadMango.Basic/         # Core BASIC interpreter
+│   │   ├── AST/                # Abstract Syntax Tree
+│   │   ├── Emulation/          # Legacy 6502 emulation
+│   │   ├── Execution/          # Interpreter
+│   │   ├── IO/                 # I/O abstraction
+│   │   ├── Lexer/              # Tokenization
+│   │   ├── Parser/             # Parsing
+│   │   ├── Runtime/            # Runtime state
+│   │   └── Tokens/             # Token definitions
+│   ├── BadMango.Basic.Console/ # CLI application
+│   │
+│   ├── BadMango.Emulator.Core/ # Core emulator abstractions
+│   │   ├── Cpu/                # CPU state and registers
+│   │   ├── Interfaces/         # Core interfaces
+│   │   └── Signaling/          # Interrupt handling
+│   ├── BadMango.Emulator.Emulation/ # CPU implementations
+│   │   └── Cpu/                # 65C02, 65816, 65832
+│   ├── BadMango.Emulator.Bus/  # System bus
+│   ├── BadMango.Emulator.Devices/ # Peripherals
+│   ├── BadMango.Emulator.Systems/ # System configs
+│   ├── BadMango.Emulator.Debug/ # Debugging
+│   ├── BadMango.Emulator.UI/   # Avalonia GUI
+│   └── ... (additional modules)
+│
 ├── tests/
-│   └── BadMango.Basic.Tests/    # Unit tests
-├── samples/              # Sample BASIC programs
-├── .editorconfig         # Code style configuration
-├── StyleCop.json         # StyleCop rules
-└── BackPocketBasic.slnx    # Solution file
+│   ├── BadMango.Basic.Tests/   # BASIC interpreter tests
+│   ├── BadMango.Emulator.Tests/ # Emulator tests
+│   └── ... (additional test projects)
+│
+├── samples/                    # Sample BASIC programs
+├── wiki/                       # GitHub Wiki documentation
+├── .editorconfig               # Code style configuration
+├── StyleCop.json               # StyleCop rules
+└── BackPocketBasic.slnx        # Solution file
 ```
 
 ## Development Workflow

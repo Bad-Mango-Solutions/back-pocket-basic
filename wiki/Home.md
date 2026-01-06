@@ -1,21 +1,32 @@
 # Welcome to the BackPocketBASIC Wiki
 
-A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
+A fully-featured Applesoft BASIC interpreter and Apple II emulator framework written in .NET, featuring multi-CPU emulation (65C02/65816/65832) and a modular architecture.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## What is Applesoft BASIC?
+## What is BackPocketBASIC?
 
-Applesoft BASIC was the dialect of the BASIC programming language supplied with the Apple II series of computers. This project is a modern implementation that runs on .NET, allowing you to run vintage Apple II BASIC programs on contemporary hardware.
+BackPocketBASIC is a comprehensive project with two main components:
+
+1. **Applesoft BASIC Interpreter** - A complete implementation of the BASIC programming language supplied with Apple II computers, allowing you to run vintage programs on modern hardware.
+
+2. **Apple II Emulator Framework** - A modular, extensible emulator supporting multiple CPU variants (65C02, 65816, 65832) with accurate peripheral emulation.
 
 ## Key Features
 
+### BASIC Interpreter
 - **Complete Language Support**: Full implementation of Applesoft BASIC commands and syntax
-- **6502 CPU Emulation**: Authentic emulation of the Apple II's 6502 processor
+- **Legacy 6502 Emulation**: Integrated 6502 CPU for PEEK, POKE, and CALL operations
 - **Memory Space Emulation**: 64KB emulated memory matching the Apple II memory map
-- **Cross-Platform**: Runs on Windows, macOS, and Linux via .NET 10.0
-- **Modern Tooling**: Built with contemporary development practices and testing
+- **Custom Extensions**: Modern additions like the SLEEP command
+
+### Emulator Framework
+- **Multi-CPU Architecture**: Unified codebase supporting 65C02, 65816 (planned), and 65832 (planned)
+- **Modular Design**: Separate projects for CPU, bus, devices, and systems
+- **Peripheral Support**: Keyboard, speaker, video modes, clock cards
+- **Cross-Platform UI**: Avalonia-based GUI for machine management
+- **Extensible**: Easy to add new devices and system configurations
 
 ## Getting Started
 
@@ -38,7 +49,7 @@ New to this project? Start here:
 For developers and those interested in the internals:
 
 - **[Architecture Overview](Architecture-Overview)** - Project structure and components
-- **[6502 Emulation](6502-Emulation)** - CPU emulation details
+- **[6502 Emulation](6502-Emulation)** - CPU emulation details and multi-CPU architecture
 - **[Memory Map](Memory-Map)** - Detailed memory layout ($0000-$FFFF)
 - **[API Reference](API-Reference)** - Integrating the interpreter library
 
@@ -50,6 +61,18 @@ Want to contribute? We'd love your help!
 - **[Testing Guide](Testing-Guide)** - Running and writing tests
 - **[Code Style](Code-Style)** - Coding standards and guidelines
 
+## Project Modules
+
+| Module | Description |
+|--------|-------------|
+| `BadMango.Basic` | Applesoft BASIC interpreter with integrated 6502 |
+| `BadMango.Basic.Console` | Command-line interface (bpbasic) |
+| `BadMango.Emulator.Core` | CPU abstractions and interfaces |
+| `BadMango.Emulator.Emulation` | 65C02/65816/65832 implementations |
+| `BadMango.Emulator.Bus` | System bus and memory management |
+| `BadMango.Emulator.Devices` | Peripheral device implementations |
+| `BadMango.Emulator.UI` | Avalonia-based graphical interface |
+
 ## Resources
 
 - **[GitHub Repository](https://github.com/Bad-Mango-Solutions/back-pocket-basic)**
@@ -58,6 +81,6 @@ Want to contribute? We'd love your help!
 
 ## About
 
-This project is an educational endeavor to preserve and modernize Applesoft BASIC. Apple II and Applesoft BASIC are trademarks of Apple Inc. This project is not affiliated with Apple Inc.
+This project is an educational endeavor to preserve and modernize Applesoft BASIC and Apple II emulation. Apple II and Applesoft BASIC are trademarks of Apple Inc. This project is not affiliated with Apple Inc.
 
 **License**: MIT License - see the [LICENSE](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/LICENSE) file for details.
