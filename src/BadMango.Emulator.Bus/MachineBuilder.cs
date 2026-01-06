@@ -33,6 +33,11 @@ using Interfaces;
 /// <item><description>Create machine</description></item>
 /// <item><description>Initialize devices with event context</description></item>
 /// </list>
+/// <para>
+/// Use <see cref="Create(ProfilePathResolver?, Func{IEventContext, ICpu}?)"/> to create
+/// a pre-configured builder instance with system services, or use the default constructor
+/// for manual configuration.
+/// </para>
 /// </remarks>
 public sealed class MachineBuilder
 {
@@ -57,10 +62,63 @@ public sealed class MachineBuilder
     private ProfilePathResolver? profilePathResolver;
 
     /// <summary>
+    /// Creates a new <see cref="MachineBuilder"/> instance with pre-configured system services.
+    /// </summary>
+    /// <param name="pathResolver">
+    /// The path resolver for loading ROM files and other resources. If <see langword="null"/>,
+    /// a default resolver with no library root is used.
+    /// </param>
+    /// <param name="defaultCpuFactory">
+    /// The default CPU factory to use when no specific factory is configured. If <see langword="null"/>,
+    /// a CPU factory must be provided via <see cref="WithCpuFactory"/> or through system-specific
+    /// extension methods like <c>AsPocket2e()</c>.
+    /// </param>
+    /// <returns>A pre-configured <see cref="MachineBuilder"/> instance.</returns>
+    /// <remarks>
+    /// <para>
+    /// This factory method is the preferred way to create a <see cref="MachineBuilder"/> when
+    /// integrating with a dependency injection container. It allows system services to be
+    /// injected once at startup rather than passed to each method call.
+    /// </para>
+    /// <para>
+    /// Example usage with Autofac:
+    /// </para>
+    /// <code>
+    /// // In DI registration
+    /// builder.Register(ctx =&gt;
+    /// {
+    ///     var pathResolver = ctx.Resolve&lt;ProfilePathResolver&gt;();
+    ///     var cpuFactory = ctx.Resolve&lt;Func&lt;IEventContext, ICpu&gt;&gt;();
+    ///     return MachineBuilder.Create(pathResolver, cpuFactory);
+    /// }).AsSelf();
+    ///
+    /// // Usage
+    /// var machine = machineBuilder
+    ///     .FromProfile(profile)
+    ///     .Build();
+    /// </code>
+    /// </remarks>
+    public static MachineBuilder Create(
+        ProfilePathResolver? pathResolver = null,
+        Func<IEventContext, ICpu>? defaultCpuFactory = null)
+    {
+        var builder = new MachineBuilder
+        {
+            profilePathResolver = pathResolver ?? new ProfilePathResolver(null),
+            cpuFactory = defaultCpuFactory,
+        };
+
+        return builder;
+    }
+
+    /// <summary>
     /// Configures the builder from a machine profile.
     /// </summary>
     /// <param name="profile">The machine profile to use for configuration.</param>
-    /// <param name="pathResolver">Optional path resolver for loading ROM files. If null, a default resolver is used.</param>
+    /// <param name="pathResolver">
+    /// Optional path resolver for loading ROM files. If <see langword="null"/>, uses the resolver
+    /// provided to <see cref="Create"/>, or creates a default resolver with no library root.
+    /// </param>
     /// <returns>This builder instance for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="profile"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
@@ -79,12 +137,23 @@ public sealed class MachineBuilder
     /// The profile must use the regions-based memory configuration format. Legacy
     /// profiles using 'size' and 'type' properties are not supported.
     /// </para>
+    /// <para>
+    /// When using the builder created via <see cref="Create"/>, you typically don't need
+    /// to pass a path resolver to this method:
+    /// </para>
+    /// <code>
+    /// var machine = MachineBuilder.Create(pathResolver, cpuFactory)
+    ///     .FromProfile(profile)  // Uses pre-configured resolver
+    ///     .Build();
+    /// </code>
     /// </remarks>
     public MachineBuilder FromProfile(MachineProfile profile, ProfilePathResolver? pathResolver = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        profilePathResolver = pathResolver ?? new ProfilePathResolver(null);
+        // Use provided resolver, or fall back to pre-configured resolver, or create default
+        var effectiveResolver = pathResolver ?? profilePathResolver ?? new ProfilePathResolver(null);
+        profilePathResolver = effectiveResolver;
 
         // Configure address space
         addressSpaceBits = profile.AddressSpace;
@@ -109,7 +178,7 @@ public sealed class MachineBuilder
 
         foreach (var region in memoryConfig.Regions!)
         {
-            ConfigureRegion(region, profilePathResolver);
+            ConfigureRegion(region, effectiveResolver);
         }
 
         return this;
