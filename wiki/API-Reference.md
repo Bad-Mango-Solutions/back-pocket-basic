@@ -675,11 +675,11 @@ bus.Write(0x0300, 0x42);
 using BadMango.Emulator.Devices;
 
 // Access keyboard
-var keyboard = machine.GetDevice<KeyboardController>();
+var keyboard = machine.GetComponent<KeyboardController>();
 keyboard.SetKeyDown(0xC1); // 'A' key
 
 // Access speaker
-var speaker = machine.GetDevice<SpeakerController>();
+var speaker = machine.GetComponent<SpeakerController>();
 speaker.Toggle();
 ```
 
