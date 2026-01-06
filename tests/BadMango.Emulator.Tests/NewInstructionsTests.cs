@@ -5,16 +5,16 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
-using Core.Interfaces;
+using TestHelpers;
 
 using Emulation.Cpu;
-using Emulation.Memory;
+
 
 /// <summary>
 /// Comprehensive unit tests for newly implemented 65C02 instructions.
 /// </summary>
 [TestFixture]
-public class NewInstructionsTests
+public class NewInstructionsTests : CpuTestBase
 {
     private const ProcessorStatusFlags FlagC = ProcessorStatusFlags.C;
     private const ProcessorStatusFlags FlagZ = ProcessorStatusFlags.Z;
@@ -23,8 +23,8 @@ public class NewInstructionsTests
     private const ProcessorStatusFlags FlagV = ProcessorStatusFlags.V;
     private const ProcessorStatusFlags FlagN = ProcessorStatusFlags.N;
 
-    private IMemory memory = null!;
-    private Cpu65C02 cpu = null!;
+    
+    
 
     /// <summary>
     /// Sets up test environment.
@@ -32,8 +32,8 @@ public class NewInstructionsTests
     [SetUp]
     public void Setup()
     {
-        memory = new BasicMemory();
-        cpu = new Cpu65C02(memory);
+        
+        
     }
 
     #region Register Transfer Tests
@@ -49,12 +49,12 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TAX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x42));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
-        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
+        Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x42));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear");
+        Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "Negative flag should be clear");
     }
 
     /// <summary>
@@ -68,11 +68,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TAY(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Cpu.Registers.Y.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -86,11 +86,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TXA(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x80));
-        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x80));
+        Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set");
     }
 
     /// <summary>
@@ -104,10 +104,10 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TYA(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
     }
 
     /// <summary>
@@ -121,11 +121,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TXS(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xAB));
-        Assert.That(cpu.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be affected");
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xAB));
+        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagZ | FlagN), "Flags should not be affected");
     }
 
     /// <summary>
@@ -139,11 +139,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.TSX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     #endregion
@@ -161,11 +161,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHA(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
-        Assert.That(memory.Read(0x01FF), Is.EqualTo(0x42));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
+        Assert.That(Read(0x01FF), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -175,16 +175,16 @@ public class NewInstructionsTests
     public void PLA_PullsAccumulatorFromStack()
     {
         // Arrange
-        memory.Write(0x01FF, 0x42);
+        Write(0x01FF, 0x42);
         SetupCpu(pc: 0x1000, a: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLA(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -198,11 +198,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHP(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
-        Assert.That(memory.Read(0x01FF), Is.EqualTo((byte)(FlagC | FlagZ | ProcessorStatusFlags.B))); // B flag should be set
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
+        Assert.That(Read(0x01FF), Is.EqualTo((byte)(FlagC | FlagZ | ProcessorStatusFlags.B))); // B flag should be set
     }
 
     /// <summary>
@@ -212,16 +212,16 @@ public class NewInstructionsTests
     public void PLP_PullsProcessorStatusFromStack()
     {
         // Arrange
-        memory.Write(0x01FF, (byte)(FlagC | FlagN));
+        Write(0x01FF, (byte)(FlagC | FlagN));
         SetupCpu(pc: 0x1000, a: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLP(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(cpu.Registers.P, Is.EqualTo(FlagC | FlagN));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagN));
     }
 
     #endregion
@@ -235,16 +235,16 @@ public class NewInstructionsTests
     public void CMP_SetsCarryWhenAGreaterOrEqual()
     {
         // Arrange
-        memory.Write(0x1000, 0x42);
+        Write(0x1000, 0x42);
         SetupCpu(pc: 0x1000, a: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     /// <summary>
@@ -254,16 +254,16 @@ public class NewInstructionsTests
     public void CMP_ClearsCarryWhenALessThan()
     {
         // Arrange
-        memory.Write(0x1000, 0x50);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, a: 0x42, p: FlagC, cycles: 10);
 
         // Act
         var handler = Instructions.CMP(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
-        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative should be set");
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative should be set");
     }
 
     /// <summary>
@@ -273,15 +273,15 @@ public class NewInstructionsTests
     public void CPX_ComparesXRegister()
     {
         // Arrange
-        memory.Write(0x1000, 0x20);
+        Write(0x1000, 0x20);
         SetupCpu(pc: 0x1000, x: 0x30, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.CPX(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
     }
 
     /// <summary>
@@ -291,16 +291,16 @@ public class NewInstructionsTests
     public void CPY_ComparesYRegister()
     {
         // Arrange
-        memory.Write(0x1000, 0x40);
+        Write(0x1000, 0x40);
         SetupCpu(pc: 0x1000, y: 0x40, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.CPY(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     #endregion
@@ -314,15 +314,15 @@ public class NewInstructionsTests
     public void BCC_BranchesWhenCarryClear()
     {
         // Arrange
-        memory.Write(0x1000, 0x10); // Offset +16
+        Write(0x1000, 0x10); // Offset +16
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1011)); // 0x1001 + 0x10
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1011)); // 0x1001 + 0x10
     }
 
     /// <summary>
@@ -332,16 +332,16 @@ public class NewInstructionsTests
     public void BCC_DoesNotBranchWhenCarrySet()
     {
         // Arrange
-        memory.Write(0x1000, 0x10);
+        Write(0x1000, 0x10);
         SetupCpu(pc: 0x1000, p: FlagC, cycles: 10);
-        ushort originalPC = cpu.Registers.PC.GetWord();
+        ushort originalPC = Cpu.Registers.PC.GetWord();
 
         // Act
         var handler = Instructions.BCC(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert - PC should only advance by the addressing mode (1 byte for relative)
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo((ushort)(originalPC + 1)));
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo((ushort)(originalPC + 1)));
     }
 
     /// <summary>
@@ -351,15 +351,15 @@ public class NewInstructionsTests
     public void BEQ_BranchesWhenZeroSet()
     {
         // Arrange
-        memory.Write(0x1000, 0x05);
+        Write(0x1000, 0x05);
         SetupCpu(pc: 0x1000, p: FlagZ, cycles: 10);
 
         // Act
         var handler = Instructions.BEQ(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1006)); // 0x1001 + 0x05
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1006)); // 0x1001 + 0x05
     }
 
     /// <summary>
@@ -369,15 +369,15 @@ public class NewInstructionsTests
     public void BNE_BranchesWhenZeroClear()
     {
         // Arrange
-        memory.Write(0x1000, 0xFE); // -2 in signed byte
+        Write(0x1000, 0xFE); // -2 in signed byte
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BNE(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x0FFF)); // 0x1001 + (-2)
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x0FFF)); // 0x1001 + (-2)
     }
 
     /// <summary>
@@ -387,15 +387,15 @@ public class NewInstructionsTests
     public void BRA_AlwaysBranches()
     {
         // Arrange
-        memory.Write(0x1000, 0x20); // Offset +32
+        Write(0x1000, 0x20); // Offset +32
         SetupCpu(pc: 0x1000, p: (ProcessorStatusFlags)0xFF, cycles: 10); // All flags set
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1021)); // 0x1001 + 0x20
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1021)); // 0x1001 + 0x20
     }
 
     /// <summary>
@@ -405,15 +405,15 @@ public class NewInstructionsTests
     public void BRA_BranchesBackward()
     {
         // Arrange
-        memory.Write(0x1000, 0xF0); // -16 in signed byte
+        Write(0x1000, 0xF0); // -16 in signed byte
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BRA(AddressingModes.Relative);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x0FF1)); // 0x1001 + (-16)
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x0FF1)); // 0x1001 + (-16)
     }
 
     #endregion
@@ -427,15 +427,15 @@ public class NewInstructionsTests
     public void ADC_AddsWithCarryBinaryMode()
     {
         // Arrange
-        memory.Write(0x1000, 0x42);
+        Write(0x1000, 0x42);
         SetupCpu(pc: 0x1000, a: 0x10, p: FlagC, cycles: 10);
 
         // Act
         var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x53)); // 0x10 + 0x42 + 1
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x53)); // 0x10 + 0x42 + 1
     }
 
     /// <summary>
@@ -445,16 +445,16 @@ public class NewInstructionsTests
     public void ADC_SetsOverflowFlag()
     {
         // Arrange
-        memory.Write(0x1000, 0x7F);
+        Write(0x1000, 0x7F);
         SetupCpu(pc: 0x1000, a: 0x01, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.ADC(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x80));
-        Assert.That(cpu.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow should be set");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x80));
+        Assert.That(Cpu.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow should be set");
     }
 
     /// <summary>
@@ -464,15 +464,15 @@ public class NewInstructionsTests
     public void SBC_SubtractsWithBorrowBinaryMode()
     {
         // Arrange
-        memory.Write(0x1000, 0x10);
+        Write(0x1000, 0x10);
         SetupCpu(pc: 0x1000, a: 0x50, p: FlagC, cycles: 10);
 
         // Act
         var handler = Instructions.SBC(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x40)); // 0x50 - 0x10 - 0
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x40)); // 0x50 - 0x10 - 0
     }
 
     /// <summary>
@@ -486,10 +486,10 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.INX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x43));
+        Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x43));
     }
 
     /// <summary>
@@ -503,11 +503,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.INY(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Cpu.Registers.Y.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -521,11 +521,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.DEX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -535,16 +535,16 @@ public class NewInstructionsTests
     public void INC_IncrementsMemory()
     {
         // Arrange
-        memory.Write(0x50, 0x42);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0x42);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.INC(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x43));
+        Assert.That(Read(0x50), Is.EqualTo(0x43));
     }
 
     /// <summary>
@@ -554,17 +554,17 @@ public class NewInstructionsTests
     public void DEC_DecrementsMemory()
     {
         // Arrange
-        memory.Write(0x50, 0x01);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0x01);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.DEC(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Read(0x50), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     #endregion
@@ -578,15 +578,15 @@ public class NewInstructionsTests
     public void AND_PerformsLogicalAND()
     {
         // Arrange
-        memory.Write(0x1000, 0x0F);
+        Write(0x1000, 0x0F);
         SetupCpu(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.AND(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x0F));
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x0F));
     }
 
     /// <summary>
@@ -596,15 +596,15 @@ public class NewInstructionsTests
     public void ORA_PerformsLogicalOR()
     {
         // Arrange
-        memory.Write(0x1000, 0x0F);
+        Write(0x1000, 0x0F);
         SetupCpu(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.ORA(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0xFF));
     }
 
     /// <summary>
@@ -614,16 +614,16 @@ public class NewInstructionsTests
     public void EOR_PerformsExclusiveOR()
     {
         // Arrange
-        memory.Write(0x1000, 0xFF);
+        Write(0x1000, 0xFF);
         SetupCpu(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.EOR(AddressingModes.Immediate);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set");
     }
 
     /// <summary>
@@ -633,18 +633,18 @@ public class NewInstructionsTests
     public void BIT_TestsBitsAndSetsFlags()
     {
         // Arrange
-        memory.Write(0x50, 0xC0); // Bits 7 and 6 set
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0xC0); // Bits 7 and 6 set
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, a: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.BIT(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set from bit 7");
-        Assert.That(cpu.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow flag should be set from bit 6");
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator & M != 0)");
+        Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo(FlagN), "Negative flag should be set from bit 7");
+        Assert.That(Cpu.Registers.P & FlagV, Is.EqualTo(FlagV), "Overflow flag should be set from bit 6");
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator & M != 0)");
     }
 
     #endregion
@@ -662,11 +662,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x84));
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x84));
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -680,12 +680,12 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ASLa(AddressingModes.Accumulator);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "Carry should be set");
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero should be set");
     }
 
     /// <summary>
@@ -699,11 +699,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.LSRa(AddressingModes.Accumulator);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x21));
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x21));
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -717,11 +717,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.ROLa(AddressingModes.Accumulator);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x85)); // 0x42 << 1 | 1
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x85)); // 0x42 << 1 | 1
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     /// <summary>
@@ -735,11 +735,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.RORa(AddressingModes.Accumulator);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xA1)); // 0x80 | (0x42 >> 1)
-        Assert.That(cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
+        Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0xA1)); // 0x80 | (0x42 >> 1)
+        Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "Carry should be clear");
     }
 
     #endregion
@@ -753,15 +753,15 @@ public class NewInstructionsTests
     public void JMP_JumpsToAbsoluteAddress()
     {
         // Arrange
-        memory.WriteWord(0x1000, 0x2000);
+        WriteWord(0x1000, 0x2000);
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.JMP(AddressingModes.Absolute);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
     }
 
     /// <summary>
@@ -771,17 +771,17 @@ public class NewInstructionsTests
     public void JSR_PushesReturnAddressAndJumps()
     {
         // Arrange
-        memory.WriteWord(0x1000, 0x2000);
+        WriteWord(0x1000, 0x2000);
         SetupCpu(pc: 0x1000, sp: 0xFF, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.JSR(AddressingModes.Absolute);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFD));
-        ushort returnAddr = (ushort)((memory.Read(0x01FF) << 8) | memory.Read(0x01FE));
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFD));
+        ushort returnAddr = (ushort)((Read(0x01FF) << 8) | Read(0x01FE));
         Assert.That(returnAddr, Is.EqualTo(0x1001)); // PC - 1 after reading operand
     }
 
@@ -792,17 +792,17 @@ public class NewInstructionsTests
     public void RTS_PullsReturnAddressAndReturns()
     {
         // Arrange
-        memory.Write(0x01FE, 0x00);
-        memory.Write(0x01FF, 0x20);
+        Write(0x01FE, 0x00);
+        Write(0x01FF, 0x20);
         SetupCpu(pc: 0x1000, sp: 0xFD, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.RTS(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2001)); // Return address + 1
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2001)); // Return address + 1
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
     }
 
     /// <summary>
@@ -812,19 +812,19 @@ public class NewInstructionsTests
     public void RTI_PullsStatusAndReturnAddress()
     {
         // Arrange
-        memory.Write(0x01FD, (byte)(FlagC | FlagZ));
-        memory.Write(0x01FE, 0x00);
-        memory.Write(0x01FF, 0x20);
+        Write(0x01FD, (byte)(FlagC | FlagZ));
+        Write(0x01FE, 0x00);
+        Write(0x01FF, 0x20);
         SetupCpu(pc: 0x1000, sp: 0xFC, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.RTI(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(cpu.Registers.P, Is.EqualTo(FlagC | FlagZ));
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagZ));
     }
 
     #endregion
@@ -838,15 +838,15 @@ public class NewInstructionsTests
     public void STX_StoresXRegisterToMemory()
     {
         // Arrange
-        memory.Write(0x1000, 0x50);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, x: 0x42, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STX(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x42));
+        Assert.That(Read(0x50), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -856,15 +856,15 @@ public class NewInstructionsTests
     public void STY_StoresYRegisterToMemory()
     {
         // Arrange
-        memory.Write(0x1000, 0x50);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, y: 0x55, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STY(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x55));
+        Assert.That(Read(0x50), Is.EqualTo(0x55));
     }
 
     #endregion
@@ -878,16 +878,16 @@ public class NewInstructionsTests
     public void STZ_StoresZeroToMemory()
     {
         // Arrange
-        memory.Write(0x50, 0xFF);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0xFF);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.STZ(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x00));
+        Assert.That(Read(0x50), Is.EqualTo(0x00));
     }
 
     /// <summary>
@@ -901,11 +901,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
-        Assert.That(memory.Read(0x01FF), Is.EqualTo(0x42));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
+        Assert.That(Read(0x01FF), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -915,16 +915,16 @@ public class NewInstructionsTests
     public void PLX_PullsXRegisterFromStack()
     {
         // Arrange
-        memory.Write(0x01FF, 0x42);
+        Write(0x01FF, 0x42);
         SetupCpu(pc: 0x1000, x: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLX(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x42));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x42));
     }
 
     /// <summary>
@@ -938,11 +938,11 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.PHY(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
-        Assert.That(memory.Read(0x01FF), Is.EqualTo(0x55));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
+        Assert.That(Read(0x01FF), Is.EqualTo(0x55));
     }
 
     /// <summary>
@@ -952,16 +952,16 @@ public class NewInstructionsTests
     public void PLY_PullsYRegisterFromStack()
     {
         // Arrange
-        memory.Write(0x01FF, 0x55);
+        Write(0x01FF, 0x55);
         SetupCpu(pc: 0x1000, y: 0x00, sp: 0xFE, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.PLY(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(cpu.Registers.Y.GetByte(), Is.EqualTo(0x55));
+        Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
+        Assert.That(Cpu.Registers.Y.GetByte(), Is.EqualTo(0x55));
     }
 
     /// <summary>
@@ -971,17 +971,17 @@ public class NewInstructionsTests
     public void TSB_TestsAndSetsBits()
     {
         // Arrange
-        memory.Write(0x50, 0x0F);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0x0F);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0x0F OR 0xF0
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set (RegisterAccumulator AND M was 0)");
+        Assert.That(Read(0x50), Is.EqualTo(0xFF)); // 0x0F OR 0xF0
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Zero flag should be set (RegisterAccumulator AND M was 0)");
     }
 
     /// <summary>
@@ -991,17 +991,17 @@ public class NewInstructionsTests
     public void TSB_ClearsZeroFlagWhenBitsMatch()
     {
         // Arrange
-        memory.Write(0x50, 0xFF);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0xFF);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, a: 0x80, p: FlagZ, cycles: 10);
 
         // Act
         var handler = Instructions.TSB(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0xFF)); // 0xFF OR 0x80 = 0xFF
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
+        Assert.That(Read(0x50), Is.EqualTo(0xFF)); // 0xFF OR 0x80 = 0xFF
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
     }
 
     /// <summary>
@@ -1011,17 +1011,17 @@ public class NewInstructionsTests
     public void TRB_TestsAndResetsBits()
     {
         // Arrange
-        memory.Write(0x50, 0xFF);
-        memory.Write(0x1000, 0x50);
+        Write(0x50, 0xFF);
+        Write(0x1000, 0x50);
         SetupCpu(pc: 0x1000, a: 0xF0, p: 0, cycles: 10);
 
         // Act
         var handler = Instructions.TRB(AddressingModes.ZeroPage);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(memory.Read(0x50), Is.EqualTo(0x0F)); // 0xFF AND (NOT 0xF0)
-        Assert.That(cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
+        Assert.That(Read(0x50), Is.EqualTo(0x0F)); // 0xFF AND (NOT 0xF0)
+        Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Zero flag should be clear (RegisterAccumulator AND M != 0)");
     }
 
     /// <summary>
@@ -1035,10 +1035,10 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.WAI(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "Processor should be halted");
+        Assert.That(Cpu.Halted, Is.True, "Processor should be halted");
     }
 
     /// <summary>
@@ -1052,10 +1052,10 @@ public class NewInstructionsTests
 
         // Act
         var handler = Instructions.STP(AddressingModes.Implied);
-        handler(cpu);
+        handler(Cpu);
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "Processor should be halted");
+        Assert.That(Cpu.Halted, Is.True, "Processor should be halted");
     }
 
     #endregion
@@ -1073,13 +1073,13 @@ public class NewInstructionsTests
         ulong cycles = 0,
         bool compat = true)
     {
-        cpu.Registers.Reset(compat);
-        cpu.Registers.PC.SetWord(pc);
-        cpu.Registers.A.SetByte(a);
-        cpu.Registers.X.SetByte(x);
-        cpu.Registers.Y.SetByte(y);
-        cpu.Registers.SP.SetByte(sp);
-        cpu.Registers.P = p;
-        cpu.SetCycles(cycles);
+        Cpu.Registers.Reset(compat);
+        Cpu.Registers.PC.SetWord(pc);
+        Cpu.Registers.A.SetByte(a);
+        Cpu.Registers.X.SetByte(x);
+        Cpu.Registers.Y.SetByte(y);
+        Cpu.Registers.SP.SetByte(sp);
+        Cpu.Registers.P = p;
+        Cpu.SetCycles(cycles);
     }
 }

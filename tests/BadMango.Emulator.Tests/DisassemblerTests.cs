@@ -8,19 +8,19 @@ using Bus.Interfaces;
 
 using Core;
 using Core.Cpu;
-using Core.Interfaces;
+using TestHelpers;
 
 using Emulation.Cpu;
 using Emulation.Debugging;
-using Emulation.Memory;
+
 
 /// <summary>
 /// Unit tests for the disassembler helper functionality.
 /// </summary>
 [TestFixture]
-public class DisassemblerTests
+public class DisassemblerTests : CpuTestBase
 {
-    private IMemory memory = null!;
+    
     private OpcodeTable opcodeTable = null!;
     private Disassembler disassembler = null!;
 
@@ -30,9 +30,9 @@ public class DisassemblerTests
     [SetUp]
     public void Setup()
     {
-        memory = new BasicMemory();
+        
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        disassembler = new Disassembler(opcodeTable, memory);
+        disassembler = new Disassembler(opcodeTable, Bus);
     }
 
     #region OpcodeInfo Tests
@@ -447,8 +447,8 @@ public class DisassemblerTests
     public void Disassembler_DisassembleInstruction_DecodesCorrectly()
     {
         // Arrange
-        memory.Write(0x1000, 0xA9); // LDA #
-        memory.Write(0x1001, 0x42); // $42
+        Write(0x1000, 0xA9); // LDA #
+        Write(0x1001, 0x42); // $42
 
         // Act
         var instruction = disassembler.DisassembleInstruction(0x1000);
@@ -472,15 +472,15 @@ public class DisassemblerTests
     public void Disassembler_Disassemble_DecodesMultipleInstructions()
     {
         // Arrange - Write a simple program
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
 
-        memory.Write(0x1002, 0x8D); // STA $0200
-        memory.Write(0x1003, 0x00);
-        memory.Write(0x1004, 0x02);
+        Write(0x1002, 0x8D); // STA $0200
+        Write(0x1003, 0x00);
+        Write(0x1004, 0x02);
 
-        memory.Write(0x1005, 0xA2); // LDX #$10
-        memory.Write(0x1006, 0x10);
+        Write(0x1005, 0xA2); // LDX #$10
+        Write(0x1006, 0x10);
 
         // Act
         var instructions = disassembler.Disassemble(0x1000, 7);
@@ -505,11 +505,11 @@ public class DisassemblerTests
     public void Disassembler_DisassembleInstructions_ReturnsExactCount()
     {
         // Arrange
-        memory.Write(0x1000, 0xEA); // NOP
-        memory.Write(0x1001, 0xEA); // NOP
-        memory.Write(0x1002, 0xEA); // NOP
-        memory.Write(0x1003, 0xEA); // NOP
-        memory.Write(0x1004, 0xEA); // NOP
+        Write(0x1000, 0xEA); // NOP
+        Write(0x1001, 0xEA); // NOP
+        Write(0x1002, 0xEA); // NOP
+        Write(0x1003, 0xEA); // NOP
+        Write(0x1004, 0xEA); // NOP
 
         // Act
         var instructions = disassembler.DisassembleInstructions(0x1000, 3);
@@ -525,9 +525,9 @@ public class DisassemblerTests
     public void Disassembler_DisassembleRange_HandlesRangeCorrectly()
     {
         // Arrange
-        memory.Write(0x1000, 0xA9); // LDA #
-        memory.Write(0x1001, 0x42);
-        memory.Write(0x1002, 0xEA); // NOP
+        Write(0x1000, 0xA9); // LDA #
+        Write(0x1001, 0x42);
+        Write(0x1002, 0xEA); // NOP
 
         // Act
         var instructions = disassembler.DisassembleRange(0x1000, 0x1003);
@@ -543,7 +543,7 @@ public class DisassemblerTests
     public void Disassembler_ImpliedModeInstruction_HasNoOperands()
     {
         // Arrange
-        memory.Write(0x1000, 0x18); // CLC
+        Write(0x1000, 0x18); // CLC
 
         // Act
         var instruction = disassembler.DisassembleInstruction(0x1000);
@@ -565,7 +565,7 @@ public class DisassemblerTests
     public void Disassembler_IllegalOpcode_HasNoneInstruction()
     {
         // Arrange
-        memory.Write(0x1000, 0x02); // Illegal opcode
+        Write(0x1000, 0x02); // Illegal opcode
 
         // Act
         var instruction = disassembler.DisassembleInstruction(0x1000);
@@ -584,13 +584,13 @@ public class DisassemblerTests
         // $1000: A9 42    LDA #$42
         // $1002: 8D 00 02 STA $0200
         // $1005: A2 10    LDX #$10
-        memory.Write(0x1000, 0xA9);
-        memory.Write(0x1001, 0x42);
-        memory.Write(0x1002, 0x8D);
-        memory.Write(0x1003, 0x00);
-        memory.Write(0x1004, 0x02);
-        memory.Write(0x1005, 0xA2);
-        memory.Write(0x1006, 0x10);
+        Write(0x1000, 0xA9);
+        Write(0x1001, 0x42);
+        Write(0x1002, 0x8D);
+        Write(0x1003, 0x00);
+        Write(0x1004, 0x02);
+        Write(0x1005, 0xA2);
+        Write(0x1006, 0x10);
 
         // Act
         var instructions = disassembler.Disassemble(0x1000, 7);
@@ -617,7 +617,7 @@ public class DisassemblerTests
     public void Disassembler_NullOpcodeTable_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new Disassembler((OpcodeTable)null!, memory));
+        Assert.Throws<ArgumentNullException>(() => new Disassembler((OpcodeTable)null!, Bus));
     }
 
     /// <summary>

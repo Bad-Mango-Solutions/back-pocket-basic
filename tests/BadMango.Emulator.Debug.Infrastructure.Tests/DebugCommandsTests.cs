@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core.Configuration;
+using BadMango.Emulator.Core.Signaling;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 
@@ -21,7 +22,6 @@ public class DebugCommandsTests
 {
     private CommandDispatcher dispatcher = null!;
     private MainBus bus = null!;
-    private MemoryBusAdapter memoryAdapter = null!;
     private Cpu65C02 cpu = null!;
     private Disassembler disassembler = null!;
     private DebugContext debugContext = null!;
@@ -50,11 +50,11 @@ public class DebugCommandsTests
             target: target,
             physicalBase: 0);
 
-        // Create a MemoryBusAdapter for the CPU (backward compatibility)
-#pragma warning disable CS0618 // Type or member is obsolete
-        memoryAdapter = new MemoryBusAdapter(bus);
-        cpu = new Cpu65C02(memoryAdapter);
-#pragma warning restore CS0618 // Type or member is obsolete
+        // Create event context and CPU directly (no adapter needed)
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        var eventContext = new EventContext(scheduler, signalBus, bus);
+        cpu = new Cpu65C02(eventContext);
 
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         disassembler = new Disassembler(opcodeTable, bus);

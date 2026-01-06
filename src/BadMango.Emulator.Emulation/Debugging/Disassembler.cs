@@ -25,7 +25,7 @@ using Core.Interfaces;
 /// Example usage:
 /// <code>
 /// var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-/// var disassembler = new Disassembler(opcodeTable, memory);
+/// var disassembler = new Disassembler(opcodeTable, bus);
 /// var instructions = disassembler.Disassemble(0x1000, 16);
 /// foreach (var instr in instructions)
 /// {
@@ -61,43 +61,6 @@ public sealed class Disassembler : IDisassembler
         : this(opcodeInfoArray, CreateReadFunc(bus))
     {
     }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Disassembler"/> class using an <see cref="IMemory"/> interface.
-    /// </summary>
-    /// <param name="opcodeTable">The opcode table to use for disassembly.</param>
-    /// <param name="memory">The memory interface to read from.</param>
-    /// <exception cref="ArgumentNullException">Thrown when opcodeTable or memory is null.</exception>
-    /// <remarks>
-    /// This constructor is provided for backward compatibility. For new code, use the
-    /// constructor that accepts <see cref="IMemoryBus"/> directly.
-    /// </remarks>
-#pragma warning disable CS0618 // Type or member is obsolete
-    [Obsolete("Use the constructor that accepts IMemoryBus for new code.")]
-    public Disassembler(OpcodeTable opcodeTable, IMemory memory)
-        : this(BuildOpcodeInfoArray(opcodeTable), CreateReadFunc(memory))
-    {
-    }
-#pragma warning restore CS0618 // Type or member is obsolete
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Disassembler"/> class with a pre-built opcode info array.
-    /// </summary>
-    /// <param name="opcodeInfoArray">The pre-built opcode info array (256 elements).</param>
-    /// <param name="memory">The memory interface to read from.</param>
-    /// <exception cref="ArgumentNullException">Thrown when opcodeInfoArray or memory is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when opcodeInfoArray is not exactly 256 elements.</exception>
-    /// <remarks>
-    /// This constructor is provided for backward compatibility. For new code, use the
-    /// constructor that accepts <see cref="IMemoryBus"/> directly.
-    /// </remarks>
-#pragma warning disable CS0618 // Type or member is obsolete
-    [Obsolete("Use the constructor that accepts IMemoryBus for new code.")]
-    public Disassembler(OpcodeInfo[] opcodeInfoArray, IMemory memory)
-        : this(opcodeInfoArray, CreateReadFunc(memory))
-    {
-    }
-#pragma warning restore CS0618 // Type or member is obsolete
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Disassembler"/> class with a custom read function.
@@ -214,12 +177,4 @@ public sealed class Disassembler : IDisassembler
             return result.Ok ? result.Value : (byte)0xFF;
         };
     }
-
-#pragma warning disable CS0618 // Type or member is obsolete
-    private static Func<uint, byte> CreateReadFunc(IMemory memory)
-    {
-        ArgumentNullException.ThrowIfNull(memory);
-        return address => memory.Read(address);
-    }
-#pragma warning restore CS0618 // Type or member is obsolete
 }
