@@ -1,4 +1,4 @@
-﻿// <copyright file="MachineProfile.cs" company="Bad Mango Solutions">
+// <copyright file="MachineProfile.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,17 +10,33 @@ using System.Text.Json.Serialization;
 /// Defines a machine configuration profile for the emulator.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Machine profiles describe the hardware configuration of an emulated system,
-/// including CPU type, memory size, and other hardware characteristics.
-/// Profiles are loaded from JSON files and can be extended as the emulator evolves.
+/// including CPU type, memory layout, expansion slots, ROMs, devices, and boot options.
+/// Profiles are loaded from JSON files and support complex machines like the Pocket2e.
+/// </para>
+/// <para>
+/// For 6502/65C02 systems, the address space is 16 bits (64KB). Bank switching
+/// (Language Card, Auxiliary Memory) is achieved through soft switches that remap
+/// regions within that 64KB space—NOT through extended addressing.
+/// </para>
 /// </remarks>
 public sealed class MachineProfile
 {
     /// <summary>
+    /// Gets or sets the JSON schema reference.
+    /// </summary>
+    /// <remarks>
+    /// Example: "../schemas/machine-profile.schema.json".
+    /// </remarks>
+    [JsonPropertyName("$schema")]
+    public string? Schema { get; set; }
+
+    /// <summary>
     /// Gets or sets the unique identifier for this profile.
     /// </summary>
     /// <remarks>
-    /// Used as the key when referencing profiles (e.g., "simple-65c02", "apple2e").
+    /// Used as the key when referencing profiles (e.g., "simple-65c02", "pocket2e").
     /// Should be lowercase with hyphens, no spaces.
     /// </remarks>
     [JsonPropertyName("name")]
@@ -57,7 +73,9 @@ public sealed class MachineProfile
     /// <item><description>32 bits = 4GB (65832)</description></item>
     /// </list>
     /// <para>
-    /// Defaults to 16 bits (64KB) if not specified.
+    /// Defaults to 16 bits (64KB) if not specified. For 6502/65C02 systems,
+    /// this should always be 16. Bank switching is achieved via soft switches,
+    /// NOT extended addressing.
     /// </para>
     /// </remarks>
     [JsonPropertyName("addressSpace")]
@@ -69,6 +87,41 @@ public sealed class MachineProfile
     [JsonPropertyName("memory")]
     public required MemoryProfileSection Memory { get; set; }
 
-    // Additional hardware profile sections (for example, ROM, I/O, or display configuration)
-    // can be introduced here in future versions of the emulator.
+    /// <summary>
+    /// Gets or sets the expansion slot system configuration.
+    /// </summary>
+    /// <remarks>
+    /// Defines slot cards for slots 1-7 and slot ROM behavior options.
+    /// </remarks>
+    [JsonPropertyName("slots")]
+    public SlotSystemProfile? Slots { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ROM definitions.
+    /// </summary>
+    /// <remarks>
+    /// Named ROM definitions that can be referenced by memory regions and
+    /// swap variants using sourceRef. Supports hash verification and
+    /// fallback behavior.
+    /// </remarks>
+    [JsonPropertyName("roms")]
+    public List<RomProfile>? Roms { get; set; }
+
+    /// <summary>
+    /// Gets or sets the device configuration.
+    /// </summary>
+    /// <remarks>
+    /// Configures built-in motherboard devices: keyboard, speaker, video, game I/O.
+    /// </remarks>
+    [JsonPropertyName("devices")]
+    public DevicesProfile? Devices { get; set; }
+
+    /// <summary>
+    /// Gets or sets the boot configuration.
+    /// </summary>
+    /// <remarks>
+    /// Controls auto-start behavior and startup slot selection.
+    /// </remarks>
+    [JsonPropertyName("boot")]
+    public BootProfile? Boot { get; set; }
 }
