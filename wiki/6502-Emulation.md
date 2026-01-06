@@ -1,15 +1,20 @@
 # 6502 Emulation
 
-Details about the 6502 CPU emulation and Apple II hardware emulation.
+Details about the CPU emulation architecture and Apple II hardware emulation.
 
 ## Overview
 
-BackPocketBASIC includes a full 6502 CPU emulator and Apple II memory space emulation. This allows authentic execution of `PEEK`, `POKE`, and `CALL` commands as they would work on a real Apple II.
+BackPocketBASIC includes two levels of CPU emulation:
+
+1. **Legacy Emulation** (`BadMango.Basic.Emulation`) - A focused 6502 implementation integrated with the BASIC interpreter for `PEEK`, `POKE`, and `CALL` operations.
+
+2. **Advanced Emulator Framework** (`BadMango.Emulator.*`) - A comprehensive, modular emulator supporting multiple CPU variants (65C02, 65816, 65832) with accurate peripheral emulation.
 
 ## Table of Contents
 
 - [Why Emulate the 6502?](#why-emulate-the-6502)
 - [CPU Architecture](#cpu-architecture)
+- [Multi-CPU Framework](#multi-cpu-framework)
 - [Instruction Set](#instruction-set)
 - [Memory System](#memory-system)
 - [Hardware Emulation](#hardware-emulation)
@@ -250,6 +255,100 @@ handlers[0xBD] = Instructions.LDA(AddressingModes.AbsoluteX);
 - Absolute, AbsoluteX, AbsoluteY
 - IndirectX, IndirectY
 - AbsoluteXWrite, AbsoluteYWrite, IndirectYWrite (for store instructions)
+
+---
+
+## Multi-CPU Framework
+
+The advanced emulator framework (`BadMango.Emulator.*`) provides a unified architecture supporting multiple CPU variants.
+
+### Supported CPU Variants
+
+| CPU | Status | Description |
+|-----|--------|-------------|
+| **65C02** | ✅ Implemented | WDC 65C02 with all addressing modes |
+| **65816** | 🔨 Stub | Apple IIgs 16-bit CPU (placeholder) |
+| **65832** | 🔨 Stub | Hypothetical 32-bit extension (placeholder) |
+
+### Architecture
+
+The multi-CPU framework uses several design patterns:
+
+**Compositional Instructions:**
+```csharp
+// Instructions are higher-order functions that accept addressing mode delegates
+public static OpcodeHandler LDA(AddressingModeHandler addressingMode)
+{
+    return (ref Registers regs, IMemory memory) =>
+    {
+        ushort address = addressingMode(ref regs, memory);
+        regs.A = memory.Read(address);
+        UpdateNZ(ref regs, regs.A);
+    };
+}
+```
+
+**Unified Register Set:**
+```csharp
+public struct Registers
+{
+    // 8-bit registers (all modes)
+    public byte A { get; set; }   // Accumulator
+    public byte X { get; set; }   // X Index
+    public byte Y { get; set; }   // Y Index
+    public byte SP { get; set; }  // Stack Pointer (low byte)
+
+    // 16-bit registers (65816/65832)
+    public ushort C { get; set; } // Full accumulator
+    public ushort PC { get; set; } // Program Counter
+
+    // Status flags
+    public ProcessorStatusFlags P { get; set; }
+}
+```
+
+**Opcode Table:**
+```csharp
+// Each CPU variant builds its opcode table at initialization
+var builder = new Cpu65C02OpcodeTableBuilder();
+OpcodeTable table = builder.Build();
+```
+
+### Project Organization
+
+```
+BadMango.Emulator.Core/
+├── Cpu/
+│   ├── Registers.cs              # Universal register structure
+│   ├── ProcessorStatusFlags.cs   # Status flag enum and helpers
+│   ├── OpcodeTable.cs            # Opcode dispatch table
+│   └── OpcodeHandler.cs          # Handler delegate type
+
+BadMango.Emulator.Emulation/
+├── Cpu/
+│   ├── CpuBase.cs                # Common CPU infrastructure
+│   ├── Cpu65C02.cs               # 65C02 implementation
+│   ├── Cpu65816.cs               # 65816 implementation (stub)
+│   ├── Cpu65832.cs               # 65832 implementation (stub)
+│   ├── AddressingModes.cs        # Shared addressing modes
+│   └── Instructions.*.cs         # Instructions by category
+```
+
+### Instruction Categories
+
+Instructions are organized into files by category:
+
+| File | Instructions |
+|------|--------------|
+| `Instructions.Arithmetic.cs` | ADC, SBC, INC, DEC, INX, INY, DEX, DEY |
+| `Instructions.Branch.cs` | BCC, BCS, BEQ, BNE, BMI, BPL, BVC, BVS |
+| `Instructions.Compare.cs` | CMP, CPX, CPY, BIT |
+| `Instructions.Flags.cs` | CLC, SEC, CLI, SEI, CLV, CLD, SED |
+| `Instructions.Jump.cs` | JMP, JSR, RTS, RTI, BRK |
+| `Instructions.Logical.cs` | AND, ORA, EOR |
+| `Instructions.Shift.cs` | ASL, LSR, ROL, ROR |
+| `Instructions.Stack.cs` | PHA, PLA, PHP, PLP |
+| `Instructions.Transfer.cs` | TAX, TAY, TXA, TYA, TSX, TXS |
 
 ---
 

@@ -92,12 +92,23 @@ After installation, your directory should look like this:
 ```
 back-pocket-basic/
 ├── src/
-│   ├── BadMango.Basic/    # Core interpreter library
-│   └── BadMango.Basic.Console/        # Console application
+│   ├── BadMango.Basic/                # Core BASIC interpreter library
+│   ├── BadMango.Basic.Console/        # Console application (bpbasic)
+│   ├── BadMango.Emulator.Core/        # Core emulator abstractions
+│   ├── BadMango.Emulator.Emulation/   # CPU implementations
+│   ├── BadMango.Emulator.Bus/         # System bus and memory
+│   ├── BadMango.Emulator.Devices/     # Peripheral devices
+│   ├── BadMango.Emulator.Systems/     # System configurations
+│   ├── BadMango.Emulator.Debug/       # Debugging infrastructure
+│   ├── BadMango.Emulator.UI/          # Avalonia GUI (optional)
+│   └── ... (additional emulator modules)
 ├── tests/
-│   └── BadMango.Basic.Tests/          # Unit tests
+│   ├── BadMango.Basic.Tests/          # BASIC interpreter tests
+│   ├── BadMango.Emulator.Tests/       # Emulator tests
+│   └── ... (additional test projects)
 ├── samples/                           # Sample BASIC programs
-├── BackPocketBasic.slnx                 # Solution file
+├── wiki/                              # Documentation
+├── BackPocketBasic.slnx               # Solution file
 └── README.md
 ```
 

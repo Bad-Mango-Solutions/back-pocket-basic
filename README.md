@@ -1,5 +1,9 @@
 # BackPocketBASIC
 
+<p align="center">
+  <img src="back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+</p>
+
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
@@ -159,45 +163,88 @@ Several sample programs are included in the `samples/` directory:
 
 ```
 back-pocket-basic/
-??? src/
-?   ??? BadMango.Basic/    # Core interpreter library (namespace: BadMango.Basic)
-?   ?   ??? AST/                       # Abstract Syntax Tree nodes
-?   ?   ??? Emulation/                 # 6502 CPU and Apple II emulation
-?   ?   ??? Execution/                 # Interpreter implementation
-?   ?   ??? IO/                        # I/O abstraction
-?   ?   ??? Lexer/                     # Tokenizer
-?   ?   ??? Parser/                    # Parser
-?   ?   ??? Runtime/                   # Runtime environment
-?   ?   ??? Tokens/                    # Token definitions
-?   ??? BadMango.Basic.Console/        # Console application (assembly: bpbasic)
-??? tests/
-?   ??? BadMango.Basic.Tests/          # Unit tests
-??? samples/                           # Sample BASIC programs
-??? BackPocketBasic.slnx                # Solution file
+├── src/
+│   ├── BadMango.Basic/                # Core BASIC interpreter library
+│   │   ├── AST/                       # Abstract Syntax Tree nodes
+│   │   ├── Emulation/                 # Legacy 6502 and Apple II emulation
+│   │   ├── Execution/                 # Interpreter implementation
+│   │   ├── IO/                        # I/O abstraction
+│   │   ├── Lexer/                     # Tokenizer
+│   │   ├── Parser/                    # Parser
+│   │   ├── Runtime/                   # Runtime environment
+│   │   └── Tokens/                    # Token definitions
+│   ├── BadMango.Basic.Console/        # Console application (assembly: bpbasic)
+│   │
+│   ├── BadMango.Emulator.Core/        # Core emulator abstractions
+│   │   ├── Cpu/                       # CPU state, registers, instructions
+│   │   ├── Interfaces/                # Core interfaces (IMemory, ICpu)
+│   │   └── Signaling/                 # Interrupt and signal handling
+│   ├── BadMango.Emulator.Emulation/   # CPU implementations
+│   │   └── Cpu/                       # 65C02, 65816, 65832 implementations
+│   ├── BadMango.Emulator.Bus/         # System bus and memory management
+│   ├── BadMango.Emulator.Devices/     # Peripheral device implementations
+│   ├── BadMango.Emulator.Systems/     # Complete system configurations
+│   ├── BadMango.Emulator.Debug/       # Debugging infrastructure
+│   ├── BadMango.Emulator.Infrastructure/ # Event and registration utilities
+│   ├── BadMango.Emulator.Interop/     # Interoperability layer
+│   ├── BadMango.Emulator.Configuration/ # Configuration management
+│   ├── BadMango.Emulator.UI/          # Avalonia-based GUI (optional)
+│   └── BadMango.Emulator.UI.Abstractions/ # UI abstraction interfaces
+│
+├── tests/
+│   ├── BadMango.Basic.Tests/          # BASIC interpreter unit tests
+│   ├── BadMango.Emulator.Tests/       # Emulator core tests
+│   ├── BadMango.Emulator.Bus.Tests/   # Bus and memory tests
+│   ├── BadMango.Emulator.Devices.Tests/ # Device tests
+│   └── ... (additional test projects)
+│
+├── samples/                           # Sample BASIC programs
+├── wiki/                              # GitHub Wiki documentation
+└── BackPocketBasic.slnx               # Solution file
 ```
 
 ### Technologies Used
 
 - **.NET 10.0** - Runtime and SDK
+- **Avalonia UI 11.2+** - Cross-platform GUI framework (Emulator UI)
 - **Microsoft.Extensions.Hosting** - Application hosting model
 - **Serilog** - Structured logging
 - **Autofac** - Dependency injection
+- **CommunityToolkit.Mvvm** - MVVM implementation (Emulator UI)
 - **NUnit** - Unit testing framework
 - **Moq** - Mocking framework
 
 ### Key Components
 
+#### BASIC Interpreter
+
 1. **Lexer** (`BasicLexer`) - Tokenizes BASIC source code into tokens
 2. **Parser** (`BasicParser`) - Parses tokens into an Abstract Syntax Tree
 3. **Interpreter** (`BasicInterpreter`) - Executes the AST using the visitor pattern
-4. **Multi-CPU Engine** - Unified architecture supporting 65C02/65816/65832 variants
-   - `CpuState` - Unified CPU state structure with mode-aware register access
-   - `Registers` - Universal register set supporting all CPU variants
-   - `Instructions` - Static instruction methods organized by category (11 files)
-   - `AddressingModes` - Mode-aware addressing mode implementations
-5. **Memory** (`BasicMemory`) - 64KB emulated memory space for `PEEK`/`POKE`
-6. **Apple System** (`AppleSystem`) - Coordinates CPU and memory emulation
-7. **Extension Methods** - Helper methods for register manipulation and flag operations
+4. **Memory** (`AppleMemory`) - 64KB emulated memory space for `PEEK`/`POKE`
+5. **Apple System** (`AppleSystem`) - Coordinates CPU and memory emulation
+
+#### Advanced Emulator Framework
+
+1. **CPU Core** (`BadMango.Emulator.Core`) - Abstract CPU definitions and interfaces
+   - `Registers` - Universal register set supporting 8/16/32-bit modes
+   - `ProcessorStatusFlags` - Status flag management
+   - `OpcodeTable` - Instruction dispatch infrastructure
+2. **CPU Implementations** (`BadMango.Emulator.Emulation`)
+   - `Cpu65C02` - Full WDC 65C02 implementation
+   - `Cpu65816` - Apple IIgs 65816 support (stub)
+   - `Cpu65832` - Hypothetical 32-bit 65832 support (stub)
+   - `AddressingModes` - Shared addressing mode implementations
+   - `Instructions` - Organized by category (Arithmetic, Branch, Compare, etc.)
+3. **System Bus** (`BadMango.Emulator.Bus`) - Memory management and device routing
+   - `MainBus` - System bus with layered memory mapping
+   - `PhysicalMemory` - RAM/ROM management
+   - `DeviceRegistry` - Peripheral device registration
+4. **Devices** (`BadMango.Emulator.Devices`) - Peripheral implementations
+   - Keyboard, Speaker, Video Mode controllers
+   - Disk II controller stubs
+   - Thunderclock and PocketWatch cards
+5. **UI** (`BadMango.Emulator.UI`) - Avalonia-based graphical interface
 
 ## Language Reference
 
