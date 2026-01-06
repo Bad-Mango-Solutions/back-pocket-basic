@@ -676,7 +676,7 @@ using BadMango.Emulator.Devices;
 
 // Access keyboard
 var keyboard = machine.GetComponent<KeyboardController>();
-keyboard.SetKeyDown(0xC1); // 'A' key
+keyboard.KeyDown(0xC1); // 'A' key
 
 // Access speaker
 var speaker = machine.GetComponent<SpeakerController>();
