@@ -680,7 +680,8 @@ keyboard.SetKeyDown(0xC1); // 'A' key
 
 // Access speaker
 var speaker = machine.GetComponent<SpeakerController>();
-speaker.Toggle();
+var state = speaker.State;              // Read current speaker state
+var toggles = speaker.DrainToggles();   // Process and clear pending toggles
 ```
 
 ---
