@@ -152,7 +152,6 @@ public static class MachineFactory
         }
 
         // TODO: Handle source loading for RAM regions (pre-initialized RAM)
-
         var target = new RamTarget(physical.Slice(0, size));
         return (target, RegionTag.Ram);
     }
