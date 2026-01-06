@@ -269,7 +269,8 @@ public class MachineProfileLoaderTests
         Assert.That(profile!.Name, Is.EqualTo("my-machine"));
         Assert.That(profile.DisplayName, Is.EqualTo("My Custom Machine"));
         Assert.That(profile.Cpu.Type, Is.EqualTo("65C02"));
-        Assert.That(profile.Memory.Size, Is.EqualTo(65536u));
+        Assert.That(profile.Memory.UsesRegions, Is.True);
+        Assert.That(profile.Memory.Regions, Has.Count.EqualTo(1));
     }
 
     /// <summary>
@@ -377,7 +378,8 @@ public class MachineProfileLoaderTests
         Assert.That(profile, Is.Not.Null);
         Assert.That(profile.Name, Is.EqualTo("simple-65c02"));
         Assert.That(profile.Cpu.Type, Is.EqualTo("65C02"));
-        Assert.That(profile.Memory.Size, Is.EqualTo(65536u));
+        Assert.That(profile.Memory.UsesRegions, Is.True);
+        Assert.That(profile.Memory.Regions, Has.Count.EqualTo(1));
     }
 
     /// <summary>
@@ -404,7 +406,7 @@ public class MachineProfileLoaderTests
         Assert.That(profile.Name, Is.EqualTo("simple-65c02"));
         Assert.That(profile.DisplayName, Is.EqualTo("Custom Default"));
         Assert.That(profile.Cpu.ClockSpeed, Is.EqualTo(2000000));
-        Assert.That(profile.Memory.Size, Is.EqualTo(131072u));
+        Assert.That(profile.Memory.UsesRegions, Is.True);
     }
 
     /// <summary>
@@ -457,13 +459,21 @@ public class MachineProfileLoaderTests
                 "displayName": "Profile with Comments",
                 /* Multi-line
                    comment */
+                "addressSpace": 16,
                 "cpu": {
                     "type": "65C02",
                     "clockSpeed": 1000000
                 },
                 "memory": {
-                    "size": 65536,
-                    "type": "basic"
+                    "regions": [
+                        {
+                            "name": "main-ram",
+                            "type": "ram",
+                            "start": "0x0000",
+                            "size": "0x10000",
+                            "permissions": "rwx"
+                        }
+                    ]
                 }
             }
             """;
@@ -489,13 +499,21 @@ public class MachineProfileLoaderTests
             {
                 "name": "trailing-comma-profile",
                 "displayName": "Profile with Trailing Commas",
+                "addressSpace": 16,
                 "cpu": {
                     "type": "65C02",
                     "clockSpeed": 1000000,
                 },
                 "memory": {
-                    "size": 65536,
-                    "type": "basic",
+                    "regions": [
+                        {
+                            "name": "main-ram",
+                            "type": "ram",
+                            "start": "0x0000",
+                            "size": "0x10000",
+                            "permissions": "rwx",
+                        },
+                    ],
                 },
             }
             """;
@@ -521,13 +539,21 @@ public class MachineProfileLoaderTests
             {
                 "Name": "mixed-case-profile",
                 "DISPLAYNAME": "Mixed Case Profile",
+                "AddressSpace": 16,
                 "Cpu": {
                     "TYPE": "65C02",
                     "ClockSpeed": 1000000
                 },
                 "MEMORY": {
-                    "SIZE": 65536,
-                    "Type": "basic"
+                    "Regions": [
+                        {
+                            "NAME": "main-ram",
+                            "Type": "ram",
+                            "START": "0x0000",
+                            "size": "0x10000",
+                            "Permissions": "rwx"
+                        }
+                    ]
                 }
             }
             """;
@@ -557,7 +583,7 @@ public class MachineProfileLoaderTests
     }
 
     /// <summary>
-    /// Creates a profile JSON string.
+    /// Creates a profile JSON string using the new regions-based schema.
     /// </summary>
     /// <param name="name">The profile name.</param>
     /// <param name="displayName">The display name.</param>
@@ -579,6 +605,7 @@ public class MachineProfileLoaderTests
             name,
             displayName = displayName ?? $"{name} Display Name",
             description = description ?? $"Description for {name}",
+            addressSpace = 16,
             cpu = new
             {
                 type = cpuType,
@@ -586,8 +613,17 @@ public class MachineProfileLoaderTests
             },
             memory = new
             {
-                size = memorySize,
-                type = "basic",
+                regions = new[]
+                {
+                    new
+                    {
+                        name = "main-ram",
+                        type = "ram",
+                        start = "0x0000",
+                        size = $"0x{memorySize:X}",
+                        permissions = "rwx",
+                    },
+                },
             },
         };
 

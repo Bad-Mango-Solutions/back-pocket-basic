@@ -10,7 +10,6 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using Bus;
 using Bus.Interfaces;
 
 using Core.Interfaces;
@@ -112,7 +111,7 @@ public class DebugConsoleModule : Module
             return loader.DefaultProfile;
         });
 
-        // Register the debug context factory (provides access to CPU, Memory, Disassembler)
+        // Register the debug context factory (provides access to CPU, Bus, Disassembler)
         builder.Register(ctx =>
         {
             var dispatcher = ctx.Resolve<ICommandDispatcher>();
@@ -120,12 +119,12 @@ public class DebugConsoleModule : Module
             var tracingListener = ctx.Resolve<TracingDebugListener>();
             var context = DebugContext.CreateConsoleContext(dispatcher);
 
-            (ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo info) = MachineFactory.CreateSystem(profile);
+            (ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo info) = MachineFactory.CreateSystem(profile);
 
             // Attach the tracing listener to the CPU
             cpu.AttachDebugger(tracingListener);
 
-            context.AttachSystem(cpu, memory, disassembler, info, tracingListener);
+            context.AttachSystem(cpu, bus, disassembler, info, tracingListener);
 
             return context;
         })

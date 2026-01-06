@@ -4,16 +4,15 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core.Configuration;
+using BadMango.Emulator.Core.Signaling;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
-using BadMango.Emulator.Emulation.Memory;
 
 using Bus.Interfaces;
 
 using Moq;
-
-using Bus = BadMango.Emulator.Bus;
 
 /// <summary>
 /// Unit tests for the debug command handlers.
@@ -22,7 +21,7 @@ using Bus = BadMango.Emulator.Bus;
 public class DebugCommandsTests
 {
     private CommandDispatcher dispatcher = null!;
-    private BasicMemory memory = null!;
+    private MainBus bus = null!;
     private Cpu65C02 cpu = null!;
     private Disassembler disassembler = null!;
     private DebugContext debugContext = null!;
@@ -36,17 +35,36 @@ public class DebugCommandsTests
     public void SetUp()
     {
         dispatcher = new CommandDispatcher();
-        memory = new BasicMemory();
-        cpu = new Cpu65C02(memory);
+
+        // Create a bus-based memory system
+        bus = new MainBus(16); // 16-bit address space = 64KB
+        var physical = new PhysicalMemory(0x10000, "test-ram");
+        var target = new RamTarget(physical.Slice(0, 0x10000));
+        bus.MapPageRange(
+            startPage: 0,
+            pageCount: 16,
+            deviceId: 0,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.All,
+            caps: target.Capabilities,
+            target: target,
+            physicalBase: 0);
+
+        // Create event context and CPU directly (no adapter needed)
+        var scheduler = new Scheduler();
+        var signalBus = new SignalBus();
+        var eventContext = new EventContext(scheduler, signalBus, bus);
+        cpu = new Cpu65C02(eventContext);
+
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        disassembler = new Disassembler(opcodeTable, memory);
+        disassembler = new Disassembler(opcodeTable, bus);
 
         outputWriter = new StringWriter();
         errorWriter = new StringWriter();
-        debugContext = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler);
+        debugContext = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
 
         // Set up reset vector so CPU can be reset properly
-        memory.WriteWord(0xFFFC, 0x1000);
+        WriteWord(bus, 0xFFFC, 0x1000);
         cpu.Reset();
     }
 
@@ -58,6 +76,51 @@ public class DebugCommandsTests
     {
         outputWriter.Dispose();
         errorWriter.Dispose();
+    }
+
+    /// <summary>
+    /// Helper method to write a byte to the bus.
+    /// </summary>
+    private static void WriteByte(IMemoryBus bus, uint address, byte value)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: value,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugWrite,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+        bus.TryWrite8(access, value);
+    }
+
+    /// <summary>
+    /// Helper method to read a byte from the bus.
+    /// </summary>
+    private static byte ReadByte(IMemoryBus bus, uint address)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+        return bus.TryRead8(access).Value;
+    }
+
+    /// <summary>
+    /// Helper method to write a word (16-bit) to the bus.
+    /// </summary>
+    private static void WriteWord(IMemoryBus bus, uint address, ushort value)
+    {
+        WriteByte(bus, address, (byte)(value & 0xFF));
+        WriteByte(bus, address + 1, (byte)(value >> 8));
     }
 
     // =====================
@@ -152,7 +215,7 @@ public class DebugCommandsTests
     public void StepCommand_ExecutesSingleInstruction_ByDefault()
     {
         // Write a NOP instruction at PC
-        memory.Write(0x1000, 0xEA); // NOP
+        WriteByte(bus, 0x1000, 0xEA); // NOP
         cpu.Reset();
 
         var command = new StepCommand();
@@ -173,9 +236,9 @@ public class DebugCommandsTests
     public void StepCommand_ExecutesMultipleInstructions_WhenCountSpecified()
     {
         // Write NOP instructions at PC
-        memory.Write(0x1000, 0xEA); // NOP
-        memory.Write(0x1001, 0xEA); // NOP
-        memory.Write(0x1002, 0xEA); // NOP
+        WriteByte(bus, 0x1000, 0xEA); // NOP
+        WriteByte(bus, 0x1001, 0xEA); // NOP
+        WriteByte(bus, 0x1002, 0xEA); // NOP
         cpu.Reset();
 
         var command = new StepCommand();
@@ -196,7 +259,7 @@ public class DebugCommandsTests
     public void StepCommand_ReturnsError_WhenCpuHalted()
     {
         // Write STP instruction which halts the CPU
-        memory.Write(0x1000, 0xDB); // STP
+        WriteByte(bus, 0x1000, 0xDB); // STP
         cpu.Reset();
         cpu.Step(); // Execute STP to halt CPU
 
@@ -241,9 +304,9 @@ public class DebugCommandsTests
     public void RunCommand_RunsUntilHalt()
     {
         // Write a few NOPs then STP
-        memory.Write(0x1000, 0xEA); // NOP
-        memory.Write(0x1001, 0xEA); // NOP
-        memory.Write(0x1002, 0xDB); // STP
+        WriteByte(bus, 0x1000, 0xEA); // NOP
+        WriteByte(bus, 0x1001, 0xEA); // NOP
+        WriteByte(bus, 0x1002, 0xDB); // STP
         cpu.Reset();
 
         var command = new RunCommand();
@@ -264,10 +327,10 @@ public class DebugCommandsTests
     public void RunCommand_RespectsInstructionLimit()
     {
         // Write infinite NOP loop
-        memory.Write(0x1000, 0xEA); // NOP
-        memory.Write(0x1001, 0x4C); // JMP $1000
-        memory.Write(0x1002, 0x00);
-        memory.Write(0x1003, 0x10);
+        WriteByte(bus, 0x1000, 0xEA); // NOP
+        WriteByte(bus, 0x1001, 0x4C); // JMP $1000
+        WriteByte(bus, 0x1002, 0x00);
+        WriteByte(bus, 0x1003, 0x10);
         cpu.Reset();
 
         var command = new RunCommand();
@@ -351,10 +414,10 @@ public class DebugCommandsTests
     public void ResetCommand_PerformsHardReset_WhenFlagSpecified()
     {
         // Write some data to memory
-        memory.Write(0x0200, 0xFF);
+        WriteByte(bus, 0x0200, 0xFF);
 
         // Need to re-set reset vector after clear
-        memory.WriteWord(0xFFFC, 0x1000);
+        WriteWord(bus, 0xFFFC, 0x1000);
 
         var command = new ResetCommand();
         var result = command.Execute(debugContext, ["--hard"]);
@@ -460,9 +523,9 @@ public class DebugCommandsTests
     public void MemCommand_DisplaysMemoryContents()
     {
         // Write some known values
-        memory.Write(0x0200, 0x41); // 'A'
-        memory.Write(0x0201, 0x42); // 'B'
-        memory.Write(0x0202, 0x43); // 'C'
+        WriteByte(bus, 0x0200, 0x41); // 'A'
+        WriteByte(bus, 0x0201, 0x42); // 'B'
+        WriteByte(bus, 0x0202, 0x43); // 'C'
 
         var command = new MemCommand();
         var result = command.Execute(debugContext, ["$0200", "16"]);
@@ -519,7 +582,7 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0300), Is.EqualTo(0xAB));
+            Assert.That(ReadByte(bus, 0x0300), Is.EqualTo(0xAB));
         });
     }
 
@@ -535,9 +598,9 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0400), Is.EqualTo(0x11));
-            Assert.That(memory.Read(0x0401), Is.EqualTo(0x22));
-            Assert.That(memory.Read(0x0402), Is.EqualTo(0x33));
+            Assert.That(ReadByte(bus, 0x0400), Is.EqualTo(0x11));
+            Assert.That(ReadByte(bus, 0x0401), Is.EqualTo(0x22));
+            Assert.That(ReadByte(bus, 0x0402), Is.EqualTo(0x33));
         });
     }
 
@@ -569,9 +632,9 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0900), Is.EqualTo(0xAB));
-            Assert.That(memory.Read(0x0901), Is.EqualTo(0xCD));
-            Assert.That(memory.Read(0x0902), Is.EqualTo(0xEF));
+            Assert.That(ReadByte(bus, 0x0900), Is.EqualTo(0xAB));
+            Assert.That(ReadByte(bus, 0x0901), Is.EqualTo(0xCD));
+            Assert.That(ReadByte(bus, 0x0902), Is.EqualTo(0xEF));
         });
     }
 
@@ -587,9 +650,9 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0950), Is.EqualTo(0x11));
-            Assert.That(memory.Read(0x0951), Is.EqualTo(0x22));
-            Assert.That(memory.Read(0x0952), Is.EqualTo(0x33));
+            Assert.That(ReadByte(bus, 0x0950), Is.EqualTo(0x11));
+            Assert.That(ReadByte(bus, 0x0951), Is.EqualTo(0x22));
+            Assert.That(ReadByte(bus, 0x0952), Is.EqualTo(0x33));
         });
     }
 
@@ -602,7 +665,7 @@ public class DebugCommandsTests
         // Set up input with some hex bytes and blank line to finish
         var inputText = "AA BB CC\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0500", "-i"]);
@@ -610,9 +673,9 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0500), Is.EqualTo(0xAA));
-            Assert.That(memory.Read(0x0501), Is.EqualTo(0xBB));
-            Assert.That(memory.Read(0x0502), Is.EqualTo(0xCC));
+            Assert.That(ReadByte(bus, 0x0500), Is.EqualTo(0xAA));
+            Assert.That(ReadByte(bus, 0x0501), Is.EqualTo(0xBB));
+            Assert.That(ReadByte(bus, 0x0502), Is.EqualTo(0xCC));
             Assert.That(outputWriter.ToString(), Does.Contain("Interactive poke mode"));
         });
     }
@@ -625,7 +688,7 @@ public class DebugCommandsTests
     {
         var inputText = "11 22\n33 44\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0600", "--interactive"]);
@@ -633,10 +696,10 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0600), Is.EqualTo(0x11));
-            Assert.That(memory.Read(0x0601), Is.EqualTo(0x22));
-            Assert.That(memory.Read(0x0602), Is.EqualTo(0x33));
-            Assert.That(memory.Read(0x0603), Is.EqualTo(0x44));
+            Assert.That(ReadByte(bus, 0x0600), Is.EqualTo(0x11));
+            Assert.That(ReadByte(bus, 0x0601), Is.EqualTo(0x22));
+            Assert.That(ReadByte(bus, 0x0602), Is.EqualTo(0x33));
+            Assert.That(ReadByte(bus, 0x0603), Is.EqualTo(0x44));
         });
     }
 
@@ -648,7 +711,7 @@ public class DebugCommandsTests
     {
         var inputText = "55\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0700", "-i"]);
@@ -656,7 +719,7 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0700), Is.EqualTo(0x55));
+            Assert.That(ReadByte(bus, 0x0700), Is.EqualTo(0x55));
             Assert.That(outputWriter.ToString(), Does.Contain("Interactive mode complete"));
         });
     }
@@ -668,7 +731,7 @@ public class DebugCommandsTests
     public void PokeCommand_InteractiveMode_ReturnsError_WhenNoInputAvailable()
     {
         // Create context without input reader
-        var contextWithoutInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, null);
+        var contextWithoutInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, null);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithoutInput, ["$0800", "-i"]);
@@ -689,7 +752,7 @@ public class DebugCommandsTests
         // Start at $0A00, then change to $0B00
         var inputText = "11 22\n$0B00: 33 44\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0A00", "-i"]);
@@ -697,10 +760,10 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0A00), Is.EqualTo(0x11));
-            Assert.That(memory.Read(0x0A01), Is.EqualTo(0x22));
-            Assert.That(memory.Read(0x0B00), Is.EqualTo(0x33));
-            Assert.That(memory.Read(0x0B01), Is.EqualTo(0x44));
+            Assert.That(ReadByte(bus, 0x0A00), Is.EqualTo(0x11));
+            Assert.That(ReadByte(bus, 0x0A01), Is.EqualTo(0x22));
+            Assert.That(ReadByte(bus, 0x0B00), Is.EqualTo(0x33));
+            Assert.That(ReadByte(bus, 0x0B01), Is.EqualTo(0x44));
             Assert.That(outputWriter.ToString(), Does.Contain("Address changed to $0B00"));
         });
     }
@@ -714,7 +777,7 @@ public class DebugCommandsTests
         // Start at $0C00, change to $0D00, then write
         var inputText = "$0D00:\n55 66\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0C00", "-i"]);
@@ -722,8 +785,8 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0D00), Is.EqualTo(0x55));
-            Assert.That(memory.Read(0x0D01), Is.EqualTo(0x66));
+            Assert.That(ReadByte(bus, 0x0D00), Is.EqualTo(0x55));
+            Assert.That(ReadByte(bus, 0x0D01), Is.EqualTo(0x66));
         });
     }
 
@@ -735,7 +798,7 @@ public class DebugCommandsTests
     {
         var inputText = "0x0E00: 77 88\n\n";
         using var inputReader = new StringReader(inputText);
-        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, disassembler, machineInfo: null, input: inputReader);
+        var contextWithInput = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, machineInfo: null, input: inputReader);
 
         var command = new PokeCommand();
         var result = command.Execute(contextWithInput, ["$0100", "-i"]);
@@ -743,8 +806,8 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(memory.Read(0x0E00), Is.EqualTo(0x77));
-            Assert.That(memory.Read(0x0E01), Is.EqualTo(0x88));
+            Assert.That(ReadByte(bus, 0x0E00), Is.EqualTo(0x77));
+            Assert.That(ReadByte(bus, 0x0E01), Is.EqualTo(0x88));
         });
     }
 
@@ -855,7 +918,7 @@ public class DebugCommandsTests
     public void DasmCommand_DisassemblesAtCurrentPc_ByDefault()
     {
         // Write NOP instruction at PC
-        memory.Write(0x1000, 0xEA); // NOP
+        WriteByte(bus, 0x1000, 0xEA); // NOP
 
         var command = new DasmCommand();
         var result = command.Execute(debugContext, []);
@@ -875,8 +938,8 @@ public class DebugCommandsTests
     public void DasmCommand_DisassemblesAtSpecifiedAddress()
     {
         // Write LDA #$42 at $2000
-        memory.Write(0x2000, 0xA9); // LDA immediate
-        memory.Write(0x2001, 0x42); // #$42
+        WriteByte(bus, 0x2000, 0xA9); // LDA immediate
+        WriteByte(bus, 0x2001, 0x42); // #$42
 
         var command = new DasmCommand();
         var result = command.Execute(debugContext, ["$2000"]);
@@ -895,7 +958,7 @@ public class DebugCommandsTests
     [Test]
     public void DasmCommand_ReturnsError_WhenNoDisassemblerAttached()
     {
-        var contextWithoutDisasm = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, memory, null);
+        var contextWithoutDisasm = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, null);
         var command = new DasmCommand();
 
         var result = command.Execute(contextWithoutDisasm, []);
@@ -939,7 +1002,7 @@ public class DebugCommandsTests
         var context = new DebugContext(dispatcher, outputWriter, errorWriter);
         Assert.That(context.IsSystemAttached, Is.False);
 
-        context.AttachSystem(cpu, memory, disassembler);
+        context.AttachSystem(cpu, bus, disassembler);
         Assert.That(context.IsSystemAttached, Is.True);
     }
 
@@ -1094,35 +1157,35 @@ public class DebugCommandsTests
     /// Verifies that AttachBus creates MemoryBusAdapter as Memory property for backward compatibility.
     /// </summary>
     [Test]
-    public void DebugContext_AttachBus_CreatesMemoryAdapter()
+    public void DebugContext_AttachBus_SetsUpBusProperty()
     {
-        var bus = CreateBusWithRam();
-        debugContext.AttachBus(bus);
+        var testBus = CreateBusWithRam();
+        debugContext.AttachBus(testBus);
 
         Assert.Multiple(() =>
         {
-            Assert.That(debugContext.Memory, Is.Not.Null);
-            Assert.That(debugContext.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
+            Assert.That(debugContext.Bus, Is.Not.Null);
+            Assert.That(debugContext.Bus, Is.SameAs(testBus));
+            Assert.That(debugContext.IsBusAttached, Is.True);
         });
     }
 
     /// <summary>
-    /// Verifies that AttachSystem with bus creates correct adapter.
+    /// Verifies that AttachSystem with bus creates correct setup.
     /// </summary>
     [Test]
-    public void DebugContext_AttachSystemWithBus_CreatesAdapter()
+    public void DebugContext_AttachSystemWithBus_SetsUpCorrectly()
     {
-        var bus = CreateBusWithRam();
+        var testBus = CreateBusWithRam();
         var context = new DebugContext(dispatcher, outputWriter, errorWriter);
 
-        context.AttachSystem(cpu, bus, disassembler);
+        context.AttachSystem(cpu, testBus, disassembler);
 
         Assert.Multiple(() =>
         {
             Assert.That(context.Cpu, Is.SameAs(cpu));
-            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Bus, Is.SameAs(testBus));
             Assert.That(context.Disassembler, Is.SameAs(disassembler));
-            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
             Assert.That(context.IsSystemAttached, Is.True);
             Assert.That(context.IsBusAttached, Is.True);
         });
@@ -1134,19 +1197,18 @@ public class DebugCommandsTests
     [Test]
     public void DebugContext_AttachSystemWithBusAndMachineInfo_WorksCorrectly()
     {
-        var bus = CreateBusWithRam();
+        var testBus = CreateBusWithRam();
         var machineInfo = new MachineInfo("TestMachine", "Test Machine", "65C02", 65536);
         var context = new DebugContext(dispatcher, outputWriter, errorWriter);
 
-        context.AttachSystem(cpu, bus, disassembler, machineInfo);
+        context.AttachSystem(cpu, testBus, disassembler, machineInfo);
 
         Assert.Multiple(() =>
         {
             Assert.That(context.Cpu, Is.SameAs(cpu));
-            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Bus, Is.SameAs(testBus));
             Assert.That(context.Disassembler, Is.SameAs(disassembler));
             Assert.That(context.MachineInfo, Is.SameAs(machineInfo));
-            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
             Assert.That(context.IsSystemAttached, Is.True);
             Assert.That(context.IsBusAttached, Is.True);
         });
@@ -1158,45 +1220,44 @@ public class DebugCommandsTests
     [Test]
     public void DebugContext_AttachSystemWithBusAndTracingListener_WorksCorrectly()
     {
-        var bus = CreateBusWithRam();
+        var testBus = CreateBusWithRam();
         var machineInfo = new MachineInfo("TestMachine", "Test Machine", "65C02", 65536);
         var tracingListener = new TracingDebugListener();
         var context = new DebugContext(dispatcher, outputWriter, errorWriter);
 
-        context.AttachSystem(cpu, bus, disassembler, machineInfo, tracingListener);
+        context.AttachSystem(cpu, testBus, disassembler, machineInfo, tracingListener);
 
         Assert.Multiple(() =>
         {
             Assert.That(context.Cpu, Is.SameAs(cpu));
-            Assert.That(context.Bus, Is.SameAs(bus));
+            Assert.That(context.Bus, Is.SameAs(testBus));
             Assert.That(context.Disassembler, Is.SameAs(disassembler));
             Assert.That(context.MachineInfo, Is.SameAs(machineInfo));
             Assert.That(context.TracingListener, Is.SameAs(tracingListener));
-            Assert.That(context.Memory, Is.InstanceOf<Bus.MemoryBusAdapter>());
             Assert.That(context.IsSystemAttached, Is.True);
             Assert.That(context.IsBusAttached, Is.True);
         });
     }
 
     /// <summary>
-    /// Verifies that legacy memory access patterns work through MemoryBusAdapter.
+    /// Verifies that bus-based memory access patterns work.
     /// </summary>
     [Test]
-    public void DebugContext_WithBus_LegacyMemoryAccessPatternWorks()
+    public void DebugContext_WithBus_DirectBusAccessWorks()
     {
         // Write to physical memory
-        var bus = CreateBusWithRam(out var physicalMemory);
+        var testBus = CreateBusWithRam(out var physicalMemory);
         physicalMemory.AsSpan()[0x100] = 0x42;
 
         var context = new DebugContext(dispatcher, outputWriter, errorWriter);
-        context.AttachSystem(cpu, bus, disassembler);
+        context.AttachSystem(cpu, testBus, disassembler);
 
-        // Read through the Memory interface (which is now MemoryBusAdapter)
-        byte value = context.Memory!.Read(0x100);
+        // Read through the Bus interface
+        byte value = ReadByte(context.Bus!, 0x100);
         Assert.That(value, Is.EqualTo(0x42));
 
-        // Write through the Memory interface
-        context.Memory.Write(0x200, 0xAB);
+        // Write through the Bus interface
+        WriteByte(context.Bus!, 0x200, 0xAB);
         Assert.That(physicalMemory.AsSpan()[0x200], Is.EqualTo(0xAB));
     }
 

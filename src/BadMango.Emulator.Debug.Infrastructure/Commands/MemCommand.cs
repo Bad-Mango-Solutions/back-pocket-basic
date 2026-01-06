@@ -7,7 +7,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using System.Globalization;
 using System.Text;
 
-using Core.Interfaces;
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Displays a hex dump of memory contents.
@@ -48,9 +49,9 @@ public sealed class MemCommand : CommandHandlerBase
             return CommandResult.Error("Debug context required for this command.");
         }
 
-        if (debugContext.Memory is null)
+        if (debugContext.Bus is null)
         {
-            return CommandResult.Error("No memory attached to debug context.");
+            return CommandResult.Error("No memory bus attached to debug context.");
         }
 
         if (args.Length == 0)
@@ -80,24 +81,27 @@ public sealed class MemCommand : CommandHandlerBase
             byteCount = MaxByteCount;
         }
 
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)debugContext.Bus.PageCount << debugContext.Bus.PageShift;
+
         // Validate address range
-        if (startAddress >= debugContext.Memory.Size)
+        if (startAddress >= memorySize)
         {
-            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${debugContext.Memory.Size:X4}).");
+            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${memorySize:X4}).");
         }
 
         // Adjust byte count if it would exceed memory bounds
-        if (startAddress + (uint)byteCount > debugContext.Memory.Size)
+        if (startAddress + (uint)byteCount > memorySize)
         {
-            byteCount = (int)(debugContext.Memory.Size - startAddress);
+            byteCount = (int)(memorySize - startAddress);
         }
 
-        FormatHexDump(debugContext.Output, debugContext.Memory, startAddress, byteCount);
+        FormatHexDump(debugContext.Output, debugContext.Bus, startAddress, byteCount);
 
         return CommandResult.Ok();
     }
 
-    private static void FormatHexDump(TextWriter output, IMemory memory, uint startAddress, int byteCount)
+    private static void FormatHexDump(TextWriter output, IMemoryBus bus, uint startAddress, int byteCount)
     {
         // Align start address to 16-byte boundary for clean display
         uint alignedStart = startAddress & 0xFFFFFFF0;
@@ -125,7 +129,7 @@ public sealed class MemCommand : CommandHandlerBase
                 }
                 else
                 {
-                    byte value = memory.Read(currentAddr);
+                    byte value = ReadByte(bus, currentAddr);
                     hexBuilder.Append($"{value:X2} ");
 
                     // ASCII representation (printable chars only)
@@ -148,6 +152,23 @@ public sealed class MemCommand : CommandHandlerBase
 
             output.WriteLine($"${addr:X4}:  {hexBuilder} |{asciiBuilder}|");
         }
+    }
+
+    private static byte ReadByte(IMemoryBus bus, uint address)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+
+        var result = bus.TryRead8(access);
+        return result.Ok ? result.Value : (byte)0xFF;
     }
 
     private static bool TryParseAddress(string value, out uint result)

@@ -6,21 +6,21 @@ namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
 using Core.Debugger;
-using Core.Interfaces;
+using TestHelpers;
 using Core.Interfaces.Cpu;
 using Core.Interfaces.Debugging;
 
 using Emulation.Cpu;
-using Emulation.Memory;
+
 
 /// <summary>
 /// Unit tests for CPU debug introspection and control methods.
 /// </summary>
 [TestFixture]
-public class CpuDebugSupportTests
+public class CpuDebugSupportTests : CpuTestBase
 {
-    private IMemory memory = null!;
-    private Cpu65C02 cpu = null!;
+    
+    
 
     /// <summary>
     /// Sets up the test environment by initializing memory and CPU.
@@ -28,8 +28,8 @@ public class CpuDebugSupportTests
     [SetUp]
     public void Setup()
     {
-        memory = new BasicMemory();
-        cpu = new Cpu65C02(memory);
+        
+        
     }
 
     #region Debugger Attachment Tests
@@ -40,7 +40,7 @@ public class CpuDebugSupportTests
     [Test]
     public void IsDebuggerAttached_IsFalseByDefault()
     {
-        Assert.That(cpu.IsDebuggerAttached, Is.False);
+        Assert.That(Cpu.IsDebuggerAttached, Is.False);
     }
 
     /// <summary>
@@ -51,9 +51,9 @@ public class CpuDebugSupportTests
     {
         var listener = new TestDebugListener();
 
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        Assert.That(cpu.IsDebuggerAttached, Is.True);
+        Assert.That(Cpu.IsDebuggerAttached, Is.True);
     }
 
     /// <summary>
@@ -63,11 +63,11 @@ public class CpuDebugSupportTests
     public void DetachDebugger_SetsIsDebuggerAttachedToFalse()
     {
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.DetachDebugger();
+        Cpu.DetachDebugger();
 
-        Assert.That(cpu.IsDebuggerAttached, Is.False);
+        Assert.That(Cpu.IsDebuggerAttached, Is.False);
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public class CpuDebugSupportTests
     [Test]
     public void AttachDebugger_ThrowsOnNull()
     {
-        Assert.That(() => cpu.AttachDebugger(null!), Throws.ArgumentNullException);
+        Assert.That(() => Cpu.AttachDebugger(null!), Throws.ArgumentNullException);
     }
 
     #endregion
@@ -89,14 +89,14 @@ public class CpuDebugSupportTests
     [Test]
     public void Step_CallsOnBeforeStep_WhenDebuggerAttached()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xEA); // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.That(listener.BeforeStepCount, Is.EqualTo(1));
     }
@@ -107,14 +107,14 @@ public class CpuDebugSupportTests
     [Test]
     public void Step_CallsOnAfterStep_WhenDebuggerAttached()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xEA); // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.That(listener.AfterStepCount, Is.EqualTo(1));
     }
@@ -125,13 +125,13 @@ public class CpuDebugSupportTests
     [Test]
     public void Step_DoesNotCallStepEvents_WhenDebuggerNotAttached()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xEA); // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
 
         // Create listener without attaching to verify no events are emitted when debugger not attached
         var listener = new TestDebugListener();
-        cpu.Step();
+        Cpu.Step();
 
         Assert.Multiple(() =>
         {
@@ -146,14 +146,14 @@ public class CpuDebugSupportTests
     [Test]
     public void StepEventData_ContainsCorrectPC()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xEA); // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.That(listener.LastBeforeStepData.PC, Is.EqualTo(0x1000));
     }
@@ -164,15 +164,15 @@ public class CpuDebugSupportTests
     [Test]
     public void StepEventData_ContainsCorrectOpcode()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.That(listener.LastBeforeStepData.Opcode, Is.EqualTo(0xA9));
     }
@@ -183,15 +183,15 @@ public class CpuDebugSupportTests
     [Test]
     public void StepEventData_ContainsOperandBytes_ImmediateMode()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.Multiple(() =>
         {
@@ -208,17 +208,17 @@ public class CpuDebugSupportTests
     [Test]
     public void StepEventData_ContainsOperandBytes_AbsoluteMode()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xAD); // LDA $2000
-        memory.Write(0x1001, 0x00);
-        memory.Write(0x1002, 0x20);
-        memory.Write(0x2000, 0x55); // Value at $2000
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xAD); // LDA $2000
+        Write(0x1001, 0x00);
+        Write(0x1002, 0x20);
+        Write(0x2000, 0x55); // Value at $2000
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.Multiple(() =>
         {
@@ -236,15 +236,15 @@ public class CpuDebugSupportTests
     [Test]
     public void AfterStepEventData_ContainsUpdatedRegisters()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.That(listener.LastAfterStepData.Registers.A.GetByte(), Is.EqualTo(0x42));
     }
@@ -255,14 +255,14 @@ public class CpuDebugSupportTests
     [Test]
     public void AfterStepEventData_ShowsHaltedState_WhenSTPExecuted()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xDB); // STP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xDB); // STP
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.Multiple(() =>
         {
@@ -277,14 +277,14 @@ public class CpuDebugSupportTests
     [Test]
     public void AfterStepEventData_ShowsHaltedState_WhenWAIExecuted()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xCB); // WAI
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xCB); // WAI
+        Cpu.Reset();
 
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Step();
+        Cpu.Step();
 
         Assert.Multiple(() =>
         {
@@ -303,12 +303,12 @@ public class CpuDebugSupportTests
     [Test]
     public void SetPC_ChangesTheProgramCounter()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Cpu.Reset();
 
-        cpu.SetPC(0x2000);
+        Cpu.SetPC(0x2000);
 
-        Assert.That(cpu.GetPC(), Is.EqualTo(0x2000));
+        Assert.That(Cpu.GetPC(), Is.EqualTo(0x2000));
     }
 
     /// <summary>
@@ -317,10 +317,10 @@ public class CpuDebugSupportTests
     [Test]
     public void GetPC_ReturnsCurrentProgramCounter()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Cpu.Reset();
 
-        Addr pc = cpu.GetPC();
+        Addr pc = Cpu.GetPC();
 
         Assert.That(pc, Is.EqualTo(0x1000));
     }
@@ -331,15 +331,15 @@ public class CpuDebugSupportTests
     [Test]
     public void SetPC_AllowsExecutionFromNewAddress()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x2000, 0xA9); // LDA #$99
-        memory.Write(0x2001, 0x99);
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x2000, 0xA9); // LDA #$99
+        Write(0x2001, 0x99);
+        Cpu.Reset();
 
-        cpu.SetPC(0x2000);
-        cpu.Step();
+        Cpu.SetPC(0x2000);
+        Cpu.Step();
 
-        Assert.That(cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x99));
+        Assert.That(Cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x99));
     }
 
     #endregion
@@ -352,7 +352,7 @@ public class CpuDebugSupportTests
     [Test]
     public void IsStopRequested_IsFalseByDefault()
     {
-        Assert.That(cpu.IsStopRequested, Is.False);
+        Assert.That(Cpu.IsStopRequested, Is.False);
     }
 
     /// <summary>
@@ -361,9 +361,9 @@ public class CpuDebugSupportTests
     [Test]
     public void RequestStop_SetsIsStopRequestedToTrue()
     {
-        cpu.RequestStop();
+        Cpu.RequestStop();
 
-        Assert.That(cpu.IsStopRequested, Is.True);
+        Assert.That(Cpu.IsStopRequested, Is.True);
     }
 
     /// <summary>
@@ -372,11 +372,11 @@ public class CpuDebugSupportTests
     [Test]
     public void ClearStopRequest_SetsIsStopRequestedToFalse()
     {
-        cpu.RequestStop();
+        Cpu.RequestStop();
 
-        cpu.ClearStopRequest();
+        Cpu.ClearStopRequest();
 
-        Assert.That(cpu.IsStopRequested, Is.False);
+        Assert.That(Cpu.IsStopRequested, Is.False);
     }
 
     /// <summary>
@@ -386,13 +386,13 @@ public class CpuDebugSupportTests
     public void Execute_StopsWhenStopRequested()
     {
         // Set up an infinite loop
-        memory.Write(0x1000, 0x80); // BRA $1000 (branch always to self)
-        memory.Write(0x1001, 0xFE); // -2 offset
+        Write(0x1000, 0x80); // BRA $1000 (branch always to self)
+        Write(0x1001, 0xFE); // -2 offset
 
-        var listener = new StopAfterNStepsListener(cpu, 5);
-        cpu.AttachDebugger(listener);
+        var listener = new StopAfterNStepsListener(Cpu, 5);
+        Cpu.AttachDebugger(listener);
 
-        cpu.Execute(0x1000);
+        Cpu.Execute(0x1000);
 
         // Should have stopped after 5 steps, not stuck in infinite loop
         Assert.That(listener.StepCount, Is.EqualTo(5));
@@ -404,12 +404,12 @@ public class CpuDebugSupportTests
     [Test]
     public void Reset_ClearsStopRequest()
     {
-        cpu.RequestStop();
-        memory.WriteWord(0xFFFC, 0x1000);
+        Cpu.RequestStop();
+        WriteWord(0xFFFC, 0x1000);
 
-        cpu.Reset();
+        Cpu.Reset();
 
-        Assert.That(cpu.IsStopRequested, Is.False);
+        Assert.That(Cpu.IsStopRequested, Is.False);
     }
 
     #endregion
@@ -422,16 +422,16 @@ public class CpuDebugSupportTests
     [Test]
     public void Execute_StopsOnSTP()
     {
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        memory.Write(0x1002, 0xDB); // STP
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Write(0x1002, 0xDB); // STP
 
-        cpu.Execute(0x1000);
+        Cpu.Execute(0x1000);
 
         Assert.Multiple(() =>
         {
-            Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp));
+            Assert.That(Cpu.Halted, Is.True);
+            Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Stp));
         });
     }
 
@@ -441,16 +441,16 @@ public class CpuDebugSupportTests
     [Test]
     public void Execute_StopsOnWAI()
     {
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        memory.Write(0x1002, 0xCB); // WAI
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Write(0x1002, 0xCB); // WAI
 
-        cpu.Execute(0x1000);
+        Cpu.Execute(0x1000);
 
         Assert.Multiple(() =>
         {
-            Assert.That(cpu.Halted, Is.True);
-            Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Wai));
+            Assert.That(Cpu.Halted, Is.True);
+            Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Wai));
         });
     }
 
@@ -464,22 +464,22 @@ public class CpuDebugSupportTests
     [Test]
     public void DebugActivity_DoesNotAffectCycles()
     {
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xA9); // LDA #$42
-        memory.Write(0x1001, 0x42);
-        memory.Write(0x1002, 0xEA); // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$42
+        Write(0x1001, 0x42);
+        Write(0x1002, 0xEA); // NOP
+        Cpu.Reset();
 
         // Execute without debugger
-        int cyclesWithout = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
-        ulong totalCyclesWithout = cpu.GetCycles();
+        int cyclesWithout = (int)Cpu.Step().CyclesConsumed.Value + (int)Cpu.Step().CyclesConsumed.Value;
+        ulong totalCyclesWithout = Cpu.GetCycles();
 
         // Reset and execute with debugger
-        cpu.Reset();
+        Cpu.Reset();
         var listener = new TestDebugListener();
-        cpu.AttachDebugger(listener);
-        int cyclesWith = (int)cpu.Step().CyclesConsumed.Value + (int)cpu.Step().CyclesConsumed.Value;
-        ulong totalCyclesWith = cpu.GetCycles();
+        Cpu.AttachDebugger(listener);
+        int cyclesWith = (int)Cpu.Step().CyclesConsumed.Value + (int)Cpu.Step().CyclesConsumed.Value;
+        ulong totalCyclesWith = Cpu.GetCycles();
 
         Assert.Multiple(() =>
         {
@@ -521,12 +521,12 @@ public class CpuDebugSupportTests
     /// </summary>
     private sealed class StopAfterNStepsListener : IDebugStepListener
     {
-        private readonly ICpu cpu;
+        private readonly ICpu Cpu;
         private readonly int stopAfter;
 
-        public StopAfterNStepsListener(ICpu cpu, int stopAfter)
+        public StopAfterNStepsListener(ICpu Cpu, int stopAfter)
         {
-            this.cpu = cpu;
+            this.Cpu = Cpu;
             this.stopAfter = stopAfter;
         }
 
@@ -542,7 +542,7 @@ public class CpuDebugSupportTests
             StepCount++;
             if (StepCount >= stopAfter)
             {
-                cpu.RequestStop();
+                Cpu.RequestStop();
             }
         }
     }

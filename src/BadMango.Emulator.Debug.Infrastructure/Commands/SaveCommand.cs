@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+
 /// <summary>
 /// Saves memory contents to a binary file.
 /// </summary>
@@ -45,9 +48,9 @@ public sealed class SaveCommand : CommandHandlerBase
             return CommandResult.Error("Debug context required for this command.");
         }
 
-        if (debugContext.Memory is null)
+        if (debugContext.Bus is null)
         {
-            return CommandResult.Error("No memory attached to debug context.");
+            return CommandResult.Error("No memory bus attached to debug context.");
         }
 
         if (args.Length < 3)
@@ -71,15 +74,18 @@ public sealed class SaveCommand : CommandHandlerBase
             arg.Equals("--no-overwrite", StringComparison.OrdinalIgnoreCase) ||
             arg.Equals("-n", StringComparison.OrdinalIgnoreCase));
 
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)debugContext.Bus.PageCount << debugContext.Bus.PageShift;
+
         // Validate address range
-        if (startAddress >= debugContext.Memory.Size)
+        if (startAddress >= memorySize)
         {
-            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${debugContext.Memory.Size:X4}).");
+            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${memorySize:X4}).");
         }
 
-        if (startAddress + (uint)length > debugContext.Memory.Size)
+        if (startAddress + (uint)length > memorySize)
         {
-            length = (int)(debugContext.Memory.Size - startAddress);
+            length = (int)(memorySize - startAddress);
             debugContext.Output.WriteLine($"Warning: Length adjusted to {length} bytes to stay within memory bounds.");
         }
 
@@ -95,7 +101,7 @@ public sealed class SaveCommand : CommandHandlerBase
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++)
             {
-                data[i] = debugContext.Memory.Read(startAddress + (uint)i);
+                data[i] = ReadByte(debugContext.Bus, startAddress + (uint)i);
             }
 
             // Write to file
@@ -113,6 +119,23 @@ public sealed class SaveCommand : CommandHandlerBase
         {
             return CommandResult.Error($"Access denied: {ex.Message}");
         }
+    }
+
+    private static byte ReadByte(IMemoryBus bus, uint address)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+
+        var result = bus.TryRead8(access);
+        return result.Ok ? result.Value : (byte)0xFF;
     }
 
     private static bool TryParseAddress(string value, out uint result)

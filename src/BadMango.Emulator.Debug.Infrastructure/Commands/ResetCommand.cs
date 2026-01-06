@@ -54,9 +54,9 @@ public sealed class ResetCommand : CommandHandlerBase
             arg.Equals("--hard", StringComparison.OrdinalIgnoreCase) ||
             arg.Equals("-h", StringComparison.OrdinalIgnoreCase));
 
-        if (hardReset && debugContext.Memory is not null)
+        if (hardReset && debugContext.Bus is not null)
         {
-            debugContext.Memory.Clear();
+            debugContext.Bus.Clear();
             debugContext.Output.WriteLine("Memory cleared.");
         }
 

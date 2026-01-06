@@ -1,19 +1,17 @@
-﻿// <copyright file="MachineFactory.cs" company="Bad Mango Solutions">
+// <copyright file="MachineFactory.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
+using BadMango.Emulator.Core.Cpu;
+using BadMango.Emulator.Core.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
-using BadMango.Emulator.Emulation.Memory;
-
-using Bus;
-
-using Core.Cpu;
-using Core.Interfaces;
-using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Factory for creating emulator components from machine profiles.
@@ -24,53 +22,65 @@ public static class MachineFactory
     /// Creates a complete debug system from a machine profile.
     /// </summary>
     /// <param name="profile">The machine profile to instantiate.</param>
-    /// <returns>A tuple containing the CPU, memory, disassembler, and machine info.</returns>
+    /// <param name="pathResolver">Optional path resolver for loading ROM files. If null, a default resolver is used.</param>
+    /// <returns>A tuple containing the CPU, memory bus, disassembler, and machine info.</returns>
     /// <exception cref="NotSupportedException">Thrown when the CPU type is not supported.</exception>
-    public static (ICpu Cpu, IMemory Memory, IDisassembler Disassembler, MachineInfo Info) CreateSystem(MachineProfile profile)
+    /// <exception cref="InvalidOperationException">Thrown when the memory configuration is invalid.</exception>
+    public static (ICpu Cpu, IMemoryBus Bus, IDisassembler Disassembler, MachineInfo Info) CreateSystem(
+        MachineProfile profile,
+        ProfilePathResolver? pathResolver = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        var memory = CreateMemory(profile.Memory);
-        (ICpu cpu, OpcodeTable opcodeTable) = CreateCpu(profile.Cpu, memory);
-        cpu.Reset();
-        var disassembler = new Disassembler(opcodeTable, memory);
+        pathResolver ??= new ProfilePathResolver(null);
+
+        // Use MachineBuilder.FromProfile to create the machine
+        var machine = new MachineBuilder()
+            .FromProfile(profile, pathResolver)
+            .WithCpuFactory(CreateCpuFactory(profile.Cpu))
+            .Build();
+
+        var cpu = machine.Cpu;
+        var bus = machine.Bus;
+
+        // Create opcode table and disassembler
+        var opcodeTable = GetOpcodeTable(profile.Cpu);
+        var disassembler = new Disassembler(opcodeTable, bus);
         var info = MachineInfo.FromProfile(profile);
 
-        return (cpu, memory, disassembler, info);
+        // Reset the CPU to initialize it
+        cpu.Reset();
+
+        return (cpu, bus, disassembler, info);
     }
 
-    private static IMemory CreateMemory(MemoryProfileSection memoryConfig)
+    /// <summary>
+    /// Creates a complete machine from a profile using MachineBuilder.
+    /// </summary>
+    /// <param name="profile">The machine profile to instantiate.</param>
+    /// <param name="pathResolver">Optional path resolver for loading ROM files. If null, a default resolver is used.</param>
+    /// <returns>A fully assembled and initialized machine.</returns>
+    /// <exception cref="NotSupportedException">Thrown when the CPU type is not supported.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the memory configuration is invalid.</exception>
+    public static IMachine CreateMachine(
+        MachineProfile profile,
+        ProfilePathResolver? pathResolver = null)
     {
-        return memoryConfig.Type.ToLowerInvariant() switch
-        {
-            "basic" => CreateMemoryBusAdapter(memoryConfig.Size),
-            _ => throw new NotSupportedException($"Memory type '{memoryConfig.Type}' is not supported."),
-        };
+        ArgumentNullException.ThrowIfNull(profile);
+
+        pathResolver ??= new ProfilePathResolver(null);
+
+        return new MachineBuilder()
+            .FromProfile(profile, pathResolver)
+            .WithCpuFactory(CreateCpuFactory(profile.Cpu))
+            .Build();
     }
 
-    private static IMemory CreateMemoryBusAdapter(uint size)
-    {
-        var bus = new MainBus(addressSpaceBits: 16);
-        var physical = new PhysicalMemory(size, "ram");
-        var ram = new RamTarget(physical.Slice(0, size));
-        bus.MapPageRange(
-            startPage: 0,
-            pageCount: (int)(size >> 12),
-            deviceId: 0,
-            regionTag: RegionTag.Ram,
-            perms: PagePerms.All,
-            caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            target: ram,
-            physicalBase: 0);
-        var adapter = new MemoryBusAdapter(bus);
-        return adapter;
-    }
-
-    private static (ICpu Cpu, OpcodeTable OpcodeTable) CreateCpu(CpuProfileSection cpuConfig, IMemory memory)
+    private static Func<IEventContext, ICpu> CreateCpuFactory(CpuProfileSection cpuConfig)
     {
         return cpuConfig.Type.ToUpperInvariant() switch
         {
-            "65C02" => CreateCpu65C02(memory),
+            "65C02" => context => new Cpu65C02(context),
             "6502" => throw new NotSupportedException("6502 CPU is not yet implemented in the emulator core."),
             "65816" => throw new NotSupportedException("65816 CPU is not yet implemented."),
             "65832" => throw new NotSupportedException("65832 CPU is not yet implemented."),
@@ -78,10 +88,15 @@ public static class MachineFactory
         };
     }
 
-    private static (Cpu65C02 Cpu, OpcodeTable Opcodes) CreateCpu65C02(IMemory memory)
+    private static OpcodeTable GetOpcodeTable(CpuProfileSection cpuConfig)
     {
-        var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        var cpu = new Cpu65C02(memory);
-        return (cpu, opcodeTable);
+        return cpuConfig.Type.ToUpperInvariant() switch
+        {
+            "65C02" => Cpu65C02OpcodeTableBuilder.Build(),
+            "6502" => throw new NotSupportedException("6502 CPU is not yet implemented in the emulator core."),
+            "65816" => throw new NotSupportedException("65816 CPU is not yet implemented."),
+            "65832" => throw new NotSupportedException("65832 CPU is not yet implemented."),
+            _ => throw new NotSupportedException($"CPU type '{cpuConfig.Type}' is not supported."),
+        };
     }
 }

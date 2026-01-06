@@ -5,19 +5,19 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
-using Core.Interfaces;
+using TestHelpers;
 
 using Emulation.Cpu;
-using Emulation.Memory;
+
 
 /// <summary>
 /// Unit tests for CPU interrupt handling and halt state management.
 /// </summary>
 [TestFixture]
-public class InterruptAndHaltTests
+public class InterruptAndHaltTests : CpuTestBase
 {
-    private IMemory memory = null!;
-    private Cpu65C02 cpu = null!;
+    
+    
 
     /// <summary>
     /// Sets up the test environment by initializing memory and CPU.
@@ -25,8 +25,8 @@ public class InterruptAndHaltTests
     [SetUp]
     public void Setup()
     {
-        memory = new BasicMemory();
-        cpu = new Cpu65C02(memory);
+        
+        
     }
 
     #region IRQ Tests
@@ -38,27 +38,27 @@ public class InterruptAndHaltTests
     public void IRQ_ProcessedWhenIFlagClear()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x58);       // CLI - Clear interrupt disable
-        memory.Write(0x1001, 0xEA);       // NOP - where we'll signal IRQ
-        memory.Write(0x2000, 0x40);       // RTI at IRQ handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI - Clear interrupt disable
+        Write(0x1001, 0xEA);       // NOP - where we'll signal IRQ
+        Write(0x2000, 0x40);       // RTI at IRQ handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute CLI
-        cpu.SignalIRQ(); // Signal IRQ
-        cpu.Step(); // Should process IRQ instead of executing NOP
+        Cpu.Step(); // Execute CLI
+        Cpu.SignalIRQ(); // Signal IRQ
+        Cpu.Step(); // Should process IRQ instead of executing NOP
 
         // Assert
         
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
-        byte p = memory.Read(0x01FD);      // P is at top of stack
-        byte lo = memory.Read(0x01FE);    // PC low byte
-        byte hi = memory.Read(0x01FF);    // PC high byte
+        byte p = Read(0x01FD);      // P is at top of stack
+        byte lo = Read(0x01FE);    // PC low byte
+        byte hi = Read(0x01FF);    // PC high byte
         Assert.That((hi << 8) | lo, Is.EqualTo(0x1001), "Pushed PC should point to NOP");
         Assert.That(p & 0x10, Is.EqualTo(0), "B flag should be clear in pushed P");
     }
@@ -70,20 +70,20 @@ public class InterruptAndHaltTests
     public void IRQ_MaskedWhenIFlagSet()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x78);       // SEI - Set interrupt disable
-        memory.Write(0x1001, 0xEA);       // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x78);       // SEI - Set interrupt disable
+        Write(0x1001, 0xEA);       // NOP
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute SEI
-        cpu.SignalIRQ(); // Signal IRQ (should be masked)
-        cpu.Step(); // Should execute NOP normally
+        Cpu.Step(); // Execute SEI
+        Cpu.SignalIRQ(); // Signal IRQ (should be masked)
+        Cpu.Step(); // Should execute NOP normally
 
         // Assert
         
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
     #endregion
@@ -97,21 +97,21 @@ public class InterruptAndHaltTests
     public void NMI_ProcessedRegardlessOfIFlag()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFA, 0x3000); // NMI vector
-        memory.Write(0x1000, 0x78);       // SEI - Set interrupt disable
-        memory.Write(0x1001, 0xEA);       // NOP
-        memory.Write(0x3000, 0x40);       // RTI at NMI handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0x78);       // SEI - Set interrupt disable
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI at NMI handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute SEI
-        cpu.SignalNMI(); // Signal NMI
-        cpu.Step(); // Should process NMI even with I flag set
+        Cpu.Step(); // Execute SEI
+        Cpu.SignalNMI(); // Signal NMI
+        Cpu.Step(); // Should process NMI even with I flag set
 
         // Assert
         
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -121,22 +121,22 @@ public class InterruptAndHaltTests
     public void NMI_HasPriorityOverIRQ()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFA, 0x3000); // NMI vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x58);       // CLI - Clear interrupt disable
-        memory.Write(0x1001, 0xEA);       // NOP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI - Clear interrupt disable
+        Write(0x1001, 0xEA);       // NOP
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute CLI
-        cpu.SignalIRQ(); // Signal IRQ
-        cpu.SignalNMI(); // Signal NMI (should take priority)
-        cpu.Step(); // Should process NMI, not IRQ
+        Cpu.Step(); // Execute CLI
+        Cpu.SignalIRQ(); // Signal IRQ
+        Cpu.SignalNMI(); // Signal NMI (should take priority)
+        Cpu.Step(); // Should process NMI, not IRQ
 
         // Assert
         
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
     #endregion
@@ -150,16 +150,16 @@ public class InterruptAndHaltTests
     public void WAI_HaltsCpu()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xCB); // WAI
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xCB); // WAI
+        Cpu.Reset();
 
         // Act
-        cpu.Step();
+        Cpu.Step();
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Wai), "Halt reason should be WAI");
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Wai), "Halt reason should be WAI");
     }
 
     /// <summary>
@@ -169,25 +169,25 @@ public class InterruptAndHaltTests
     public void WAI_ResumesOnIRQ()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x58);       // CLI
-        memory.Write(0x1001, 0xCB);       // WAI
-        memory.Write(0x2000, 0x40);       // RTI at IRQ handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xCB);       // WAI
+        Write(0x2000, 0x40);       // RTI at IRQ handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute CLI
-        cpu.Step(); // Execute WAI - CPU halts
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted after WAI");
+        Cpu.Step(); // Execute CLI
+        Cpu.Step(); // Execute WAI - CPU halts
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted after WAI");
 
-        cpu.SignalIRQ(); // Signal IRQ
-        cpu.Step(); // Should resume and process IRQ
+        Cpu.SignalIRQ(); // Signal IRQ
+        Cpu.Step(); // Should resume and process IRQ
 
         // Assert
-        Assert.That(cpu.Halted, Is.False, "CPU should not be halted after IRQ");
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
+        Assert.That(Cpu.Halted, Is.False, "CPU should not be halted after IRQ");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
     }
 
     /// <summary>
@@ -197,23 +197,23 @@ public class InterruptAndHaltTests
     public void WAI_ResumesOnNMI()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFA, 0x3000); // NMI vector
-        memory.Write(0x1000, 0xCB);       // WAI
-        memory.Write(0x3000, 0x40);       // RTI at NMI handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0xCB);       // WAI
+        Write(0x3000, 0x40);       // RTI at NMI handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute WAI - CPU halts
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted after WAI");
+        Cpu.Step(); // Execute WAI - CPU halts
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted after WAI");
 
-        cpu.SignalNMI(); // Signal NMI
-        cpu.Step(); // Should resume and process NMI
+        Cpu.SignalNMI(); // Signal NMI
+        Cpu.Step(); // Should resume and process NMI
 
         // Assert
         
-        Assert.That(cpu.Halted, Is.False, "CPU should not be halted after NMI");
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Halted, Is.False, "CPU should not be halted after NMI");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
     /// <summary>
@@ -223,21 +223,21 @@ public class InterruptAndHaltTests
     public void WAI_DoesNotResumeOnMaskedIRQ()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x78);       // SEI - Set I flag
-        memory.Write(0x1001, 0xCB);       // WAI
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x78);       // SEI - Set I flag
+        Write(0x1001, 0xCB);       // WAI
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute SEI
-        cpu.Step(); // Execute WAI - CPU halts
-        cpu.SignalIRQ(); // Signal IRQ (should be masked)
-        var result = cpu.Step();
+        Cpu.Step(); // Execute SEI
+        Cpu.Step(); // Execute WAI - CPU halts
+        Cpu.SignalIRQ(); // Signal IRQ (should be masked)
+        var result = Cpu.Step();
         int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
+        Assert.That(Cpu.Halted, Is.True, "CPU should remain halted");
         Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed while halted");
     }
 
@@ -252,16 +252,16 @@ public class InterruptAndHaltTests
     public void STP_HaltsCpu()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xDB); // STP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xDB); // STP
+        Cpu.Reset();
 
         // Act
-        cpu.Step();
+        Cpu.Step();
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should be STP");
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should be STP");
     }
 
     /// <summary>
@@ -271,22 +271,22 @@ public class InterruptAndHaltTests
     public void STP_DoesNotResumeOnIRQ()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0x58);       // CLI
-        memory.Write(0x1001, 0xDB);       // STP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xDB);       // STP
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute CLI
-        cpu.Step(); // Execute STP - CPU halts permanently
-        cpu.SignalIRQ(); // Signal IRQ
-        var result = cpu.Step();
+        Cpu.Step(); // Execute CLI
+        Cpu.Step(); // Execute STP - CPU halts permanently
+        Cpu.SignalIRQ(); // Signal IRQ
+        var result = Cpu.Step();
         int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
+        Assert.That(Cpu.Halted, Is.True, "CPU should remain halted");
         Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should still be STP");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Halt reason should still be STP");
     }
 
     /// <summary>
@@ -296,18 +296,18 @@ public class InterruptAndHaltTests
     public void STP_DoesNotResumeOnNMI()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xDB); // STP
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xDB); // STP
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute STP - CPU halts permanently
-        cpu.SignalNMI(); // Signal NMI
-        var result = cpu.Step();
+        Cpu.Step(); // Execute STP - CPU halts permanently
+        Cpu.SignalNMI(); // Signal NMI
+        var result = Cpu.Step();
         int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
 
         // Assert
-        Assert.That(cpu.Halted, Is.True, "CPU should remain halted");
+        Assert.That(Cpu.Halted, Is.True, "CPU should remain halted");
         Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed");
     }
 
@@ -318,20 +318,20 @@ public class InterruptAndHaltTests
     public void STP_ResumesOnlyOnReset()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.Write(0x1000, 0xDB);       // STP
-        memory.Write(0x1001, 0xEA);       // NOP (should execute after reset)
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xDB);       // STP
+        Write(0x1001, 0xEA);       // NOP (should execute after reset)
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute STP
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted");
+        Cpu.Step(); // Execute STP
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted");
 
-        cpu.Reset(); // Reset should clear halt state
+        Cpu.Reset(); // Reset should clear halt state
 
         // Assert
-        Assert.That(cpu.Halted, Is.False, "CPU should not be halted after reset");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None after reset");
+        Assert.That(Cpu.Halted, Is.False, "CPU should not be halted after reset");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None after reset");
     }
 
     #endregion
@@ -345,19 +345,19 @@ public class InterruptAndHaltTests
     public void BRK_DoesNotHaltCpu()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x00);       // BRK
-        memory.Write(0x2000, 0xEA);       // NOP at IRQ handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x00);       // BRK
+        Write(0x2000, 0xEA);       // NOP at IRQ handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute BRK - jumps to IRQ vector
+        Cpu.Step(); // Execute BRK - jumps to IRQ vector
 
         // Assert - BRK should not halt, PC should be at IRQ vector
-        Assert.That(cpu.Halted, Is.False, "CPU should not be halted after BRK");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Halted, Is.False, "CPU should not be halted after BRK");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be None");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
     }
 
     /// <summary>
@@ -367,16 +367,16 @@ public class InterruptAndHaltTests
     public void BRK_SetsBFlagInPushedStatus()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000);
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x00);       // BRK
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x00);       // BRK
+        Cpu.Reset();
 
         // Act
-        cpu.Step();
+        Cpu.Step();
 
         // Assert
-        byte pushedP = memory.Read(0x01FD);
+        byte pushedP = Read(0x01FD);
         Assert.That(pushedP & 0x10, Is.EqualTo(0x10), "B flag should be set in pushed status");
     }
 
@@ -391,30 +391,30 @@ public class InterruptAndHaltTests
     public void RTI_RestoresStateAfterIRQ()
     {
         // Arrange
-        memory.WriteWord(0xFFFC, 0x1000); // Reset vector
-        memory.WriteWord(0xFFFE, 0x2000); // IRQ vector
-        memory.Write(0x1000, 0x58);       // CLI
-        memory.Write(0x1001, 0xA9);       // LDA #$42
-        memory.Write(0x1002, 0x42);
-        memory.Write(0x2000, 0x40);       // RTI at IRQ handler
-        cpu.Reset();
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xA9);       // LDA #$42
+        Write(0x1002, 0x42);
+        Write(0x2000, 0x40);       // RTI at IRQ handler
+        Cpu.Reset();
 
         // Act
-        cpu.Step(); // Execute CLI
-        cpu.SignalIRQ(); // Signal IRQ (asserts on signal bus)
-        cpu.Step(); // Process IRQ (pushes PC and P, jumps to IRQ vector)
+        Cpu.Step(); // Execute CLI
+        Cpu.SignalIRQ(); // Signal IRQ (asserts on signal bus)
+        Cpu.Step(); // Process IRQ (pushes PC and P, jumps to IRQ vector)
 
         // Deassert IRQ before executing RTI, simulating device acknowledgment
         // In a real system, the interrupt handler would read the device's status
         // register which clears the interrupt. For this test, we manually deassert.
-        cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(cpu.GetCycles()));
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(Cpu.GetCycles()));
 
-        cpu.Step(); // Execute RTI
+        Cpu.Step(); // Execute RTI
 
         // Assert
         
-        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
-        Assert.That(cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }
 
     #endregion

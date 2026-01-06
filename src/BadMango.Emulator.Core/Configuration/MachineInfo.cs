@@ -46,12 +46,34 @@ public sealed record MachineInfo(
     {
         ArgumentNullException.ThrowIfNull(profile);
 
+        uint memorySize = CalculateMemorySize(profile);
+
         return new MachineInfo(
             Name: profile.Name,
             DisplayName: profile.DisplayName ?? profile.Name,
             CpuType: profile.Cpu.Type,
-            MemorySize: profile.Memory.Size,
+            MemorySize: memorySize,
             Description: profile.Description);
+    }
+
+    /// <summary>
+    /// Calculates the total memory size from the profile's memory configuration.
+    /// </summary>
+    /// <param name="profile">The machine profile.</param>
+    /// <returns>The total memory size in bytes.</returns>
+    private static uint CalculateMemorySize(MachineProfile profile)
+    {
+        var memoryConfig = profile.Memory;
+
+        if (memoryConfig.UsesRegions)
+        {
+            return memoryConfig.Regions!
+                .Select(region => HexParser.TryParseUInt32(region.Size, out uint size) ? size : 0)
+                .Aggregate(0u, (total, size) => total + size);
+        }
+
+        // Default to address space size if no regions defined
+        return (uint)(1 << profile.AddressSpace);
     }
 
     /// <summary>

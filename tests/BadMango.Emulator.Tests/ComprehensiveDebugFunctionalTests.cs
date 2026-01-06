@@ -6,11 +6,11 @@ namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
 using Core.Debugger;
-using Core.Interfaces;
+using TestHelpers;
 using Core.Interfaces.Debugging;
 
 using Emulation.Cpu;
-using Emulation.Memory;
+
 
 /// <summary>
 /// Comprehensive functional tests that exercise the debug infrastructure with complex code.
@@ -21,10 +21,10 @@ using Emulation.Memory;
 /// states, cycle counts, and halt conditions.
 /// </remarks>
 [TestFixture]
-public class ComprehensiveDebugFunctionalTests
+public class ComprehensiveDebugFunctionalTests : CpuTestBase
 {
-    private IMemory memory = null!;
-    private Cpu65C02 cpu = null!;
+    
+    
     private RecordingDebugListener listener = null!;
 
     /// <summary>
@@ -33,8 +33,8 @@ public class ComprehensiveDebugFunctionalTests
     [SetUp]
     public void Setup()
     {
-        memory = new BasicMemory();
-        cpu = new Cpu65C02(memory);
+        
+        
         listener = new RecordingDebugListener();
     }
 
@@ -95,31 +95,31 @@ public class ComprehensiveDebugFunctionalTests
         // Load program into memory
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
         // Set reset vector
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
         // Step through until STP
         int maxSteps = 500; // Safety limit
         int stepCount = 0;
 
-        while (!cpu.Halted && stepCount < maxSteps)
+        while (!Cpu.Halted && stepCount < maxSteps)
         {
-            cpu.Step();
+            Cpu.Step();
             stepCount++;
         }
 
         // Verify the program halted on STP
-        Assert.That(cpu.Halted, Is.True, "CPU should be halted");
-        Assert.That(cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Stp), "Should halt due to STP");
 
         // Verify final result: 5! = 120 = $78
-        Assert.That(memory.Read(resultAddr), Is.EqualTo(120), "5! should equal 120");
-        Assert.That(cpu.GetRegisters().A.GetByte(), Is.EqualTo(120), "Accumulator should contain 120");
+        Assert.That(Read(resultAddr), Is.EqualTo(120), "5! should equal 120");
+        Assert.That(Cpu.GetRegisters().A.GetByte(), Is.EqualTo(120), "Accumulator should contain 120");
 
         // Verify debug listener recorded all steps
         Assert.That(listener.StepRecords.Count, Is.EqualTo(stepCount), "Should have recorded all steps");
@@ -170,26 +170,26 @@ public class ComprehensiveDebugFunctionalTests
         // Load programs
         for (int i = 0; i < mainProgram.Length; i++)
         {
-            memory.Write((Addr)(mainAddr + i), mainProgram[i]);
+            Write((Addr)(mainAddr + i), mainProgram[i]);
         }
 
         for (int i = 0; i < subroutine.Length; i++)
         {
-            memory.Write((Addr)(subroutineAddr + i), subroutine[i]);
+            Write((Addr)(subroutineAddr + i), subroutine[i]);
         }
 
-        memory.WriteWord(0xFFFC, mainAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, mainAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
         // Step through until halted
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify result: 21 * 2 = 42
-        Assert.That(memory.Read(0x0200), Is.EqualTo(42));
+        Assert.That(Read(0x0200), Is.EqualTo(42));
 
         // Find the JSR instruction in the records
         var jsrRecordIndex = listener.StepRecords.FindIndex(r => r.AfterStep.Instruction == CpuInstructions.JSR);
@@ -240,16 +240,16 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify all branches were taken by checking we never loaded $FF, $FE, $FD, $FC, $FB, $FA
@@ -317,20 +317,20 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify final register values
-        var regs = cpu.GetRegisters();
+        var regs = Cpu.GetRegisters();
         Assert.Multiple(() =>
         {
             Assert.That(regs.A.GetByte(), Is.EqualTo(0x11), "A should be restored to $11");
@@ -384,20 +384,20 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify final accumulator value
-        Assert.That(cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x40));
+        Assert.That(Cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x40));
 
         // Verify shift/rotate instructions were recorded
         var shiftRecords = listener.StepRecords
@@ -438,16 +438,16 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Find CMP, CPX, CPY instructions
@@ -486,20 +486,20 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify final value: $FF AND $0F = $0F, $0F ORA $F0 = $FF, $FF EOR $AA = $55
-        Assert.That(cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x55));
+        Assert.That(Cpu.GetRegisters().A.GetByte(), Is.EqualTo(0x55));
 
         // Verify logical instructions were recorded
         var andRecord = listener.StepRecords.First(r => r.AfterStep.Instruction == CpuInstructions.AND);
@@ -532,16 +532,16 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Verify instruction cycles were tracked
@@ -560,7 +560,7 @@ public class ComprehensiveDebugFunctionalTests
         });
 
         // Verify total cycles add up
-        var totalCycles = cpu.GetCycles();
+        var totalCycles = Cpu.GetCycles();
         var sumOfInstructionCycles = listener.StepRecords.Sum(r => r.AfterStep.InstructionCycles);
         Assert.That(totalCycles, Is.EqualTo(sumOfInstructionCycles), "Total cycles should match sum of instruction cycles");
     }
@@ -574,9 +574,9 @@ public class ComprehensiveDebugFunctionalTests
         ushort startAddr = 0x1000;
 
         // Set up zero page pointer at $20-$21 pointing to $0300
-        memory.Write(0x20, 0x00);
-        memory.Write(0x21, 0x03);
-        memory.Write(0x0300, 0x99); // Value at effective address
+        Write(0x20, 0x00);
+        Write(0x21, 0x03);
+        Write(0x0300, 0x99); // Value at effective address
 
         byte[] program =
         [
@@ -591,16 +591,16 @@ public class ComprehensiveDebugFunctionalTests
 
         for (int i = 0; i < program.Length; i++)
         {
-            memory.Write((Addr)(startAddr + i), program[i]);
+            Write((Addr)(startAddr + i), program[i]);
         }
 
-        memory.WriteWord(0xFFFC, startAddr);
-        cpu.Reset();
-        cpu.AttachDebugger(listener);
+        WriteWord(0xFFFC, startAddr);
+        Cpu.Reset();
+        Cpu.AttachDebugger(listener);
 
-        while (!cpu.Halted)
+        while (!Cpu.Halted)
         {
-            cpu.Step();
+            Cpu.Step();
         }
 
         // Check effective addresses were recorded

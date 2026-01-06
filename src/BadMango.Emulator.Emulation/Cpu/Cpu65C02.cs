@@ -8,15 +8,14 @@ using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
-using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 
 using Core;
 using Core.Cpu;
 using Core.Debugger;
-using Core.Interfaces;
 using Core.Interfaces.Cpu;
 using Core.Interfaces.Debugging;
+using Core.Interfaces.Signaling;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
@@ -48,23 +47,6 @@ public class Cpu65C02 : CpuBase
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
     public Cpu65C02(IEventContext context)
         : base(context)
-    {
-        opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an IMemory interface.
-    /// </summary>
-    /// <param name="memory">The memory interface for the CPU.</param>
-    /// <remarks>
-    /// This constructor is provided for backward compatibility with existing code that uses IMemory.
-    /// It creates a MemoryBusAdapter internally to route memory operations through the bus architecture.
-    /// For new code, prefer using the <see cref="Cpu65C02(IEventContext)"/> constructor.
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="memory"/> is null.</exception>
-    [Obsolete("Use the constructor that accepts IEventContext for bus-based memory access.")]
-    public Cpu65C02(IMemory memory)
-        : base(CreateEventContextFromMemory(memory))
     {
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
     }
@@ -292,28 +274,6 @@ public class Cpu65C02 : CpuBase
 
     // ─── Private Helper Methods ─────────────────────────────────────────
 
-    /// <summary>
-    /// Creates an event context from an IMemory interface for backward compatibility.
-    /// </summary>
-    /// <param name="memory">The memory interface to wrap.</param>
-    /// <returns>An event context that wraps the memory interface.</returns>
-    private static IEventContext CreateEventContextFromMemory(IMemory memory)
-    {
-        ArgumentNullException.ThrowIfNull(memory, nameof(memory));
-
-        // Create a minimal bus infrastructure for backward compatibility
-        var mainBus = new MainBus();
-        var scheduler = new Scheduler();
-        var signalBus = new SignalBus();
-
-        // Map the memory address space to a RAM target that wraps the IMemory
-        var adapter = new MemoryToTargetAdapter(memory);
-        var pageCount = (int)(memory.Size >> 12); // 4KB pages (Size / 4096)
-        mainBus.MapPageRange(0, pageCount, 0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, adapter, 0);
-
-        return new EventContext(scheduler, signalBus, mainBus);
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {
@@ -438,56 +398,5 @@ public class Cpu65C02 : CpuBase
 
         // Account for 7 cycles for interrupt processing
         Registers.TCU += 7;
-    }
-
-    /// <summary>
-    /// Adapter that wraps an IMemory interface as an IBusTarget.
-    /// Used for backward compatibility when constructing a Cpu65C02 with IMemory.
-    /// </summary>
-    private sealed class MemoryToTargetAdapter : IBusTarget
-    {
-        private readonly IMemory memory;
-
-        public MemoryToTargetAdapter(IMemory memory)
-        {
-            this.memory = memory;
-        }
-
-        public TargetCaps Capabilities => TargetCaps.None;
-
-        public byte Read8(Addr physicalAddress, in BusAccess access)
-        {
-            return memory.Read(physicalAddress);
-        }
-
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
-        {
-            memory.Write(physicalAddress, value);
-        }
-
-        public Word Read16(Addr physicalAddress, in BusAccess access)
-        {
-            return memory.ReadWord(physicalAddress);
-        }
-
-        public void Write16(Addr physicalAddress, Word value, in BusAccess access)
-        {
-            memory.WriteWord(physicalAddress, value);
-        }
-
-        public DWord Read32(Addr physicalAddress, in BusAccess access)
-        {
-            return memory.ReadDWord(physicalAddress);
-        }
-
-        public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
-        {
-            memory.WriteDWord(physicalAddress, value);
-        }
-
-        public void Clear()
-        {
-            memory.Clear();
-        }
     }
 }

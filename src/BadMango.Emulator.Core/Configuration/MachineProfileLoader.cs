@@ -152,10 +152,20 @@ public sealed class MachineProfileLoader : IMachineProfileLoader
                 Type = "65C02",
                 ClockSpeed = 1_000_000,
             },
+            AddressSpace = 16,
             Memory = new MemoryProfileSection
             {
-                Size = 65536,
-                Type = "basic",
+                Regions =
+                [
+                    new MemoryRegionProfile
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                    },
+                ],
             },
         };
     }

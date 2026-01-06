@@ -15,6 +15,35 @@ using Core.Cpu;
 public class MachineFactoryTests
 {
     /// <summary>
+    /// Creates a standard test profile using the new regions-based schema.
+    /// </summary>
+    /// <returns>A machine profile for testing.</returns>
+    private static MachineProfile CreateTestProfile()
+    {
+        return new MachineProfile
+        {
+            Name = "test-65c02",
+            DisplayName = "Test 65C02",
+            Cpu = new CpuProfileSection { Type = "65C02" },
+            AddressSpace = 16,
+            Memory = new MemoryProfileSection
+            {
+                Regions =
+                [
+                    new MemoryRegionProfile
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                    },
+                ],
+            },
+        };
+    }
+
+    /// <summary>
     /// Verifies that the CPU is properly reset after creation, setting E and CP flags appropriately
     /// for 65C02 emulation mode.
     /// </summary>
@@ -26,13 +55,7 @@ public class MachineFactoryTests
     [Test]
     public void CreateSystem_65C02_CpuIsProperlyReset()
     {
-        var profile = new MachineProfile
-        {
-            Name = "test-65c02",
-            DisplayName = "Test 65C02",
-            Cpu = new CpuProfileSection { Type = "65C02" },
-            Memory = new MemoryProfileSection { Size = 65536, Type = "basic" },
-        };
+        var profile = CreateTestProfile();
 
         var (cpu, _, _, _) = MachineFactory.CreateSystem(profile);
 
@@ -52,13 +75,7 @@ public class MachineFactoryTests
     [Test]
     public void CreateSystem_65C02_StatusFlagsProperlyInitialized()
     {
-        var profile = new MachineProfile
-        {
-            Name = "test-65c02",
-            DisplayName = "Test 65C02",
-            Cpu = new CpuProfileSection { Type = "65C02" },
-            Memory = new MemoryProfileSection { Size = 65536, Type = "basic" },
-        };
+        var profile = CreateTestProfile();
 
         var (cpu, _, _, _) = MachineFactory.CreateSystem(profile);
 
@@ -83,13 +100,7 @@ public class MachineFactoryTests
     [Test]
     public void CreateSystem_65C02_ReturnsAllComponents()
     {
-        var profile = new MachineProfile
-        {
-            Name = "test-65c02",
-            DisplayName = "Test 65C02",
-            Cpu = new CpuProfileSection { Type = "65C02" },
-            Memory = new MemoryProfileSection { Size = 65536, Type = "basic" },
-        };
+        var profile = CreateTestProfile();
 
         var (cpu, memory, disassembler, info) = MachineFactory.CreateSystem(profile);
 

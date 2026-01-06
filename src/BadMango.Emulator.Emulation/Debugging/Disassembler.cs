@@ -4,6 +4,9 @@
 
 namespace BadMango.Emulator.Emulation.Debugging;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+
 using Core;
 using Core.Cpu;
 using Core.Interfaces;
@@ -22,7 +25,7 @@ using Core.Interfaces;
 /// Example usage:
 /// <code>
 /// var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-/// var disassembler = new Disassembler(opcodeTable, memory);
+/// var disassembler = new Disassembler(opcodeTable, bus);
 /// var instructions = disassembler.Disassemble(0x1000, 16);
 /// foreach (var instr in instructions)
 /// {
@@ -33,17 +36,17 @@ using Core.Interfaces;
 /// </remarks>
 public sealed class Disassembler : IDisassembler
 {
-    private readonly IMemory memory;
+    private readonly Func<uint, byte> readByte;
     private readonly OpcodeInfo[] opcodeInfoTable;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Disassembler"/> class.
+    /// Initializes a new instance of the <see cref="Disassembler"/> class using an <see cref="IMemoryBus"/>.
     /// </summary>
     /// <param name="opcodeTable">The opcode table to use for disassembly.</param>
-    /// <param name="memory">The memory interface to read from.</param>
-    /// <exception cref="ArgumentNullException">Thrown when opcodeTable or memory is null.</exception>
-    public Disassembler(OpcodeTable opcodeTable, IMemory memory)
-        : this(BuildOpcodeInfoArray(opcodeTable), memory)
+    /// <param name="bus">The memory bus to read from.</param>
+    /// <exception cref="ArgumentNullException">Thrown when opcodeTable or bus is null.</exception>
+    public Disassembler(OpcodeTable opcodeTable, IMemoryBus bus)
+        : this(BuildOpcodeInfoArray(opcodeTable), CreateReadFunc(bus))
     {
     }
 
@@ -51,20 +54,32 @@ public sealed class Disassembler : IDisassembler
     /// Initializes a new instance of the <see cref="Disassembler"/> class with a pre-built opcode info array.
     /// </summary>
     /// <param name="opcodeInfoArray">The pre-built opcode info array (256 elements).</param>
-    /// <param name="memory">The memory interface to read from.</param>
-    /// <exception cref="ArgumentNullException">Thrown when opcodeInfoArray or memory is null.</exception>
+    /// <param name="bus">The memory bus to read from.</param>
+    /// <exception cref="ArgumentNullException">Thrown when opcodeInfoArray or bus is null.</exception>
     /// <exception cref="ArgumentException">Thrown when opcodeInfoArray is not exactly 256 elements.</exception>
-    public Disassembler(OpcodeInfo[] opcodeInfoArray, IMemory memory)
+    public Disassembler(OpcodeInfo[] opcodeInfoArray, IMemoryBus bus)
+        : this(opcodeInfoArray, CreateReadFunc(bus))
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Disassembler"/> class with a custom read function.
+    /// </summary>
+    /// <param name="opcodeInfoArray">The pre-built opcode info array (256 elements).</param>
+    /// <param name="readByte">A function that reads a byte from the given address.</param>
+    /// <exception cref="ArgumentNullException">Thrown when opcodeInfoArray or readByte is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when opcodeInfoArray is not exactly 256 elements.</exception>
+    private Disassembler(OpcodeInfo[] opcodeInfoArray, Func<uint, byte> readByte)
     {
         ArgumentNullException.ThrowIfNull(opcodeInfoArray);
-        ArgumentNullException.ThrowIfNull(memory);
+        ArgumentNullException.ThrowIfNull(readByte);
 
         if (opcodeInfoArray.Length != 256)
         {
             throw new ArgumentException("Opcode info array must have exactly 256 entries.", nameof(opcodeInfoArray));
         }
 
-        this.memory = memory;
+        this.readByte = readByte;
         opcodeInfoTable = opcodeInfoArray;
     }
 
@@ -111,14 +126,14 @@ public sealed class Disassembler : IDisassembler
     /// </remarks>
     public DisassembledInstruction DisassembleInstruction(uint address)
     {
-        byte opcode = memory.Read(address);
+        byte opcode = readByte(address);
         var opcodeInfo = opcodeInfoTable[opcode];
 
         // Read operand bytes into the fixed-size buffer
         OperandBuffer operandBuffer = default;
         for (int i = 0; i < opcodeInfo.OperandLength; i++)
         {
-            operandBuffer[i] = memory.Read(address + 1 + (uint)i);
+            operandBuffer[i] = readByte(address + 1 + (uint)i);
         }
 
         return new DisassembledInstruction(
@@ -140,5 +155,26 @@ public sealed class Disassembler : IDisassembler
     {
         ArgumentNullException.ThrowIfNull(opcodeTable);
         return OpcodeTableAnalyzer.BuildOpcodeInfoArray(opcodeTable);
+    }
+
+    private static Func<uint, byte> CreateReadFunc(IMemoryBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(bus);
+        return address =>
+        {
+            var access = new BusAccess(
+                Address: address,
+                Value: 0,
+                WidthBits: 8,
+                Mode: BusAccessMode.Decomposed,
+                EmulationFlag: true,
+                Intent: AccessIntent.DebugRead,
+                SourceId: 0,
+                Cycle: 0,
+                Flags: AccessFlags.NoSideEffects);
+
+            var result = bus.TryRead8(access);
+            return result.Ok ? result.Value : (byte)0xFF;
+        };
     }
 }
