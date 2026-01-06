@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Core.Configuration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Serilog;
+
 /// <summary>
 /// Serializes and deserializes machine profiles with round-trip fidelity.
 /// </summary>
@@ -130,8 +132,9 @@ public sealed class MachineProfileSerializer
 
             return string.Equals(json1, json2, StringComparison.Ordinal);
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Warning(ex, "Round-trip validation failed for profile {ProfileName}", profile.Name);
             return false;
         }
     }

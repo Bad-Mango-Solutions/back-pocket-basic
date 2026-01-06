@@ -26,6 +26,7 @@ public sealed class PocketWatchConfig
     /// The default NTP poll interval in seconds (1 hour).
     /// </summary>
     public const int DefaultNtpPollIntervalSeconds = 3600;
+
     /// <summary>
     /// Gets or sets the time source for the clock.
     /// </summary>

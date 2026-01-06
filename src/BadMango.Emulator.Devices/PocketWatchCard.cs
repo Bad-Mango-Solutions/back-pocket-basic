@@ -167,17 +167,10 @@ public sealed class PocketWatchCard : IClockDevice
 
             case "frozen":
                 useHostTime = false;
-                if (!string.IsNullOrEmpty(config.FrozenTime) &&
-                    DateTime.TryParse(config.FrozenTime, out var parsedTime))
-                {
-                    fixedTime = parsedTime;
-                }
-                else
-                {
-                    // Default frozen time if parsing fails
-                    fixedTime = DefaultFrozenTime;
-                }
-
+                fixedTime = !string.IsNullOrEmpty(config.FrozenTime) &&
+                    DateTime.TryParse(config.FrozenTime, out var parsedTime)
+                        ? parsedTime
+                        : DefaultFrozenTime;
                 break;
 
             case "ntp":
