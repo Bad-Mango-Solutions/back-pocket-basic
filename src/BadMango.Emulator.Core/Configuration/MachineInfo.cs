@@ -67,16 +67,9 @@ public sealed record MachineInfo(
 
         if (memoryConfig.UsesRegions)
         {
-            uint totalSize = 0;
-            foreach (var region in memoryConfig.Regions!)
-            {
-                if (HexParser.TryParseUInt32(region.Size, out uint regionSize))
-                {
-                    totalSize += regionSize;
-                }
-            }
-
-            return totalSize;
+            return memoryConfig.Regions!
+                .Select(region => HexParser.TryParseUInt32(region.Size, out uint size) ? size : 0)
+                .Aggregate(0u, (total, size) => total + size);
         }
 
         // Default to address space size if no regions defined
