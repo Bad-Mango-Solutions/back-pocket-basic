@@ -651,7 +651,7 @@ cpu.Registers.X = 0x10;
 cpu.Registers.PC = 0x0300;
 
 // Execute a single instruction
-cpu.Step(memory);
+cpu.Step();
 ```
 
 ### Memory Bus
