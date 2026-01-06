@@ -10,9 +10,19 @@ using System.Runtime.CompilerServices;
 /// Base interface for memory management in emulated systems.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This interface provides the foundation for various memory models including
 /// standard 64KB configurations, banked memory, and extended memory systems.
+/// </para>
+/// <para>
+/// <b>Deprecation Notice:</b> This interface is being phased out in favor of
+/// the bus-oriented architecture using <c>IMemoryBus</c> and <c>IBusTarget</c>.
+/// New code should use <c>MemoryBusAdapter</c> which implements this interface
+/// as a bridge to the bus architecture.
+/// </para>
 /// </remarks>
+[Obsolete("Use IMemoryBus and IBusTarget from BadMango.Emulator.Bus for new code. " +
+          "IMemory is maintained for backward compatibility with CPU implementations.")]
 public interface IMemory
 {
     /// <summary>

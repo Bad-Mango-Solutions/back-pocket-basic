@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 
@@ -18,7 +17,7 @@ using Core.Interfaces.Cpu;
 /// </summary>
 /// <remarks>
 /// The debug context extends <see cref="ICommandContext"/> to provide commands with
-/// access to the CPU, memory, and disassembler for debugging operations.
+/// access to the CPU, memory bus, and disassembler for debugging operations.
 /// </remarks>
 public interface IDebugContext : ICommandContext
 {
@@ -32,13 +31,18 @@ public interface IDebugContext : ICommandContext
     ICpu? Cpu { get; }
 
     /// <summary>
-    /// Gets the memory instance for the debug session.
+    /// Gets the memory bus for the debug session.
     /// </summary>
     /// <remarks>
-    /// May be null if no memory has been attached to the debug context.
+    /// <para>
+    /// Provides access to the page-based memory system including page table inspection
+    /// and bus-level tracing. May be null if no bus has been attached to the debug context.
+    /// </para>
+    /// <para>
     /// Commands should check for null before accessing memory operations.
+    /// </para>
     /// </remarks>
-    IMemory? Memory { get; }
+    IMemoryBus? Bus { get; }
 
     /// <summary>
     /// Gets the disassembler instance for the debug session.
@@ -72,25 +76,9 @@ public interface IDebugContext : ICommandContext
     /// Gets a value indicating whether a system is attached to this debug context.
     /// </summary>
     /// <remarks>
-    /// Returns true if CPU, Memory, and Disassembler are all available.
+    /// Returns true if CPU, Bus, and Disassembler are all available.
     /// </remarks>
     bool IsSystemAttached { get; }
-
-    /// <summary>
-    /// Gets the memory bus for bus-aware debugging.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// When non-null, provides access to the page-based memory system
-    /// including page table inspection and bus-level tracing.
-    /// </para>
-    /// <para>
-    /// Legacy systems may have Memory but not Bus. New systems using the
-    /// bus architecture will have both - Memory may be a <see cref="MemoryBusAdapter"/>
-    /// wrapping the Bus for backward compatibility with existing debug commands.
-    /// </para>
-    /// </remarks>
-    IMemoryBus? Bus { get; }
 
     /// <summary>
     /// Gets the machine instance for high-level machine control.

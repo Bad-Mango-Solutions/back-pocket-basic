@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
 
@@ -18,15 +17,13 @@ using Core.Interfaces.Cpu;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Provides command handlers with access to the CPU, memory, and disassembler
+/// Provides command handlers with access to the CPU, memory bus, and disassembler
 /// for debugging operations. The emulator components can be attached dynamically
 /// after the context is created.
 /// </para>
 /// <para>
-/// For bus-based systems, use the <see cref="AttachBus"/> method or the
-/// <see cref="AttachSystem(ICpu, IMemoryBus, IDisassembler)"/> overload. These
-/// will automatically create a <see cref="MemoryBusAdapter"/> to provide backward
-/// compatibility with existing debug commands that use <see cref="IMemory"/>.
+/// The debug context uses <see cref="IMemoryBus"/> as the primary memory interface
+/// for bus-oriented debugging. Commands use the bus directly for memory operations.
 /// </para>
 /// </remarks>
 public sealed class DebugContext : IDebugContext
@@ -57,7 +54,7 @@ public sealed class DebugContext : IDebugContext
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
     /// <param name="cpu">The CPU instance.</param>
-    /// <param name="memory">The memory instance.</param>
+    /// <param name="bus">The memory bus instance.</param>
     /// <param name="disassembler">The disassembler instance.</param>
     /// <param name="machineInfo">The machine information.</param>
     /// <param name="tracingListener">The tracing debug listener.</param>
@@ -67,7 +64,7 @@ public sealed class DebugContext : IDebugContext
         TextWriter output,
         TextWriter error,
         ICpu? cpu,
-        IMemory? memory,
+        IMemoryBus? bus,
         IDisassembler? disassembler,
         MachineInfo? machineInfo = null,
         TracingDebugListener? tracingListener = null,
@@ -75,7 +72,7 @@ public sealed class DebugContext : IDebugContext
         : this(dispatcher, output, error, input)
     {
         this.Cpu = cpu;
-        this.Memory = memory;
+        this.Bus = bus;
         this.Disassembler = disassembler;
         this.MachineInfo = machineInfo;
         this.TracingListener = tracingListener;
@@ -97,7 +94,7 @@ public sealed class DebugContext : IDebugContext
     public ICpu? Cpu { get; private set; }
 
     /// <inheritdoc/>
-    public IMemory? Memory { get; private set; }
+    public IMemoryBus? Bus { get; private set; }
 
     /// <inheritdoc/>
     public IDisassembler? Disassembler { get; private set; }
@@ -109,10 +106,7 @@ public sealed class DebugContext : IDebugContext
     public TracingDebugListener? TracingListener { get; private set; }
 
     /// <inheritdoc/>
-    public bool IsSystemAttached => this.Cpu is not null && this.Memory is not null && this.Disassembler is not null;
-
-    /// <inheritdoc/>
-    public IMemoryBus? Bus { get; private set; }
+    public bool IsSystemAttached => this.Cpu is not null && this.Bus is not null && this.Disassembler is not null;
 
     /// <inheritdoc/>
     public IMachine? Machine { get; private set; }
@@ -141,13 +135,13 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
-    /// Attaches memory to this debug context.
+    /// Attaches a memory bus to this debug context.
     /// </summary>
-    /// <param name="memory">The memory to attach.</param>
-    public void AttachMemory(IMemory memory)
+    /// <param name="bus">The memory bus to attach.</param>
+    public void AttachBus(IMemoryBus bus)
     {
-        ArgumentNullException.ThrowIfNull(memory);
-        this.Memory = memory;
+        ArgumentNullException.ThrowIfNull(bus);
+        this.Bus = bus;
     }
 
     /// <summary>
@@ -181,29 +175,6 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
-    /// Attaches a memory bus to this debug context.
-    /// </summary>
-    /// <param name="bus">The memory bus to attach.</param>
-    /// <remarks>
-    /// <para>
-    /// When a bus is attached, a <see cref="MemoryBusAdapter"/> is automatically
-    /// created and attached as the <see cref="Memory"/> property to provide backward
-    /// compatibility with existing debug commands that use <see cref="IMemory"/>.
-    /// </para>
-    /// <para>
-    /// If you need to use a custom <see cref="IMemory"/> implementation instead of
-    /// the adapter, attach the memory using <see cref="AttachMemory"/> after calling
-    /// this method.
-    /// </para>
-    /// </remarks>
-    public void AttachBus(IMemoryBus bus)
-    {
-        ArgumentNullException.ThrowIfNull(bus);
-        this.Bus = bus;
-        this.Memory = new MemoryBusAdapter(bus);
-    }
-
-    /// <summary>
     /// Attaches a machine instance to this debug context.
     /// </summary>
     /// <param name="machine">The machine to attach.</param>
@@ -224,28 +195,8 @@ public sealed class DebugContext : IDebugContext
     /// Attaches all emulator components to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>
-    /// <param name="memory">The memory to attach.</param>
-    /// <param name="disassembler">The disassembler to attach.</param>
-    public void AttachSystem(ICpu cpu, IMemory memory, IDisassembler disassembler)
-    {
-        this.AttachCpu(cpu);
-        this.AttachMemory(memory);
-        this.AttachDisassembler(disassembler);
-    }
-
-    /// <summary>
-    /// Attaches all emulator components using the bus architecture to this debug context.
-    /// </summary>
-    /// <param name="cpu">The CPU to attach.</param>
     /// <param name="bus">The memory bus to attach.</param>
     /// <param name="disassembler">The disassembler to attach.</param>
-    /// <remarks>
-    /// <para>
-    /// This overload is used for bus-based systems. It attaches the bus and automatically
-    /// creates a <see cref="MemoryBusAdapter"/> to provide backward compatibility with
-    /// existing debug commands that use <see cref="IMemory"/>.
-    /// </para>
-    /// </remarks>
     public void AttachSystem(ICpu cpu, IMemoryBus bus, IDisassembler disassembler)
     {
         this.AttachCpu(cpu);
@@ -257,29 +208,9 @@ public sealed class DebugContext : IDebugContext
     /// Attaches all emulator components and machine information to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>
-    /// <param name="memory">The memory to attach.</param>
-    /// <param name="disassembler">The disassembler to attach.</param>
-    /// <param name="machineInfo">The machine information to attach.</param>
-    public void AttachSystem(ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo machineInfo)
-    {
-        this.AttachSystem(cpu, memory, disassembler);
-        this.AttachMachineInfo(machineInfo);
-    }
-
-    /// <summary>
-    /// Attaches all emulator components using the bus architecture and machine information to this debug context.
-    /// </summary>
-    /// <param name="cpu">The CPU to attach.</param>
     /// <param name="bus">The memory bus to attach.</param>
     /// <param name="disassembler">The disassembler to attach.</param>
     /// <param name="machineInfo">The machine information to attach.</param>
-    /// <remarks>
-    /// <para>
-    /// This overload is used for bus-based systems. It attaches the bus and automatically
-    /// creates a <see cref="MemoryBusAdapter"/> to provide backward compatibility with
-    /// existing debug commands that use <see cref="IMemory"/>.
-    /// </para>
-    /// </remarks>
     public void AttachSystem(ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo machineInfo)
     {
         this.AttachSystem(cpu, bus, disassembler);
@@ -290,31 +221,10 @@ public sealed class DebugContext : IDebugContext
     /// Attaches all emulator components, machine information, and tracing listener to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>
-    /// <param name="memory">The memory to attach.</param>
-    /// <param name="disassembler">The disassembler to attach.</param>
-    /// <param name="machineInfo">The machine information to attach.</param>
-    /// <param name="tracingListener">The tracing listener to attach.</param>
-    public void AttachSystem(ICpu cpu, IMemory memory, IDisassembler disassembler, MachineInfo machineInfo, TracingDebugListener tracingListener)
-    {
-        this.AttachSystem(cpu, memory, disassembler, machineInfo);
-        this.AttachTracingListener(tracingListener);
-    }
-
-    /// <summary>
-    /// Attaches all emulator components using the bus architecture, machine information, and tracing listener to this debug context.
-    /// </summary>
-    /// <param name="cpu">The CPU to attach.</param>
     /// <param name="bus">The memory bus to attach.</param>
     /// <param name="disassembler">The disassembler to attach.</param>
     /// <param name="machineInfo">The machine information to attach.</param>
     /// <param name="tracingListener">The tracing listener to attach.</param>
-    /// <remarks>
-    /// <para>
-    /// This overload is used for bus-based systems. It attaches the bus and automatically
-    /// creates a <see cref="MemoryBusAdapter"/> to provide backward compatibility with
-    /// existing debug commands that use <see cref="IMemory"/>.
-    /// </para>
-    /// </remarks>
     public void AttachSystem(ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo machineInfo, TracingDebugListener tracingListener)
     {
         this.AttachSystem(cpu, bus, disassembler, machineInfo);
@@ -327,11 +237,10 @@ public sealed class DebugContext : IDebugContext
     public void DetachSystem()
     {
         this.Cpu = null;
-        this.Memory = null;
+        this.Bus = null;
         this.Disassembler = null;
         this.MachineInfo = null;
         this.TracingListener = null;
-        this.Bus = null;
         this.Machine = null;
     }
 }

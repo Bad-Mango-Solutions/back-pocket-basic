@@ -7,8 +7,16 @@
         "type": "65C02",
         "clockSpeed": 1000000
     },
+    "addressSpace": 16,
     "memory": {
-        "size": 65536,
-        "type": "basic"
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0x10000",
+                "permissions": "rwx"
+            }
+        ]
     }
 }

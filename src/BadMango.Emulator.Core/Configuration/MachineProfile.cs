@@ -45,6 +45,25 @@ public sealed class MachineProfile
     public required CpuProfileSection Cpu { get; set; }
 
     /// <summary>
+    /// Gets or sets the address space size in bits.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Common values:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>16 bits = 64KB (6502, 65C02)</description></item>
+    /// <item><description>24 bits = 16MB (65C816)</description></item>
+    /// <item><description>32 bits = 4GB (65832)</description></item>
+    /// </list>
+    /// <para>
+    /// Defaults to 16 bits (64KB) if not specified.
+    /// </para>
+    /// </remarks>
+    [JsonPropertyName("addressSpace")]
+    public int AddressSpace { get; set; } = 16;
+
+    /// <summary>
     /// Gets or sets the memory configuration.
     /// </summary>
     [JsonPropertyName("memory")]

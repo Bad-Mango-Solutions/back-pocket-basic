@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Tests;
 
+using Bus.Interfaces;
+
 using Core;
 using Core.Cpu;
 using Core.Interfaces;
@@ -619,13 +621,14 @@ public class DisassemblerTests
     }
 
     /// <summary>
-    /// Verifies that Disassembler constructor validates null memory.
+    /// Verifies that Disassembler constructor validates null memory bus.
     /// </summary>
     [Test]
-    public void Disassembler_NullMemory_ThrowsArgumentNullException()
+    public void Disassembler_NullMemoryBus_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new Disassembler(opcodeTable, null!));
+        IMemoryBus? nullBus = null;
+        Assert.Throws<ArgumentNullException>(() => new Disassembler(opcodeTable, nullBus!));
     }
 
     /// <summary>

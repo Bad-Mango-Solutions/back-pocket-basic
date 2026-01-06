@@ -29,7 +29,9 @@ using Interfaces;
 /// explicit fault handling.
 /// </para>
 /// </remarks>
+#pragma warning disable CS0618 // Type or member is obsolete - this adapter intentionally implements IMemory for backward compatibility
 public sealed class MemoryBusAdapter : IMemory
+#pragma warning restore CS0618 // Type or member is obsolete
 {
     private readonly IMemoryBus bus;
     private readonly BusAccessMode mode;

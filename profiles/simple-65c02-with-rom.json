@@ -1,0 +1,34 @@
+{
+    "$schema": "../schemas/machine-profile.schema.json",
+    "name": "simple-65c02-with-rom",
+    "displayName": "Simple 65C02 with Monitor ROM",
+    "description": "65C02 with 48KB RAM and 16KB ROM - example profile demonstrating ROM configuration",
+    
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1000000
+    },
+    
+    "addressSpace": 16,
+    
+    "memory": {
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "fill": "0x00"
+            },
+            {
+                "name": "system-rom",
+                "type": "rom",
+                "start": "0xC000",
+                "size": "0x4000",
+                "permissions": "rx",
+                "source": "library://roms/monitor.bin"
+            }
+        ]
+    }
+}

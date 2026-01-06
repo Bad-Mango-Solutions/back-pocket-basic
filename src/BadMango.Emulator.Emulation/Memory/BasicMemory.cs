@@ -13,11 +13,22 @@ using Core.Interfaces;
 /// Simple memory implementation for emulated systems.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Provides a basic 64KB memory space without special handling for I/O or ROM regions.
 /// This implementation is suitable for testing and simple emulation scenarios.
 /// Implements AsMemory() and AsReadOnlyMemory() with explicit aggressive inlining for performance.
+/// </para>
+/// <para>
+/// <b>Deprecation Notice:</b> This class is being phased out in favor of the bus-oriented
+/// architecture using <c>MainBus</c>, <c>RamTarget</c>, and <c>MemoryBusAdapter</c>.
+/// New code should create memory regions through machine profiles and the <c>MachineFactory</c>.
+/// </para>
 /// </remarks>
+[Obsolete("Use MachineFactory with a regions-based profile, or construct a MainBus with RamTarget " +
+          "and wrap it in MemoryBusAdapter for new code. BasicMemory is maintained for backward compatibility.")]
+#pragma warning disable CS0618 // Type or member is obsolete - implementing deprecated interface
 public class BasicMemory : IMemory
+#pragma warning restore CS0618 // Type or member is obsolete
 {
     private readonly byte[] memory;
 

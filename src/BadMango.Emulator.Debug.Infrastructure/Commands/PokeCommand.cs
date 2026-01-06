@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+
 /// <summary>
 /// Writes one or more bytes to memory.
 /// </summary>
@@ -52,9 +55,9 @@ public sealed class PokeCommand : CommandHandlerBase
             return CommandResult.Error("Debug context required for this command.");
         }
 
-        if (debugContext.Memory is null)
+        if (debugContext.Bus is null)
         {
-            return CommandResult.Error("No memory attached to debug context.");
+            return CommandResult.Error("No memory bus attached to debug context.");
         }
 
         if (args.Length == 0)
@@ -97,15 +100,18 @@ public sealed class PokeCommand : CommandHandlerBase
             bytes.Add(value);
         }
 
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)debugContext.Bus.PageCount << debugContext.Bus.PageShift;
+
         // Validate address range
-        if (startAddress >= debugContext.Memory.Size)
+        if (startAddress >= memorySize)
         {
-            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${debugContext.Memory.Size:X4}).");
+            return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${memorySize:X4}).");
         }
 
-        if (startAddress + (uint)bytes.Count > debugContext.Memory.Size)
+        if (startAddress + (uint)bytes.Count > memorySize)
         {
-            return CommandResult.Error($"Write would exceed memory bounds. Start: ${startAddress:X4}, Count: {bytes.Count}, Memory size: ${debugContext.Memory.Size:X4}");
+            return CommandResult.Error($"Write would exceed memory bounds. Start: ${startAddress:X4}, Count: {bytes.Count}, Memory size: ${memorySize:X4}");
         }
 
         // Write bytes
@@ -121,10 +127,13 @@ public sealed class PokeCommand : CommandHandlerBase
             return CommandResult.Error("Interactive mode not available (no input reader).");
         }
 
-        if (context.Memory is null)
+        if (context.Bus is null)
         {
-            return CommandResult.Error("No memory attached.");
+            return CommandResult.Error("No memory bus attached.");
         }
+
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)context.Bus.PageCount << context.Bus.PageShift;
 
         context.Output.WriteLine($"Interactive poke mode starting at ${startAddress:X4}");
         context.Output.WriteLine("Enter hex bytes (space-separated). Use $addr: to change address. Blank line to finish.");
@@ -183,7 +192,7 @@ public sealed class PokeCommand : CommandHandlerBase
             if (bytes.Count > 0)
             {
                 // Validate address range
-                if (currentAddress + (uint)bytes.Count > context.Memory.Size)
+                if (currentAddress + (uint)bytes.Count > memorySize)
                 {
                     context.Error.WriteLine($"Write would exceed memory bounds at ${currentAddress:X4}. Stopping.");
                     break;
@@ -192,7 +201,7 @@ public sealed class PokeCommand : CommandHandlerBase
                 // Write bytes
                 for (int i = 0; i < bytes.Count; i++)
                 {
-                    context.Memory.Write(currentAddress + (uint)i, bytes[i]);
+                    WriteByte(context.Bus, currentAddress + (uint)i, bytes[i]);
                 }
 
                 var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
@@ -249,12 +258,15 @@ public sealed class PokeCommand : CommandHandlerBase
         var content = quotedString.Trim('"');
         var bytes = System.Text.Encoding.ASCII.GetBytes(content);
 
-        if (context.Memory is null)
+        if (context.Bus is null)
         {
-            return CommandResult.Error("No memory attached.");
+            return CommandResult.Error("No memory bus attached.");
         }
 
-        if (startAddress + (uint)bytes.Length > context.Memory.Size)
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)context.Bus.PageCount << context.Bus.PageShift;
+
+        if (startAddress + (uint)bytes.Length > memorySize)
         {
             return CommandResult.Error($"Write would exceed memory bounds.");
         }
@@ -266,14 +278,14 @@ public sealed class PokeCommand : CommandHandlerBase
 
     private static void WriteBytes(IDebugContext context, uint startAddress, IReadOnlyList<byte> bytes)
     {
-        if (context.Memory is null)
+        if (context.Bus is null)
         {
             return;
         }
 
         for (int i = 0; i < bytes.Count; i++)
         {
-            context.Memory.Write(startAddress + (uint)i, bytes[i]);
+            WriteByte(context.Bus, startAddress + (uint)i, bytes[i]);
         }
 
         // Display confirmation
@@ -282,6 +294,22 @@ public sealed class PokeCommand : CommandHandlerBase
         // Show what was written
         var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
         context.Output.WriteLine($"  {hexValues}");
+    }
+
+    private static void WriteByte(IMemoryBus bus, uint address, byte value)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: value,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugWrite,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        bus.TryWrite8(access, value);
     }
 
     private static bool TryParseAddress(string value, out uint result)
