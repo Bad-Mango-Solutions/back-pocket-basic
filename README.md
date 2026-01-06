@@ -1,5 +1,9 @@
 # BackPocketBASIC
 
+<p align="center">
+  <img src="back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+</p>
+
 A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
@@ -228,8 +232,8 @@ back-pocket-basic/
    - `OpcodeTable` - Instruction dispatch infrastructure
 2. **CPU Implementations** (`BadMango.Emulator.Emulation`)
    - `Cpu65C02` - Full WDC 65C02 implementation
-   - `Cpu65816` - Apple IIgs 65816 support (planned)
-   - `Cpu65832` - Hypothetical 32-bit 65832 support (planned)
+   - `Cpu65816` - Apple IIgs 65816 support (stub)
+   - `Cpu65832` - Hypothetical 32-bit 65832 support (stub)
    - `AddressingModes` - Shared addressing mode implementations
    - `Instructions` - Organized by category (Arithmetic, Branch, Compare, etc.)
 3. **System Bus** (`BadMango.Emulator.Bus`) - Memory management and device routing

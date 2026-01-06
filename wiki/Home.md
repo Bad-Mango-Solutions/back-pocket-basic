@@ -1,5 +1,9 @@
 # Welcome to the BackPocketBASIC Wiki
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Bad-Mango-Solutions/back-pocket-basic/main/back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+</p>
+
 A fully-featured Applesoft BASIC interpreter and Apple II emulator framework written in .NET, featuring multi-CPU emulation (65C02/65816/65832) and a modular architecture.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
@@ -22,7 +26,7 @@ BackPocketBASIC is a comprehensive project with two main components:
 - **Custom Extensions**: Modern additions like the SLEEP command
 
 ### Emulator Framework
-- **Multi-CPU Architecture**: Unified codebase supporting 65C02, 65816 (planned), and 65832 (planned)
+- **Multi-CPU Architecture**: Unified codebase supporting 65C02 (65816/65832 stubs available)
 - **Modular Design**: Separate projects for CPU, bus, devices, and systems
 - **Peripheral Support**: Keyboard, speaker, video modes, clock cards
 - **Cross-Platform UI**: Avalonia-based GUI for machine management

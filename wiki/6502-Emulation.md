@@ -328,8 +328,8 @@ BadMango.Emulator.Emulation/
 ├── Cpu/
 │   ├── CpuBase.cs                # Common CPU infrastructure
 │   ├── Cpu65C02.cs               # 65C02 implementation
-│   ├── Cpu65816.cs               # 65816 implementation (planned)
-│   ├── Cpu65832.cs               # 65832 implementation (planned)
+│   ├── Cpu65816.cs               # 65816 implementation (stub)
+│   ├── Cpu65832.cs               # 65832 implementation (stub)
 │   ├── AddressingModes.cs        # Shared addressing modes
 │   └── Instructions.*.cs         # Instructions by category
 ```
