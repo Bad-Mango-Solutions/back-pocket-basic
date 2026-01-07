@@ -25,7 +25,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <strong>No Side Effects:</strong> This command does not modify any emulation state.
 /// </para>
 /// </remarks>
-public sealed class PeekCommand : CommandHandlerBase
+public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultByteCount = 1;
     private const int MaxByteCount = 256;
@@ -43,6 +43,33 @@ public sealed class PeekCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "peek <address> [count]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "peek <address> [count]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Performs a side-effect-free read from memory using DebugRead intent. This " +
+        "bypasses I/O handlers and soft switches, returning the raw memory value. " +
+        "Output is in hex format only. Use this for safe memory inspection without " +
+        "affecting emulation state. For side-effectful reads, use 'read' instead.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "peek $C000               Read keyboard data without triggering strobe",
+        "peek $300 16             Read 16 bytes starting at $0300",
+        "peek 0x6000              Read a single byte from $6000",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["read", "poke", "mem"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

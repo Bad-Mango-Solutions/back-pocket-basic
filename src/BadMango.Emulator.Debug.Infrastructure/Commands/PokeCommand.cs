@@ -29,7 +29,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// change the write address. A blank line ends interactive mode.
 /// </para>
 /// </remarks>
-public sealed class PokeCommand : CommandHandlerBase
+public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="PokeCommand"/> class.
@@ -44,6 +44,38 @@ public sealed class PokeCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "poke <address> <byte> [byte...]  or  poke <address> -i  or  poke <address> \"string\"";
+
+    /// <inheritdoc/>
+    public string Synopsis => "poke <address> <byte> [byte...] | -i | \"string\"";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Writes bytes to memory using DebugWrite intent, bypassing ROM write protection " +
+        "and I/O handlers. Supports single bytes, multiple bytes, ASCII strings, and " +
+        "interactive mode (-i). Values can be hex (ab, $AB, 0xAB) or decimal. This is " +
+        "a side-effect-free write; use 'write' for hardware-like writes.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("-i", "--interactive", "flag", "Enter interactive mode for continuous input", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "poke $300 A9 00 60        Write LDA #$00; RTS at $0300",
+        "poke $F000 \"Hello\"        Write ASCII string at $F000 (bypasses ROM)",
+        "poke $800 -i              Start interactive mode at $0800",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Modifies memory content. Uses DebugWrite intent which bypasses ROM write " +
+        "protection and does not trigger I/O side effects.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["write", "peek", "mem"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

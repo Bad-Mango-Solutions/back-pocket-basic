@@ -1768,7 +1768,7 @@ public class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("subroutine returned"));
+            Assert.That(outputWriter.ToString(), Does.Contain("completed"));
             Assert.That(outputWriter.ToString(), Does.Contain("A=$42"));
         });
     }

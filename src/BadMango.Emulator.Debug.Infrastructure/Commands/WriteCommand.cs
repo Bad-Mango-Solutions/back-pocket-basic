@@ -26,7 +26,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// and timing-sensitive operations.
 /// </para>
 /// </remarks>
-public sealed class WriteCommand : CommandHandlerBase
+public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="WriteCommand"/> class.
@@ -41,6 +41,36 @@ public sealed class WriteCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "write <address> <byte> [byte...]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "write <address> <byte> [byte...]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Performs a side-effectful write to the memory bus using DataWrite intent, " +
+        "which will trigger soft switches and I/O device behavior. Use this when you " +
+        "want to test actual hardware behavior. For side-effect-free writes that bypass " +
+        "ROM protection, use 'poke' instead.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "write $C010 00            Clear keyboard strobe",
+        "write $300 A9 00 60       Write LDA #$00; RTS to $0300",
+        "write 0xC050 00           Toggle text/graphics mode",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Modifies memory and may trigger soft switches, I/O device state changes, " +
+        "and timing-sensitive operations. Writing to I/O addresses ($C000-$CFFF) may " +
+        "change system state significantly.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["poke", "read", "mem"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Diagnostics;
-using System.Globalization;
 
 /// <summary>
 /// Simulates a JSR to an address and returns when the subroutine completes.
@@ -26,18 +25,8 @@ using System.Globalization;
 /// the I/O page ($C000-$CFFF).
 /// </para>
 /// </remarks>
-public sealed class CallCommand : CommandHandlerBase
+public sealed class CallCommand : ExecutionCommandBase
 {
-    /// <summary>
-    /// Default timeout in milliseconds for call execution.
-    /// </summary>
-    public const int DefaultTimeoutMs = 5000;
-
-    /// <summary>
-    /// Default maximum instructions to execute (unlimited by default).
-    /// </summary>
-    public const int DefaultInstructionLimit = int.MaxValue;
-
     /// <summary>
     /// Sentinel address used as fake return address (BRK instruction location).
     /// </summary>
@@ -74,6 +63,42 @@ public sealed class CallCommand : CommandHandlerBase
     public override string Usage => "call <address> [--trace] [--limit <n>] [--timeout <ms>] [--quiet]";
 
     /// <inheritdoc/>
+    public override string Synopsis => "call <address> [options]";
+
+    /// <inheritdoc/>
+    public override string DetailedDescription =>
+        "Simulates a JSR (Jump to Subroutine) to the specified address by pushing a " +
+        "fake return address onto the stack and stepping through instructions until " +
+        "an RTS returns to the original call frame. Useful for testing subroutines " +
+        "and invoking trapped ROM entry points without entering a halted state.";
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--trace", "-t", "flag", "Enable instruction tracing during execution", "off"),
+        new("--limit", null, "int", "Maximum instructions to execute", "unlimited"),
+        new("--timeout", null, "int", "Maximum wall-clock time in milliseconds", "5000"),
+        new("--quiet", "-q", "flag", "Suppress per-instruction output", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<string> Examples { get; } =
+    [
+        "call $FC58                    Execute HOME routine",
+        "call $FDED --trace            Call COUT with tracing",
+        "call $C600 --limit 1000       Boot from slot 6 (limited)",
+    ];
+
+    /// <inheritdoc/>
+    public override string? SideEffects =>
+        "Modifies CPU registers, stack, and potentially memory. May trigger " +
+        "soft switches and I/O device state changes if execution accesses " +
+        "the I/O page ($C000-$CFFF).";
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<string> SeeAlso { get; } = ["run", "step", "peek", "poke", "break"];
+
+    /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -104,7 +129,7 @@ public sealed class CallCommand : CommandHandlerBase
         }
 
         // Parse options
-        var options = ParseOptions(args);
+        var options = ParseCallOptions(args);
 
         var cpu = debugContext.Cpu;
 
@@ -129,207 +154,79 @@ public sealed class CallCommand : CommandHandlerBase
             debugContext.Output.WriteLine("Trace mode enabled.");
         }
 
-        // Configure tracing if requested
-        var tracingListener = debugContext.TracingListener;
-        bool tracingWasEnabled = tracingListener?.IsEnabled ?? false;
-
-        if (options.EnableTrace && tracingListener is not null)
-        {
-            tracingListener.ResetInstructionCount();
-            if (!options.Quiet)
-            {
-                tracingListener.SetConsoleOutput(debugContext.Output);
-            }
-
-            tracingListener.IsEnabled = true;
-        }
-
         var stopwatch = Stopwatch.StartNew();
-        int instructionCount = 0;
-        long cycleCount = 0;
-        string stopReason = "unknown";
-        bool callCompleted = false;
 
-        try
-        {
-            cpu.ClearStopRequest();
-
-            while (instructionCount < options.InstructionLimit)
+        // Execute the instruction loop with call-specific termination
+        var result = ExecuteInstructionLoop(
+            debugContext,
+            options,
+            (ctx, opcode) =>
             {
                 // Check timeout
-                if (stopwatch.ElapsedMilliseconds >= options.TimeoutMs)
+                if (options.TimeoutMs > 0 && stopwatch.ElapsedMilliseconds >= options.TimeoutMs)
                 {
-                    stopReason = "timeout";
-                    break;
+                    return false; // Let the base class handle timeout
                 }
-
-                if (cpu.Halted)
-                {
-                    stopReason = $"CPU halted ({cpu.HaltReason})";
-                    break;
-                }
-
-                if (cpu.IsStopRequested)
-                {
-                    stopReason = "stop requested";
-                    cpu.ClearStopRequest();
-                    break;
-                }
-
-                // Get the opcode before stepping (to detect RTS)
-                byte opcode = cpu.Peek8(cpu.GetPC());
-
-                var result = cpu.Step();
-                instructionCount++;
-                cycleCount += (long)result.CyclesConsumed.Value;
 
                 // Check if we've returned from the call
                 // RTS was executed and SP is now at or above the original call frame
-                if (opcode == RtsOpcode && cpu.Registers.SP.GetByte() >= callFrameSP)
-                {
-                    stopReason = "subroutine returned";
-                    callCompleted = true;
-                    break;
-                }
-            }
+                return opcode == RtsOpcode && ctx.Cpu!.Registers.SP.GetByte() >= callFrameSP;
+            });
 
-            if (instructionCount >= options.InstructionLimit)
-            {
-                stopReason = "instruction limit reached";
-            }
+        debugContext.Output.WriteLine();
+        debugContext.Output.WriteLine($"Call completed: {result.StopReason}");
+        debugContext.Output.WriteLine($"  Instructions executed: {result.InstructionCount:N0}");
+        debugContext.Output.WriteLine($"  Cycles consumed: {result.CycleCount:N0}");
+        debugContext.Output.WriteLine($"  Elapsed time: {result.ElapsedMs}ms");
+        debugContext.Output.WriteLine($"  Final PC = ${cpu.GetPC():X4}");
 
-            debugContext.Output.WriteLine();
-            debugContext.Output.WriteLine($"Call completed: {stopReason}");
-            debugContext.Output.WriteLine($"  Instructions executed: {instructionCount:N0}");
-            debugContext.Output.WriteLine($"  Cycles consumed: {cycleCount:N0}");
-            debugContext.Output.WriteLine($"  Elapsed time: {stopwatch.ElapsedMilliseconds}ms");
-            debugContext.Output.WriteLine($"  Final PC = ${cpu.GetPC():X4}");
-
-            if (!callCompleted && stopReason != "subroutine returned")
-            {
-                debugContext.Output.WriteLine();
-                debugContext.Output.WriteLine("Warning: Subroutine did not return normally.");
-            }
-
-            // Display final register state
-            debugContext.Output.WriteLine();
-            debugContext.Output.WriteLine("Final Register State:");
-            var regs = cpu.GetRegisters();
-            debugContext.Output.WriteLine($"  A=${regs.A.GetByte():X2}  X=${regs.X.GetByte():X2}  Y=${regs.Y.GetByte():X2}  SP=${regs.SP.GetByte():X2}");
-            debugContext.Output.WriteLine($"  P={FormatFlags(regs.P)}");
-
-            return CommandResult.Ok();
-        }
-        finally
+        if (!result.NormalCompletion)
         {
-            // Restore tracing state
-            if (tracingListener is not null)
-            {
-                tracingListener.IsEnabled = tracingWasEnabled;
-                tracingListener.SetConsoleOutput(null);
-            }
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine("Warning: Subroutine did not return normally.");
         }
+
+        // Display final register state
+        debugContext.Output.WriteLine();
+        debugContext.Output.WriteLine("Final Register State:");
+        var regs = cpu.GetRegisters();
+        debugContext.Output.WriteLine($"  A=${regs.A.GetByte():X2}  X=${regs.X.GetByte():X2}  Y=${regs.Y.GetByte():X2}  SP=${regs.SP.GetByte():X2}");
+        debugContext.Output.WriteLine($"  P={FormatFlags(regs.P)}");
+
+        return CommandResult.Ok();
     }
 
-    private static CallOptions ParseOptions(string[] args)
+    private static ExecutionOptions ParseCallOptions(string[] args)
     {
-        var options = new CallOptions
-        {
-            EnableTrace = false,
-            Quiet = false,
-            InstructionLimit = DefaultInstructionLimit,
-            TimeoutMs = DefaultTimeoutMs,
-        };
+        var options = ParseCommonOptions(args);
 
+        // Set call-specific defaults
+        options.TimeoutMs = DefaultTimeoutMs;
+        options.InstructionLimit = int.MaxValue; // Unlimited by default for call
+
+        // Parse call-specific options (--limit and --timeout with space-separated values)
         for (int i = 1; i < args.Length; i++)
         {
             string arg = args[i];
 
-            if (arg.Equals("--trace", StringComparison.OrdinalIgnoreCase) ||
-                arg.Equals("-t", StringComparison.OrdinalIgnoreCase))
+            if (arg.StartsWith("--limit", StringComparison.OrdinalIgnoreCase) &&
+                !arg.Contains('=', StringComparison.Ordinal) &&
+                i + 1 < args.Length &&
+                int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int limit))
             {
-                options.EnableTrace = true;
+                options.InstructionLimit = limit;
+                i++;
             }
-            else if (arg.Equals("--quiet", StringComparison.OrdinalIgnoreCase) ||
-                     arg.Equals("-q", StringComparison.OrdinalIgnoreCase))
+            else if (arg.StartsWith("--timeout", StringComparison.OrdinalIgnoreCase) &&
+                     !arg.Contains('=', StringComparison.Ordinal) &&
+                     i + 1 < args.Length &&
+                     int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int timeout))
             {
-                options.Quiet = true;
-            }
-            else if (arg.StartsWith("--limit", StringComparison.OrdinalIgnoreCase))
-            {
-                if (arg.Contains('=', StringComparison.Ordinal))
-                {
-                    var valueStr = arg[(arg.IndexOf('=', StringComparison.Ordinal) + 1)..];
-                    if (int.TryParse(valueStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int limit))
-                    {
-                        options.InstructionLimit = limit;
-                    }
-                }
-                else if (i + 1 < args.Length &&
-                         int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int limit))
-                {
-                    options.InstructionLimit = limit;
-                    i++; // Skip the next argument
-                }
-            }
-            else if (arg.StartsWith("--timeout", StringComparison.OrdinalIgnoreCase))
-            {
-                if (arg.Contains('=', StringComparison.Ordinal))
-                {
-                    var valueStr = arg[(arg.IndexOf('=', StringComparison.Ordinal) + 1)..];
-                    if (int.TryParse(valueStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int timeout))
-                    {
-                        options.TimeoutMs = timeout;
-                    }
-                }
-                else if (i + 1 < args.Length &&
-                         int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int timeout))
-                {
-                    options.TimeoutMs = timeout;
-                    i++; // Skip the next argument
-                }
+                options.TimeoutMs = timeout;
+                i++;
             }
         }
 
         return options;
-    }
-
-    private static bool TryParseAddress(string value, out uint result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
-    }
-
-    private static string FormatFlags(Core.Cpu.ProcessorStatusFlags flags)
-    {
-        char n = (flags & Core.Cpu.ProcessorStatusFlags.N) != 0 ? 'N' : 'n';
-        char v = (flags & Core.Cpu.ProcessorStatusFlags.V) != 0 ? 'V' : 'v';
-        char d = (flags & Core.Cpu.ProcessorStatusFlags.D) != 0 ? 'D' : 'd';
-        char i = (flags & Core.Cpu.ProcessorStatusFlags.I) != 0 ? 'I' : 'i';
-        char z = (flags & Core.Cpu.ProcessorStatusFlags.Z) != 0 ? 'Z' : 'z';
-        char c = (flags & Core.Cpu.ProcessorStatusFlags.C) != 0 ? 'C' : 'c';
-        return $"{n}{v}-1{d}{i}{z}{c}";
-    }
-
-    private sealed class CallOptions
-    {
-        public bool EnableTrace { get; set; }
-
-        public bool Quiet { get; set; }
-
-        public int InstructionLimit { get; set; }
-
-        public int TimeoutMs { get; set; }
     }
 }

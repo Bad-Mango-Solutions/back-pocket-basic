@@ -26,7 +26,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// and timing-sensitive operations.
 /// </para>
 /// </remarks>
-public sealed class ReadCommand : CommandHandlerBase
+public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultByteCount = 1;
     private const int MaxByteCount = 256;
@@ -44,6 +44,35 @@ public sealed class ReadCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "read <address> [count]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "read <address> [count]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Performs a side-effectful read from the memory bus using DataRead intent, " +
+        "which will trigger soft switches and I/O device behavior. Output is in hex " +
+        "format only. Use this when you want to test actual hardware behavior. " +
+        "For side-effect-free reads, use 'peek' instead.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "read $C000               Read keyboard data (triggers strobe)",
+        "read $300 16             Read 16 bytes starting at $0300",
+        "read 0xC050              Toggle graphics soft switch",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "May trigger soft switches, I/O device state changes, and timing-sensitive " +
+        "operations. Reading from I/O addresses ($C000-$CFFF) may change system state.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["peek", "write", "mem"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

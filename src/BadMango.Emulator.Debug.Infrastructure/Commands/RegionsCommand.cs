@@ -19,7 +19,7 @@ using BadMango.Emulator.Bus;
 /// This command requires a bus to be attached to the debug context.
 /// </para>
 /// </remarks>
-public sealed class RegionsCommand : CommandHandlerBase
+public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="RegionsCommand"/> class.
@@ -31,6 +31,30 @@ public sealed class RegionsCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "regions";
+
+    /// <inheritdoc/>
+    public string Synopsis => "regions";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays a formatted table of all memory regions defined in the page table, " +
+        "grouped by region type (RAM, ROM, I/O, etc.). Shows start address, end address, " +
+        "size, type, permissions (RWX), and device ID. Requires a bus-based system.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "regions                 Display all memory regions",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["pages", "devicemap", "profile"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
