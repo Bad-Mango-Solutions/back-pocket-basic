@@ -146,14 +146,17 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
                 }
             }
 
-            // Determine final stop reason if limits were reached
-            if (instructionCount >= options.InstructionLimit)
+            // Determine final stop reason if limits were reached and no other reason was set
+            if (stopReason == "unknown")
             {
-                stopReason = "instruction limit reached";
-            }
-            else if (cycleCount >= options.CycleLimit)
-            {
-                stopReason = "cycle limit reached";
+                if (instructionCount >= options.InstructionLimit)
+                {
+                    stopReason = "instruction limit reached";
+                }
+                else if (cycleCount >= options.CycleLimit)
+                {
+                    stopReason = "cycle limit reached";
+                }
             }
 
             return new ExecutionResult(

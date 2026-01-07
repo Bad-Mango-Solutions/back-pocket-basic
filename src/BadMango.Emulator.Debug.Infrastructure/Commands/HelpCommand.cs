@@ -88,36 +88,44 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
 
         var sb = new StringBuilder();
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        string currentLine = prefix;
+        var currentLine = new StringBuilder(prefix);
         int maxWidth = MaxLineWidth;
+        int prefixLength = prefix.Length;
+        int subsequentIndentLength = subsequentIndent.Length;
+        bool isLineStart = true;
 
         foreach (var word in words)
         {
             // Check if adding this word would exceed the line width
-            if (currentLine.Length + 1 + word.Length > maxWidth && currentLine != prefix && currentLine != subsequentIndent)
+            if (currentLine.Length + 1 + word.Length > maxWidth && !isLineStart)
             {
                 // Start a new line
-                sb.AppendLine(currentLine);
-                currentLine = subsequentIndent + word;
+                sb.AppendLine(currentLine.ToString());
+                currentLine.Clear();
+                currentLine.Append(subsequentIndent);
+                currentLine.Append(word);
+                isLineStart = false;
             }
             else
             {
                 // Add word to current line
-                if (currentLine == prefix || currentLine == subsequentIndent)
+                if (isLineStart)
                 {
-                    currentLine += word;
+                    currentLine.Append(word);
+                    isLineStart = false;
                 }
                 else
                 {
-                    currentLine += " " + word;
+                    currentLine.Append(' ');
+                    currentLine.Append(word);
                 }
             }
         }
 
         // Add the last line
-        if (!string.IsNullOrEmpty(currentLine))
+        if (currentLine.Length > 0)
         {
-            sb.Append(currentLine);
+            sb.Append(currentLine.ToString());
         }
 
         return sb.ToString();

@@ -676,6 +676,15 @@ public static class Pocket2eMachineBuilderExtensions
     /// (IOPageDispatcher, SlotManager, Language Card, Auxiliary Memory).
     /// </para>
     /// <para>
+    /// This method sets up the full Pocket2e infrastructure:
+    /// <list type="bullet">
+    /// <item><description>Memory layout (main RAM, auxiliary RAM)</description></item>
+    /// <item><description>Language Card (swap groups, layers, RAM banks)</description></item>
+    /// <item><description>Auxiliary Memory controller</description></item>
+    /// <item><description>Slot manager and I/O page dispatcher</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
     /// Example:
     /// </para>
     /// <code>
@@ -690,23 +699,16 @@ public static class Pocket2eMachineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        // Set up the required infrastructure components first
-        var dispatcher = new IOPageDispatcher();
-        var slotManager = new SlotManager(dispatcher);
-
+        // Set up the full Pocket2e infrastructure in the correct order:
+        // 1. Memory layout (creates main and auxiliary RAM)
+        // 2. Language Card (creates swap groups, layers, and RAM banks)
+        // 3. Auxiliary memory controller
+        // 4. Slot manager and I/O page dispatcher
         builder
-            .AddComponent(dispatcher)
-            .AddComponent<ISlotManager>(slotManager);
-
-        // Set up memory controllers
-        var languageCard = new LanguageCardController();
-        var auxController = new AuxiliaryMemoryController();
-
-        builder
-            .AddComponent(languageCard)
-            .AddDevice(languageCard)
-            .AddComponent(auxController)
-            .AddDevice(auxController);
+            .WithPocket2eMemoryLayout()
+            .WithLanguageCard()
+            .WithAuxiliaryMemory()
+            .WithSlotManager();
 
         // Register the composite handler for the I/O page
         return builder.RegisterCompositeHandler("pocket2e-io", b =>

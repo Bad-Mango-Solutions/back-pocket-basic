@@ -1,0 +1,81 @@
+{
+    "$schema": "../schemas/machine-profile.schema.json",
+    "name": "pocket2e-devices",
+    "displayName": "Pocket2e (with Devices)",
+    "description": "Pocket2e system with 128KB RAM (64KB main + 64KB aux via bank switching), 80-column support, and peripheral emulation. Excludes disk controller (not yet implemented).",
+
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1020484
+    },
+
+    "addressSpace": 16,
+
+    "memory": {
+        "regions": [
+            {
+                "name": "io-page",
+                "type": "composite",
+                "start": "0xC000",
+                "size": "0x1000",
+                "handler": "pocket2e-io"
+            }
+        ]
+    },
+
+    "slots": {
+        "enabled": true,
+        "internalC3Rom": true,
+        "internalCxRom": false,
+        "cards": [
+            {
+                "slot": 4,
+                "type": "pocketwatch",
+                "config": {
+                    "timeSource": "host",
+                    "timezoneOffset": 0
+                }
+            }
+        ]
+    },
+
+    "roms": [
+        {
+            "name": "system-rom",
+            "source": "library://roms/pocket2e-system.rom",
+            "size": "0x4000",
+            "required": true,
+            "on_verification_fail": "fallback"
+        },
+        {
+            "name": "video-rom",
+            "source": "library://roms/pocket2e-video.rom",
+            "size": "0x1000",
+            "required": true,
+            "on_verification_fail": "fallback"
+        }
+    ],
+
+    "devices": {
+        "keyboard": {
+            "preset": "enhanced",
+            "autoRepeat": true
+        },
+        "speaker": {
+            "enabled": true,
+            "sampleRate": 48000
+        },
+        "video": {
+            "preset": "enhanced",
+            "colorMode": "ntsc"
+        },
+        "gameIO": {
+            "enabled": true,
+            "joystickDeadzone": 0.1
+        }
+    },
+
+    "boot": {
+        "autoStart": false
+    }
+}

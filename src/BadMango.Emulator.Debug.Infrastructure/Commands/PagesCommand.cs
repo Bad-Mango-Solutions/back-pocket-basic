@@ -97,12 +97,9 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
             }
         }
 
-        if (args.Length > 1)
+        if (args.Length > 1 && (!int.TryParse(args[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out count) || count < 1))
         {
-            if (!int.TryParse(args[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out count) || count < 1)
-            {
-                return CommandResult.Error($"Invalid count: '{args[1]}'. Expected a positive integer.");
-            }
+            return CommandResult.Error($"Invalid count: '{args[1]}'. Expected a positive integer.");
         }
 
         // Clamp count to remaining pages
