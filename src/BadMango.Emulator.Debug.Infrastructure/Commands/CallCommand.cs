@@ -41,7 +41,18 @@ public sealed class CallCommand : CommandHandlerBase
     /// <summary>
     /// Sentinel address used as fake return address (BRK instruction location).
     /// </summary>
+    /// <remarks>
+    /// This address is chosen to be in the high ROM area ($FFF0) which is typically
+    /// unused during subroutine execution. When RTS pops this address, it indicates
+    /// the called subroutine has returned. The actual value doesn't matter as long
+    /// as it's not a valid code location that would be reached during normal execution.
+    /// </remarks>
     private const ushort SentinelAddress = 0xFFF0;
+
+    /// <summary>
+    /// Base address of the 6502 hardware stack page ($0100-$01FF).
+    /// </summary>
+    private const ushort StackPageBase = 0x0100;
 
     /// <summary>
     /// RTS opcode for detecting subroutine return.
@@ -103,9 +114,9 @@ public sealed class CallCommand : CommandHandlerBase
         // Push fake return address onto stack (address - 1 because RTS adds 1)
         // We push SentinelAddress - 1 so RTS will return to SentinelAddress
         ushort returnAddress = SentinelAddress - 1;
-        cpu.Write8((uint)(0x0100 + cpu.Registers.SP.GetByte()), (byte)(returnAddress >> 8)); // Push high byte
+        cpu.Write8((uint)(StackPageBase + cpu.Registers.SP.GetByte()), (byte)(returnAddress >> 8)); // Push high byte
         cpu.Registers.SP.SetByte((byte)(cpu.Registers.SP.GetByte() - 1));
-        cpu.Write8((uint)(0x0100 + cpu.Registers.SP.GetByte()), (byte)(returnAddress & 0xFF)); // Push low byte
+        cpu.Write8((uint)(StackPageBase + cpu.Registers.SP.GetByte()), (byte)(returnAddress & 0xFF)); // Push low byte
         cpu.Registers.SP.SetByte((byte)(cpu.Registers.SP.GetByte() - 1));
 
         // Set PC to target address

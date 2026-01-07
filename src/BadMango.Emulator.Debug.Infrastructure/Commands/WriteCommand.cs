@@ -166,7 +166,11 @@ public sealed class WriteCommand : CommandHandlerBase
             return byte.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
         }
 
-        // Try as unprefixed hex first (if it looks like hex - contains a-f)
+        // For 1-2 character values that are valid hex, treat as hex.
+        // Values like "ab", "ff", "1a" are unambiguously hex.
+        // Values like "5" or "99" are also parsed as hex for consistency with
+        // traditional monitor-style commands. Users can use decimal prefix or
+        // longer values for decimal input.
         if (value.Length <= 2 && value.All(char.IsAsciiHexDigit))
         {
             return byte.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
