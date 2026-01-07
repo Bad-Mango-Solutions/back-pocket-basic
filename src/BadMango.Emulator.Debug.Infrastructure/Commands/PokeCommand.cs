@@ -173,6 +173,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
 
         uint currentAddress = startAddress;
         int totalBytesWritten = 0;
+        var allFaults = new List<(uint Address, BusFault Fault)>();
 
         while (true)
         {
@@ -230,14 +231,29 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
                     break;
                 }
 
-                // Write bytes
+                // Write bytes and track faults
+                var faults = new List<(uint Address, BusFault Fault)>();
                 for (int i = 0; i < bytes.Count; i++)
                 {
-                    WriteByte(context.Bus, currentAddress + (uint)i, bytes[i]);
+                    var result = WriteByteWithFault(context.Bus, currentAddress + (uint)i, bytes[i]);
+                    if (result.Failed)
+                    {
+                        faults.Add((currentAddress + (uint)i, result.Fault));
+                        allFaults.Add((currentAddress + (uint)i, result.Fault));
+                    }
                 }
 
                 var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
                 context.Output.WriteLine($"  Wrote: {hexValues}");
+
+                // Report faults immediately for this line
+                if (faults.Count > 0)
+                {
+                    foreach (var (faultAddr, fault) in faults)
+                    {
+                        context.Output.WriteLine($"  Fault at ${faultAddr:X4}: {FormatFault(fault)}");
+                    }
+                }
 
                 currentAddress += (uint)bytes.Count;
                 totalBytesWritten += bytes.Count;
@@ -253,6 +269,10 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         if (totalBytesWritten > 0)
         {
             context.Output.WriteLine($"Interactive mode complete. Wrote {totalBytesWritten} byte(s) from ${startAddress:X4} to ${currentAddress - 1:X4}.");
+            if (allFaults.Count > 0)
+            {
+                context.Output.WriteLine($"  ({allFaults.Count} fault(s) encountered)");
+            }
         }
         else
         {
@@ -315,9 +335,15 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
             return;
         }
 
+        var faults = new List<(uint Address, BusFault Fault)>();
+
         for (int i = 0; i < bytes.Count; i++)
         {
-            WriteByte(context.Bus, startAddress + (uint)i, bytes[i]);
+            var result = WriteByteWithFault(context.Bus, startAddress + (uint)i, bytes[i]);
+            if (result.Failed)
+            {
+                faults.Add((startAddress + (uint)i, result.Fault));
+            }
         }
 
         // Display confirmation
@@ -326,9 +352,20 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         // Show what was written
         var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
         context.Output.WriteLine($"  {hexValues}");
+
+        // Report any faults
+        if (faults.Count > 0)
+        {
+            context.Output.WriteLine();
+            context.Output.WriteLine($"Bus faults encountered ({faults.Count}):");
+            foreach (var (faultAddr, fault) in faults)
+            {
+                context.Output.WriteLine($"  ${faultAddr:X4}: {FormatFault(fault)}");
+            }
+        }
     }
 
-    private static void WriteByte(IMemoryBus bus, uint address, byte value)
+    private static BusResult WriteByteWithFault(IMemoryBus bus, uint address, byte value)
     {
         var access = new BusAccess(
             Address: address,
@@ -341,7 +378,20 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
             Cycle: 0,
             Flags: AccessFlags.None);
 
-        bus.TryWrite8(access, value);
+        return bus.TryWrite8(access, value);
+    }
+
+    private static string FormatFault(BusFault fault)
+    {
+        return fault.Kind switch
+        {
+            FaultKind.Unmapped => "Unmapped - no memory or device at this address",
+            FaultKind.Permission => $"Permission denied - region {fault.RegionTag} does not allow write",
+            FaultKind.Nx => "No execute - this fault should not occur for writes",
+            FaultKind.Misaligned => "Misaligned access",
+            FaultKind.DeviceFault => "Device fault - device rejected the write",
+            _ => $"Unknown fault kind: {fault.Kind}",
+        };
     }
 
     private static bool TryParseAddress(string value, out uint result)

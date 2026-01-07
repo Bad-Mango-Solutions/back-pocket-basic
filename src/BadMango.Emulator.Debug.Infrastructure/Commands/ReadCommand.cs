@@ -126,10 +126,20 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
         debugContext.Output.WriteLine();
 
         var bytes = new List<string>(count);
+        var faults = new List<(uint Address, BusFault Fault)>();
+
         for (int i = 0; i < count; i++)
         {
-            byte value = ReadByte(bus, address + (uint)i);
-            bytes.Add($"{value:X2}");
+            var result = ReadByteWithFault(bus, address + (uint)i);
+            if (result.Fault.IsFault)
+            {
+                faults.Add((address + (uint)i, result.Fault));
+                bytes.Add("??"); // Indicate fault with ??
+            }
+            else
+            {
+                bytes.Add($"{result.Value:X2}");
+            }
         }
 
         // Output in groups of 16 bytes per line
@@ -141,10 +151,21 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
             debugContext.Output.WriteLine($"${lineAddr:X4}: {hexLine}");
         }
 
+        // Report any faults
+        if (faults.Count > 0)
+        {
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine($"Bus faults encountered ({faults.Count}):");
+            foreach (var (faultAddr, fault) in faults)
+            {
+                debugContext.Output.WriteLine($"  ${faultAddr:X4}: {FormatFault(fault)}");
+            }
+        }
+
         return CommandResult.Ok();
     }
 
-    private static byte ReadByte(IMemoryBus bus, uint address)
+    private static BusResult<byte> ReadByteWithFault(IMemoryBus bus, uint address)
     {
         // Use DataRead intent for side-effectful read (not DebugRead)
         var access = new BusAccess(
@@ -158,8 +179,20 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
             Cycle: 0,
             Flags: AccessFlags.None); // No NoSideEffects flag
 
-        var result = bus.TryRead8(access);
-        return result.Ok ? result.Value : (byte)0xFF;
+        return bus.TryRead8(access);
+    }
+
+    private static string FormatFault(BusFault fault)
+    {
+        return fault.Kind switch
+        {
+            FaultKind.Unmapped => "Unmapped - no memory or device at this address",
+            FaultKind.Permission => $"Permission denied - region {fault.RegionTag} does not allow read",
+            FaultKind.Nx => "No execute - attempted instruction fetch from non-executable region",
+            FaultKind.Misaligned => "Misaligned access",
+            FaultKind.DeviceFault => "Device fault - device rejected the access",
+            _ => $"Unknown fault kind: {fault.Kind}",
+        };
     }
 
     private static bool TryParseAddress(string value, out uint result)

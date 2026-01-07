@@ -128,20 +128,43 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error($"Write would exceed memory bounds. Start: ${address:X4}, Count: {bytes.Count}");
         }
 
-        // Write bytes with side effects
+        // Write bytes with side effects, tracking faults
+        var faults = new List<(uint Address, BusFault Fault)>();
+        var written = new List<(uint Address, byte Value)>();
+
         for (int i = 0; i < bytes.Count; i++)
         {
-            WriteByte(bus, address + (uint)i, bytes[i]);
+            uint addr = address + (uint)i;
+            var result = WriteByteWithFault(bus, addr, bytes[i]);
+            if (result.Failed)
+            {
+                faults.Add((addr, result.Fault));
+            }
+            else
+            {
+                written.Add((addr, bytes[i]));
+            }
         }
 
         var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
         debugContext.Output.WriteLine($"Wrote {bytes.Count} byte(s) to ${address:X4} (with side effects):");
         debugContext.Output.WriteLine($"  {hexValues}");
 
+        // Report any faults
+        if (faults.Count > 0)
+        {
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine($"Bus faults encountered ({faults.Count}):");
+            foreach (var (faultAddr, fault) in faults)
+            {
+                debugContext.Output.WriteLine($"  ${faultAddr:X4}: {FormatFault(fault)}");
+            }
+        }
+
         return CommandResult.Ok();
     }
 
-    private static void WriteByte(IMemoryBus bus, uint address, byte value)
+    private static BusResult WriteByteWithFault(IMemoryBus bus, uint address, byte value)
     {
         // Use DataWrite intent for side-effectful write (not DebugWrite)
         var access = new BusAccess(
@@ -155,7 +178,20 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
             Cycle: 0,
             Flags: AccessFlags.None); // No special flags
 
-        bus.TryWrite8(access, value);
+        return bus.TryWrite8(access, value);
+    }
+
+    private static string FormatFault(BusFault fault)
+    {
+        return fault.Kind switch
+        {
+            FaultKind.Unmapped => "Unmapped - no memory or device at this address",
+            FaultKind.Permission => $"Permission denied - region {fault.RegionTag} does not allow write",
+            FaultKind.Nx => "No execute - this fault should not occur for writes",
+            FaultKind.Misaligned => "Misaligned access",
+            FaultKind.DeviceFault => "Device fault - device rejected the write",
+            _ => $"Unknown fault kind: {fault.Kind}",
+        };
     }
 
     private static bool TryParseAddress(string value, out uint result)

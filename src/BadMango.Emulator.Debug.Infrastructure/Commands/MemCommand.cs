@@ -123,12 +123,24 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
             byteCount = (int)(memorySize - startAddress);
         }
 
-        FormatHexDump(debugContext.Output, debugContext.Bus, startAddress, byteCount);
+        var faults = new List<(uint Address, BusFault Fault)>();
+        FormatHexDump(debugContext.Output, debugContext.Bus, startAddress, byteCount, faults);
+
+        // Report any faults at the end
+        if (faults.Count > 0)
+        {
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine($"Bus faults encountered ({faults.Count}):");
+            foreach (var (faultAddr, fault) in faults)
+            {
+                debugContext.Output.WriteLine($"  ${faultAddr:X4}: {FormatFault(fault)}");
+            }
+        }
 
         return CommandResult.Ok();
     }
 
-    private static void FormatHexDump(TextWriter output, IMemoryBus bus, uint startAddress, int byteCount)
+    private static void FormatHexDump(TextWriter output, IMemoryBus bus, uint startAddress, int byteCount, List<(uint Address, BusFault Fault)> faults)
     {
         // Align start address to 16-byte boundary for clean display
         uint alignedStart = startAddress & 0xFFFFFFF0;
@@ -156,17 +168,27 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
                 }
                 else
                 {
-                    byte value = ReadByte(bus, currentAddr);
-                    hexBuilder.Append($"{value:X2} ");
-
-                    // ASCII representation (printable chars only)
-                    if (value >= 0x20 && value < 0x7F)
+                    var result = ReadByteWithFault(bus, currentAddr);
+                    if (result.Fault.IsFault)
                     {
-                        asciiBuilder.Append((char)value);
+                        faults.Add((currentAddr, result.Fault));
+                        hexBuilder.Append("?? ");
+                        asciiBuilder.Append('?');
                     }
                     else
                     {
-                        asciiBuilder.Append('.');
+                        byte value = result.Value;
+                        hexBuilder.Append($"{value:X2} ");
+
+                        // ASCII representation (printable chars only)
+                        if (value >= 0x20 && value < 0x7F)
+                        {
+                            asciiBuilder.Append((char)value);
+                        }
+                        else
+                        {
+                            asciiBuilder.Append('.');
+                        }
                     }
                 }
 
@@ -181,7 +203,7 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
         }
     }
 
-    private static byte ReadByte(IMemoryBus bus, uint address)
+    private static BusResult<byte> ReadByteWithFault(IMemoryBus bus, uint address)
     {
         var access = new BusAccess(
             Address: address,
@@ -194,8 +216,20 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
             Cycle: 0,
             Flags: AccessFlags.NoSideEffects);
 
-        var result = bus.TryRead8(access);
-        return result.Ok ? result.Value : (byte)0xFF;
+        return bus.TryRead8(access);
+    }
+
+    private static string FormatFault(BusFault fault)
+    {
+        return fault.Kind switch
+        {
+            FaultKind.Unmapped => "Unmapped - no memory or device at this address",
+            FaultKind.Permission => $"Permission denied - region {fault.RegionTag} does not allow read",
+            FaultKind.Nx => "No execute - attempted instruction fetch from non-executable region",
+            FaultKind.Misaligned => "Misaligned access",
+            FaultKind.DeviceFault => "Device fault - device rejected the access",
+            _ => $"Unknown fault kind: {fault.Kind}",
+        };
     }
 
     private static bool TryParseAddress(string value, out uint result)

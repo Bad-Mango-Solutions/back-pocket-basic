@@ -41,6 +41,7 @@ using BadMango.Emulator.Emulation.Debugging;
 /// <item><description><c>DebugCommandsTests.Fault.cs</c> - FaultCommand tests</description></item>
 /// <item><description><c>DebugCommandsTests.Switches.cs</c> - SwitchesCommand tests</description></item>
 /// <item><description><c>DebugCommandsTests.BusLog.cs</c> - BusLogCommand tests</description></item>
+/// <item><description><c>DebugCommandsTests.BusFaults.cs</c> - Bus fault surfacing tests</description></item>
 /// </list>
 /// </remarks>
 [TestFixture]
