@@ -19,7 +19,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// also clears memory to zeros.
 /// </para>
 /// </remarks>
-public sealed class ResetCommand : CommandHandlerBase
+public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ResetCommand"/> class.
@@ -34,6 +34,37 @@ public sealed class ResetCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "reset [--hard]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "reset [--hard]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Performs a CPU reset, setting PC to the reset vector ($FFFC-$FFFD), " +
+        "initializing processor status flags, and clearing the halt state. " +
+        "By default performs a soft reset (CPU only). With --hard, also clears " +
+        "all memory to zeros.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--hard", "-h", "flag", "Also clear memory to zeros", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "reset                   Soft reset (CPU only)",
+        "reset --hard            Hard reset (CPU + memory clear)",
+        "rst                     Alias for reset",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Resets CPU registers to initial state. With --hard, also clears all memory.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["run", "step", "stop", "regs"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

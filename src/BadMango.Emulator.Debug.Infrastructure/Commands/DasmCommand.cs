@@ -20,7 +20,7 @@ using BadMango.Emulator.Core;
 /// - From current PC: dasm (without address defaults to PC).
 /// </para>
 /// </remarks>
-public sealed class DasmCommand : CommandHandlerBase
+public sealed class DasmCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultInstructionCount = 16;
 
@@ -37,6 +37,39 @@ public sealed class DasmCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "dasm [address] [length|--instructions=N|--range end_address]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "dasm [address] [length|--instructions=N|--range end_address]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Disassembles memory contents into assembly instructions. Supports multiple modes: " +
+        "by instruction count (default), by byte count, or by address range. Without an " +
+        "address argument, starts from the current PC. Shows address, bytes, and mnemonic " +
+        "for each instruction.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--instructions", null, "int", "Number of instructions to disassemble", "16"),
+        new("--bytes", null, "int", "Number of bytes to disassemble", null),
+        new("--range", null, "flag", "Treat second address as end address", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "dasm                    Disassemble 16 instructions from PC",
+        "dasm $1000              Disassemble from $1000",
+        "dasm $1000 $1050 --range   Disassemble address range",
+        "dasm $300 --instructions=5 Disassemble 5 instructions",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["mem", "pc", "step"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

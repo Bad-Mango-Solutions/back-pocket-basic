@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using System.Text;
+
 /// <summary>
 /// Displays help information for available commands.
 /// </summary>
@@ -13,6 +15,10 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// </remarks>
 public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
 {
+    private const int MaxLineWidth = 78;
+    private const int IndentWidth = 4;
+    private static readonly string Indent = new(' ', IndentWidth);
+
     /// <summary>
     /// Initializes a new instance of the <see cref="HelpCommand"/> class.
     /// </summary>
@@ -64,6 +70,57 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
         }
 
         return this.ShowAllCommands(context);
+    }
+
+    /// <summary>
+    /// Word-wraps text at word boundaries to fit within the specified line width.
+    /// </summary>
+    /// <param name="text">The text to wrap.</param>
+    /// <param name="prefix">The prefix to add to the first line.</param>
+    /// <param name="subsequentIndent">The indentation for continuation lines.</param>
+    /// <returns>The wrapped text with line breaks.</returns>
+    private static string WrapText(string text, string prefix, string subsequentIndent)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return prefix;
+        }
+
+        var sb = new StringBuilder();
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string currentLine = prefix;
+        int maxWidth = MaxLineWidth;
+
+        foreach (var word in words)
+        {
+            // Check if adding this word would exceed the line width
+            if (currentLine.Length + 1 + word.Length > maxWidth && currentLine != prefix && currentLine != subsequentIndent)
+            {
+                // Start a new line
+                sb.AppendLine(currentLine);
+                currentLine = subsequentIndent + word;
+            }
+            else
+            {
+                // Add word to current line
+                if (currentLine == prefix || currentLine == subsequentIndent)
+                {
+                    currentLine += word;
+                }
+                else
+                {
+                    currentLine += " " + word;
+                }
+            }
+        }
+
+        // Add the last line
+        if (!string.IsNullOrEmpty(currentLine))
+        {
+            sb.Append(currentLine);
+        }
+
+        return sb.ToString();
     }
 
     private CommandResult ShowAllCommands(ICommandContext context)
@@ -126,19 +183,19 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
 
         // Synopsis
         context.Output.WriteLine("SYNOPSIS");
-        context.Output.WriteLine($"    {helpProvider.Synopsis}");
+        context.Output.WriteLine($"{Indent}{helpProvider.Synopsis}");
         context.Output.WriteLine();
 
-        // Description
+        // Description (with word wrapping)
         context.Output.WriteLine("DESCRIPTION");
-        context.Output.WriteLine($"    {helpProvider.DetailedDescription}");
+        context.Output.WriteLine(WrapText(helpProvider.DetailedDescription, Indent, Indent));
         context.Output.WriteLine();
 
         // Aliases
         if (handler.Aliases.Count > 0)
         {
             context.Output.WriteLine("ALIASES");
-            context.Output.WriteLine($"    {string.Join(", ", handler.Aliases)}");
+            context.Output.WriteLine($"{Indent}{string.Join(", ", handler.Aliases)}");
             context.Output.WriteLine();
         }
 
@@ -146,8 +203,8 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
         if (helpProvider.Options.Count > 0)
         {
             context.Output.WriteLine("OPTIONS");
-            context.Output.WriteLine($"    {"Option",-20} {"Type",-10} {"Default",-12} Description");
-            context.Output.WriteLine($"    {new string('─', 70)}");
+            context.Output.WriteLine($"{Indent}{"Option",-20} {"Type",-10} {"Default",-12} Description");
+            context.Output.WriteLine($"{Indent}{new string('─', 70)}");
 
             foreach (var option in helpProvider.Options)
             {
@@ -156,7 +213,7 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
                     : option.Name;
                 string defaultValue = option.DefaultValue ?? "required";
 
-                context.Output.WriteLine($"    {optionName,-20} {option.Type,-10} {defaultValue,-12} {option.Description}");
+                context.Output.WriteLine($"{Indent}{optionName,-20} {option.Type,-10} {defaultValue,-12} {option.Description}");
             }
 
             context.Output.WriteLine();
@@ -168,31 +225,30 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
             context.Output.WriteLine("EXAMPLES");
             foreach (var example in helpProvider.Examples)
             {
-                context.Output.WriteLine($"    {example}");
+                context.Output.WriteLine($"{Indent}{example}");
             }
 
             context.Output.WriteLine();
         }
 
-        // Side effects
+        // Side effects (with word wrapping)
+        context.Output.WriteLine("SIDE EFFECTS");
         if (!string.IsNullOrEmpty(helpProvider.SideEffects))
         {
-            context.Output.WriteLine("SIDE EFFECTS");
-            context.Output.WriteLine($"    {helpProvider.SideEffects}");
-            context.Output.WriteLine();
+            context.Output.WriteLine(WrapText(helpProvider.SideEffects, Indent, Indent));
         }
         else
         {
-            context.Output.WriteLine("SIDE EFFECTS");
-            context.Output.WriteLine("    None - this command does not modify emulation state.");
-            context.Output.WriteLine();
+            context.Output.WriteLine($"{Indent}None - this command does not modify emulation state.");
         }
+
+        context.Output.WriteLine();
 
         // See also
         if (helpProvider.SeeAlso.Count > 0)
         {
             context.Output.WriteLine("SEE ALSO");
-            context.Output.WriteLine($"    {string.Join(", ", helpProvider.SeeAlso)}");
+            context.Output.WriteLine($"{Indent}{string.Join(", ", helpProvider.SeeAlso)}");
         }
     }
 }

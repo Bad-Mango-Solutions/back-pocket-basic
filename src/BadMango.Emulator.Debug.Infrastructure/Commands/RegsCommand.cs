@@ -17,7 +17,7 @@ using Core.Cpu;
 /// - 65816 Compat (E=0, CP=1): A width depends on M flag, X/Y width depends on X flag (0=16-bit, 1=8-bit)
 /// - 65C02 Compat (E=1, CP=1): All registers are 8-bit, SP is 8-bit.
 /// </remarks>
-public sealed class RegsCommand : CommandHandlerBase
+public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
 {
     private const int FrameWidth = 60; // Inner width between │ characters
     private const int RegValueWidth = 9; // Width for register values (e.g., "$00000000")
@@ -35,6 +35,32 @@ public sealed class RegsCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "regs";
+
+    /// <inheritdoc/>
+    public string Synopsis => "regs";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays all CPU registers in a formatted box display including PC, SP, A, X, Y, " +
+        "and processor status flags. Register widths vary based on CPU mode: Native mode " +
+        "shows 32-bit registers, 65816 compat shows 16-bit, and 65C02 compat shows 8-bit.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "regs                    Display all CPU registers",
+        "r                       Alias for regs",
+        "registers               Alias for regs",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["pc", "step", "run"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

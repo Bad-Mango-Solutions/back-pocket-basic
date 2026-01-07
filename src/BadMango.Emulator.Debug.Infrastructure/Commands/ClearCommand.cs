@@ -10,7 +10,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// <remarks>
 /// Clears all text from the console and moves the cursor to the top-left corner.
 /// </remarks>
-public sealed class ClearCommand : CommandHandlerBase
+public sealed class ClearCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ClearCommand"/> class.
@@ -22,6 +22,30 @@ public sealed class ClearCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override IReadOnlyList<string> Aliases { get; } = ["cls"];
+
+    /// <inheritdoc/>
+    public string Synopsis => "clear";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Clears all text from the console and moves the cursor to the top-left corner. " +
+        "If output is redirected (e.g., to a file), this command has no effect.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "clear                   Clear the console screen",
+        "cls                     Alias for clear",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["help", "exit"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

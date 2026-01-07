@@ -12,7 +12,7 @@ using System.Reflection;
 /// <remarks>
 /// Shows the assembly version and other build metadata.
 /// </remarks>
-public sealed class VersionCommand : CommandHandlerBase
+public sealed class VersionCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="VersionCommand"/> class.
@@ -24,6 +24,31 @@ public sealed class VersionCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override IReadOnlyList<string> Aliases { get; } = ["ver", "v"];
+
+    /// <inheritdoc/>
+    public string Synopsis => "version";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays the version number of the Emulator Debug Console along with " +
+        "copyright information. Includes the informational version which may " +
+        "contain git commit information for development builds.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "version                 Display version information",
+        "ver                     Alias for version",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["help"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

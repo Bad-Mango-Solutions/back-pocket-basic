@@ -22,7 +22,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// specify a different starting location.
 /// </para>
 /// </remarks>
-public sealed class LoadCommand : CommandHandlerBase
+public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="LoadCommand"/> class.
@@ -37,6 +37,35 @@ public sealed class LoadCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "load <filename> [address]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "load <filename> [address]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Loads a binary file into memory starting at the specified address. " +
+        "The file is read as raw bytes and written using debug write (no I/O side " +
+        "effects). By default loads to $0000. Reports the number of bytes loaded " +
+        "and the address range written.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "load program.bin $800   Load file at $0800",
+        "load rom.bin $F000      Load ROM image at $F000",
+        "load data.bin           Load file at $0000 (default)",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Writes file contents to memory. Uses debug write which bypasses ROM " +
+        "protection and does not trigger I/O side effects.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["save", "poke", "mem"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

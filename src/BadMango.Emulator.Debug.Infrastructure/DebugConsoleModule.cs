@@ -2,18 +2,15 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Debug;
+namespace BadMango.Emulator.Debug.Infrastructure;
 
 using Autofac;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
-using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Core.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
-
-using Bus.Interfaces;
-
-using Core.Interfaces;
-using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Autofac module for registering debug console services.
@@ -95,6 +92,51 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        // Register new bus-aware debug commands (Phase D4)
+        builder.RegisterType<PeekCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<ReadCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<WriteCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<CallCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<RegionsCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<PagesCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<BusLogCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<FaultCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<DeviceMapCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<ProfileCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<SwitchesCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<MachineProfileLoader>()
             .As<IMachineProfileLoader>()
             .SingleInstance();
@@ -109,7 +151,9 @@ public class DebugConsoleModule : Module
         {
             var loader = ctx.Resolve<IMachineProfileLoader>();
             return loader.DefaultProfile;
-        });
+        })
+        .AsSelf()
+        .SingleInstance();
 
         // Register the debug context factory (provides access to CPU, Bus, Disassembler)
         builder.Register(ctx =>
