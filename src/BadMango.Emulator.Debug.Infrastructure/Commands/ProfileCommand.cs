@@ -4,13 +4,19 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Configuration;
+using BadMango.Emulator.Core.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Cpu;
+
 /// <summary>
-/// Shows the current machine profile in a human-readable format.
+/// Shows and manages machine profiles.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Displays configuration information about the current machine, including
-/// CPU type, memory size, and any attached peripherals.
+/// CPU type, memory size, and any attached peripherals. Also supports listing,
+/// loading, saving, and setting default profiles.
 /// </para>
 /// <para>
 /// This command requires machine info to be attached to the debug context.
@@ -19,43 +25,82 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
+    /// The name of the file storing the default profile setting.
+    /// </summary>
+    private const string DefaultProfileFileName = ".default-profile";
+
+    /// <summary>
+    /// The default clock speed for profiles in Hz (1 MHz).
+    /// </summary>
+    private const int DefaultClockSpeedHz = 1_000_000;
+
+    private readonly IMachineProfileLoader profileLoader;
+    private readonly MachineProfileSerializer serializer;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ProfileCommand"/> class.
     /// </summary>
     public ProfileCommand()
-        : base("profile", "Show current machine profile")
+        : this(null)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProfileCommand"/> class
+    /// with a profile loader.
+    /// </summary>
+    /// <param name="profileLoader">The machine profile loader, or null to use the default.</param>
+    public ProfileCommand(IMachineProfileLoader? profileLoader)
+        : base("profile", "Show and manage machine profiles")
+    {
+        this.profileLoader = profileLoader ?? new MachineProfileLoader();
+        this.serializer = new MachineProfileSerializer();
     }
 
     /// <inheritdoc/>
     public override IReadOnlyList<string> Aliases { get; } = ["machine", "info"];
 
     /// <inheritdoc/>
-    public override string Usage => "profile";
+    public override string Usage => "profile [list|load <name>|save <name>|default [name]]";
 
     /// <inheritdoc/>
-    public string Synopsis => "profile";
+    public string Synopsis => "profile [list|load <name>|save <name>|default [name]]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
-        "Displays configuration information about the current machine, including " +
-        "name, display name, CPU type, memory size, and bus configuration. Useful " +
-        "for verifying the machine profile and understanding system capabilities.";
+        "Displays configuration information about the current machine, or manages profiles. " +
+        "Use 'profile list' to see available profiles, 'profile load <name>' to switch profiles, " +
+        "'profile save <name>' to save the current configuration, and 'profile default [name]' " +
+        "to view or set the default profile for future sessions.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new CommandOption("list", null, "subcommand", "List all available loadable profiles", null),
+        new CommandOption("load", null, "subcommand", "Load a profile by name and rebuild the machine", "<name>"),
+        new CommandOption("save", null, "subcommand", "Save the current profile to the profiles directory", "<name>"),
+        new CommandOption("default", null, "subcommand", "View or set the default profile for future sessions", "[name]"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "profile                  Display machine profile information",
-        "machine                  Alias for profile",
+        "profile                  Display current machine profile information",
+        "profile list             List all available profiles",
+        "profile load pocket2e    Load and switch to the pocket2e profile",
+        "profile save myconfig    Save current profile as 'myconfig'",
+        "profile default          Show the current default profile",
+        "profile default pocket2e Set pocket2e as the default profile",
     ];
 
     /// <inheritdoc/>
-    public string? SideEffects => null;
+    public string? SideEffects =>
+        "The 'load' subcommand halts the CPU and rebuilds the entire machine, clearing all " +
+        "memory and resetting state. The 'save' subcommand writes a file to the profiles " +
+        "directory. The 'default' subcommand writes to a configuration file.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["devicemap", "regions", "pages"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["devicemap", "regions", "pages", "reset"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -67,6 +112,73 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Debug context required for this command.");
         }
 
+        // Handle subcommands
+        if (args.Length > 0)
+        {
+            return args[0].ToUpperInvariant() switch
+            {
+                "LIST" => ExecuteList(debugContext),
+                "LOAD" => ExecuteLoad(debugContext, args),
+                "SAVE" => ExecuteSave(debugContext, args),
+                "DEFAULT" => ExecuteDefault(debugContext, args),
+                _ => ShowProfileInfo(debugContext),
+            };
+        }
+
+        return ShowProfileInfo(debugContext);
+    }
+
+    private static string FormatMemorySize(int bytes)
+    {
+        if (bytes >= 1024 * 1024)
+        {
+            return $"{bytes / (1024 * 1024)} MB ({bytes:N0} bytes)";
+        }
+
+        if (bytes >= 1024)
+        {
+            return $"{bytes / 1024} KB ({bytes:N0} bytes)";
+        }
+
+        return $"{bytes} bytes";
+    }
+
+    private static string GetProfilesDirectory()
+    {
+        string baseDir = AppContext.BaseDirectory;
+        return Path.Combine(baseDir, "profiles");
+    }
+
+    private static string GetDefaultProfileFilePath()
+    {
+        return Path.Combine(GetProfilesDirectory(), DefaultProfileFileName);
+    }
+
+    private static string GetCurrentDefaultProfile()
+    {
+        string defaultFilePath = GetDefaultProfileFilePath();
+
+        if (File.Exists(defaultFilePath))
+        {
+            try
+            {
+                string profileName = File.ReadAllText(defaultFilePath).Trim();
+                if (!string.IsNullOrEmpty(profileName))
+                {
+                    return profileName;
+                }
+            }
+            catch
+            {
+                // Fall through to default
+            }
+        }
+
+        return MachineProfileLoader.DefaultProfileName;
+    }
+
+    private CommandResult ShowProfileInfo(IDebugContext debugContext)
+    {
         debugContext.Output.WriteLine("Machine Profile:");
         debugContext.Output.WriteLine();
 
@@ -114,21 +226,210 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             debugContext.Output.WriteLine($"  Address Space: {FormatMemorySize(totalMemory)}");
         }
 
+        // Show default profile info
+        string defaultProfile = GetCurrentDefaultProfile();
+        debugContext.Output.WriteLine();
+        debugContext.Output.WriteLine($"Default Profile: {defaultProfile}");
+
         return CommandResult.Ok();
     }
 
-    private static string FormatMemorySize(int bytes)
+    private CommandResult ExecuteList(IDebugContext debugContext)
     {
-        if (bytes >= 1024 * 1024)
+        var profiles = this.profileLoader.AvailableProfiles;
+
+        if (profiles.Count == 0)
         {
-            return $"{bytes / (1024 * 1024)} MB ({bytes:N0} bytes)";
+            debugContext.Output.WriteLine("No profiles available.");
+            return CommandResult.Ok();
         }
 
-        if (bytes >= 1024)
+        string currentProfile = debugContext.MachineInfo?.Name ?? string.Empty;
+        string defaultProfile = GetCurrentDefaultProfile();
+
+        debugContext.Output.WriteLine("Available Profiles:");
+        debugContext.Output.WriteLine();
+
+        foreach (var profileName in profiles)
         {
-            return $"{bytes / 1024} KB ({bytes:N0} bytes)";
+            var indicators = new List<string>();
+
+            if (string.Equals(profileName, currentProfile, StringComparison.OrdinalIgnoreCase))
+            {
+                indicators.Add("active");
+            }
+
+            if (string.Equals(profileName, defaultProfile, StringComparison.OrdinalIgnoreCase))
+            {
+                indicators.Add("default");
+            }
+
+            string suffix = indicators.Count > 0 ? $" ({string.Join(", ", indicators)})" : string.Empty;
+            debugContext.Output.WriteLine($"  {profileName}{suffix}");
         }
 
-        return $"{bytes} bytes";
+        debugContext.Output.WriteLine();
+        debugContext.Output.WriteLine($"Total: {profiles.Count} profile(s)");
+
+        return CommandResult.Ok();
+    }
+
+    private CommandResult ExecuteLoad(IDebugContext debugContext, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: profile load <name>");
+        }
+
+        string profileName = args[1];
+
+        // Load the profile
+        var profile = this.profileLoader.LoadProfile(profileName);
+        if (profile is null)
+        {
+            return CommandResult.Error($"Profile '{profileName}' not found.");
+        }
+
+        // Rebuild the machine with the new profile
+        if (debugContext is not DebugContext mutableContext)
+        {
+            return CommandResult.Error("Cannot reload profile: context does not support machine rebuilding.");
+        }
+
+        try
+        {
+            // Create new system from profile
+            (ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo info) =
+                MachineFactory.CreateSystem(profile);
+
+            // Detach old system and attach new one
+            mutableContext.DetachSystem();
+
+            // Recreate tracing listener for the new CPU
+            var tracingListener = new TracingDebugListener();
+            cpu.AttachDebugger(tracingListener);
+
+            mutableContext.AttachSystem(cpu, bus, disassembler, info, tracingListener);
+
+            debugContext.Output.WriteLine($"Loaded profile: {profile.DisplayName ?? profile.Name}");
+            debugContext.Output.WriteLine($"CPU reset to ${cpu.GetPC():X4}");
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to load profile: {ex.Message}");
+        }
+
+        return CommandResult.Ok();
+    }
+
+    private CommandResult ExecuteSave(IDebugContext debugContext, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: profile save <name>");
+        }
+
+        string profileName = args[1];
+
+        // Validate name
+        if (profileName.AsSpan().ContainsAny(Path.GetInvalidFileNameChars()) || profileName.Contains(".."))
+        {
+            return CommandResult.Error("Invalid profile name.");
+        }
+
+        var machineInfo = debugContext.MachineInfo;
+        if (machineInfo is null)
+        {
+            return CommandResult.Error("No machine profile is currently loaded.");
+        }
+
+        // Create a profile from current machine info
+        var profile = new MachineProfile
+        {
+            Name = profileName,
+            DisplayName = $"{profileName} (saved profile)",
+            Description = $"Profile saved from debug console on {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+            Cpu = new CpuProfileSection
+            {
+                Type = machineInfo.CpuType,
+                ClockSpeed = DefaultClockSpeedHz,
+            },
+            AddressSpace = 16,
+            Memory = new MemoryProfileSection
+            {
+                Regions =
+                [
+                    new MemoryRegionProfile
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = $"0x{machineInfo.MemorySize:X}",
+                        Permissions = "rwx",
+                    },
+                ],
+            },
+        };
+
+        try
+        {
+            string profilesDir = GetProfilesDirectory();
+            if (!Directory.Exists(profilesDir))
+            {
+                Directory.CreateDirectory(profilesDir);
+            }
+
+            string filePath = Path.Combine(profilesDir, $"{profileName}.json");
+            this.serializer.SerializeToFile(profile, filePath);
+
+            debugContext.Output.WriteLine($"Profile saved: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to save profile: {ex.Message}");
+        }
+
+        return CommandResult.Ok();
+    }
+
+    private CommandResult ExecuteDefault(IDebugContext debugContext, string[] args)
+    {
+        // If no argument, show current default
+        if (args.Length < 2)
+        {
+            string currentDefault = GetCurrentDefaultProfile();
+            debugContext.Output.WriteLine($"Current default profile: {currentDefault}");
+            return CommandResult.Ok();
+        }
+
+        string profileName = args[1];
+
+        // Verify profile exists
+        var profile = this.profileLoader.LoadProfile(profileName);
+        if (profile is null)
+        {
+            return CommandResult.Error($"Profile '{profileName}' not found. Use 'profile list' to see available profiles.");
+        }
+
+        try
+        {
+            string profilesDir = GetProfilesDirectory();
+            if (!Directory.Exists(profilesDir))
+            {
+                Directory.CreateDirectory(profilesDir);
+            }
+
+            string defaultFilePath = GetDefaultProfileFilePath();
+            File.WriteAllText(defaultFilePath, profileName);
+
+            debugContext.Output.WriteLine($"Default profile set to: {profileName}");
+            debugContext.Output.WriteLine("This will take effect on the next session start.");
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to set default profile: {ex.Message}");
+        }
+
+        return CommandResult.Ok();
     }
 }
