@@ -149,6 +149,75 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         return Path.Combine(baseDir, "profiles");
     }
 
+    /// <summary>
+    /// Gets the library root directory (user's home directory + .backpocket).
+    /// </summary>
+    /// <returns>The library root path.</returns>
+    private static string GetLibraryRoot()
+    {
+        string homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(homeDir, ".backpocket");
+    }
+
+    /// <summary>
+    /// Gets the library profiles directory (library root + Profiles).
+    /// </summary>
+    /// <returns>The library profiles directory path.</returns>
+    private static string GetLibraryProfilesDirectory()
+    {
+        return Path.Combine(GetLibraryRoot(), "Profiles");
+    }
+
+    /// <summary>
+    /// Finds a profile file by name, searching multiple locations.
+    /// </summary>
+    /// <param name="profileName">The profile name to search for.</param>
+    /// <returns>The full path to the profile file, or null if not found.</returns>
+    private static string? FindProfileFile(string profileName)
+    {
+        // Validate the name doesn't contain path separators (security check)
+        if (profileName.AsSpan().ContainsAny(Path.GetInvalidFileNameChars()) ||
+            profileName.Contains(".."))
+        {
+            return null;
+        }
+
+        // Search locations in priority order:
+        // 1. App's default profiles directory (AppContext.BaseDirectory/profiles)
+        // 2. Library profiles directory (~/.backpocket/Profiles)
+        string fileName = $"{profileName}.json";
+
+        // Check app profiles directory first
+        string appProfilePath = Path.Combine(GetProfilesDirectory(), fileName);
+        if (File.Exists(appProfilePath))
+        {
+            return appProfilePath;
+        }
+
+        // Check library profiles directory
+        string libraryProfilesDir = GetLibraryProfilesDirectory();
+        if (!Directory.Exists(libraryProfilesDir))
+        {
+            // Create the directory for future use
+            try
+            {
+                Directory.CreateDirectory(libraryProfilesDir);
+            }
+            catch
+            {
+                // Ignore creation errors
+            }
+        }
+
+        string libraryProfilePath = Path.Combine(libraryProfilesDir, fileName);
+        if (File.Exists(libraryProfilePath))
+        {
+            return libraryProfilePath;
+        }
+
+        return null;
+    }
+
     private static string GetDefaultProfileFilePath()
     {
         return Path.Combine(GetProfilesDirectory(), DefaultProfileFileName);
@@ -236,7 +305,37 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 
     private CommandResult ExecuteList(IDebugContext debugContext)
     {
-        var profiles = this.profileLoader.AvailableProfiles;
+        // Combine profiles from multiple locations
+        var allProfiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Add profiles from the app's default directory
+        foreach (var profile in this.profileLoader.AvailableProfiles)
+        {
+            allProfiles.Add(profile);
+        }
+
+        // Add profiles from the library directory (~/.backpocket/Profiles)
+        string libraryProfilesDir = GetLibraryProfilesDirectory();
+        if (Directory.Exists(libraryProfilesDir))
+        {
+            try
+            {
+                var libraryProfiles = Directory.EnumerateFiles(libraryProfilesDir, "*.json")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(name => !string.IsNullOrEmpty(name));
+
+                foreach (var profile in libraryProfiles)
+                {
+                    allProfiles.Add(profile!);
+                }
+            }
+            catch
+            {
+                // Ignore errors reading the directory
+            }
+        }
+
+        var profiles = allProfiles.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
 
         if (profiles.Count == 0)
         {
@@ -283,11 +382,22 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 
         string profileName = args[1];
 
-        // Load the profile
-        var profile = this.profileLoader.LoadProfile(profileName);
-        if (profile is null)
+        // Try to find the profile file path from multiple locations
+        string? profileFilePath = FindProfileFile(profileName);
+        if (profileFilePath is null)
         {
             return CommandResult.Error($"Profile '{profileName}' not found.");
+        }
+
+        // Load the profile from the found file
+        MachineProfile profile;
+        try
+        {
+            profile = this.profileLoader.LoadProfileFromFile(profileFilePath);
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to load profile '{profileName}': {ex.Message}");
         }
 
         // Rebuild the machine with the new profile
@@ -298,9 +408,13 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 
         try
         {
-            // Create new system from profile
+            // Create a path resolver with the library root and profile file path
+            string libraryRoot = GetLibraryRoot();
+            var pathResolver = new ProfilePathResolver(libraryRoot, profileFilePath);
+
+            // Create new system from profile with the path resolver
             (ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo info) =
-                MachineFactory.CreateSystem(profile);
+                MachineFactory.CreateSystem(profile, pathResolver);
 
             // Detach old system and attach new one
             mutableContext.DetachSystem();
@@ -404,9 +518,9 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 
         string profileName = args[1];
 
-        // Verify profile exists
-        var profile = this.profileLoader.LoadProfile(profileName);
-        if (profile is null)
+        // Verify profile exists using the multi-location search
+        string? profileFilePath = FindProfileFile(profileName);
+        if (profileFilePath is null)
         {
             return CommandResult.Error($"Profile '{profileName}' not found. Use 'profile list' to see available profiles.");
         }
