@@ -660,6 +660,97 @@ public static class Pocket2eMachineBuilderExtensions
             irqHandler: 0xFA40);  // Typical IRQ/BRK handler
     }
 
+    /// <summary>
+    /// Registers the Pocket2e composite handlers for profile-based loading.
+    /// </summary>
+    /// <param name="builder">The machine builder to configure.</param>
+    /// <returns>The configured builder for method chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method registers the "pocket2e-io" composite handler, which is required
+    /// when loading Pocket2e profiles from JSON that specify composite regions.
+    /// </para>
+    /// <para>
+    /// Call this method before <see cref="MachineBuilder.FromProfile"/> when loading
+    /// a Pocket2e profile. The method also configures the required components
+    /// (IOPageDispatcher, SlotManager, Language Card, Auxiliary Memory).
+    /// </para>
+    /// <para>
+    /// Example:
+    /// </para>
+    /// <code>
+    /// var machine = new MachineBuilder()
+    ///     .WithPocket2eCompositeHandlers()
+    ///     .FromProfile(pocket2eProfile)
+    ///     .WithCpuFactory(cpuFactory)
+    ///     .Build();
+    /// </code>
+    /// </remarks>
+    public static MachineBuilder WithPocket2eCompositeHandlers(this MachineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+
+        // Set up the required infrastructure components first
+        var dispatcher = new IOPageDispatcher();
+        var slotManager = new SlotManager(dispatcher);
+
+        builder
+            .AddComponent(dispatcher)
+            .AddComponent<ISlotManager>(slotManager);
+
+        // Set up memory controllers
+        var languageCard = new LanguageCardController();
+        var auxController = new AuxiliaryMemoryController();
+
+        builder
+            .AddComponent(languageCard)
+            .AddDevice(languageCard)
+            .AddComponent(auxController)
+            .AddDevice(auxController);
+
+        // Register the composite handler for the I/O page
+        return builder.RegisterCompositeHandler("pocket2e-io", b =>
+        {
+            var d = b.GetComponent<IOPageDispatcher>();
+            var sm = b.GetComponent<ISlotManager>();
+
+            if (d == null || sm == null)
+            {
+                throw new InvalidOperationException(
+                    "IOPageDispatcher and SlotManager must be configured before the pocket2e-io handler.");
+            }
+
+            return new Pocket2eIOPage(d, sm);
+        });
+    }
+
+    /// <summary>
+    /// Gets a component from the builder's component list.
+    /// </summary>
+    /// <typeparam name="T">The type of component to retrieve.</typeparam>
+    /// <param name="builder">The machine builder to search.</param>
+    /// <returns>The component if found; otherwise, null.</returns>
+    /// <remarks>
+    /// This is used internally by composite handler factories to retrieve
+    /// dependencies that were added to the builder.
+    /// </remarks>
+    internal static T? GetComponent<T>(this MachineBuilder builder)
+        where T : class
+    {
+        // Access internal components list via reflection for now
+        // This is a temporary solution; ideally we'd expose a method on MachineBuilder
+        var componentsField = typeof(MachineBuilder).GetField(
+            "components",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        if (componentsField?.GetValue(builder) is List<object> components)
+        {
+            return components.OfType<T>().FirstOrDefault();
+        }
+
+        return null;
+    }
+
     private static ICpu CreatePocket2eCpu(IEventContext context)
     {
         return new Cpu65C02(context);

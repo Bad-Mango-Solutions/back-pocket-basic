@@ -55,6 +55,7 @@ public sealed class MachineBuilder
     private readonly List<Action<IMachine>> afterSlotCardInstallCallbacks = [];
     private readonly List<Action<IMachine>> beforeSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
+    private readonly Dictionary<string, Func<MachineBuilder, IBusTarget>> compositeHandlerFactories = new(StringComparer.OrdinalIgnoreCase);
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -216,12 +217,55 @@ public sealed class MachineBuilder
                 ConfigureRomRegion(region, start, size, perms, pathResolver);
                 break;
 
+            case "composite":
+                ConfigureCompositeRegion(region, start, size, perms);
+                break;
+
             case "io":
                 throw new NotSupportedException($"I/O region type is not yet supported for region '{region.Name}'.");
 
             default:
                 throw new NotSupportedException($"Unknown memory region type '{region.Type}' for region '{region.Name}'.");
         }
+    }
+
+    private void ConfigureCompositeRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
+    {
+        if (string.IsNullOrEmpty(region.Handler))
+        {
+            throw new InvalidOperationException(
+                $"Composite region '{region.Name}' must specify a 'handler' property.");
+        }
+
+        if (!compositeHandlerFactories.TryGetValue(region.Handler, out var factory))
+        {
+            throw new InvalidOperationException(
+                $"No handler registered for composite region '{region.Name}' with handler '{region.Handler}'. " +
+                $"Use RegisterCompositeHandler to register the handler before calling FromProfile.");
+        }
+
+        // Defer the handler creation to the memory configuration phase
+        // so that required components are available
+        memoryConfigurations.Add((bus, registry) =>
+        {
+            var target = factory(this);
+
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "Composite", region.Name, $"Memory/{start:X4}");
+
+            int pageCount = (int)(size / 0x1000);
+            int startPage = (int)(start / 0x1000);
+
+            bus.MapPageRange(
+                startPage: startPage,
+                pageCount: pageCount,
+                deviceId: deviceId,
+                regionTag: RegionTag.Io,
+                perms: perms,
+                caps: target.Capabilities,
+                target: target,
+                physicalBase: 0);
+        });
     }
 
     private void ConfigureRamRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
@@ -564,6 +608,39 @@ public sealed class MachineBuilder
         ArgumentNullException.ThrowIfNull(layer, nameof(layer));
         compositeLayers.Add(layer);
         components.Add(layer);
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a factory function for creating composite region handlers.
+    /// </summary>
+    /// <param name="handlerName">The name of the handler (e.g., "pocket2e-io").</param>
+    /// <param name="factory">A factory function that creates the <see cref="IBusTarget"/> for the handler.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="handlerName"/> or <paramref name="factory"/> is <see langword="null"/>.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// Composite handlers are used by profiles that specify a "composite" region type with a "handler"
+    /// property. When <see cref="FromProfile"/> encounters such a region, it looks up the handler
+    /// by name and invokes the factory to create the <see cref="IBusTarget"/>.
+    /// </para>
+    /// <para>
+    /// Example:
+    /// </para>
+    /// <code>
+    /// builder.RegisterCompositeHandler("pocket2e-io", b => new Pocket2eIOPage(
+    ///     b.GetComponent&lt;IOPageDispatcher&gt;(),
+    ///     b.GetComponent&lt;ISlotManager&gt;()));
+    /// </code>
+    /// </remarks>
+    public MachineBuilder RegisterCompositeHandler(string handlerName, Func<MachineBuilder, IBusTarget> factory)
+    {
+        ArgumentNullException.ThrowIfNull(handlerName, nameof(handlerName));
+        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
+
+        compositeHandlerFactories[handlerName] = factory;
         return this;
     }
 

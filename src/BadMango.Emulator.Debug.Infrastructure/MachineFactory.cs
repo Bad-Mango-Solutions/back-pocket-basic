@@ -12,6 +12,7 @@ using BadMango.Emulator.Core.Interfaces;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
+using BadMango.Emulator.Systems;
 
 /// <summary>
 /// Factory for creating emulator components from machine profiles.
@@ -34,8 +35,16 @@ public static class MachineFactory
 
         pathResolver ??= new ProfilePathResolver(null);
 
-        // Use MachineBuilder.FromProfile to create the machine
-        var machine = new MachineBuilder()
+        // Build the machine using the appropriate configuration based on profile type
+        var builder = new MachineBuilder();
+
+        // Check if the profile uses composite regions (like pocket2e)
+        if (RequiresPocket2eHandlers(profile))
+        {
+            builder.WithPocket2eCompositeHandlers();
+        }
+
+        var machine = builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
@@ -70,10 +79,37 @@ public static class MachineFactory
 
         pathResolver ??= new ProfilePathResolver(null);
 
-        return new MachineBuilder()
+        // Build the machine using the appropriate configuration based on profile type
+        var builder = new MachineBuilder();
+
+        // Check if the profile uses composite regions (like pocket2e)
+        if (RequiresPocket2eHandlers(profile))
+        {
+            builder.WithPocket2eCompositeHandlers();
+        }
+
+        return builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
+    }
+
+    /// <summary>
+    /// Determines if a profile requires Pocket2e composite handlers.
+    /// </summary>
+    /// <param name="profile">The profile to check.</param>
+    /// <returns>True if the profile uses pocket2e-io or similar handlers; otherwise, false.</returns>
+    private static bool RequiresPocket2eHandlers(MachineProfile profile)
+    {
+        // Check if any region uses the "pocket2e-io" handler
+        if (profile.Memory?.Regions is null)
+        {
+            return false;
+        }
+
+        return profile.Memory.Regions.Any(region =>
+            string.Equals(region.Type, "composite", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(region.Handler, "pocket2e-io", StringComparison.OrdinalIgnoreCase));
     }
 
     private static Func<IEventContext, ICpu> CreateCpuFactory(CpuProfileSection cpuConfig)

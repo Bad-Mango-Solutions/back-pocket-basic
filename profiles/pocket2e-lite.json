@@ -1,0 +1,53 @@
+{
+    "$schema": "../schemas/machine-profile.schema.json",
+    "name": "pocket2e-lite",
+    "displayName": "Pocket2e Lite",
+    "description": "Pocket2e Lite system - Apple IIe clone with 64KB main RAM, I/O page with soft switches, and slot infrastructure. Does not include ROM or slot cards (use programmatic configuration for full setup).",
+
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1020484
+    },
+
+    "addressSpace": 16,
+
+    "memory": {
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "fill": "0x00"
+            },
+            {
+                "name": "io-page",
+                "type": "composite",
+                "start": "0xC000",
+                "size": "0x1000",
+                "handler": "pocket2e-io"
+            },
+            {
+                "name": "rom-area",
+                "type": "ram",
+                "start": "0xD000",
+                "size": "0x3000",
+                "permissions": "rwx",
+                "fill": "0xEA",
+                "comment": "ROM placeholder filled with NOP for testing"
+            }
+        ]
+    },
+
+    "slots": {
+        "enabled": true,
+        "internalC3Rom": true,
+        "internalCxRom": false,
+        "cards": []
+    },
+
+    "boot": {
+        "autoStart": false
+    }
+}
