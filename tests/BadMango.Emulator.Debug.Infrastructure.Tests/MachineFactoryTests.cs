@@ -28,6 +28,15 @@ public class MachineFactoryTests
             AddressSpace = 16,
             Memory = new MemoryProfileSection
             {
+                Physical =
+                [
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
                     new MemoryRegionProfile
@@ -37,6 +46,8 @@ public class MachineFactoryTests
                         Start = "0x0000",
                         Size = "0x10000",
                         Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
                     },
                 ],
             },

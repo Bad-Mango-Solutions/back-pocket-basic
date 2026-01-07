@@ -151,7 +151,7 @@ public class ProfileCommandIntegrationTests
         {
             Assert.That(result.Success, Is.True, $"Command should succeed. Error: {result.Message}");
             Assert.That(output, Does.Contain("Page Table"), "Output should contain Page Table header");
-            Assert.That(output, Does.Contain("VirtAddr"), "Output should show virtual address column");
+            Assert.That(output, Does.Contain("Addr"), "Output should show address column");
         });
     }
 
@@ -337,6 +337,15 @@ public class ProfileCommandIntegrationTests
             AddressSpace = 16,
             Memory = new MemoryProfileSection
             {
+                Physical =
+                [
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
                     new MemoryRegionProfile
@@ -346,6 +355,8 @@ public class ProfileCommandIntegrationTests
                         Start = "0x0000",
                         Size = "0x10000",
                         Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
                     },
                 ],
             },

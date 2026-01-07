@@ -329,7 +329,7 @@ public sealed partial class MachineBuilder
         // Get physical memory backing
         var (physical, sourceOffset) = GetPhysicalMemoryForRegion(region, size);
 
-        var target = new RamTarget(physical.Slice(sourceOffset, size));
+        var target = new RamTarget(physical.Slice(sourceOffset, size), physical.Name);
 
         // Add memory configuration callback
         memoryConfigurations.Add((bus, registry) =>
@@ -357,7 +357,7 @@ public sealed partial class MachineBuilder
         // Get physical memory backing
         var (physical, sourceOffset) = GetPhysicalMemoryForRegion(region, size);
 
-        var target = new RomTarget(physical.ReadOnlySlice(sourceOffset, size));
+        var target = new RomTarget(physical.ReadOnlySlice(sourceOffset, size), physical.Name);
 
         // Add memory configuration callback
         memoryConfigurations.Add((bus, registry) =>

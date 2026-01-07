@@ -25,6 +25,16 @@ namespace BadMango.Emulator.Bus.Interfaces;
 public interface IBusTarget
 {
     /// <summary>
+    /// Gets the name of this bus target.
+    /// </summary>
+    /// <value>A human-readable name for diagnostics, debugging, and display purposes.</value>
+    /// <remarks>
+    /// The default implementation returns the type name. Implementations should override
+    /// this to provide a more descriptive name, such as "main-ram-48k" or "system-rom-16k".
+    /// </remarks>
+    string Name => GetType().Name;
+
+    /// <summary>
     /// Gets the capabilities of this bus target.
     /// </summary>
     /// <value>A combination of <see cref="TargetCaps"/> flags describing what this target supports.</value>

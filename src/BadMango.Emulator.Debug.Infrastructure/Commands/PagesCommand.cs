@@ -41,7 +41,7 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Displays the live state of the page table, including each page's mapped target, " +
-        "permissions (RWX), capabilities, physical base address, and device ID. Supports " +
+        "permissions (RWX), capabilities, offset within the source, and device ID. Supports " +
         "range selection for large page tables. Use start_page and count to view specific " +
         "pages. Requires a bus-based system.";
 
@@ -107,8 +107,11 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
 
         debugContext.Output.WriteLine($"Page Table (pages {startPage}-{startPage + count - 1} of {bus.PageCount}, page size: 0x{pageSize:X}):");
         debugContext.Output.WriteLine();
-        debugContext.Output.WriteLine($"{"Page",-6} {"VirtAddr",-10} {"Type",-10} {"Perms",-6} {"Caps",-20} {"PhysBase",-10} {"DevID",-6}");
-        debugContext.Output.WriteLine(new string('─', 76));
+
+        // Column headers with consistent widths
+        // Page  Addr    Type        Perms  Source           Offset  Caps                 DevID
+        debugContext.Output.WriteLine($"{"Page",-5} {"Addr",-7} {"Type",-11} {"Perms",-5} {"Source",-16} {"Offset",-7} {"Caps",-20} {"DevID",-5}");
+        debugContext.Output.WriteLine(new string('─', 88));
 
         for (int i = 0; i < count; i++)
         {
@@ -118,9 +121,10 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
 
             string permsStr = FormatPerms(entry.Perms);
             string capsStr = FormatCaps(entry.Caps);
+            string sourceStr = FormatSource(entry.Target);
 
             debugContext.Output.WriteLine(
-                $"${pageIndex:X2}    ${virtAddr:X4}      {entry.RegionTag,-10} {permsStr,-6} {capsStr,-20} ${entry.PhysicalBase:X8}   {entry.DeviceId}");
+                $"${pageIndex:X2}   ${virtAddr:X4}   {entry.RegionTag,-11} {permsStr,-5} {sourceStr,-16} ${entry.PhysicalBase:X4}   {capsStr,-20} {entry.DeviceId,-5}");
         }
 
         if (startPage + count < bus.PageCount)
@@ -187,5 +191,15 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         }
 
         return parts.Count > 0 ? string.Join(",", parts) : "None";
+    }
+
+    private static string FormatSource(Bus.Interfaces.IBusTarget? target)
+    {
+        if (target is null)
+        {
+            return "-";
+        }
+
+        return target.Name;
     }
 }

@@ -33,7 +33,7 @@ public partial class DebugCommandsTests
         {
             Assert.That(result.Success, Is.True);
             Assert.That(outputWriter.ToString(), Does.Contain("Page Table"));
-            Assert.That(outputWriter.ToString(), Does.Contain("VirtAddr"));
+            Assert.That(outputWriter.ToString(), Does.Contain("Addr"));
         });
     }
 

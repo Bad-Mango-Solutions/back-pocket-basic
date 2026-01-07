@@ -839,7 +839,9 @@ public sealed partial class MachineBuilder
     private static void MapRom(MainBus bus, DeviceRegistry devices, RomDescriptor rom)
     {
         var physical = new PhysicalMemory(rom.Data, rom.Name ?? $"ROM@{rom.LoadAddress:X4}");
-        var target = new RomTarget(physical.ReadOnlySlice(0, (uint)rom.Data.Length));
+
+        // Use Slice (writable) instead of ReadOnlySlice to allow debug writes (Poke8) to ROM
+        var target = new RomTarget(physical.Slice(0, (uint)rom.Data.Length), physical.Name);
 
         int deviceId = devices.GenerateId();
         devices.Register(deviceId, "ROM", rom.Name ?? $"ROM@{rom.LoadAddress:X4}", $"ROM/{rom.LoadAddress:X4}");
