@@ -190,6 +190,8 @@ public class ProfileCommandIntegrationTests
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         var disassembler = new Disassembler(opcodeTable, machine.Bus);
         var info = new MachineInfo("pocket2e", "Pocket2e", "65C02", 128 * 1024);
+
+        // Note: TracingListener is optional for these tests since we're not tracing execution
         context.AttachMachine(machine, disassembler, info);
 
         var command = new RegionsCommand();
@@ -221,6 +223,8 @@ public class ProfileCommandIntegrationTests
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         var disassembler = new Disassembler(opcodeTable, machine.Bus);
         var info = new MachineInfo("pocket2e", "Pocket2e", "65C02", 128 * 1024);
+
+        // Note: TracingListener is optional for these tests since we're not tracing execution
         context.AttachMachine(machine, disassembler, info);
 
         // Get pages at $C0xx (page 12 decimal = 0x0C)
@@ -253,6 +257,8 @@ public class ProfileCommandIntegrationTests
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
         var disassembler = new Disassembler(opcodeTable, machine.Bus);
         var info = new MachineInfo("pocket2e", "Pocket2e", "65C02", 128 * 1024);
+
+        // Note: TracingListener is optional for these tests since we're not tracing execution
         context.AttachMachine(machine, disassembler, info);
 
         var command = new DeviceMapCommand();
