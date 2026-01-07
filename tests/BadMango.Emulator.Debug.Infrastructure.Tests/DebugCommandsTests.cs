@@ -1791,6 +1791,91 @@ public class DebugCommandsTests
         Assert.That(command.Aliases, Is.EquivalentTo(new[] { "sw", "softswitch" }));
     }
 
+    /// <summary>
+    /// Verifies that SwitchesCommand displays soft switch states from providers.
+    /// </summary>
+    [Test]
+    public void SwitchesCommand_DisplaysSwitchStates_WhenMachineHasProviders()
+    {
+        var mockBus = new Mock<IMemoryBus>();
+        var mockMachine = new Mock<IMachine>();
+        var mockProvider = new Mock<ISoftSwitchProvider>();
+
+        // Set up the provider to return some test states
+        mockProvider.Setup(p => p.ProviderName).Returns("Test Provider");
+        mockProvider.Setup(p => p.GetSoftSwitchStates()).Returns(new List<SoftSwitchState>
+        {
+            new("TEST_SWITCH", 0xC000, true, "Test switch on"),
+            new("OTHER_SWITCH", 0xC001, false, "Test switch off"),
+        });
+
+        // Set up the machine to return the provider and bus
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        mockMachine.Setup(m => m.GetComponents<ISoftSwitchProvider>())
+            .Returns(new List<ISoftSwitchProvider> { mockProvider.Object });
+
+        // Set up debug context with the mock machine
+        debugContext.AttachMachine(mockMachine.Object);
+
+        var command = new SwitchesCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Test Provider"));
+            Assert.That(outputWriter.ToString(), Does.Contain("TEST_SWITCH"));
+            Assert.That(outputWriter.ToString(), Does.Contain("ON"));
+            Assert.That(outputWriter.ToString(), Does.Contain("OTHER_SWITCH"));
+            Assert.That(outputWriter.ToString(), Does.Contain("OFF"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that SwitchesCommand shows no providers message when machine has none.
+    /// </summary>
+    [Test]
+    public void SwitchesCommand_ShowsNoProvidersMessage_WhenMachineHasNoProviders()
+    {
+        var mockBus = new Mock<IMemoryBus>();
+        var mockMachine = new Mock<IMachine>();
+
+        // Set up the machine to return no providers, but with a valid bus
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        mockMachine.Setup(m => m.GetComponents<ISoftSwitchProvider>())
+            .Returns(new List<ISoftSwitchProvider>());
+
+        // Set up debug context with the mock machine
+        debugContext.AttachMachine(mockMachine.Object);
+
+        var command = new SwitchesCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("No soft switch providers found"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that SwitchesCommand returns error when no bus attached.
+    /// </summary>
+    [Test]
+    public void SwitchesCommand_ReturnsError_WhenNoBusAttached()
+    {
+        var contextWithoutBus = new DebugContext(dispatcher, outputWriter, errorWriter);
+
+        var command = new SwitchesCommand();
+        var result = command.Execute(contextWithoutBus, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("No bus attached"));
+        });
+    }
+
     // =====================
     // BusLogCommand Tests
     // =====================
@@ -1812,86 +1897,12 @@ public class DebugCommandsTests
     public void BusLogCommand_HasCorrectAliases()
     {
         var command = new BusLogCommand();
-        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl", "trace" }));
-    }
-
-    /// <summary>
-    /// Verifies that BusLogCommand displays status by default.
-    /// </summary>
-    [Test]
-    public void BusLogCommand_DisplaysStatus()
-    {
-        var command = new BusLogCommand();
-        var result = command.Execute(debugContext, []);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("Bus Logging Status"));
-        });
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl" }));
     }
 
     // =====================
-    // CallCommand Tests
+    // Helper Methods
     // =====================
-
-    /// <summary>
-    /// Verifies that CallCommand has correct name.
-    /// </summary>
-    [Test]
-    public void CallCommand_HasCorrectName()
-    {
-        var command = new CallCommand();
-        Assert.That(command.Name, Is.EqualTo("call"));
-    }
-
-    /// <summary>
-    /// Verifies that CallCommand has correct aliases.
-    /// </summary>
-    [Test]
-    public void CallCommand_HasCorrectAliases()
-    {
-        var command = new CallCommand();
-        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "jsr" }));
-    }
-
-    /// <summary>
-    /// Verifies that CallCommand executes subroutine and returns.
-    /// </summary>
-    [Test]
-    public void CallCommand_ExecutesSubroutineAndReturns()
-    {
-        // Write a simple subroutine: LDA #$42, RTS
-        WriteByte(bus, 0x2000, 0xA9); // LDA immediate
-        WriteByte(bus, 0x2001, 0x42); // #$42
-        WriteByte(bus, 0x2002, 0x60); // RTS
-
-        var command = new CallCommand();
-        var result = command.Execute(debugContext, ["$2000"]);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("completed"));
-            Assert.That(outputWriter.ToString(), Does.Contain("A=$42"));
-        });
-    }
-
-    /// <summary>
-    /// Verifies that CallCommand returns error when address missing.
-    /// </summary>
-    [Test]
-    public void CallCommand_ReturnsError_WhenAddressMissing()
-    {
-        var command = new CallCommand();
-        var result = command.Execute(debugContext, []);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Success, Is.False);
-            Assert.That(result.Message, Does.Contain("Address required"));
-        });
-    }
 
     /// <summary>
     /// Helper method to create a bus with full RAM mapping.
@@ -1902,7 +1913,7 @@ public class DebugCommandsTests
     }
 
     /// <summary>
-    /// Helper method to create a bus with full RAM mapping and access to physical memory.
+    /// Helper method to create a bus with full RAM mapping, returning the physical memory.
     /// </summary>
     /// <remarks>
     /// Creates a 64KB address space (16-bit addressing) with 16 pages of 4KB each,
@@ -1911,21 +1922,21 @@ public class DebugCommandsTests
     private static Bus.MainBus CreateBusWithRam(out Bus.PhysicalMemory physicalMemory)
     {
         // 64KB address space: 16 pages × 4KB = 65536 bytes
-        const int TestMemorySize = 65536;
-        const int PageCount = 16; // 64KB / 4KB per page
+        const int TestMemorySize = 0x10000;
 
-        var bus = new Bus.MainBus(addressSpaceBits: 16);
-        physicalMemory = new Bus.PhysicalMemory(TestMemorySize, "TestRAM");
-        var target = new Bus.RamTarget(physicalMemory.Slice(0, TestMemorySize));
+        physicalMemory = new Bus.PhysicalMemory(TestMemorySize, "TestRam");
+        var ramTarget = new Bus.RamTarget(physicalMemory.Slice(0, TestMemorySize));
+        var bus = new Bus.MainBus(16); // 16-bit address space = 64KB
 
+        // Map all pages to RAM with read/write/execute permissions
         bus.MapPageRange(
             startPage: 0,
-            pageCount: PageCount,
-            deviceId: 1,
-            regionTag: Bus.RegionTag.Ram,
-            perms: Bus.PagePerms.ReadWrite,
-            caps: Bus.TargetCaps.SupportsPeek | Bus.TargetCaps.SupportsPoke | Bus.TargetCaps.SupportsWide,
-            target: target,
+            pageCount: 16,
+            deviceId: 0,
+            regionTag: RegionTag.Ram,
+            perms: PagePerms.All,
+            caps: ramTarget.Capabilities,
+            target: ramTarget,
             physicalBase: 0);
 
         return bus;

@@ -28,7 +28,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// write enable requires two consecutive reads of the same odd address.
 /// </para>
 /// </remarks>
-public sealed class LanguageCardController : IMotherboardDevice
+public sealed class LanguageCardController : IMotherboardDevice, ISoftSwitchProvider
 {
     /// <summary>
     /// The name of the Language Card RAM layer.
@@ -129,6 +129,21 @@ public sealed class LanguageCardController : IMotherboardDevice
     /// </summary>
     /// <value>The slot I/O handlers for $C080-$C08F.</value>
     public SlotIOHandlers IOHandlers => handlers;
+
+    /// <inheritdoc />
+    public string ProviderName => "Language Card";
+
+    /// <inheritdoc />
+    public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
+    {
+        return
+        [
+            new SoftSwitchState("LCRAM Read", 0xC080, readRam, "RAM read enabled (vs ROM)"),
+            new SoftSwitchState("LCRAM Write", 0xC080, writeEnabled, "RAM write enabled"),
+            new SoftSwitchState("LC Bank", 0xC080, bank2Selected, bank2Selected ? "Bank 2 selected" : "Bank 1 selected"),
+            new SoftSwitchState("LC PreWrite", 0xC080, preWrite, "R×2 protocol primed"),
+        ];
+    }
 
     // ─── IMotherboardDevice ─────────────────────────────────────────────────────
 

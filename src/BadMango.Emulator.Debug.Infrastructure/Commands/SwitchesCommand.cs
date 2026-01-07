@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus.Interfaces;
+
 /// <summary>
 /// Lists current soft switch state flags.
 /// </summary>
@@ -14,8 +16,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// in Apple II-compatible systems.
 /// </para>
 /// <para>
-/// This command requires a bus with an IOPageDispatcher or composite target
-/// that exposes soft switch state.
+/// This command queries components that implement <see cref="ISoftSwitchProvider"/>
+/// to gather and display their soft switch states.
 /// </para>
 /// </remarks>
 public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
@@ -41,8 +43,8 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
     public string DetailedDescription =>
         "Displays the current state of soft switches in the system. Soft switches " +
         "are memory-mapped I/O locations ($C000-$CFFF) that control hardware features " +
-        "like text/graphics mode, memory banking, and peripheral access. Currently a " +
-        "placeholder - full implementation requires IOPageDispatcher integration.";
+        "like text/graphics mode, memory banking, and peripheral access. This command " +
+        "queries all components that implement ISoftSwitchProvider to gather switch states.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -78,21 +80,70 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
         debugContext.Output.WriteLine("Soft Switch State:");
         debugContext.Output.WriteLine();
 
-        // Note: The actual soft switch state would be queried from the IOPageDispatcher
-        // or a composite target. This is a placeholder showing the command structure.
-        // Implementation would require the bus to expose switch state or use reflection
-        // to inspect the IOPageDispatcher.
-        debugContext.Output.WriteLine("  Switch state information is not available in this configuration.");
+        // Try to find soft switch providers through the machine
+        var providers = GetSoftSwitchProviders(debugContext);
+
+        if (providers.Count == 0)
+        {
+            debugContext.Output.WriteLine("  No soft switch providers found in this configuration.");
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine("Note: Soft switch state requires components that implement");
+            debugContext.Output.WriteLine("      ISoftSwitchProvider (e.g., LanguageCardController,");
+            debugContext.Output.WriteLine("      AuxiliaryMemoryController).");
+        }
+        else
+        {
+            foreach (var provider in providers)
+            {
+                DisplayProviderSwitches(debugContext, provider);
+            }
+        }
+
         debugContext.Output.WriteLine();
-        debugContext.Output.WriteLine("Note: Soft switch state requires an IOPageDispatcher or compatible");
-        debugContext.Output.WriteLine("      composite target that exposes state flags.");
-        debugContext.Output.WriteLine();
-        debugContext.Output.WriteLine("Common Apple II soft switches:");
-        debugContext.Output.WriteLine("  $C000-$C00F  Keyboard and strobe");
-        debugContext.Output.WriteLine("  $C010-$C01F  Keyboard clear and other signals");
+        debugContext.Output.WriteLine("Common Apple II soft switch addresses:");
+        debugContext.Output.WriteLine("  $C000-$C00F  Keyboard and memory switches");
+        debugContext.Output.WriteLine("  $C010-$C01F  Status reads");
         debugContext.Output.WriteLine("  $C050-$C05F  Graphics/text mode switches");
         debugContext.Output.WriteLine("  $C080-$C08F  Language card bank switches");
 
         return CommandResult.Ok();
+    }
+
+    private static List<ISoftSwitchProvider> GetSoftSwitchProviders(IDebugContext context)
+    {
+        var providers = new List<ISoftSwitchProvider>();
+
+        // If we have a machine, query it for soft switch providers
+        if (context.Machine is not null)
+        {
+            var machineProviders = context.Machine.GetComponents<ISoftSwitchProvider>();
+            providers.AddRange(machineProviders);
+        }
+
+        return providers;
+    }
+
+    private static void DisplayProviderSwitches(IDebugContext context, ISoftSwitchProvider provider)
+    {
+        context.Output.WriteLine($"  {provider.ProviderName}:");
+
+        var switches = provider.GetSoftSwitchStates();
+        foreach (var sw in switches)
+        {
+            string state = sw.Value ? "ON " : "OFF";
+            string address = $"${sw.Address:X4}";
+            string description = sw.Description ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(description))
+            {
+                context.Output.WriteLine($"    {sw.Name,-16} {state}  ({address})  {description}");
+            }
+            else
+            {
+                context.Output.WriteLine($"    {sw.Name,-16} {state}  ({address})");
+            }
+        }
+
+        context.Output.WriteLine();
     }
 }
