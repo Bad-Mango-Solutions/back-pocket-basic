@@ -19,7 +19,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// - Hex bytes in the middle (16 bytes per line)
 /// - ASCII representation on the right.
 /// </remarks>
-public sealed class MemCommand : CommandHandlerBase
+public sealed class MemCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultByteCount = 256;
     private const int BytesPerLine = 16;
@@ -38,6 +38,33 @@ public sealed class MemCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "mem <address> [length]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "mem <address> [length]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays memory contents in traditional hex dump format with address column, " +
+        "hex bytes (16 per line), and ASCII representation. Uses DebugRead intent for " +
+        "side-effect-free access. Defaults to 256 bytes if length not specified. " +
+        "Maximum displayable length is 65536 bytes.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "mem $300                 Display 256 bytes starting at $0300",
+        "mem $800 64              Display 64 bytes starting at $0800",
+        "mem 0x6000 $100          Display 256 bytes starting at $6000",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["peek", "poke", "read"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

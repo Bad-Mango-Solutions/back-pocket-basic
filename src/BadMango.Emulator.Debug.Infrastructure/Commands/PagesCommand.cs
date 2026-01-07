@@ -20,7 +20,7 @@ using BadMango.Emulator.Bus;
 /// This command requires a bus to be attached to the debug context.
 /// </para>
 /// </remarks>
-public sealed class PagesCommand : CommandHandlerBase
+public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultPageCount = 16;
 
@@ -34,6 +34,33 @@ public sealed class PagesCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "pages [start_page] [count]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "pages [start_page] [count]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays the live state of the page table, including each page's mapped target, " +
+        "permissions (RWX), capabilities, physical base address, and device ID. Supports " +
+        "range selection for large page tables. Use start_page and count to view specific " +
+        "pages. Requires a bus-based system.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "pages                    Display first 16 pages",
+        "pages $04                Display pages starting from page 4",
+        "pages 0 32               Display first 32 pages",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["regions", "devicemap", "profile"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

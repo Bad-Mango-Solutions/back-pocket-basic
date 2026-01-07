@@ -212,7 +212,7 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
             }
             catch (IOException ex)
             {
-                debugContext.Error.WriteLine($"Warning: Could not open trace file: {ex.Message}");
+                debugContext.Error.WriteLine($"Warning: Could not open trace file '{options.TraceFilePath}': {ex.Message}");
             }
         }
 

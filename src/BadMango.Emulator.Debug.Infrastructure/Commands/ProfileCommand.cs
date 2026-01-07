@@ -16,7 +16,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// This command requires machine info to be attached to the debug context.
 /// </para>
 /// </remarks>
-public sealed class ProfileCommand : CommandHandlerBase
+public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ProfileCommand"/> class.
@@ -31,6 +31,31 @@ public sealed class ProfileCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "profile";
+
+    /// <inheritdoc/>
+    public string Synopsis => "profile";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays configuration information about the current machine, including " +
+        "name, display name, CPU type, memory size, and bus configuration. Useful " +
+        "for verifying the machine profile and understanding system capabilities.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "profile                  Display machine profile information",
+        "machine                  Alias for profile",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["devicemap", "regions", "pages"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

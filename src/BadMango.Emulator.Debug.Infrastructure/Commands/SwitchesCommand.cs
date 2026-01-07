@@ -18,7 +18,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// that exposes soft switch state.
 /// </para>
 /// </remarks>
-public sealed class SwitchesCommand : CommandHandlerBase
+public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SwitchesCommand"/> class.
@@ -33,6 +33,32 @@ public sealed class SwitchesCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "switches";
+
+    /// <inheritdoc/>
+    public string Synopsis => "switches";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays the current state of soft switches in the system. Soft switches " +
+        "are memory-mapped I/O locations ($C000-$CFFF) that control hardware features " +
+        "like text/graphics mode, memory banking, and peripheral access. Currently a " +
+        "placeholder - full implementation requires IOPageDispatcher integration.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "switches                 Display soft switch state",
+        "sw                       Alias for switches",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["buslog", "read", "write"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

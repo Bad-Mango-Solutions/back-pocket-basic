@@ -16,7 +16,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// This command requires a bus to be attached to the debug context.
 /// </para>
 /// </remarks>
-public sealed class FaultCommand : CommandHandlerBase
+public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="FaultCommand"/> class.
@@ -28,6 +28,30 @@ public sealed class FaultCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "fault";
+
+    /// <inheritdoc/>
+    public string Synopsis => "fault";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays information about the most recent bus fault, including the faulting " +
+        "address and fault kind. Useful for debugging unmapped memory access, permission " +
+        "violations, and other bus errors. Shows 'No fault' if no fault has occurred.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "fault                    Show last bus fault status",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["buslog", "regions", "pages"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

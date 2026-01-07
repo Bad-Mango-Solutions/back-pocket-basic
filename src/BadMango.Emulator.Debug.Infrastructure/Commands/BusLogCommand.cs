@@ -17,7 +17,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 /// This command requires a bus to be attached to the debug context.
 /// </para>
 /// </remarks>
-public sealed class BusLogCommand : CommandHandlerBase
+public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="BusLogCommand"/> class.
@@ -32,6 +32,34 @@ public sealed class BusLogCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "buslog [on|off|show|clear]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "buslog [on|off|show|clear|status]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Controls bus logging and displays recent bus access traces. Use 'on' to enable " +
+        "logging, 'off' to disable, 'show' to display the log buffer, 'clear' to empty " +
+        "the buffer, and 'status' to check current state. Currently a placeholder - full " +
+        "implementation requires IOPageDispatcher integration.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "buslog on                Enable bus logging",
+        "buslog show              Display bus access log",
+        "buslog clear             Clear the log buffer",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Enabling logging may slightly impact performance. The log buffer consumes memory.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["fault", "switches", "regions"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

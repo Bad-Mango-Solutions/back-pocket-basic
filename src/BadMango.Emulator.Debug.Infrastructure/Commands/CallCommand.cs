@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Diagnostics;
+using System.Globalization;
 
 /// <summary>
 /// Simulates a JSR to an address and returns when the subroutine completes.
@@ -212,7 +213,7 @@ public sealed class CallCommand : ExecutionCommandBase
             if (arg.StartsWith("--limit", StringComparison.OrdinalIgnoreCase) &&
                 !arg.Contains('=', StringComparison.Ordinal) &&
                 i + 1 < args.Length &&
-                int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int limit))
+                int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int limit))
             {
                 options.InstructionLimit = limit;
                 i++;
@@ -220,7 +221,7 @@ public sealed class CallCommand : ExecutionCommandBase
             else if (arg.StartsWith("--timeout", StringComparison.OrdinalIgnoreCase) &&
                      !arg.Contains('=', StringComparison.Ordinal) &&
                      i + 1 < args.Length &&
-                     int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int timeout))
+                     int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int timeout))
             {
                 options.TimeoutMs = timeout;
                 i++;

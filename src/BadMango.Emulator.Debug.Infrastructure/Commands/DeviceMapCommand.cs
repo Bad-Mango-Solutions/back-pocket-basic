@@ -18,7 +18,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// This command requires a machine with a device registry to be attached.
 /// </para>
 /// </remarks>
-public sealed class DeviceMapCommand : CommandHandlerBase
+public sealed class DeviceMapCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="DeviceMapCommand"/> class.
@@ -33,6 +33,32 @@ public sealed class DeviceMapCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "devicemap";
+
+    /// <inheritdoc/>
+    public string Synopsis => "devicemap";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Displays all devices from the DeviceRegistry in a table format, showing " +
+        "device ID, kind, name, and wiring path. Useful for understanding the current " +
+        "machine configuration and verifying device registration. Requires a bus-based " +
+        "system with a device registry.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "devicemap               Display all registered devices",
+        "devices                 Alias for devicemap",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects => null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["regions", "pages", "profile"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
