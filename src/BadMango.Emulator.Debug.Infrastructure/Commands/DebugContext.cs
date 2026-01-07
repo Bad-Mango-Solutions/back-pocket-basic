@@ -192,6 +192,36 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
+    /// Attaches a machine instance and all debug components to this debug context.
+    /// </summary>
+    /// <param name="machine">The machine to attach.</param>
+    /// <param name="disassembler">The disassembler to attach.</param>
+    /// <param name="machineInfo">The machine information to attach.</param>
+    /// <param name="tracingListener">The tracing listener to attach.</param>
+    /// <remarks>
+    /// Attaching a machine provides high-level machine control through
+    /// the machine abstraction. This also attaches the machine's CPU
+    /// and bus to the debug context, along with all debug components.
+    /// </remarks>
+    public void AttachMachine(
+        IMachine machine,
+        IDisassembler disassembler,
+        MachineInfo machineInfo,
+        TracingDebugListener? tracingListener = null)
+    {
+        ArgumentNullException.ThrowIfNull(machine);
+        ArgumentNullException.ThrowIfNull(disassembler);
+        ArgumentNullException.ThrowIfNull(machineInfo);
+
+        this.Machine = machine;
+        this.Cpu = machine.Cpu;
+        this.Bus = machine.Bus;
+        this.Disassembler = disassembler;
+        this.MachineInfo = machineInfo;
+        this.TracingListener = tracingListener;
+    }
+
+    /// <summary>
     /// Attaches all emulator components to this debug context.
     /// </summary>
     /// <param name="cpu">The CPU to attach.</param>

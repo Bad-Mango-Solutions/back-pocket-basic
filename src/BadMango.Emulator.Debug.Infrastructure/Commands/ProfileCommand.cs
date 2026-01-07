@@ -434,21 +434,22 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             string libraryRoot = GetLibraryRoot();
             var pathResolver = new ProfilePathResolver(libraryRoot, profileFilePath);
 
-            // Create new system from profile with the path resolver
-            (ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo info) =
-                MachineFactory.CreateSystem(profile, pathResolver);
+            // Create new machine with all debug components from profile
+            (IMachine machine, IDisassembler disassembler, MachineInfo info) =
+                MachineFactory.CreateDebugSystem(profile, pathResolver);
 
             // Detach old system and attach new one
             mutableContext.DetachSystem();
 
             // Recreate tracing listener for the new CPU
             var tracingListener = new TracingDebugListener();
-            cpu.AttachDebugger(tracingListener);
+            machine.Cpu.AttachDebugger(tracingListener);
 
-            mutableContext.AttachSystem(cpu, bus, disassembler, info, tracingListener);
+            // Attach the full machine with all debug components
+            mutableContext.AttachMachine(machine, disassembler, info, tracingListener);
 
             debugContext.Output.WriteLine($"Loaded profile: {profile.DisplayName ?? profile.Name}");
-            debugContext.Output.WriteLine($"CPU reset to ${cpu.GetPC():X4}");
+            debugContext.Output.WriteLine($"CPU reset to ${machine.Cpu.GetPC():X4}");
         }
         catch (Exception ex)
         {

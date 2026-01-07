@@ -31,6 +31,22 @@ public static class MachineFactory
         MachineProfile profile,
         ProfilePathResolver? pathResolver = null)
     {
+        var (machine, disassembler, info) = CreateDebugSystem(profile, pathResolver);
+        return (machine.Cpu, machine.Bus, disassembler, info);
+    }
+
+    /// <summary>
+    /// Creates a complete debug system from a machine profile, including the full machine instance.
+    /// </summary>
+    /// <param name="profile">The machine profile to instantiate.</param>
+    /// <param name="pathResolver">Optional path resolver for loading ROM files. If null, a default resolver is used.</param>
+    /// <returns>A tuple containing the machine, disassembler, and machine info.</returns>
+    /// <exception cref="NotSupportedException">Thrown when the CPU type is not supported.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the memory configuration is invalid.</exception>
+    public static (IMachine Machine, IDisassembler Disassembler, MachineInfo Info) CreateDebugSystem(
+        MachineProfile profile,
+        ProfilePathResolver? pathResolver = null)
+    {
         ArgumentNullException.ThrowIfNull(profile);
 
         pathResolver ??= new ProfilePathResolver(null);
@@ -49,18 +65,15 @@ public static class MachineFactory
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
 
-        var cpu = machine.Cpu;
-        var bus = machine.Bus;
-
         // Create opcode table and disassembler
         var opcodeTable = GetOpcodeTable(profile.Cpu);
-        var disassembler = new Disassembler(opcodeTable, bus);
+        var disassembler = new Disassembler(opcodeTable, machine.Bus);
         var info = MachineInfo.FromProfile(profile);
 
         // Reset the CPU to initialize it
-        cpu.Reset();
+        machine.Reset();
 
-        return (cpu, bus, disassembler, info);
+        return (machine, disassembler, info);
     }
 
     /// <summary>
