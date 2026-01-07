@@ -203,9 +203,13 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             {
                 Directory.CreateDirectory(libraryProfilesDir);
             }
-            catch
+            catch (UnauthorizedAccessException)
             {
-                // Ignore creation errors
+                // User doesn't have permission to create the directory - ignore
+            }
+            catch (IOException)
+            {
+                // I/O error creating directory - ignore
             }
         }
 
@@ -322,16 +326,21 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             {
                 var libraryProfiles = Directory.EnumerateFiles(libraryProfilesDir, "*.json")
                     .Select(Path.GetFileNameWithoutExtension)
-                    .Where(name => !string.IsNullOrEmpty(name));
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .Cast<string>();
 
                 foreach (var profile in libraryProfiles)
                 {
-                    allProfiles.Add(profile!);
+                    allProfiles.Add(profile);
                 }
             }
-            catch
+            catch (UnauthorizedAccessException)
             {
-                // Ignore errors reading the directory
+                // User doesn't have permission to read the directory - ignore
+            }
+            catch (IOException)
+            {
+                // I/O error reading directory - ignore
             }
         }
 
