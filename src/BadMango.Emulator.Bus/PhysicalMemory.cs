@@ -122,6 +122,29 @@ public sealed class PhysicalMemory : IPhysicalMemory
         return (uint)data.Length / pageSize;
     }
 
+    /// <summary>
+    /// Writes data to this physical memory at the specified offset.
+    /// </summary>
+    /// <param name="offset">The offset within this memory where writing starts.</param>
+    /// <param name="dataToWrite">The data to write.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the write would exceed memory bounds.
+    /// </exception>
+    /// <remarks>
+    /// This method is used during initialization to load ROM images into physical memory.
+    /// </remarks>
+    public void WriteSpan(uint offset, ReadOnlySpan<byte> dataToWrite)
+    {
+        if (offset + (uint)dataToWrite.Length > data.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(offset),
+                $"Write at offset {offset} with length {dataToWrite.Length} exceeds memory size ({data.Length}).");
+        }
+
+        dataToWrite.CopyTo(mem.Span.Slice((int)offset));
+    }
+
     /// <inheritdoc />
     public void WritePhysical(DebugPrivilege privilege, Addr address, ReadOnlySpan<byte> dataToWrite)
     {

@@ -9,13 +9,22 @@
     },
     "addressSpace": 16,
     "memory": {
+        "physical": [
+            {
+                "name": "main-ram-64k",
+                "size": "0x10000",
+                "fill": "0x00"
+            }
+        ],
         "regions": [
             {
                 "name": "main-ram",
                 "type": "ram",
                 "start": "0x0000",
                 "size": "0x10000",
-                "permissions": "rwx"
+                "permissions": "rwx",
+                "source": "main-ram-64k",
+                "source-offset": "0x0000"
             }
         ]
     }

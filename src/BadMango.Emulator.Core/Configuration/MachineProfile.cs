@@ -12,8 +12,16 @@ using System.Text.Json.Serialization;
 /// <remarks>
 /// <para>
 /// Machine profiles describe the hardware configuration of an emulated system,
-/// including CPU type, memory layout, expansion slots, ROMs, devices, and boot options.
+/// including CPU type, memory layout, expansion slots, devices, and boot options.
 /// Profiles are loaded from JSON files and support complex machines like the Pocket2e.
+/// </para>
+/// <para>
+/// The memory configuration uses a three-tier model:
+/// <list type="number">
+/// <item><description>ROM Images - External binary files to load</description></item>
+/// <item><description>Physical Memory - Backing stores that hold the actual data</description></item>
+/// <item><description>Regions - Virtual address mappings to physical memory</description></item>
+/// </list>
 /// </para>
 /// <para>
 /// For 6502/65C02 systems, the address space is 16 bits (64KB). Bank switching
@@ -95,17 +103,6 @@ public sealed class MachineProfile
     /// </remarks>
     [JsonPropertyName("slots")]
     public SlotSystemProfile? Slots { get; set; }
-
-    /// <summary>
-    /// Gets or sets the ROM definitions.
-    /// </summary>
-    /// <remarks>
-    /// Named ROM definitions that can be referenced by memory regions and
-    /// swap variants using sourceRef. Supports hash verification and
-    /// fallback behavior.
-    /// </remarks>
-    [JsonPropertyName("roms")]
-    public List<RomProfile>? Roms { get; set; }
 
     /// <summary>
     /// Gets or sets the device configuration.

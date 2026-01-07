@@ -601,29 +601,25 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         string libraryRoot = GetLibraryRoot();
         var pathResolver = new ProfilePathResolver(libraryRoot, profileFilePath);
 
-        // Find all ROM sources in the profile's memory regions
-        var romRegions = new List<(string Name, string Source, uint Size)>();
-        if (profile.Memory?.Regions != null)
+        // Find all ROM images defined in the profile's rom-images array
+        var romImages = new List<(string Name, string Source, uint Size)>();
+        if (profile.Memory?.RomImages != null)
         {
-            foreach (var region in profile.Memory.Regions)
+            foreach (var romImage in profile.Memory.RomImages)
             {
-                if (!string.IsNullOrEmpty(region.Source) &&
-                    region.Type.Equals("rom", StringComparison.OrdinalIgnoreCase))
+                if (!HexParser.TryParseUInt32(romImage.Size, out uint size))
                 {
-                    if (!HexParser.TryParseUInt32(region.Size, out uint size))
-                    {
-                        debugContext.Output.WriteLine($"Warning: Invalid size '{region.Size}' for region '{region.Name}', skipping.");
-                        continue;
-                    }
-
-                    romRegions.Add((region.Name, region.Source, size));
+                    debugContext.Output.WriteLine($"Warning: Invalid size '{romImage.Size}' for ROM image '{romImage.Name}', skipping.");
+                    continue;
                 }
+
+                romImages.Add((romImage.Name, romImage.Source, size));
             }
         }
 
-        if (romRegions.Count == 0)
+        if (romImages.Count == 0)
         {
-            debugContext.Output.WriteLine("No ROM files are referenced by this profile.");
+            debugContext.Output.WriteLine("No ROM images are defined in this profile's rom-images array.");
             return CommandResult.Ok();
         }
 
@@ -631,7 +627,7 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         int skippedCount = 0;
         int errorCount = 0;
 
-        foreach (var (name, source, size) in romRegions)
+        foreach (var (name, source, size) in romImages)
         {
             try
             {

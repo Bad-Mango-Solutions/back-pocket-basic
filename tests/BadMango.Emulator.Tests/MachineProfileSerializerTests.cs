@@ -241,41 +241,41 @@ public class MachineProfileSerializerTests
     }
 
     /// <summary>
-    /// Tests serialization of ROM definitions.
+    /// Tests serialization of ROM image definitions.
     /// </summary>
     [Test]
-    public void Serialize_ProfileWithRoms_IncludesRomsSection()
+    public void Serialize_ProfileWithRomImages_IncludesRomImagesSection()
     {
         // Arrange
-        var profile = CreateProfileWithRoms();
+        var profile = CreateProfileWithRomImages();
 
         // Act
         var json = serializer.Serialize(profile);
 
         // Assert
-        Assert.That(json, Does.Contain("\"roms\""));
+        Assert.That(json, Does.Contain("\"rom-images\""));
         Assert.That(json, Does.Contain("\"system-rom\""));
         Assert.That(json, Does.Contain("\"on_verification_fail\""));
     }
 
     /// <summary>
-    /// Tests round-trip of ROM definitions with hash.
+    /// Tests round-trip of ROM image definitions with hash.
     /// </summary>
     [Test]
-    public void RoundTrip_ProfileWithRoms_PreservesRomConfiguration()
+    public void RoundTrip_ProfileWithRomImages_PreservesRomImageConfiguration()
     {
         // Arrange
-        var original = CreateProfileWithRoms();
+        var original = CreateProfileWithRomImages();
 
         // Act
         var json = serializer.Serialize(original);
         var deserialized = serializer.Deserialize(json);
 
         // Assert
-        Assert.That(deserialized.Roms, Is.Not.Null);
-        Assert.That(deserialized.Roms, Has.Count.EqualTo(1));
+        Assert.That(deserialized.Memory.RomImages, Is.Not.Null);
+        Assert.That(deserialized.Memory.RomImages, Has.Count.EqualTo(1));
 
-        var rom = deserialized.Roms![0];
+        var rom = deserialized.Memory.RomImages![0];
         Assert.That(rom.Name, Is.EqualTo("system-rom"));
         Assert.That(rom.Source, Is.EqualTo("library://roms/test.rom"));
         Assert.That(rom.Size, Is.EqualTo("0x4000"));
@@ -468,6 +468,47 @@ public class MachineProfileSerializerTests
             Throws.TypeOf<JsonException>());
     }
 
+    /// <summary>
+    /// Tests serialization of physical memory configuration.
+    /// </summary>
+    [Test]
+    public void Serialize_ProfileWithPhysicalMemory_IncludesPhysicalSection()
+    {
+        // Arrange
+        var profile = CreateProfileWithPhysicalMemory();
+
+        // Act
+        var json = serializer.Serialize(profile);
+
+        // Assert
+        Assert.That(json, Does.Contain("\"physical\""));
+        Assert.That(json, Does.Contain("\"main-ram-64k\""));
+        Assert.That(json, Does.Contain("\"fill\""));
+    }
+
+    /// <summary>
+    /// Tests round-trip of physical memory configuration.
+    /// </summary>
+    [Test]
+    public void RoundTrip_ProfileWithPhysicalMemory_PreservesPhysicalConfiguration()
+    {
+        // Arrange
+        var original = CreateProfileWithPhysicalMemory();
+
+        // Act
+        var json = serializer.Serialize(original);
+        var deserialized = serializer.Deserialize(json);
+
+        // Assert
+        Assert.That(deserialized.Memory.Physical, Is.Not.Null);
+        Assert.That(deserialized.Memory.Physical, Has.Count.EqualTo(1));
+
+        var physical = deserialized.Memory.Physical![0];
+        Assert.That(physical.Name, Is.EqualTo("main-ram-64k"));
+        Assert.That(physical.Size, Is.EqualTo("0x10000"));
+        Assert.That(physical.Fill, Is.EqualTo("0x00"));
+    }
+
     private static MachineProfile CreateMinimalProfile()
     {
         return new MachineProfile
@@ -482,6 +523,15 @@ public class MachineProfileSerializerTests
             AddressSpace = 16,
             Memory = new MemoryProfileSection
             {
+                Physical =
+                [
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
                     new MemoryRegionProfile
@@ -491,6 +541,8 @@ public class MachineProfileSerializerTests
                         Start = "0x0000",
                         Size = "0x10000",
                         Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
                     },
                 ],
             },
@@ -567,12 +619,12 @@ public class MachineProfileSerializerTests
         return profile;
     }
 
-    private static MachineProfile CreateProfileWithRoms()
+    private static MachineProfile CreateProfileWithRomImages()
     {
         var profile = CreateMinimalProfile();
-        profile.Roms =
+        profile.Memory.RomImages =
         [
-            new RomProfile
+            new RomImageProfile
             {
                 Name = "system-rom",
                 Source = "library://roms/test.rom",
@@ -642,6 +694,46 @@ public class MachineProfileSerializerTests
         return profile;
     }
 
+    private static MachineProfile CreateProfileWithPhysicalMemory()
+    {
+        return new MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Cpu = new CpuProfileSection
+            {
+                Type = "65C02",
+                ClockSpeed = 1000000,
+            },
+            AddressSpace = 16,
+            Memory = new MemoryProfileSection
+            {
+                Physical =
+                [
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
+                Regions =
+                [
+                    new MemoryRegionProfile
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
+                    },
+                ],
+            },
+        };
+    }
+
     private static MachineProfile CreateFullPocket2eProfile()
     {
         return new MachineProfile
@@ -658,6 +750,47 @@ public class MachineProfileSerializerTests
             AddressSpace = 16,
             Memory = new MemoryProfileSection
             {
+                RomImages =
+                [
+                    new RomImageProfile
+                    {
+                        Name = "system-rom",
+                        Source = "library://roms/pocket2e-system.rom",
+                        Size = "0x4000",
+                        Required = true,
+                        OnVerificationFail = "fallback",
+                    },
+                ],
+                Physical =
+                [
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "main-ram-48k",
+                        Size = "0xC000",
+                        Fill = "0x00",
+                    },
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "system-rom-16k",
+                        Size = "0x4000",
+                        Sources =
+                        [
+                            new PhysicalMemorySourceProfile
+                            {
+                                Type = "rom-image",
+                                Name = "system-rom",
+                                RomImage = "system-rom",
+                                Offset = "0x0000",
+                            },
+                        ],
+                    },
+                    new PhysicalMemoryProfile
+                    {
+                        Name = "language-card-d000-bank1",
+                        Size = "0x1000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
                     new MemoryRegionProfile
@@ -667,7 +800,8 @@ public class MachineProfileSerializerTests
                         Start = "0x0000",
                         Size = "0xC000",
                         Permissions = "rwx",
-                        Fill = "0x00",
+                        Source = "main-ram-48k",
+                        SourceOffset = "0x0000",
                     },
                     new MemoryRegionProfile
                     {
@@ -692,7 +826,7 @@ public class MachineProfileSerializerTests
                             {
                                 Name = "rom",
                                 Type = "rom",
-                                SourceRef = "system-rom",
+                                Source = "system-rom-16k",
                                 SourceOffset = "0x1000",
                                 Permissions = "rx",
                             },
@@ -700,6 +834,8 @@ public class MachineProfileSerializerTests
                             {
                                 Name = "bank1",
                                 Type = "ram",
+                                Source = "language-card-d000-bank1",
+                                SourceOffset = "0x0000",
                                 Permissions = "rwx",
                             },
                         ],
@@ -718,6 +854,7 @@ public class MachineProfileSerializerTests
             },
             Slots = new SlotSystemProfile
             {
+                IoRegion = "io-page",
                 Enabled = true,
                 InternalC3Rom = true,
                 InternalCxRom = false,
@@ -730,17 +867,6 @@ public class MachineProfileSerializerTests
                     },
                 ],
             },
-            Roms =
-            [
-                new RomProfile
-                {
-                    Name = "system-rom",
-                    Source = "library://roms/pocket2e-system.rom",
-                    Size = "0x4000",
-                    Required = true,
-                    OnVerificationFail = "fallback",
-                },
-            ],
             Devices = new DevicesProfile
             {
                 Keyboard = new KeyboardDeviceProfile

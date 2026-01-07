@@ -39,13 +39,6 @@
         "slots": {
             "$ref": "#/$defs/slotsSection"
         },
-        "roms": {
-            "type": "array",
-            "description": "ROM definitions for the machine",
-            "items": {
-                "$ref": "#/$defs/romDefinition"
-            }
-        },
         "devices": {
             "$ref": "#/$defs/devicesSection"
         },
@@ -77,8 +70,22 @@
         },
         "memorySection": {
             "type": "object",
-            "description": "Memory configuration including regions, swap groups, and controllers",
+            "description": "Memory configuration including ROM images, physical memory, regions, swap groups, and controllers",
             "properties": {
+                "rom-images": {
+                    "type": "array",
+                    "description": "ROM image definitions that can be loaded into physical memory",
+                    "items": {
+                        "$ref": "#/$defs/romImageDefinition"
+                    }
+                },
+                "physical": {
+                    "type": "array",
+                    "description": "Physical memory blocks that back virtual regions",
+                    "items": {
+                        "$ref": "#/$defs/physicalMemory"
+                    }
+                },
                 "regions": {
                     "type": "array",
                     "description": "Memory regions in the address space",
@@ -102,6 +109,89 @@
                 }
             }
         },
+        "romImageDefinition": {
+            "type": "object",
+            "description": "A ROM image definition that can be loaded into physical memory",
+            "required": ["name", "source", "size"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this ROM image (used to reference from physical memory sources)"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Source file path (supports library://path, app://path, absolute, or relative paths)"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Expected size of the ROM image in bytes"
+                },
+                "required": {
+                    "type": "boolean",
+                    "description": "Whether this ROM is required for boot",
+                    "default": true
+                },
+                "on_verification_fail": {
+                    "type": "string",
+                    "description": "Action when hash verification fails",
+                    "enum": ["stop", "fallback"],
+                    "default": "stop"
+                },
+                "hash": {
+                    "$ref": "#/$defs/romHash"
+                }
+            }
+        },
+        "physicalMemory": {
+            "type": "object",
+            "description": "A physical memory block that backs virtual regions",
+            "required": ["name", "size"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique name for this physical memory (used as source reference from regions)"
+                },
+                "size": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Size of the physical memory in bytes"
+                },
+                "fill": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Fill pattern for initialization (single byte value, e.g., '0x00' or '0xFF')"
+                },
+                "sources": {
+                    "type": "array",
+                    "description": "Sources to load into this physical memory at specified offsets",
+                    "items": {
+                        "$ref": "#/$defs/physicalMemorySource"
+                    }
+                }
+            }
+        },
+        "physicalMemorySource": {
+            "type": "object",
+            "description": "A source to load into physical memory",
+            "required": ["type", "name", "offset"],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Source type",
+                    "enum": ["rom-image"]
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Descriptive name for this source entry"
+                },
+                "rom-image": {
+                    "type": "string",
+                    "description": "Reference to a ROM image defined in rom-images array"
+                },
+                "offset": {
+                    "$ref": "#/$defs/hexString",
+                    "description": "Offset within the physical memory where this source is loaded"
+                }
+            }
+        },
         "memoryRegion": {
             "type": "object",
             "description": "A single memory region definition",
@@ -118,11 +208,11 @@
                 },
                 "start": {
                     "$ref": "#/$defs/hexString",
-                    "description": "Starting address (must be page-aligned)"
+                    "description": "Starting address (must be 4KB page-aligned)"
                 },
                 "size": {
                     "$ref": "#/$defs/hexString",
-                    "description": "Size in bytes (must be page-aligned)"
+                    "description": "Size in bytes (must be 4KB page-aligned)"
                 },
                 "permissions": {
                     "type": "string",
@@ -130,21 +220,13 @@
                     "default": "rwx",
                     "pattern": "^[rwx-]+$"
                 },
-                "fill": {
-                    "$ref": "#/$defs/hexString",
-                    "description": "Fill pattern for RAM initialization (single byte)"
-                },
                 "source": {
                     "type": "string",
-                    "description": "Source file path for ROM data"
+                    "description": "Reference to a physical memory block defined in the physical array"
                 },
-                "sourceOffset": {
+                "source-offset": {
                     "$ref": "#/$defs/hexString",
-                    "description": "Offset within source file to start loading"
-                },
-                "sourceRef": {
-                    "type": "string",
-                    "description": "Reference to a named ROM for shared data"
+                    "description": "Offset within the physical memory backing store (must be 4KB page-aligned, defaults to 0x0000)"
                 },
                 "handler": {
                     "type": "string",
@@ -209,13 +291,13 @@
                     "$ref": "#/$defs/hexString",
                     "description": "Size override (defaults to swap group size)"
                 },
-                "sourceRef": {
+                "source": {
                     "type": "string",
-                    "description": "Reference to a named ROM"
+                    "description": "Reference to a physical memory block"
                 },
-                "sourceOffset": {
+                "source-offset": {
                     "$ref": "#/$defs/hexString",
-                    "description": "Offset within the source ROM"
+                    "description": "Offset within the physical memory"
                 },
                 "permissions": {
                     "type": "string",
@@ -264,6 +346,10 @@
             "type": "object",
             "description": "Expansion slot system configuration",
             "properties": {
+                "io-region": {
+                    "type": "string",
+                    "description": "Name of the composite region that handles I/O (e.g., 'io-page')"
+                },
                 "enabled": {
                     "type": "boolean",
                     "description": "Whether the slot system is enabled",
@@ -311,69 +397,6 @@
                     "type": "object",
                     "description": "Card-specific configuration",
                     "additionalProperties": true
-                }
-            }
-        },
-        "romDefinition": {
-            "type": "object",
-            "description": "A ROM image definition",
-            "required": ["name", "source"],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Unique name for this ROM (used as sourceRef)"
-                },
-                "source": {
-                    "type": "string",
-                    "description": "Source file path (supports library://, app://, absolute, or relative paths)"
-                },
-                "size": {
-                    "$ref": "#/$defs/hexString",
-                    "description": "Expected size of the ROM"
-                },
-                "regions": {
-                    "type": "array",
-                    "description": "Named regions within this ROM",
-                    "items": {
-                        "$ref": "#/$defs/romRegion"
-                    }
-                },
-                "required": {
-                    "type": "boolean",
-                    "description": "Whether this ROM is required for boot",
-                    "default": true
-                },
-                "on_verification_fail": {
-                    "type": "string",
-                    "description": "Action when hash verification fails",
-                    "enum": ["stop", "fallback"],
-                    "default": "stop"
-                },
-                "hash": {
-                    "$ref": "#/$defs/romHash"
-                }
-            }
-        },
-        "romRegion": {
-            "type": "object",
-            "description": "A named region within a ROM file",
-            "required": ["name", "start", "sourceOffset", "size"],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name for this region"
-                },
-                "start": {
-                    "$ref": "#/$defs/hexString",
-                    "description": "Starting address where this region is mapped"
-                },
-                "sourceOffset": {
-                    "$ref": "#/$defs/hexString",
-                    "description": "Offset within the ROM file"
-                },
-                "size": {
-                    "$ref": "#/$defs/hexString",
-                    "description": "Size of this region"
                 }
             }
         },

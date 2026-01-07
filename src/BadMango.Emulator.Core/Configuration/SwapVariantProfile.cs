@@ -16,8 +16,8 @@ using System.Text.Json.Serialization;
 /// Variants can be ROM (read-only) or RAM (read-write).
 /// </para>
 /// <para>
-/// ROM variants typically reference a named ROM via <see cref="SourceRef"/> and
-/// <see cref="SourceOffset"/>, while RAM variants create new RAM regions.
+/// Variants reference physical memory blocks by name and optionally specify
+/// an offset within that physical memory.
 /// </para>
 /// </remarks>
 public sealed class SwapVariantProfile
@@ -55,24 +55,24 @@ public sealed class SwapVariantProfile
     public string? Size { get; set; }
 
     /// <summary>
-    /// Gets or sets the reference to a named ROM.
+    /// Gets or sets the reference to a physical memory block.
     /// </summary>
     /// <remarks>
-    /// This references the <see cref="RomProfile.Name"/> of a ROM defined in the
-    /// machine profile's <see cref="MachineProfile.Roms"/> array. Used for ROM
-    /// variants that share data with the system ROM.
+    /// This references the name of a physical memory block defined in the
+    /// profile's "physical" array.
     /// </remarks>
-    [JsonPropertyName("sourceRef")]
-    public string? SourceRef { get; set; }
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 
     /// <summary>
-    /// Gets or sets the offset within the source ROM as a hex string.
+    /// Gets or sets the offset within the physical memory block as a hex string.
     /// </summary>
     /// <remarks>
-    /// Specifies the byte offset within the referenced ROM file where this
+    /// Specifies the byte offset within the referenced physical memory where this
     /// variant's data begins. Format: "0x1000", "0x2000", etc.
+    /// Must be 4KB page-aligned.
     /// </remarks>
-    [JsonPropertyName("sourceOffset")]
+    [JsonPropertyName("source-offset")]
     public string? SourceOffset { get; set; }
 
     /// <summary>

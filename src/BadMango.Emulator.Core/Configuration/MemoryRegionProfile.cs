@@ -11,14 +11,17 @@ using System.Text.Json.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Memory regions describe individual segments of the machine's address space,
-/// including RAM, ROM, I/O areas, and composite regions. Each region specifies
-/// its type, location, size, and access permissions.
+/// Memory regions describe how segments of the CPU's virtual address space map to
+/// physical memory blocks. Each region specifies its type, location, size, and
+/// which physical memory block backs it.
 /// </para>
 /// <para>
-/// Regions must be page-aligned (4KB boundaries) for compatibility with the
-/// bus architecture. The <see cref="Start"/> and <see cref="Size"/> properties
-/// use hexadecimal strings to support large address values clearly.
+/// Regions must be 4KB page-aligned (start, size, and source-offset must all be
+/// multiples of 0x1000) for compatibility with the bus architecture.
+/// </para>
+/// <para>
+/// RAM and ROM regions must specify a "source" that references a physical memory
+/// block by name. Composite regions use a "handler" instead.
 /// </para>
 /// </remarks>
 public sealed class MemoryRegionProfile
@@ -40,11 +43,11 @@ public sealed class MemoryRegionProfile
     /// <remarks>
     /// Valid values are:
     /// <list type="bullet">
-    /// <item><description>"ram" - Read/write random access memory</description></item>
-    /// <item><description>"rom" - Read-only memory</description></item>
-    /// <item><description>"io" - I/O space (for future device mapping)</description></item>
+    /// <item><description>"ram" - Read/write memory (requires source)</description></item>
+    /// <item><description>"rom" - Read-only memory (requires source)</description></item>
     /// <item><description>"composite" - Composite region with custom handler</description></item>
     /// </list>
+    /// The "io" type is reserved for future use.
     /// </remarks>
     [JsonPropertyName("type")]
     public required string Type { get; set; }
@@ -53,8 +56,8 @@ public sealed class MemoryRegionProfile
     /// Gets or sets the starting address of this region as a hex string.
     /// </summary>
     /// <remarks>
-    /// The address must be page-aligned (multiple of 0x1000 / 4096).
-    /// Format: "0x0000" or "0x10000" (with or without leading zeros).
+    /// The address must be 4KB page-aligned (multiple of 0x1000).
+    /// Format: "0x0000" or "0xC000" (with or without leading zeros).
     /// </remarks>
     [JsonPropertyName("start")]
     public required string Start { get; set; }
@@ -63,7 +66,7 @@ public sealed class MemoryRegionProfile
     /// Gets or sets the size of this region in bytes as a hex string.
     /// </summary>
     /// <remarks>
-    /// The size must be page-aligned (multiple of 0x1000 / 4096).
+    /// The size must be 4KB page-aligned (multiple of 0x1000).
     /// Format: "0x10000" for 64KB, "0x4000" for 16KB, etc.
     /// </remarks>
     [JsonPropertyName("size")]
@@ -87,54 +90,36 @@ public sealed class MemoryRegionProfile
     public string Permissions { get; set; } = "rwx";
 
     /// <summary>
-    /// Gets or sets the fill pattern for RAM initialization.
-    /// </summary>
-    /// <remarks>
-    /// A hex string representing a single byte value to fill the region with.
-    /// Only applicable to RAM regions. Examples: "0x00", "0xFF", "0xAA".
-    /// If not specified, RAM is zero-initialized.
-    /// </remarks>
-    [JsonPropertyName("fill")]
-    public string? Fill { get; set; }
-
-    /// <summary>
-    /// Gets or sets the source file path for ROM or RAM initialization.
+    /// Gets or sets the reference to a physical memory block.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The path can be specified using several schemes:
+    /// For "ram" and "rom" type regions, this references the name of a physical
+    /// memory block defined in the profile's "physical" array.
     /// </para>
-    /// <list type="bullet">
-    /// <item><description>"library://path" - Relative to the library root</description></item>
-    /// <item><description>"app://path" - Relative to the application directory</description></item>
-    /// <item><description>Absolute path - Used as-is</description></item>
-    /// <item><description>Relative path - Relative to the profile file location</description></item>
-    /// </list>
+    /// <para>
+    /// Not used for "composite" regions which use the Handler property instead.
+    /// </para>
     /// </remarks>
     [JsonPropertyName("source")]
     public string? Source { get; set; }
 
     /// <summary>
-    /// Gets or sets the offset within the source file to start loading from.
+    /// Gets or sets the offset within the physical memory backing store.
     /// </summary>
     /// <remarks>
-    /// A hex string specifying the byte offset within the source file.
-    /// Useful when loading a portion of a larger ROM image.
-    /// Defaults to 0 if not specified.
+    /// <para>
+    /// The offset as a hex string (e.g., "0x0000", "0x4000").
+    /// Must be 4KB page-aligned (multiple of 0x1000).
+    /// Defaults to "0x0000" if not specified.
+    /// </para>
+    /// <para>
+    /// This allows multiple regions to share the same physical memory block
+    /// at different offsets.
+    /// </para>
     /// </remarks>
-    [JsonPropertyName("sourceOffset")]
+    [JsonPropertyName("source-offset")]
     public string? SourceOffset { get; set; }
-
-    /// <summary>
-    /// Gets or sets the reference to a named ROM.
-    /// </summary>
-    /// <remarks>
-    /// This references the <see cref="RomProfile.Name"/> of a ROM defined in the
-    /// machine profile's <see cref="MachineProfile.Roms"/> array. Used to share
-    /// ROM data across multiple regions without duplicating the file reference.
-    /// </remarks>
-    [JsonPropertyName("sourceRef")]
-    public string? SourceRef { get; set; }
 
     /// <summary>
     /// Gets or sets the handler identifier for composite regions.

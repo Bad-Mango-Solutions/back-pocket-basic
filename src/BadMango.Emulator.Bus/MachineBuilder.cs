@@ -27,8 +27,8 @@ using Interfaces;
 /// <list type="number">
 /// <item><description>Create infrastructure (registry, scheduler, signals)</description></item>
 /// <item><description>Create memory bus with specified address space</description></item>
-/// <item><description>Create devices (RAM, ROM, I/O controllers)</description></item>
-/// <item><description>Wire devices to bus (map pages)</description></item>
+/// <item><description>Create physical memory blocks and load ROM images</description></item>
+/// <item><description>Wire memory regions to bus (map pages)</description></item>
 /// <item><description>Create CPU</description></item>
 /// <item><description>Create machine</description></item>
 /// <item><description>Initialize devices with event context</description></item>
@@ -39,7 +39,7 @@ using Interfaces;
 /// for manual configuration.
 /// </para>
 /// </remarks>
-public sealed class MachineBuilder
+public sealed partial class MachineBuilder
 {
     private readonly List<object> components = [];
     private readonly List<IScheduledDevice> scheduledDevices = [];
@@ -56,6 +56,9 @@ public sealed class MachineBuilder
     private readonly List<Action<IMachine>> beforeSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly Dictionary<string, Func<MachineBuilder, IBusTarget>> compositeHandlerFactories = new(StringComparer.OrdinalIgnoreCase);
+
+    // Track physical memory instances created from profile
+    private readonly Dictionary<string, PhysicalMemory> physicalMemoryBlocks = new(StringComparer.OrdinalIgnoreCase);
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
@@ -110,283 +113,6 @@ public sealed class MachineBuilder
         };
 
         return builder;
-    }
-
-    /// <summary>
-    /// Configures the builder from a machine profile.
-    /// </summary>
-    /// <param name="profile">The machine profile to use for configuration.</param>
-    /// <param name="pathResolver">
-    /// Optional path resolver for loading ROM files. If <see langword="null"/>, uses the resolver
-    /// provided to <see cref="Create"/>, or creates a default resolver with no library root.
-    /// </param>
-    /// <returns>This builder instance for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="profile"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the profile memory configuration is invalid or uses unsupported region types.
-    /// </exception>
-    /// <remarks>
-    /// <para>
-    /// This method configures the builder based on a machine profile, including:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Address space size from <see cref="MachineProfile.AddressSpace"/></description></item>
-    /// <item><description>CPU family from <see cref="CpuProfileSection.Type"/></description></item>
-    /// <item><description>Memory regions from <see cref="MemoryProfileSection.Regions"/></description></item>
-    /// </list>
-    /// <para>
-    /// The profile must use the regions-based memory configuration format. Legacy
-    /// profiles using 'size' and 'type' properties are not supported.
-    /// </para>
-    /// <para>
-    /// When using the builder created via <see cref="Create"/>, you typically don't need
-    /// to pass a path resolver to this method:
-    /// </para>
-    /// <code>
-    /// var machine = MachineBuilder.Create(pathResolver, cpuFactory)
-    ///     .FromProfile(profile)  // Uses pre-configured resolver
-    ///     .Build();
-    /// </code>
-    /// </remarks>
-    public MachineBuilder FromProfile(MachineProfile profile, ProfilePathResolver? pathResolver = null)
-    {
-        ArgumentNullException.ThrowIfNull(profile);
-
-        // Use provided resolver, or fall back to pre-configured resolver, or create default
-        var effectiveResolver = pathResolver ?? profilePathResolver ?? new ProfilePathResolver(null);
-        profilePathResolver = effectiveResolver;
-
-        // Configure address space
-        addressSpaceBits = profile.AddressSpace;
-
-        // Configure CPU family
-        cpuFamily = profile.Cpu.Type.ToUpperInvariant() switch
-        {
-            "65C02" => CpuFamily.Cpu65C02,
-            "65816" => CpuFamily.Cpu65C816,
-            "65832" => CpuFamily.Cpu65832,
-            _ => throw new NotSupportedException($"CPU type '{profile.Cpu.Type}' is not supported."),
-        };
-
-        // Configure memory regions
-        var memoryConfig = profile.Memory;
-        if (!memoryConfig.UsesRegions)
-        {
-            throw new InvalidOperationException(
-                "Memory configuration must use the 'regions' array format. " +
-                "The legacy 'size' and 'type' properties are no longer supported.");
-        }
-
-        foreach (var region in memoryConfig.Regions!)
-        {
-            ConfigureRegion(region, effectiveResolver);
-        }
-
-        return this;
-    }
-
-    private void ConfigureRegion(MemoryRegionProfile region, ProfilePathResolver pathResolver)
-    {
-        uint start = HexParser.ParseUInt32(region.Start);
-        uint size = HexParser.ParseUInt32(region.Size);
-        var perms = PermissionParser.Parse(region.Permissions);
-
-        // Validate page alignment (4KB = 0x1000)
-        const uint pageSize = 0x1000;
-        if ((start % pageSize) != 0)
-        {
-            throw new InvalidOperationException(
-                $"Region '{region.Name}' start address 0x{start:X} is not page-aligned (must be multiple of 0x1000).");
-        }
-
-        if ((size % pageSize) != 0)
-        {
-            throw new InvalidOperationException(
-                $"Region '{region.Name}' size 0x{size:X} is not page-aligned (must be multiple of 0x1000).");
-        }
-
-        string regionType = region.Type.ToLowerInvariant();
-
-        switch (regionType)
-        {
-            case "ram":
-                ConfigureRamRegion(region, start, size, perms);
-                break;
-
-            case "rom":
-                ConfigureRomRegion(region, start, size, perms, pathResolver);
-                break;
-
-            case "composite":
-                ConfigureCompositeRegion(region, start, size, perms);
-                break;
-
-            case "io":
-                throw new NotSupportedException($"I/O region type is not yet supported for region '{region.Name}'.");
-
-            default:
-                throw new NotSupportedException($"Unknown memory region type '{region.Type}' for region '{region.Name}'.");
-        }
-    }
-
-    private void ConfigureCompositeRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
-    {
-        // Determine the target factory based on the handler
-        Func<MachineBuilder, IBusTarget>? factory = null;
-
-        if (string.IsNullOrEmpty(region.Handler) ||
-            string.Equals(region.Handler, "default", StringComparison.OrdinalIgnoreCase))
-        {
-            // Use the default composite target (open bus behavior)
-            factory = _ => DefaultCompositeTarget.Instance;
-        }
-        else if (!compositeHandlerFactories.TryGetValue(region.Handler, out factory))
-        {
-            throw new InvalidOperationException(
-                $"No handler registered for composite region '{region.Name}' with handler '{region.Handler}'. " +
-                $"Use RegisterCompositeHandler to register the handler before calling FromProfile, " +
-                $"or use 'default' (or omit the handler) for open-bus behavior.");
-        }
-
-        // Capture factory for the closure
-        var targetFactory = factory;
-
-        // Defer the handler creation to the memory configuration phase
-        // so that required components are available
-        memoryConfigurations.Add((bus, registry) =>
-        {
-            var target = targetFactory(this);
-
-            int deviceId = registry.GenerateId();
-            registry.Register(deviceId, "Composite", region.Name, $"Memory/{start:X4}");
-
-            int pageCount = (int)(size / 0x1000);
-            int startPage = (int)(start / 0x1000);
-
-            bus.MapPageRange(
-                startPage: startPage,
-                pageCount: pageCount,
-                deviceId: deviceId,
-                regionTag: RegionTag.Io,
-                perms: perms,
-                caps: target.Capabilities,
-                target: target,
-                physicalBase: 0);
-        });
-    }
-
-    private void ConfigureRamRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
-    {
-        var physical = new PhysicalMemory(size, region.Name);
-
-        // Handle fill pattern if specified
-        if (!string.IsNullOrEmpty(region.Fill))
-        {
-            byte fillValue = HexParser.ParseByte(region.Fill);
-            physical.Fill(fillValue);
-        }
-
-        var target = new RamTarget(physical.Slice(0, size));
-
-        // Add memory configuration callback
-        memoryConfigurations.Add((bus, registry) =>
-        {
-            int deviceId = registry.GenerateId();
-            registry.Register(deviceId, "RAM", region.Name, $"Memory/{start:X4}");
-
-            int pageCount = (int)(size / 0x1000);
-            int startPage = (int)(start / 0x1000);
-
-            bus.MapPageRange(
-                startPage: startPage,
-                pageCount: pageCount,
-                deviceId: deviceId,
-                regionTag: RegionTag.Ram,
-                perms: perms,
-                caps: target.Capabilities,
-                target: target,
-                physicalBase: 0);
-        });
-    }
-
-    private void ConfigureRomRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms, ProfilePathResolver pathResolver)
-    {
-        byte[] romData;
-
-        if (!string.IsNullOrEmpty(region.Source))
-        {
-            // Load ROM from file
-            string resolvedPath = pathResolver.Resolve(region.Source);
-
-            if (!File.Exists(resolvedPath))
-            {
-                throw new FileNotFoundException(
-                    $"ROM file not found for region '{region.Name}': {resolvedPath}",
-                    resolvedPath);
-            }
-
-            romData = File.ReadAllBytes(resolvedPath);
-
-            // Handle source offset if specified
-            if (!string.IsNullOrEmpty(region.SourceOffset))
-            {
-                uint offset = HexParser.ParseUInt32(region.SourceOffset);
-                if (offset >= romData.Length)
-                {
-                    throw new InvalidOperationException(
-                        $"Source offset 0x{offset:X} exceeds ROM file size ({romData.Length} bytes) for region '{region.Name}'.");
-                }
-
-                romData = romData.Skip((int)offset).ToArray();
-            }
-
-            // Validate size
-            if (romData.Length < size)
-            {
-                throw new InvalidOperationException(
-                    $"ROM file is too small ({romData.Length} bytes) for region '{region.Name}' which requires {size} bytes.");
-            }
-
-            // Truncate if needed
-            if (romData.Length > size)
-            {
-                romData = romData.Take((int)size).ToArray();
-            }
-        }
-        else
-        {
-            // Create empty ROM (all zeros or fill pattern)
-            romData = new byte[size];
-
-            if (!string.IsNullOrEmpty(region.Fill))
-            {
-                byte fillValue = HexParser.ParseByte(region.Fill);
-                Array.Fill(romData, fillValue);
-            }
-        }
-
-        var physical = new PhysicalMemory(romData, region.Name);
-        var target = new RomTarget(physical.Slice(0, size));
-
-        // Add memory configuration callback
-        memoryConfigurations.Add((bus, registry) =>
-        {
-            int deviceId = registry.GenerateId();
-            registry.Register(deviceId, "ROM", region.Name, $"Memory/{start:X4}");
-
-            int pageCount = (int)(size / 0x1000);
-            int startPage = (int)(start / 0x1000);
-
-            bus.MapPageRange(
-                startPage: startPage,
-                pageCount: pageCount,
-                deviceId: deviceId,
-                regionTag: RegionTag.Rom,
-                perms: perms,
-                caps: target.Capabilities,
-                target: target,
-                physicalBase: 0);
-        });
     }
 
     /// <summary>
@@ -965,7 +691,7 @@ public sealed class MachineBuilder
             configure(bus, devices);
         }
 
-        // Create and map ROMs
+        // Create and map ROMs (for programmatic usage, not profile-based)
         foreach (var rom in romDescriptors)
         {
             MapRom(bus, devices, rom);
@@ -1069,11 +795,6 @@ public sealed class MachineBuilder
             callback(machine);
         }
 
-        // Note: Layers are NOT auto-activated here. Devices that control layers
-        // (like LanguageCardController) are responsible for managing their layer's
-        // active state. This prevents layers from being incorrectly activated
-        // before their controlling device has set the proper initial state.
-
         // Run post-build callbacks
         foreach (var callback in postBuildCallbacks)
         {
@@ -1118,7 +839,7 @@ public sealed class MachineBuilder
     private static void MapRom(MainBus bus, DeviceRegistry devices, RomDescriptor rom)
     {
         var physical = new PhysicalMemory(rom.Data, rom.Name ?? $"ROM@{rom.LoadAddress:X4}");
-        var target = new RomTarget(physical.Slice(0, (uint)rom.Data.Length));
+        var target = new RomTarget(physical.ReadOnlySlice(0, (uint)rom.Data.Length));
 
         int deviceId = devices.GenerateId();
         devices.Register(deviceId, "ROM", rom.Name ?? $"ROM@{rom.LoadAddress:X4}", $"ROM/{rom.LoadAddress:X4}");
@@ -1136,9 +857,6 @@ public sealed class MachineBuilder
 
     private static ICpu CreateDefaultCpu(CpuFamily family, IEventContext context)
     {
-        // CPU creation requires a CPU factory to avoid reflection-based coupling.
-        // Use WithCpuFactory() to provide a CPU implementation, or use a system-specific
-        // extension method like AsPocket2e() which provides its own CPU factory.
         return family switch
         {
             CpuFamily.Cpu65C02 => throw new InvalidOperationException(

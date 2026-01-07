@@ -12,18 +12,84 @@
     "addressSpace": 16,
 
     "memory": {
+        "rom-images": [
+            {
+                "name": "system-rom",
+                "source": "library://roms/pocket2e-system.rom",
+                "size": "0x4000",
+                "required": true,
+                "on_verification_fail": "fallback"
+            },
+            {
+                "name": "video-rom",
+                "source": "library://roms/pocket2e-video.rom",
+                "size": "0x1000",
+                "required": true,
+                "on_verification_fail": "fallback"
+            }
+        ],
+        "physical": [
+            {
+                "name": "main-ram-48k",
+                "size": "0xC000",
+                "fill": "0x00"
+            },
+            {
+                "name": "system-rom-16k",
+                "size": "0x4000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "system-rom",
+                        "rom-image": "system-rom",
+                        "offset": "0x0000"
+                    }
+                ]
+            },
+            {
+                "name": "video-rom-4k",
+                "size": "0x1000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "video-rom",
+                        "rom-image": "video-rom",
+                        "offset": "0x0000"
+                    }
+                ]
+            }
+        ],
         "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "source": "main-ram-48k",
+                "source-offset": "0x0000"
+            },
             {
                 "name": "io-page",
                 "type": "composite",
                 "start": "0xC000",
                 "size": "0x1000",
                 "handler": "pocket2e-io"
+            },
+            {
+                "name": "system-rom",
+                "type": "rom",
+                "start": "0xD000",
+                "size": "0x3000",
+                "permissions": "rx",
+                "source": "system-rom-16k",
+                "source-offset": "0x1000"
             }
         ]
     },
 
     "slots": {
+        "io-region": "io-page",
         "enabled": true,
         "internalC3Rom": true,
         "internalCxRom": false,
@@ -38,23 +104,6 @@
             }
         ]
     },
-
-    "roms": [
-        {
-            "name": "system-rom",
-            "source": "library://roms/pocket2e-system.rom",
-            "size": "0x4000",
-            "required": true,
-            "on_verification_fail": "fallback"
-        },
-        {
-            "name": "video-rom",
-            "source": "library://roms/pocket2e-video.rom",
-            "size": "0x1000",
-            "required": true,
-            "on_verification_fail": "fallback"
-        }
-    ],
 
     "devices": {
         "keyboard": {
