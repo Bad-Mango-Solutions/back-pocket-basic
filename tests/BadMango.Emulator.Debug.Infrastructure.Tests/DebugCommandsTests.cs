@@ -1684,6 +1684,33 @@ public class DebugCommandsTests
         Assert.That(command.Synopsis, Does.Contain("load"));
         Assert.That(command.Synopsis, Does.Contain("save"));
         Assert.That(command.Synopsis, Does.Contain("default"));
+        Assert.That(command.Synopsis, Does.Contain("initroms"));
+    }
+
+    /// <summary>
+    /// Verifies that ProfileCommand initroms with missing name returns error.
+    /// </summary>
+    [Test]
+    public void ProfileCommand_InitRoms_MissingName_ReturnsError()
+    {
+        var command = new ProfileCommand();
+        var result = command.Execute(this.debugContext, ["initroms"]);
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Does.Contain("Usage"));
+    }
+
+    /// <summary>
+    /// Verifies that ProfileCommand initroms with invalid profile returns error.
+    /// </summary>
+    [Test]
+    public void ProfileCommand_InitRoms_InvalidProfile_ReturnsError()
+    {
+        var command = new ProfileCommand();
+        var result = command.Execute(this.debugContext, ["initroms", "nonexistent-profile"]);
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Does.Contain("not found"));
     }
 
     // =====================

@@ -61,17 +61,17 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["machine", "info"];
 
     /// <inheritdoc/>
-    public override string Usage => "profile [list|load <name>|save <name>|default [name]]";
+    public override string Usage => "profile [list|load <name>|save <name>|default [name]|initroms <name>]";
 
     /// <inheritdoc/>
-    public string Synopsis => "profile [list|load <name>|save <name>|default [name]]";
+    public string Synopsis => "profile [list|load <name>|save <name>|default [name]|initroms <name>]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Displays configuration information about the current machine, or manages profiles. " +
         "Use 'profile list' to see available profiles, 'profile load <name>' to switch profiles, " +
-        "'profile save <name>' to save the current configuration, and 'profile default [name]' " +
-        "to view or set the default profile for future sessions.";
+        "'profile save <name>' to save the current configuration, 'profile default [name]' " +
+        "to view or set the default profile, and 'profile initroms <name>' to create missing ROM files.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -80,6 +80,7 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         new CommandOption("load", null, "subcommand", "Load a profile by name and rebuild the machine", "<name>"),
         new CommandOption("save", null, "subcommand", "Save the current profile to the profiles directory", "<name>"),
         new CommandOption("default", null, "subcommand", "View or set the default profile for future sessions", "[name]"),
+        new CommandOption("initroms", null, "subcommand", "Create blank ROM files required by a profile", "<name>"),
     ];
 
     /// <inheritdoc/>
@@ -91,13 +92,15 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         "profile save myconfig    Save current profile as 'myconfig'",
         "profile default          Show the current default profile",
         "profile default pocket2e Set pocket2e as the default profile",
+        "profile initroms simple-65c02-with-rom  Create missing ROM files for a profile",
     ];
 
     /// <inheritdoc/>
     public string? SideEffects =>
         "The 'load' subcommand halts the CPU and rebuilds the entire machine, clearing all " +
         "memory and resetting state. The 'save' subcommand writes a file to the profiles " +
-        "directory. The 'default' subcommand writes to a configuration file.";
+        "directory. The 'default' subcommand writes to a configuration file. The 'initroms' " +
+        "subcommand creates blank ROM files in the library directory.";
 
     /// <inheritdoc/>
     public IReadOnlyList<string> SeeAlso { get; } = ["devicemap", "regions", "pages", "reset"];
@@ -121,11 +124,21 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
                 "LOAD" => ExecuteLoad(debugContext, args),
                 "SAVE" => ExecuteSave(debugContext, args),
                 "DEFAULT" => ExecuteDefault(debugContext, args),
+                "INITROMS" => ExecuteInitRoms(debugContext, args),
                 _ => ShowProfileInfo(debugContext),
             };
         }
 
         return ShowProfileInfo(debugContext);
+    }
+
+    /// <summary>
+    /// Gets the library roms directory (library root + roms).
+    /// </summary>
+    /// <returns>The library roms directory path.</returns>
+    private static string GetLibraryRomsDirectory()
+    {
+        return Path.Combine(GetLibraryRoot(), "roms");
     }
 
     private static string FormatMemorySize(int bytes)
@@ -554,5 +567,123 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         }
 
         return CommandResult.Ok();
+    }
+
+    private CommandResult ExecuteInitRoms(IDebugContext debugContext, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            return CommandResult.Error("Usage: profile initroms <name>");
+        }
+
+        string profileName = args[1];
+
+        // Try to find the profile file path from multiple locations
+        string? profileFilePath = FindProfileFile(profileName);
+        if (profileFilePath is null)
+        {
+            return CommandResult.Error($"Profile '{profileName}' not found.");
+        }
+
+        // Load the profile from the found file
+        MachineProfile profile;
+        try
+        {
+            profile = this.profileLoader.LoadProfileFromFile(profileFilePath);
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Error($"Failed to load profile '{profileName}': {ex.Message}");
+        }
+
+        // Create a path resolver with the library root and profile file path
+        string libraryRoot = GetLibraryRoot();
+        var pathResolver = new ProfilePathResolver(libraryRoot, profileFilePath);
+
+        // Find all ROM sources in the profile's memory regions
+        var romRegions = new List<(string Name, string Source, uint Size)>();
+        if (profile.Memory?.Regions != null)
+        {
+            foreach (var region in profile.Memory.Regions)
+            {
+                if (!string.IsNullOrEmpty(region.Source) &&
+                    region.Type.Equals("rom", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!HexParser.TryParseUInt32(region.Size, out uint size))
+                    {
+                        debugContext.Output.WriteLine($"Warning: Invalid size '{region.Size}' for region '{region.Name}', skipping.");
+                        continue;
+                    }
+
+                    romRegions.Add((region.Name, region.Source, size));
+                }
+            }
+        }
+
+        if (romRegions.Count == 0)
+        {
+            debugContext.Output.WriteLine("No ROM files are referenced by this profile.");
+            return CommandResult.Ok();
+        }
+
+        int createdCount = 0;
+        int skippedCount = 0;
+        int errorCount = 0;
+
+        foreach (var (name, source, size) in romRegions)
+        {
+            try
+            {
+                // Try to resolve the path
+                string resolvedPath = pathResolver.Resolve(source);
+
+                if (File.Exists(resolvedPath))
+                {
+                    debugContext.Output.WriteLine($"  {name}: {source} (exists, skipped)");
+                    skippedCount++;
+                    continue;
+                }
+
+                // Ensure the directory exists
+                string? directory = Path.GetDirectoryName(resolvedPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Create a blank ROM file of the correct size using FileStream.SetLength
+                // This avoids allocating large byte arrays in memory
+                using (var fileStream = File.Create(resolvedPath))
+                {
+                    fileStream.SetLength(size);
+                }
+
+                debugContext.Output.WriteLine($"  {name}: Created {source} ({FormatMemorySize((int)size)})");
+                createdCount++;
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Path resolver error (e.g., library root not configured - shouldn't happen)
+                debugContext.Output.WriteLine($"  {name}: Error resolving {source} - {ex.Message}");
+                errorCount++;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                debugContext.Output.WriteLine($"  {name}: Failed to create {source} - {ex.Message}");
+                errorCount++;
+            }
+        }
+
+        debugContext.Output.WriteLine();
+        debugContext.Output.WriteLine($"Summary: {createdCount} created, {skippedCount} skipped, {errorCount} errors");
+
+        if (createdCount > 0)
+        {
+            debugContext.Output.WriteLine();
+            debugContext.Output.WriteLine("Blank ROM files have been created. You can now use 'profile load' to load the profile.");
+            debugContext.Output.WriteLine($"ROM directory: {GetLibraryRomsDirectory()}");
+        }
+
+        return errorCount > 0 ? CommandResult.Error("Some ROM files could not be created.") : CommandResult.Ok();
     }
 }
