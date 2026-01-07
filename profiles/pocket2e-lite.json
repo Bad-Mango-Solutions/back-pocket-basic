@@ -25,8 +25,7 @@
                 "name": "io-page",
                 "type": "composite",
                 "start": "0xC000",
-                "size": "0x1000",
-                "handler": "pocket2e-io"
+                "size": "0x1000"
             }
         ]
     },

@@ -626,6 +626,163 @@ public class MachineBuilderTests
         Assert.Throws<ArgumentNullException>(() => builder.AddCompositeLayer(null!));
     }
 
+    /// <summary>
+    /// Verifies that composite regions with no handler use the default open-bus target.
+    /// </summary>
+    [Test]
+    public void FromProfile_CompositeRegionWithNoHandler_UsesDefaultTarget()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Create a profile with a composite region that has no handler
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new Core.Configuration.MemoryProfileSection
+            {
+                Regions =
+                [
+                    new Core.Configuration.MemoryRegionProfile
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                        Handler = null, // No handler specified
+                    },
+                ],
+            },
+        };
+
+        var machine = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .FromProfile(profile)
+            .Build();
+
+        // Read from the composite region should return $FF (open bus)
+        var access = new BusAccess(
+            Address: 0xC000u,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+        var result = machine.Bus.TryRead8(access);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Ok, Is.True);
+            Assert.That(result.Value, Is.EqualTo(0xFF), "Default composite should return open-bus value");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that composite regions with "default" handler use the default open-bus target.
+    /// </summary>
+    [Test]
+    public void FromProfile_CompositeRegionWithDefaultHandler_UsesDefaultTarget()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Create a profile with a composite region that explicitly specifies "default" handler
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new Core.Configuration.MemoryProfileSection
+            {
+                Regions =
+                [
+                    new Core.Configuration.MemoryRegionProfile
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                        Handler = "default", // Explicit default handler
+                    },
+                ],
+            },
+        };
+
+        var machine = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object)
+            .FromProfile(profile)
+            .Build();
+
+        // Read from the composite region should return $FF (open bus)
+        var access = new BusAccess(
+            Address: 0xC000u,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+        var result = machine.Bus.TryRead8(access);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Ok, Is.True);
+            Assert.That(result.Value, Is.EqualTo(0xFF), "Default composite should return open-bus value");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that composite regions with unknown handler throw an error.
+    /// </summary>
+    [Test]
+    public void FromProfile_CompositeRegionWithUnknownHandler_ThrowsInvalidOperationException()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Create a profile with a composite region that has an unknown handler
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new Core.Configuration.MemoryProfileSection
+            {
+                Regions =
+                [
+                    new Core.Configuration.MemoryRegionProfile
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                        Handler = "unknown-handler", // Unknown handler
+                    },
+                ],
+            },
+        };
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => builder.FromProfile(profile));
+
+        Assert.That(ex!.Message, Does.Contain("unknown-handler"));
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();

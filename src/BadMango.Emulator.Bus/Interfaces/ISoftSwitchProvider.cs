@@ -5,19 +5,6 @@
 namespace BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
-/// Represents a named soft switch state value.
-/// </summary>
-/// <param name="Name">The display name of the soft switch.</param>
-/// <param name="Address">The base address of the soft switch (e.g., $C080 for Language Card).</param>
-/// <param name="Value">The boolean state of the switch.</param>
-/// <param name="Description">A brief description of what this switch controls.</param>
-public readonly record struct SoftSwitchState(
-    string Name,
-    ushort Address,
-    bool Value,
-    string? Description = null);
-
-/// <summary>
 /// Interface for devices that expose soft switch state for debugging.
 /// </summary>
 /// <remarks>

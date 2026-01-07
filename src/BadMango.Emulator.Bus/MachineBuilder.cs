@@ -231,24 +231,31 @@ public sealed class MachineBuilder
 
     private void ConfigureCompositeRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
     {
-        if (string.IsNullOrEmpty(region.Handler))
-        {
-            throw new InvalidOperationException(
-                $"Composite region '{region.Name}' must specify a 'handler' property.");
-        }
+        // Determine the target factory based on the handler
+        Func<MachineBuilder, IBusTarget>? factory = null;
 
-        if (!compositeHandlerFactories.TryGetValue(region.Handler, out var factory))
+        if (string.IsNullOrEmpty(region.Handler) ||
+            string.Equals(region.Handler, "default", StringComparison.OrdinalIgnoreCase))
+        {
+            // Use the default composite target (open bus behavior)
+            factory = _ => DefaultCompositeTarget.Instance;
+        }
+        else if (!compositeHandlerFactories.TryGetValue(region.Handler, out factory))
         {
             throw new InvalidOperationException(
                 $"No handler registered for composite region '{region.Name}' with handler '{region.Handler}'. " +
-                $"Use RegisterCompositeHandler to register the handler before calling FromProfile.");
+                $"Use RegisterCompositeHandler to register the handler before calling FromProfile, " +
+                $"or use 'default' (or omit the handler) for open-bus behavior.");
         }
+
+        // Capture factory for the closure
+        var targetFactory = factory;
 
         // Defer the handler creation to the memory configuration phase
         // so that required components are available
         memoryConfigurations.Add((bus, registry) =>
         {
-            var target = factory(this);
+            var target = targetFactory(this);
 
             int deviceId = registry.GenerateId();
             registry.Register(deviceId, "Composite", region.Name, $"Memory/{start:X4}");
