@@ -1347,6 +1347,448 @@ public class DebugCommandsTests
         }
     }
 
+    // =====================
+    // RegionsCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that RegionsCommand has correct name.
+    /// </summary>
+    [Test]
+    public void RegionsCommand_HasCorrectName()
+    {
+        var command = new RegionsCommand();
+        Assert.That(command.Name, Is.EqualTo("regions"));
+    }
+
+    /// <summary>
+    /// Verifies that RegionsCommand displays memory regions.
+    /// </summary>
+    [Test]
+    public void RegionsCommand_DisplaysMemoryRegions()
+    {
+        var command = new RegionsCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Memory Regions"));
+            Assert.That(outputWriter.ToString(), Does.Contain("Ram"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RegionsCommand returns error when no bus attached.
+    /// </summary>
+    [Test]
+    public void RegionsCommand_ReturnsError_WhenNoBusAttached()
+    {
+        var contextWithoutBus = new DebugContext(dispatcher, outputWriter, errorWriter);
+        var command = new RegionsCommand();
+
+        var result = command.Execute(contextWithoutBus, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("No bus attached"));
+        });
+    }
+
+    // =====================
+    // PagesCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that PagesCommand has correct name.
+    /// </summary>
+    [Test]
+    public void PagesCommand_HasCorrectName()
+    {
+        var command = new PagesCommand();
+        Assert.That(command.Name, Is.EqualTo("pages"));
+    }
+
+    /// <summary>
+    /// Verifies that PagesCommand displays page table.
+    /// </summary>
+    [Test]
+    public void PagesCommand_DisplaysPageTable()
+    {
+        var command = new PagesCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Page Table"));
+            Assert.That(outputWriter.ToString(), Does.Contain("VirtAddr"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PagesCommand accepts start page argument.
+    /// </summary>
+    [Test]
+    public void PagesCommand_AcceptsStartPage()
+    {
+        var command = new PagesCommand();
+        var result = command.Execute(debugContext, ["$04"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("$04"));
+        });
+    }
+
+    // =====================
+    // PeekCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that PeekCommand has correct name.
+    /// </summary>
+    [Test]
+    public void PeekCommand_HasCorrectName()
+    {
+        var command = new PeekCommand();
+        Assert.That(command.Name, Is.EqualTo("peek"));
+    }
+
+    /// <summary>
+    /// Verifies that PeekCommand reads single byte.
+    /// </summary>
+    [Test]
+    public void PeekCommand_ReadsSingleByte()
+    {
+        WriteByte(bus, 0x1234, 0xAB);
+        var command = new PeekCommand();
+        var result = command.Execute(debugContext, ["$1234"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("$1234"));
+            Assert.That(outputWriter.ToString(), Does.Contain("AB"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PeekCommand reads multiple bytes.
+    /// </summary>
+    [Test]
+    public void PeekCommand_ReadsMultipleBytes()
+    {
+        WriteByte(bus, 0x1000, 0x11);
+        WriteByte(bus, 0x1001, 0x22);
+        WriteByte(bus, 0x1002, 0x33);
+        var command = new PeekCommand();
+        var result = command.Execute(debugContext, ["$1000", "3"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("11"));
+            Assert.That(outputWriter.ToString(), Does.Contain("22"));
+            Assert.That(outputWriter.ToString(), Does.Contain("33"));
+        });
+    }
+
+    // =====================
+    // ReadCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that ReadCommand has correct name.
+    /// </summary>
+    [Test]
+    public void ReadCommand_HasCorrectName()
+    {
+        var command = new ReadCommand();
+        Assert.That(command.Name, Is.EqualTo("read"));
+    }
+
+    /// <summary>
+    /// Verifies that ReadCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void ReadCommand_HasCorrectAliases()
+    {
+        var command = new ReadCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "rd" }));
+    }
+
+    /// <summary>
+    /// Verifies that ReadCommand reads memory.
+    /// </summary>
+    [Test]
+    public void ReadCommand_ReadsMemory()
+    {
+        WriteByte(bus, 0x2000, 0xCD);
+        var command = new ReadCommand();
+        var result = command.Execute(debugContext, ["$2000"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("CD"));
+            Assert.That(outputWriter.ToString(), Does.Contain("side effects"));
+        });
+    }
+
+    // =====================
+    // WriteCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that WriteCommand has correct name.
+    /// </summary>
+    [Test]
+    public void WriteCommand_HasCorrectName()
+    {
+        var command = new WriteCommand();
+        Assert.That(command.Name, Is.EqualTo("write"));
+    }
+
+    /// <summary>
+    /// Verifies that WriteCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void WriteCommand_HasCorrectAliases()
+    {
+        var command = new WriteCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "wr" }));
+    }
+
+    /// <summary>
+    /// Verifies that WriteCommand writes memory.
+    /// </summary>
+    [Test]
+    public void WriteCommand_WritesMemory()
+    {
+        var command = new WriteCommand();
+        var result = command.Execute(debugContext, ["$3000", "EF"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(ReadByte(bus, 0x3000), Is.EqualTo(0xEF));
+            Assert.That(outputWriter.ToString(), Does.Contain("side effects"));
+        });
+    }
+
+    // =====================
+    // ProfileCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that ProfileCommand has correct name.
+    /// </summary>
+    [Test]
+    public void ProfileCommand_HasCorrectName()
+    {
+        var command = new ProfileCommand();
+        Assert.That(command.Name, Is.EqualTo("profile"));
+    }
+
+    /// <summary>
+    /// Verifies that ProfileCommand displays machine profile info.
+    /// </summary>
+    [Test]
+    public void ProfileCommand_DisplaysProfileInfo()
+    {
+        var command = new ProfileCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Machine Profile"));
+        });
+    }
+
+    // =====================
+    // DeviceMapCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that DeviceMapCommand has correct name.
+    /// </summary>
+    [Test]
+    public void DeviceMapCommand_HasCorrectName()
+    {
+        var command = new DeviceMapCommand();
+        Assert.That(command.Name, Is.EqualTo("devicemap"));
+    }
+
+    /// <summary>
+    /// Verifies that DeviceMapCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void DeviceMapCommand_HasCorrectAliases()
+    {
+        var command = new DeviceMapCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "devices", "devmap" }));
+    }
+
+    // =====================
+    // FaultCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that FaultCommand has correct name.
+    /// </summary>
+    [Test]
+    public void FaultCommand_HasCorrectName()
+    {
+        var command = new FaultCommand();
+        Assert.That(command.Name, Is.EqualTo("fault"));
+    }
+
+    /// <summary>
+    /// Verifies that FaultCommand displays fault status.
+    /// </summary>
+    [Test]
+    public void FaultCommand_DisplaysFaultStatus()
+    {
+        var command = new FaultCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Bus Fault Status"));
+        });
+    }
+
+    // =====================
+    // SwitchesCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that SwitchesCommand has correct name.
+    /// </summary>
+    [Test]
+    public void SwitchesCommand_HasCorrectName()
+    {
+        var command = new SwitchesCommand();
+        Assert.That(command.Name, Is.EqualTo("switches"));
+    }
+
+    /// <summary>
+    /// Verifies that SwitchesCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void SwitchesCommand_HasCorrectAliases()
+    {
+        var command = new SwitchesCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "sw", "softswitch" }));
+    }
+
+    // =====================
+    // BusLogCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that BusLogCommand has correct name.
+    /// </summary>
+    [Test]
+    public void BusLogCommand_HasCorrectName()
+    {
+        var command = new BusLogCommand();
+        Assert.That(command.Name, Is.EqualTo("buslog"));
+    }
+
+    /// <summary>
+    /// Verifies that BusLogCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void BusLogCommand_HasCorrectAliases()
+    {
+        var command = new BusLogCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl", "trace" }));
+    }
+
+    /// <summary>
+    /// Verifies that BusLogCommand displays status by default.
+    /// </summary>
+    [Test]
+    public void BusLogCommand_DisplaysStatus()
+    {
+        var command = new BusLogCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("Bus Logging Status"));
+        });
+    }
+
+    // =====================
+    // CallCommand Tests
+    // =====================
+
+    /// <summary>
+    /// Verifies that CallCommand has correct name.
+    /// </summary>
+    [Test]
+    public void CallCommand_HasCorrectName()
+    {
+        var command = new CallCommand();
+        Assert.That(command.Name, Is.EqualTo("call"));
+    }
+
+    /// <summary>
+    /// Verifies that CallCommand has correct aliases.
+    /// </summary>
+    [Test]
+    public void CallCommand_HasCorrectAliases()
+    {
+        var command = new CallCommand();
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "jsr" }));
+    }
+
+    /// <summary>
+    /// Verifies that CallCommand executes subroutine and returns.
+    /// </summary>
+    [Test]
+    public void CallCommand_ExecutesSubroutineAndReturns()
+    {
+        // Write a simple subroutine: LDA #$42, RTS
+        WriteByte(bus, 0x2000, 0xA9); // LDA immediate
+        WriteByte(bus, 0x2001, 0x42); // #$42
+        WriteByte(bus, 0x2002, 0x60); // RTS
+
+        var command = new CallCommand();
+        var result = command.Execute(debugContext, ["$2000"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("subroutine returned"));
+            Assert.That(outputWriter.ToString(), Does.Contain("A=$42"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that CallCommand returns error when address missing.
+    /// </summary>
+    [Test]
+    public void CallCommand_ReturnsError_WhenAddressMissing()
+    {
+        var command = new CallCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("Address required"));
+        });
+    }
+
     /// <summary>
     /// Helper method to create a bus with full RAM mapping.
     /// </summary>

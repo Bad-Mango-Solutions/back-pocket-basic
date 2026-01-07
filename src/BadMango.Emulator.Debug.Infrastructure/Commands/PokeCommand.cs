@@ -40,7 +40,7 @@ public sealed class PokeCommand : CommandHandlerBase
     }
 
     /// <inheritdoc/>
-    public override IReadOnlyList<string> Aliases { get; } = ["w", "write"];
+    public override IReadOnlyList<string> Aliases { get; } = ["pk"];
 
     /// <inheritdoc/>
     public override string Usage => "poke <address> <byte> [byte...]  or  poke <address> -i  or  poke <address> \"string\"";
