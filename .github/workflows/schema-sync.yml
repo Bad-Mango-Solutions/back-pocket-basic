@@ -1,0 +1,61 @@
+name: Sync Schemas
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'schemas/**'  # Only trigger if files in schemas/ change
+
+# Prevent concurrent schema syncs
+concurrency:
+  group: schema-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-schemas:
+    name: Sync Schemas to GitHub Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+
+      - name: Checkout GitHub Pages repo
+        uses: actions/checkout@v4
+        with:
+          repository: Bad-Mango-Solutions/bad-mango-solutions.github.io
+          path: pages-repo
+          token: ${{ secrets.PAGES_REPO_TOKEN }}
+
+      - name: Sync schemas folder
+        run: |
+          echo "Syncing schema files..."
+          mkdir -p pages-repo/schemas
+          rsync -av --delete schemas/ pages-repo/schemas/
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          cd pages-repo/
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git status --short
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          cd pages-repo/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Sync schemas from ${{ github.repository }}"
+          git push
