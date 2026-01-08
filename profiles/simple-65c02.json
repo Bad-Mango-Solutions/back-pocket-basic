@@ -1,5 +1,5 @@
 {
-    "$schema": "https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/d79de36f4c47acf0a90bbbf72cc3a66c5cd67d6e/schemas/machine-profile.schema.json",
+    "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "name": "simple-65c02",
     "displayName": "Simple 65C02 System",
     "description": "Basic 65C02 with 64KB RAM - suitable for debugging and development",
