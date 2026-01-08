@@ -362,7 +362,7 @@ public static class Pocket2eMachineBuilderExtensions
             }
 
             // Create the I/O page composite target
-            var ioPage = new Pocket2eIOPage(dispatcher, slotManager);
+            var ioPage = new CompositeIOTarget("I/O Page", dispatcher, slotManager);
 
             // Register the I/O page device
             int ioPageDeviceId = machine.Devices.GenerateId();
@@ -373,7 +373,7 @@ public static class Pocket2eMachineBuilderExtensions
                 0xC000,
                 0x1000,
                 ioPageDeviceId,
-                RegionTag.Io,
+                RegionTag.Composite,
                 PagePerms.ReadWrite,
                 ioPage.Capabilities,
                 ioPage,
@@ -661,14 +661,60 @@ public static class Pocket2eMachineBuilderExtensions
     }
 
     /// <summary>
+    /// Registers the minimal composite-io handler for profile-based loading.
+    /// </summary>
+    /// <param name="builder">The machine builder to configure.</param>
+    /// <returns>The configured builder for method chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method registers the "composite-io" handler with only the minimal
+    /// infrastructure required: an IOPageDispatcher and SlotManager.
+    /// </para>
+    /// <para>
+    /// Use this for minimal profiles that only need the I/O page with soft switches
+    /// and slot management, but do NOT need:
+    /// <list type="bullet">
+    /// <item><description>128KB RAM (64KB main + 64KB auxiliary)</description></item>
+    /// <item><description>Language Card (16KB RAM bank at $D000-$FFFF)</description></item>
+    /// <item><description>Auxiliary memory controller</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// For full Pocket2e infrastructure, use <see cref="WithPocket2eCompositeHandlers"/> instead.
+    /// </para>
+    /// </remarks>
+    public static MachineBuilder WithMinimalCompositeIOHandler(this MachineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+
+        // Only set up the slot manager - no extra RAM, Language Card, or Auxiliary Memory
+        builder.WithSlotManager();
+
+        // Register the composite handler for the I/O page
+        return builder.RegisterCompositeHandler("composite-io", b =>
+        {
+            var d = b.GetComponent<IOPageDispatcher>();
+            var sm = b.GetComponent<ISlotManager>();
+
+            if (d == null || sm == null)
+            {
+                throw new InvalidOperationException(
+                    "IOPageDispatcher and SlotManager must be configured before the composite-io handler.");
+            }
+
+            return new CompositeIOTarget("I/O Page", d, sm);
+        });
+    }
+
+    /// <summary>
     /// Registers the Pocket2e composite handlers for profile-based loading.
     /// </summary>
     /// <param name="builder">The machine builder to configure.</param>
     /// <returns>The configured builder for method chaining.</returns>
     /// <remarks>
     /// <para>
-    /// This method registers the "pocket2e-io" composite handler, which is required
-    /// when loading Pocket2e profiles from JSON that specify composite regions.
+    /// This method registers the "composite-io" handler, which is required
+    /// when loading profiles from JSON that specify composite I/O regions.
     /// </para>
     /// <para>
     /// Call this method before <see cref="MachineBuilder.FromProfile"/> when loading
@@ -683,6 +729,10 @@ public static class Pocket2eMachineBuilderExtensions
     /// <item><description>Auxiliary Memory controller</description></item>
     /// <item><description>Slot manager and I/O page dispatcher</description></item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// For a minimal profile that only needs the I/O page without the extra
+    /// Pocket2e infrastructure, use <see cref="WithMinimalCompositeIOHandler"/> instead.
     /// </para>
     /// <para>
     /// Example:
@@ -711,7 +761,7 @@ public static class Pocket2eMachineBuilderExtensions
             .WithSlotManager();
 
         // Register the composite handler for the I/O page
-        return builder.RegisterCompositeHandler("pocket2e-io", b =>
+        return builder.RegisterCompositeHandler("composite-io", b =>
         {
             var d = b.GetComponent<IOPageDispatcher>();
             var sm = b.GetComponent<ISlotManager>();
@@ -719,10 +769,10 @@ public static class Pocket2eMachineBuilderExtensions
             if (d == null || sm == null)
             {
                 throw new InvalidOperationException(
-                    "IOPageDispatcher and SlotManager must be configured before the pocket2e-io handler.");
+                    "IOPageDispatcher and SlotManager must be configured before the composite-io handler.");
             }
 
-            return new Pocket2eIOPage(d, sm);
+            return new CompositeIOTarget("I/O Page", d, sm);
         });
     }
 

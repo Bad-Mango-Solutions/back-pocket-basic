@@ -54,10 +54,10 @@ public static class MachineFactory
         // Build the machine using the appropriate configuration based on profile type
         var builder = new MachineBuilder();
 
-        // Check if the profile uses composite regions (like pocket2e)
-        if (RequiresPocket2eHandlers(profile))
+        // Register the composite-io handler if the profile uses it
+        if (RequiresCompositeIOHandler(profile))
         {
-            builder.WithPocket2eCompositeHandlers();
+            builder.WithMinimalCompositeIOHandler();
         }
 
         var machine = builder
@@ -95,10 +95,10 @@ public static class MachineFactory
         // Build the machine using the appropriate configuration based on profile type
         var builder = new MachineBuilder();
 
-        // Check if the profile uses composite regions (like pocket2e)
-        if (RequiresPocket2eHandlers(profile))
+        // Register the composite-io handler if the profile uses it
+        if (RequiresCompositeIOHandler(profile))
         {
-            builder.WithPocket2eCompositeHandlers();
+            builder.WithMinimalCompositeIOHandler();
         }
 
         return builder
@@ -108,13 +108,12 @@ public static class MachineFactory
     }
 
     /// <summary>
-    /// Determines if a profile requires Pocket2e composite handlers.
+    /// Determines if a profile uses the composite-io handler.
     /// </summary>
     /// <param name="profile">The profile to check.</param>
-    /// <returns>True if the profile uses pocket2e-io or similar handlers; otherwise, false.</returns>
-    private static bool RequiresPocket2eHandlers(MachineProfile profile)
+    /// <returns>True if the profile uses composite-io handler; otherwise, false.</returns>
+    private static bool RequiresCompositeIOHandler(MachineProfile profile)
     {
-        // Check if any region uses the "pocket2e-io" handler
         if (profile.Memory?.Regions is null)
         {
             return false;
@@ -122,7 +121,7 @@ public static class MachineFactory
 
         return profile.Memory.Regions.Any(region =>
             string.Equals(region.Type, "composite", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(region.Handler, "pocket2e-io", StringComparison.OrdinalIgnoreCase));
+            string.Equals(region.Handler, "composite-io", StringComparison.OrdinalIgnoreCase));
     }
 
     private static Func<IEventContext, ICpu> CreateCpuFactory(CpuProfileSection cpuConfig)

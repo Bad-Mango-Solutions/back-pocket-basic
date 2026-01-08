@@ -73,7 +73,8 @@
                 "name": "io-region",
                 "type": "composite",
                 "start": "0xC000",
-                "size": "0x1000"
+                "size": "0x1000",
+                "handler": "composite-io"
             },
             {
                 "name": "system-rom",
