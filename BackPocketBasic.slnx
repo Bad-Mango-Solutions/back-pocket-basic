@@ -34,6 +34,7 @@
   <Folder Name="/profiles/">
     <File Path="profiles/pocket2e-devices.json" />
     <File Path="profiles/pocket2e-lite.json" />
+    <File Path="profiles/pocket2e-min.json" />
     <File Path="profiles/pocket2e.json" />
     <File Path="profiles/simple-65c02-with-rom.json" />
     <File Path="profiles/simple-65c02.json" />

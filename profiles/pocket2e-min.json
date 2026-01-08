@@ -1,8 +1,8 @@
 {
     "$schema": "../schemas/machine-profile.schema.json",
-    "name": "pocket2e-lite",
-    "displayName": "Pocket2e Lite",
-    "description": "Pocket2e Lite system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, and ROM. Does not include slot cards.",
+    "name": "pocket2e-min",
+    "displayName": "Pocket2e Min",
+    "description": "Pocket2e Min system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, and ROM. Does not include slot cards or any other devices.",
 
     "cpu": {
         "type": "65C02",

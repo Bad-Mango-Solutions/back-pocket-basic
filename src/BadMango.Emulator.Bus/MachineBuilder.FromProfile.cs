@@ -286,8 +286,10 @@ public sealed partial class MachineBuilder
         if (string.IsNullOrEmpty(region.Handler) ||
             string.Equals(region.Handler, "default", StringComparison.OrdinalIgnoreCase))
         {
-            // Use the default composite target (open bus behavior)
-            factory = _ => DefaultCompositeTarget.Instance;
+            // Use a new DefaultCompositeTarget with the region name
+            // (captures region.Name in the closure)
+            var regionName = region.Name;
+            factory = _ => new DefaultCompositeTarget(regionName);
         }
         else if (!compositeHandlerFactories.TryGetValue(region.Handler, out factory))
         {
@@ -316,7 +318,7 @@ public sealed partial class MachineBuilder
                 startPage: startPage,
                 pageCount: pageCount,
                 deviceId: deviceId,
-                regionTag: RegionTag.Io,
+                regionTag: RegionTag.Composite,
                 perms: perms,
                 caps: target.Capabilities,
                 target: target,
