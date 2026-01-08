@@ -22,6 +22,11 @@ using BadMango.Emulator.Debug.Infrastructure.Commands;
 /// </remarks>
 public class DebugConsoleModule : Module
 {
+    /// <summary>
+    /// The name of the file storing the default profile setting.
+    /// </summary>
+    private const string DefaultProfileFileName = ".default-profile";
+
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
@@ -146,10 +151,20 @@ public class DebugConsoleModule : Module
             .AsSelf()
             .SingleInstance();
 
-        // Register the default machine profile.
+        // Register the default machine profile, respecting user's choice from .default-profile
         builder.Register(ctx =>
         {
             var loader = ctx.Resolve<IMachineProfileLoader>();
+            string profileName = GetUserDefaultProfileName();
+
+            // Try to load the user's chosen default profile
+            var profile = loader.LoadProfile(profileName);
+            if (profile is not null)
+            {
+                return profile;
+            }
+
+            // Fall back to the built-in default profile
             return loader.DefaultProfile;
         })
         .AsSelf()
@@ -163,12 +178,19 @@ public class DebugConsoleModule : Module
             var tracingListener = ctx.Resolve<TracingDebugListener>();
             var context = DebugContext.CreateConsoleContext(dispatcher);
 
-            (ICpu cpu, IMemoryBus bus, IDisassembler disassembler, MachineInfo info) = MachineFactory.CreateSystem(profile);
+            // Create a path resolver with the library root for resolving library:// paths
+            string libraryRoot = GetLibraryRoot();
+            var pathResolver = new ProfilePathResolver(libraryRoot);
+
+            // Create new machine with all debug components from profile
+            (IMachine machine, IDisassembler disassembler, MachineInfo info) =
+                MachineFactory.CreateDebugSystem(profile, pathResolver);
 
             // Attach the tracing listener to the CPU
-            cpu.AttachDebugger(tracingListener);
+            machine.Cpu.AttachDebugger(tracingListener);
 
-            context.AttachSystem(cpu, bus, disassembler, info, tracingListener);
+            // Attach the full machine with all debug components
+            context.AttachMachine(machine, disassembler, info, tracingListener);
 
             return context;
         })
@@ -193,5 +215,50 @@ public class DebugConsoleModule : Module
         })
         .AsSelf()
         .SingleInstance();
+    }
+
+    /// <summary>
+    /// Gets the user's chosen default profile name from the .default-profile file.
+    /// </summary>
+    /// <returns>
+    /// The profile name from the file, or <see cref="MachineProfileLoader.DefaultProfileName"/>
+    /// if the file doesn't exist or is empty.
+    /// </returns>
+    private static string GetUserDefaultProfileName()
+    {
+        string profilesDir = Path.Combine(AppContext.BaseDirectory, "profiles");
+        string defaultFilePath = Path.Combine(profilesDir, DefaultProfileFileName);
+
+        if (File.Exists(defaultFilePath))
+        {
+            try
+            {
+                string profileName = File.ReadAllText(defaultFilePath).Trim();
+                if (!string.IsNullOrEmpty(profileName))
+                {
+                    return profileName;
+                }
+            }
+            catch (IOException)
+            {
+                // Fall through to default
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Fall through to default
+            }
+        }
+
+        return MachineProfileLoader.DefaultProfileName;
+    }
+
+    /// <summary>
+    /// Gets the library root directory (user's home directory + .backpocket).
+    /// </summary>
+    /// <returns>The library root path.</returns>
+    private static string GetLibraryRoot()
+    {
+        string homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(homeDir, ".backpocket");
     }
 }

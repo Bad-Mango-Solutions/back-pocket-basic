@@ -51,13 +51,15 @@ public static class MachineFactory
 
         pathResolver ??= new ProfilePathResolver(null);
 
-        // Build the machine using the appropriate configuration based on profile type
+        // Build the machine using FromProfile as the primary configuration source
         var builder = new MachineBuilder();
 
-        // Register the composite-io handler if the profile uses it
+        // Register composite handler factories for handlers used by the profile.
+        // These only register factories - they don't create components or memory layouts.
+        // The actual components are created on-demand when FromProfile processes the regions.
         if (RequiresCompositeIOHandler(profile))
         {
-            builder.WithMinimalCompositeIOHandler();
+            builder.RegisterCompositeIOHandler();
         }
 
         var machine = builder
@@ -92,13 +94,15 @@ public static class MachineFactory
 
         pathResolver ??= new ProfilePathResolver(null);
 
-        // Build the machine using the appropriate configuration based on profile type
+        // Build the machine using FromProfile as the primary configuration source
         var builder = new MachineBuilder();
 
-        // Register the composite-io handler if the profile uses it
+        // Register composite handler factories for handlers used by the profile.
+        // These only register factories - they don't create components or memory layouts.
+        // The actual components are created on-demand when FromProfile processes the regions.
         if (RequiresCompositeIOHandler(profile))
         {
-            builder.WithMinimalCompositeIOHandler();
+            builder.RegisterCompositeIOHandler();
         }
 
         return builder

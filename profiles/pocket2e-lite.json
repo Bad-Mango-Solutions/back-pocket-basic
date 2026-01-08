@@ -1,5 +1,5 @@
 {
-    "$schema": "../schemas/machine-profile.schema.json",
+    "$schema": "https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/d79de36f4c47acf0a90bbbf72cc3a66c5cd67d6e/schemas/machine-profile.schema.json",
     "name": "pocket2e-lite",
     "displayName": "Pocket2e Lite",
     "description": "Pocket2e Lite system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, and ROM. Does not include slot cards.",
