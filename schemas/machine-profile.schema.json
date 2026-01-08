@@ -4,7 +4,7 @@
     "title": "Machine Profile",
     "description": "Schema for defining emulated machine configurations including CPU, memory, slots, ROMs, and devices",
     "type": "object",
-    "required": ["name", "cpu", "memory"],
+    "required": [ "name", "cpu", "memory" ],
     "properties": {
         "$schema": {
             "type": "string",
@@ -24,7 +24,7 @@
             "description": "Detailed description of the machine configuration"
         },
         "cpu": {
-            "$ref": "#/$defs/cpuSection"
+            "$ref": "#/definitions/cpuSection"
         },
         "addressSpace": {
             "type": "integer",
@@ -34,19 +34,19 @@
             "maximum": 32
         },
         "memory": {
-            "$ref": "#/$defs/memorySection"
+            "$ref": "#/definitions/memorySection"
         },
         "slots": {
-            "$ref": "#/$defs/slotsSection"
+            "$ref": "#/definitions/slotsSection"
         },
         "devices": {
-            "$ref": "#/$defs/devicesSection"
+            "$ref": "#/definitions/devicesSection"
         },
         "boot": {
-            "$ref": "#/$defs/bootSection"
+            "$ref": "#/definitions/bootSection"
         }
     },
-    "$defs": {
+    "definitions": {
         "hexString": {
             "type": "string",
             "description": "Hexadecimal value (e.g., '0x1000', '0xC000')",
@@ -55,12 +55,12 @@
         "cpuSection": {
             "type": "object",
             "description": "CPU configuration",
-            "required": ["type"],
+            "required": [ "type" ],
             "properties": {
                 "type": {
                     "type": "string",
                     "description": "CPU type identifier",
-                    "enum": ["6502", "65C02", "65816", "65832"]
+                    "enum": [ "6502", "65C02", "65816", "65832" ]
                 },
                 "clockSpeed": {
                     "type": "integer",
@@ -90,21 +90,21 @@
                     "type": "array",
                     "description": "Memory regions in the address space",
                     "items": {
-                        "$ref": "#/$defs/memoryRegion"
+                        "$ref": "#/definitions/memoryRegion"
                     }
                 },
                 "swapGroups": {
                     "type": "array",
                     "description": "Swap groups for bank switching",
                     "items": {
-                        "$ref": "#/$defs/swapGroup"
+                        "$ref": "#/definitions/swapGroup"
                     }
                 },
                 "controllers": {
                     "type": "array",
                     "description": "Memory controllers that manage dynamic regions",
                     "items": {
-                        "$ref": "#/$defs/memoryController"
+                        "$ref": "#/definitions/memoryController"
                     }
                 }
             }
@@ -195,7 +195,7 @@
         "memoryRegion": {
             "type": "object",
             "description": "A single memory region definition",
-            "required": ["name", "type", "start", "size"],
+            "required": [ "name", "type", "start", "size" ],
             "properties": {
                 "name": {
                     "type": "string",
@@ -204,7 +204,7 @@
                 "type": {
                     "type": "string",
                     "description": "Region type",
-                    "enum": ["ram", "rom", "io", "composite"]
+                    "enum": [ "ram", "rom", "io", "composite" ]
                 },
                 "start": {
                     "$ref": "#/$defs/hexString",
@@ -237,7 +237,7 @@
         "swapGroup": {
             "type": "object",
             "description": "A swap group for bank-switched memory regions",
-            "required": ["name", "controller", "virtualBase", "size", "variants"],
+            "required": [ "name", "controller", "virtualBase", "size", "variants" ],
             "properties": {
                 "name": {
                     "type": "string",
@@ -248,11 +248,11 @@
                     "description": "Controller that manages this swap group"
                 },
                 "virtualBase": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Base address in virtual address space"
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Size of the swapped region"
                 },
                 "comment": {
@@ -263,7 +263,7 @@
                     "type": "array",
                     "description": "Available variants for this swap group",
                     "items": {
-                        "$ref": "#/$defs/swapVariant"
+                        "$ref": "#/definitions/swapVariant"
                     },
                     "minItems": 1
                 },
@@ -276,7 +276,7 @@
         "swapVariant": {
             "type": "object",
             "description": "A variant within a swap group",
-            "required": ["name", "type"],
+            "required": [ "name", "type" ],
             "properties": {
                 "name": {
                     "type": "string",
@@ -285,10 +285,10 @@
                 "type": {
                     "type": "string",
                     "description": "Memory type for this variant",
-                    "enum": ["ram", "rom"]
+                    "enum": [ "ram", "rom" ]
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Size override (defaults to swap group size)"
                 },
                 "source": {
@@ -310,7 +310,7 @@
         "memoryController": {
             "type": "object",
             "description": "A memory controller that manages dynamic regions",
-            "required": ["name", "type"],
+            "required": [ "name", "type" ],
             "properties": {
                 "name": {
                     "type": "string",
@@ -321,7 +321,7 @@
                     "description": "Controller type identifier (e.g., 'pocket2e-aux-controller')"
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Size of memory managed by this controller"
                 },
                 "comment": {
@@ -332,7 +332,7 @@
                     "type": "array",
                     "description": "Sub-regions managed by this controller",
                     "items": {
-                        "$ref": "#/$defs/memoryRegion"
+                        "$ref": "#/definitions/memoryRegion"
                     }
                 },
                 "config": {
@@ -369,7 +369,7 @@
                     "type": "array",
                     "description": "Cards installed in slots",
                     "items": {
-                        "$ref": "#/$defs/slotCard"
+                        "$ref": "#/definitions/slotCard"
                     }
                 }
             }
@@ -377,7 +377,7 @@
         "slotCard": {
             "type": "object",
             "description": "A card installed in an expansion slot",
-            "required": ["slot", "type"],
+            "required": [ "slot", "type" ],
             "properties": {
                 "slot": {
                     "type": "integer",
@@ -419,16 +419,16 @@
             "description": "Device configuration",
             "properties": {
                 "keyboard": {
-                    "$ref": "#/$defs/keyboardConfig"
+                    "$ref": "#/definitions/keyboardConfig"
                 },
                 "speaker": {
-                    "$ref": "#/$defs/speakerConfig"
+                    "$ref": "#/definitions/speakerConfig"
                 },
                 "video": {
-                    "$ref": "#/$defs/videoConfig"
+                    "$ref": "#/definitions/videoConfig"
                 },
                 "gameIO": {
-                    "$ref": "#/$defs/gameIOConfig"
+                    "$ref": "#/definitions/gameIOConfig"
                 }
             },
             "additionalProperties": {
@@ -477,7 +477,7 @@
                 "colorMode": {
                     "type": "string",
                     "description": "Color mode",
-                    "enum": ["mono", "ntsc", "rgb"]
+                    "enum": [ "mono", "ntsc", "rgb" ]
                 }
             }
         },
