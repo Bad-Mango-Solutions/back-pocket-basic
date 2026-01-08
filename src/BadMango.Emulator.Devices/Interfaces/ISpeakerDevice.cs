@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.Devices.Interfaces;
 
-using BadMango.Emulator.Bus.Interfaces;
+using Bus.Interfaces;
 
 /// <summary>
 /// Speaker device interface for audio output.

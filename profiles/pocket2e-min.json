@@ -82,12 +82,14 @@
         ]
     },
 
-    "slots": {
-        "io-region": "io-region",
-        "enabled": true,
-        "internalC3Rom": false,
-        "internalCxRom": false,
-        "cards": []
+    "devices": {
+        "slots": {
+            "io-region": "io-region",
+            "enabled": true,
+            "internalC3Rom": false,
+            "internalCxRom": false,
+            "cards": []
+        }
     },
 
     "boot": {

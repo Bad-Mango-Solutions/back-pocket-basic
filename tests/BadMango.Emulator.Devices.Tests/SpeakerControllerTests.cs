@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Devices.Tests;
 
-using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
 using Moq;
@@ -27,6 +26,15 @@ public class SpeakerControllerTests
         controller = new SpeakerController();
         dispatcher = new IOPageDispatcher();
         controller.RegisterHandlers(dispatcher);
+    }
+
+    /// <summary>
+    /// Cleans up test fixtures after each test.
+    /// </summary>
+    [TearDown]
+    public void TearDown()
+    {
+        controller.Dispose();
     }
 
     /// <summary>

@@ -229,13 +229,13 @@ public class MachineProfileSerializerTests
         var deserialized = serializer.Deserialize(json);
 
         // Assert
-        Assert.That(deserialized.Slots, Is.Not.Null);
-        Assert.That(deserialized.Slots!.Enabled, Is.True);
-        Assert.That(deserialized.Slots.InternalC3Rom, Is.True);
-        Assert.That(deserialized.Slots.Cards, Is.Not.Null);
-        Assert.That(deserialized.Slots.Cards, Has.Count.EqualTo(1));
+        Assert.That(deserialized.Devices.Slots, Is.Not.Null);
+        Assert.That(deserialized.Devices.Slots!.Enabled, Is.True);
+        Assert.That(deserialized.Devices.Slots.InternalC3Rom, Is.True);
+        Assert.That(deserialized.Devices.Slots.Cards, Is.Not.Null);
+        Assert.That(deserialized.Devices.Slots.Cards, Has.Count.EqualTo(1));
 
-        var card = deserialized.Slots.Cards![0];
+        var card = deserialized.Devices.Slots.Cards![0];
         Assert.That(card.Slot, Is.EqualTo(4));
         Assert.That(card.Type, Is.EqualTo("pocketwatch"));
     }
@@ -299,7 +299,7 @@ public class MachineProfileSerializerTests
 
         // Assert
         Assert.That(json, Does.Contain("\"devices\""));
-        Assert.That(json, Does.Contain("\"keyboard\""));
+        Assert.That(json, Does.Contain("\"motherboard\""));
         Assert.That(json, Does.Contain("\"speaker\""));
     }
 
@@ -318,12 +318,12 @@ public class MachineProfileSerializerTests
 
         // Assert
         Assert.That(deserialized.Devices, Is.Not.Null);
-        Assert.That(deserialized.Devices!.Keyboard, Is.Not.Null);
-        Assert.That(deserialized.Devices.Keyboard!.Preset, Is.EqualTo("enhanced"));
-        Assert.That(deserialized.Devices.Keyboard.AutoRepeat, Is.True);
-        Assert.That(deserialized.Devices.Speaker, Is.Not.Null);
-        Assert.That(deserialized.Devices.Speaker!.Enabled, Is.True);
-        Assert.That(deserialized.Devices.Speaker.SampleRate, Is.EqualTo(48000));
+        Assert.That(deserialized.Devices!.Motherboard, Is.Not.Null);
+        Assert.That(deserialized.Devices.Motherboard, Has.Count.EqualTo(2));
+
+        var speakerDevice = deserialized.Devices.Motherboard!.First(d => d.Type == "speaker");
+        Assert.That(speakerDevice.Enabled, Is.True);
+        Assert.That(speakerDevice.Name, Is.EqualTo("Speaker"));
     }
 
     /// <summary>
@@ -601,20 +601,23 @@ public class MachineProfileSerializerTests
     private static MachineProfile CreateProfileWithSlots()
     {
         var profile = CreateMinimalProfile();
-        profile.Slots = new SlotSystemProfile
+        profile.Devices = new DevicesProfile
         {
-            Enabled = true,
-            InternalC3Rom = true,
-            InternalCxRom = false,
-            Cards =
-            [
-                new SlotCardProfile
-                {
-                    Slot = 4,
-                    Type = "pocketwatch",
-                    Config = JsonDocument.Parse("{\"timeSource\":\"host\"}").RootElement,
-                },
-            ],
+            Slots = new SlotSystemProfile
+            {
+                Enabled = true,
+                InternalC3Rom = true,
+                InternalCxRom = false,
+                Cards =
+                [
+                    new SlotCardProfile
+                    {
+                        Slot = 4,
+                        Type = "pocketwatch",
+                        Config = JsonDocument.Parse("{\"timeSource\":\"host\"}").RootElement,
+                    },
+                ],
+            },
         };
         return profile;
     }
@@ -645,26 +648,23 @@ public class MachineProfileSerializerTests
         var profile = CreateMinimalProfile();
         profile.Devices = new DevicesProfile
         {
-            Keyboard = new KeyboardDeviceProfile
-            {
-                Preset = "enhanced",
-                AutoRepeat = true,
-            },
-            Speaker = new SpeakerDeviceProfile
-            {
-                Enabled = true,
-                SampleRate = 48000,
-            },
-            Video = new VideoDeviceProfile
-            {
-                Preset = "enhanced",
-                ColorMode = "ntsc",
-            },
-            GameIO = new GameIODeviceProfile
-            {
-                Enabled = true,
-                JoystickDeadzone = 0.1,
-            },
+            Motherboard =
+            [
+                new MotherboardDeviceEntry
+                {
+                    Type = "keyboard",
+                    Name = "Keyboard",
+                    Enabled = true,
+                    Config = JsonDocument.Parse("{\"preset\":\"enhanced\",\"autoRepeat\":true}").RootElement,
+                },
+                new MotherboardDeviceEntry
+                {
+                    Type = "speaker",
+                    Name = "Speaker",
+                    Enabled = true,
+                    Config = JsonDocument.Parse("{\"sampleRate\":48000}").RootElement,
+                },
+            ],
         };
         return profile;
     }
@@ -852,32 +852,39 @@ public class MachineProfileSerializerTests
                     },
                 ],
             },
-            Slots = new SlotSystemProfile
-            {
-                IoRegion = "io-page",
-                Enabled = true,
-                InternalC3Rom = true,
-                InternalCxRom = false,
-                Cards =
-                [
-                    new SlotCardProfile
-                    {
-                        Slot = 4,
-                        Type = "pocketwatch",
-                    },
-                ],
-            },
             Devices = new DevicesProfile
             {
-                Keyboard = new KeyboardDeviceProfile
+                Motherboard =
+                [
+                    new MotherboardDeviceEntry
+                    {
+                        Type = "keyboard",
+                        Name = "Keyboard",
+                        Enabled = true,
+                        Config = JsonDocument.Parse("{\"preset\":\"enhanced\",\"autoRepeat\":true}").RootElement,
+                    },
+                    new MotherboardDeviceEntry
+                    {
+                        Type = "speaker",
+                        Name = "Speaker",
+                        Enabled = true,
+                        Config = JsonDocument.Parse("{\"sampleRate\":48000}").RootElement,
+                    },
+                ],
+                Slots = new SlotSystemProfile
                 {
-                    Preset = "enhanced",
-                    AutoRepeat = true,
-                },
-                Speaker = new SpeakerDeviceProfile
-                {
+                    IoRegion = "io-page",
                     Enabled = true,
-                    SampleRate = 48000,
+                    InternalC3Rom = true,
+                    InternalCxRom = false,
+                    Cards =
+                    [
+                        new SlotCardProfile
+                        {
+                            Slot = 4,
+                            Type = "pocketwatch",
+                        },
+                    ],
                 },
             },
             Boot = new BootProfile

@@ -96,19 +96,16 @@ public sealed class MachineProfile
     public required MemoryProfileSection Memory { get; set; }
 
     /// <summary>
-    /// Gets or sets the expansion slot system configuration.
-    /// </summary>
-    /// <remarks>
-    /// Defines slot cards for slots 1-7 and slot ROM behavior options.
-    /// </remarks>
-    [JsonPropertyName("slots")]
-    public SlotSystemProfile? Slots { get; set; }
-
-    /// <summary>
     /// Gets or sets the device configuration.
     /// </summary>
     /// <remarks>
-    /// Configures built-in motherboard devices: keyboard, speaker, video, game I/O.
+    /// <para>
+    /// Contains all hardware device configuration:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Motherboard devices (speaker, keyboard, video, game I/O)</description></item>
+    /// <item><description>Expansion slot system and installed cards</description></item>
+    /// </list>
     /// </remarks>
     [JsonPropertyName("devices")]
     public DevicesProfile? Devices { get; set; }
@@ -121,4 +118,14 @@ public sealed class MachineProfile
     /// </remarks>
     [JsonPropertyName("boot")]
     public BootProfile? Boot { get; set; }
+
+    /// <summary>
+    /// Gets the slot system configuration from the devices section.
+    /// </summary>
+    /// <remarks>
+    /// This is a convenience property that accesses <see cref="Devices"/>.<see cref="DevicesProfile.Slots"/>.
+    /// Returns <see langword="null"/> if devices section is not configured.
+    /// </remarks>
+    [JsonIgnore]
+    public SlotSystemProfile? Slots => Devices?.Slots;
 }

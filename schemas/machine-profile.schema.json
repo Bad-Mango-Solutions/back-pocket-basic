@@ -1,10 +1,10 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "id": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "title": "Machine Profile",
-    "description": "Schema for defining emulated machine configurations including CPU, memory, slots, ROMs, and devices",
+    "description": "Schema for defining emulated machine configurations including CPU, memory, devices, and boot options",
     "type": "object",
-    "required": [ "name", "cpu", "memory" ],
+    "required": ["name", "cpu", "memory"],
     "properties": {
         "$schema": {
             "type": "string",
@@ -36,9 +36,6 @@
         "memory": {
             "$ref": "#/definitions/memorySection"
         },
-        "slots": {
-            "$ref": "#/definitions/slotsSection"
-        },
         "devices": {
             "$ref": "#/definitions/devicesSection"
         },
@@ -55,12 +52,12 @@
         "cpuSection": {
             "type": "object",
             "description": "CPU configuration",
-            "required": [ "type" ],
+            "required": ["type"],
             "properties": {
                 "type": {
                     "type": "string",
                     "description": "CPU type identifier",
-                    "enum": [ "6502", "65C02", "65816", "65832" ]
+                    "enum": ["6502", "65C02", "65816", "65832"]
                 },
                 "clockSpeed": {
                     "type": "integer",
@@ -76,14 +73,14 @@
                     "type": "array",
                     "description": "ROM image definitions that can be loaded into physical memory",
                     "items": {
-                        "$ref": "#/$defs/romImageDefinition"
+                        "$ref": "#/definitions/romImageDefinition"
                     }
                 },
                 "physical": {
                     "type": "array",
                     "description": "Physical memory blocks that back virtual regions",
                     "items": {
-                        "$ref": "#/$defs/physicalMemory"
+                        "$ref": "#/definitions/physicalMemory"
                     }
                 },
                 "regions": {
@@ -123,7 +120,7 @@
                     "description": "Source file path (supports library://path, app://path, absolute, or relative paths)"
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Expected size of the ROM image in bytes"
                 },
                 "required": {
@@ -138,7 +135,7 @@
                     "default": "stop"
                 },
                 "hash": {
-                    "$ref": "#/$defs/romHash"
+                    "$ref": "#/definitions/romHash"
                 }
             }
         },
@@ -152,18 +149,18 @@
                     "description": "Unique name for this physical memory (used as source reference from regions)"
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Size of the physical memory in bytes"
                 },
                 "fill": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Fill pattern for initialization (single byte value, e.g., '0x00' or '0xFF')"
                 },
                 "sources": {
                     "type": "array",
                     "description": "Sources to load into this physical memory at specified offsets",
                     "items": {
-                        "$ref": "#/$defs/physicalMemorySource"
+                        "$ref": "#/definitions/physicalMemorySource"
                     }
                 }
             }
@@ -187,7 +184,7 @@
                     "description": "Reference to a ROM image defined in rom-images array"
                 },
                 "offset": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Offset within the physical memory where this source is loaded"
                 }
             }
@@ -195,7 +192,7 @@
         "memoryRegion": {
             "type": "object",
             "description": "A single memory region definition",
-            "required": [ "name", "type", "start", "size" ],
+            "required": ["name", "type", "start", "size"],
             "properties": {
                 "name": {
                     "type": "string",
@@ -204,14 +201,14 @@
                 "type": {
                     "type": "string",
                     "description": "Region type",
-                    "enum": [ "ram", "rom", "io", "composite" ]
+                    "enum": ["ram", "rom", "io", "composite"]
                 },
                 "start": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Starting address (must be 4KB page-aligned)"
                 },
                 "size": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Size in bytes (must be 4KB page-aligned)"
                 },
                 "permissions": {
@@ -225,19 +222,19 @@
                     "description": "Reference to a physical memory block defined in the physical array"
                 },
                 "source-offset": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Offset within the physical memory backing store (must be 4KB page-aligned, defaults to 0x0000)"
                 },
                 "handler": {
                     "type": "string",
-                    "description": "Handler identifier for composite regions (e.g., 'pocket2e-io')"
+                    "description": "Handler identifier for composite regions (e.g., 'composite-io')"
                 }
             }
         },
         "swapGroup": {
             "type": "object",
             "description": "A swap group for bank-switched memory regions",
-            "required": [ "name", "controller", "virtualBase", "size", "variants" ],
+            "required": ["name", "controller", "virtualBase", "size", "variants"],
             "properties": {
                 "name": {
                     "type": "string",
@@ -276,7 +273,7 @@
         "swapVariant": {
             "type": "object",
             "description": "A variant within a swap group",
-            "required": [ "name", "type" ],
+            "required": ["name", "type"],
             "properties": {
                 "name": {
                     "type": "string",
@@ -285,7 +282,7 @@
                 "type": {
                     "type": "string",
                     "description": "Memory type for this variant",
-                    "enum": [ "ram", "rom" ]
+                    "enum": ["ram", "rom"]
                 },
                 "size": {
                     "$ref": "#/definitions/hexString",
@@ -296,7 +293,7 @@
                     "description": "Reference to a physical memory block"
                 },
                 "source-offset": {
-                    "$ref": "#/$defs/hexString",
+                    "$ref": "#/definitions/hexString",
                     "description": "Offset within the physical memory"
                 },
                 "permissions": {
@@ -310,7 +307,7 @@
         "memoryController": {
             "type": "object",
             "description": "A memory controller that manages dynamic regions",
-            "required": [ "name", "type" ],
+            "required": ["name", "type"],
             "properties": {
                 "name": {
                     "type": "string",
@@ -342,13 +339,68 @@
                 }
             }
         },
+        "romHash": {
+            "type": "object",
+            "description": "Hash values for ROM verification",
+            "properties": {
+                "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 hash of the ROM file"
+                },
+                "md5": {
+                    "type": "string",
+                    "description": "MD5 hash of the ROM file"
+                }
+            }
+        },
+        "devicesSection": {
+            "type": "object",
+            "description": "Device configuration containing motherboard devices and expansion slots",
+            "properties": {
+                "motherboard": {
+                    "type": "array",
+                    "description": "Motherboard devices (speaker, keyboard, video, game I/O, etc.)",
+                    "items": {
+                        "$ref": "#/definitions/motherboardDevice"
+                    }
+                },
+                "slots": {
+                    "$ref": "#/definitions/slotsSection"
+                }
+            }
+        },
+        "motherboardDevice": {
+            "type": "object",
+            "description": "A motherboard device entry",
+            "required": ["type"],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Device type identifier (e.g., 'speaker', 'keyboard', 'video', 'gameio')"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Optional device name for identification"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the device is enabled",
+                    "default": true
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Device-specific configuration",
+                    "additionalProperties": true
+                }
+            }
+        },
         "slotsSection": {
             "type": "object",
             "description": "Expansion slot system configuration",
             "properties": {
                 "io-region": {
                     "type": "string",
-                    "description": "Name of the composite region that handles I/O (e.g., 'io-page')"
+                    "description": "Name of the composite region that handles I/O (e.g., 'io-region')"
                 },
                 "enabled": {
                     "type": "boolean",
@@ -377,7 +429,7 @@
         "slotCard": {
             "type": "object",
             "description": "A card installed in an expansion slot",
-            "required": [ "slot", "type" ],
+            "required": ["slot", "type"],
             "properties": {
                 "slot": {
                     "type": "integer",
@@ -397,104 +449,6 @@
                     "type": "object",
                     "description": "Card-specific configuration",
                     "additionalProperties": true
-                }
-            }
-        },
-        "romHash": {
-            "type": "object",
-            "description": "Hash values for ROM verification",
-            "properties": {
-                "sha256": {
-                    "type": "string",
-                    "description": "SHA-256 hash of the ROM file"
-                },
-                "md5": {
-                    "type": "string",
-                    "description": "MD5 hash of the ROM file"
-                }
-            }
-        },
-        "devicesSection": {
-            "type": "object",
-            "description": "Device configuration",
-            "properties": {
-                "keyboard": {
-                    "$ref": "#/definitions/keyboardConfig"
-                },
-                "speaker": {
-                    "$ref": "#/definitions/speakerConfig"
-                },
-                "video": {
-                    "$ref": "#/definitions/videoConfig"
-                },
-                "gameIO": {
-                    "$ref": "#/definitions/gameIOConfig"
-                }
-            },
-            "additionalProperties": {
-                "type": "object",
-                "description": "Additional device-specific configuration"
-            }
-        },
-        "keyboardConfig": {
-            "type": "object",
-            "description": "Keyboard device configuration",
-            "properties": {
-                "preset": {
-                    "type": "string",
-                    "description": "Keyboard preset (e.g., 'standard', 'enhanced')"
-                },
-                "autoRepeat": {
-                    "type": "boolean",
-                    "description": "Enable key auto-repeat"
-                }
-            }
-        },
-        "speakerConfig": {
-            "type": "object",
-            "description": "Speaker device configuration",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Enable speaker output",
-                    "default": true
-                },
-                "sampleRate": {
-                    "type": "integer",
-                    "description": "Audio sample rate in Hz",
-                    "default": 48000
-                }
-            }
-        },
-        "videoConfig": {
-            "type": "object",
-            "description": "Video device configuration",
-            "properties": {
-                "preset": {
-                    "type": "string",
-                    "description": "Video preset (e.g., 'standard', 'enhanced')"
-                },
-                "colorMode": {
-                    "type": "string",
-                    "description": "Color mode",
-                    "enum": [ "mono", "ntsc", "rgb" ]
-                }
-            }
-        },
-        "gameIOConfig": {
-            "type": "object",
-            "description": "Game I/O (joystick/paddle) configuration",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Enable game I/O",
-                    "default": true
-                },
-                "joystickDeadzone": {
-                    "type": "number",
-                    "description": "Joystick deadzone (0.0-1.0)",
-                    "minimum": 0,
-                    "maximum": 1
                 }
             }
         },

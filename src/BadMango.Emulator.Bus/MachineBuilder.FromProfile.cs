@@ -97,6 +97,15 @@ public sealed partial class MachineBuilder
             ConfigureRegion(region, effectiveResolver);
         }
 
+        // Configure devices (motherboard devices from the devices.motherboard section)
+        if (profile.Devices?.Motherboard is not null)
+        {
+            foreach (var deviceEntry in profile.Devices.Motherboard)
+            {
+                ConfigureMotherboardDevice(deviceEntry);
+            }
+        }
+
         return this;
     }
 
@@ -424,5 +433,38 @@ public sealed partial class MachineBuilder
         }
 
         return (physical, sourceOffset);
+    }
+
+    private void ConfigureMotherboardDevice(MotherboardDeviceEntry deviceEntry)
+    {
+        // Skip disabled devices
+        if (!deviceEntry.Enabled)
+        {
+            return;
+        }
+
+        // Look up the device factory
+        if (!motherboardDeviceFactories.TryGetValue(deviceEntry.Type, out var factory))
+        {
+            // No factory registered - silently skip
+            // This allows profiles to declare devices that may not be supported by all hosts
+            return;
+        }
+
+        // Create the device instance
+        var device = factory(this);
+
+        // Add the device as both a component and a scheduled device
+        AddComponent(device);
+        AddDevice(device);
+
+        // Register the device in the device registry during build
+        var capturedName = deviceEntry.Name ?? device.Name;
+        var capturedType = device.DeviceType;
+        memoryConfigurations.Add((bus, registry) =>
+        {
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, capturedType, capturedName, $"Motherboard/{capturedType}");
+        });
     }
 }

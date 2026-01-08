@@ -56,6 +56,7 @@ public sealed partial class MachineBuilder
     private readonly List<Action<IMachine>> beforeSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly Dictionary<string, Func<MachineBuilder, IBusTarget>> compositeHandlerFactories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardDeviceFactories = new(StringComparer.OrdinalIgnoreCase);
 
     // Track physical memory instances created from profile
     private readonly Dictionary<string, PhysicalMemory> physicalMemoryBlocks = new(StringComparer.OrdinalIgnoreCase);
@@ -374,6 +375,42 @@ public sealed partial class MachineBuilder
         ArgumentNullException.ThrowIfNull(factory, nameof(factory));
 
         compositeHandlerFactories[handlerName] = factory;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a factory function for creating motherboard devices from profiles.
+    /// </summary>
+    /// <param name="deviceType">The device type identifier (e.g., "speaker", "keyboard").</param>
+    /// <param name="factory">A factory function that creates the <see cref="IMotherboardDevice"/>.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="deviceType"/> or <paramref name="factory"/> is <see langword="null"/>.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// Motherboard device factories are used by <see cref="FromProfile"/> when processing the
+    /// <c>devices.motherboard</c> section. Each device entry in the profile specifies a type
+    /// that is matched against registered factories.
+    /// </para>
+    /// <para>
+    /// If no factory is registered for a device type declared in a profile, the device is
+    /// silently skipped. This allows profiles to declare devices that may not be supported
+    /// by all hosts.
+    /// </para>
+    /// <para>
+    /// Example:
+    /// </para>
+    /// <code>
+    /// builder.RegisterMotherboardDeviceFactory("speaker", _ => new SpeakerController());
+    /// </code>
+    /// </remarks>
+    public MachineBuilder RegisterMotherboardDeviceFactory(string deviceType, Func<MachineBuilder, IMotherboardDevice> factory)
+    {
+        ArgumentNullException.ThrowIfNull(deviceType, nameof(deviceType));
+        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
+
+        motherboardDeviceFactories[deviceType] = factory;
         return this;
     }
 

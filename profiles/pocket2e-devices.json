@@ -88,39 +88,58 @@
         ]
     },
 
-    "slots": {
-        "io-region": "io-region",
-        "enabled": true,
-        "internalC3Rom": true,
-        "internalCxRom": false,
-        "cards": [
+    "devices": {
+        "motherboard": [
             {
-                "slot": 4,
-                "type": "pocketwatch",
+                "type": "keyboard",
+                "name": "Keyboard",
+                "enabled": true,
                 "config": {
-                    "timeSource": "host",
-                    "timezoneOffset": 0
+                    "preset": "enhanced",
+                    "autoRepeat": true
+                }
+            },
+            {
+                "type": "speaker",
+                "name": "Speaker",
+                "enabled": true,
+                "config": {
+                    "sampleRate": 48000
+                }
+            },
+            {
+                "type": "video",
+                "name": "Video",
+                "enabled": true,
+                "config": {
+                    "preset": "enhanced",
+                    "colorMode": "ntsc"
+                }
+            },
+            {
+                "type": "gameio",
+                "name": "Game I/O",
+                "enabled": true,
+                "config": {
+                    "joystickDeadzone": 0.1
                 }
             }
-        ]
-    },
-
-    "devices": {
-        "keyboard": {
-            "preset": "enhanced",
-            "autoRepeat": true
-        },
-        "speaker": {
+        ],
+        "slots": {
+            "io-region": "io-region",
             "enabled": true,
-            "sampleRate": 48000
-        },
-        "video": {
-            "preset": "enhanced",
-            "colorMode": "ntsc"
-        },
-        "gameIO": {
-            "enabled": true,
-            "joystickDeadzone": 0.1
+            "internalC3Rom": true,
+            "internalCxRom": false,
+            "cards": [
+                {
+                    "slot": 4,
+                    "type": "pocketwatch",
+                    "config": {
+                        "timeSource": "host",
+                        "timezoneOffset": 0
+                    }
+                }
+            ]
         }
     },
 

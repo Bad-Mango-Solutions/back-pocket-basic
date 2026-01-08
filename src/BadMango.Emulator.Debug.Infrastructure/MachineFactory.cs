@@ -10,6 +10,7 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces;
 using BadMango.Emulator.Core.Interfaces.Cpu;
+using BadMango.Emulator.Devices;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 using BadMango.Emulator.Systems;
@@ -62,6 +63,10 @@ public static class MachineFactory
             builder.RegisterCompositeIOHandler();
         }
 
+        // Register standard motherboard device factories for profile-based device loading.
+        // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        builder.RegisterStandardDeviceFactories();
+
         var machine = builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
@@ -104,6 +109,10 @@ public static class MachineFactory
         {
             builder.RegisterCompositeIOHandler();
         }
+
+        // Register standard motherboard device factories for profile-based device loading.
+        // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        builder.RegisterStandardDeviceFactories();
 
         return builder
             .FromProfile(profile, pathResolver)
