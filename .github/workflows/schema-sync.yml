@@ -41,7 +41,7 @@ jobs:
         id: check_changes
         run: |
           cd pages-repo/
-          if git diff --quiet && git diff --staged --quiet; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "No changes detected"
           else
