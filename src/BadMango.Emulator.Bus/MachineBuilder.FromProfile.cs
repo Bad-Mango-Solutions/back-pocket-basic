@@ -141,45 +141,6 @@ public sealed partial class MachineBuilder
         return lookup;
     }
 
-    private void CreatePhysicalMemory(
-        PhysicalMemoryProfile physicalProfile,
-        Dictionary<string, (string ResolvedPath, uint Size)> romImages,
-        ProfilePathResolver pathResolver)
-    {
-        if (string.IsNullOrEmpty(physicalProfile.Name))
-        {
-            throw new InvalidOperationException("Physical memory must have a name.");
-        }
-
-        if (physicalMemoryBlocks.ContainsKey(physicalProfile.Name))
-        {
-            throw new InvalidOperationException($"Duplicate physical memory name: '{physicalProfile.Name}'.");
-        }
-
-        uint size = HexParser.ParseUInt32(physicalProfile.Size);
-
-        // Create the physical memory instance
-        var physical = new PhysicalMemory(size, physicalProfile.Name);
-
-        // Apply fill pattern if specified
-        if (!string.IsNullOrEmpty(physicalProfile.Fill))
-        {
-            byte fillValue = HexParser.ParseByte(physicalProfile.Fill);
-            physical.Fill(fillValue);
-        }
-
-        // Load sources (ROM images) into the physical memory
-        if (physicalProfile.Sources is not null)
-        {
-            foreach (var source in physicalProfile.Sources)
-            {
-                LoadSourceIntoPhysicalMemory(physical, source, romImages);
-            }
-        }
-
-        physicalMemoryBlocks[physicalProfile.Name] = physical;
-    }
-
     private static void LoadSourceIntoPhysicalMemory(
         PhysicalMemory physical,
         PhysicalMemorySourceProfile source,
@@ -232,6 +193,45 @@ public sealed partial class MachineBuilder
 
         // Write ROM data into physical memory at the specified offset
         physical.WriteSpan(offset, romData);
+    }
+
+    private void CreatePhysicalMemory(
+        PhysicalMemoryProfile physicalProfile,
+        Dictionary<string, (string ResolvedPath, uint Size)> romImages,
+        ProfilePathResolver pathResolver)
+    {
+        if (string.IsNullOrEmpty(physicalProfile.Name))
+        {
+            throw new InvalidOperationException("Physical memory must have a name.");
+        }
+
+        if (physicalMemoryBlocks.ContainsKey(physicalProfile.Name))
+        {
+            throw new InvalidOperationException($"Duplicate physical memory name: '{physicalProfile.Name}'.");
+        }
+
+        uint size = HexParser.ParseUInt32(physicalProfile.Size);
+
+        // Create the physical memory instance
+        var physical = new PhysicalMemory(size, physicalProfile.Name);
+
+        // Apply fill pattern if specified
+        if (!string.IsNullOrEmpty(physicalProfile.Fill))
+        {
+            byte fillValue = HexParser.ParseByte(physicalProfile.Fill);
+            physical.Fill(fillValue);
+        }
+
+        // Load sources (ROM images) into the physical memory
+        if (physicalProfile.Sources is not null)
+        {
+            foreach (var source in physicalProfile.Sources)
+            {
+                LoadSourceIntoPhysicalMemory(physical, source, romImages);
+            }
+        }
+
+        physicalMemoryBlocks[physicalProfile.Name] = physical;
     }
 
     private void ConfigureRegion(MemoryRegionProfile region, ProfilePathResolver pathResolver)

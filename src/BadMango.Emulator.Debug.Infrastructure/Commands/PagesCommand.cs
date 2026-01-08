@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using System.Globalization;
 
 using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Displays the current page table in a formatted view.
@@ -15,6 +16,10 @@ using BadMango.Emulator.Bus;
 /// <para>
 /// Shows the live state of the page table, including each page's mapped target,
 /// permissions, and capabilities. Supports range selection for large page tables.
+/// </para>
+/// <para>
+/// For composite targets, this command also displays the subregions within each
+/// composite page, showing the internal structure of complex memory regions.
 /// </para>
 /// <para>
 /// This command requires a bus to be attached to the debug context.
@@ -43,7 +48,7 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         "Displays the live state of the page table, including each page's mapped target, " +
         "permissions (RWX), capabilities, offset within the source, and device ID. Supports " +
         "range selection for large page tables. Use start_page and count to view specific " +
-        "pages. Requires a bus-based system.";
+        "pages. For composite targets, also displays subregions within the page. Requires a bus-based system.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -125,6 +130,12 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
 
             debugContext.Output.WriteLine(
                 $"${pageIndex:X2}   ${virtAddr:X4}   {entry.RegionTag,-11} {permsStr,-5} {sourceStr,-16} ${entry.PhysicalBase:X4}   {capsStr,-20} {entry.DeviceId,-5}");
+
+            // If this is a composite target, display its subregions
+            if (entry.Target is ICompositeTarget composite)
+            {
+                OutputCompositeSubRegions(debugContext.Output, composite, virtAddr);
+            }
         }
 
         if (startPage + count < bus.PageCount)
@@ -134,6 +145,25 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         }
 
         return CommandResult.Ok();
+    }
+
+    private static void OutputCompositeSubRegions(TextWriter output, ICompositeTarget composite, uint pageBaseAddr)
+    {
+        var subRegions = composite.EnumerateSubRegions().ToList();
+        if (subRegions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (startOffset, size, tag, targetName) in subRegions)
+        {
+            uint subAddr = pageBaseAddr + startOffset;
+            uint endAddr = subAddr + size - 1;
+
+            // Indent subregions and use a different format
+            output.WriteLine(
+                $"       └─ ${subAddr:X4}-${endAddr:X4} {tag,-11}       {targetName,-16}");
+        }
     }
 
     private static bool TryParsePageIndex(string value, out int result)
@@ -193,7 +223,7 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         return parts.Count > 0 ? string.Join(",", parts) : "None";
     }
 
-    private static string FormatSource(Bus.Interfaces.IBusTarget? target)
+    private static string FormatSource(IBusTarget? target)
     {
         if (target is null)
         {

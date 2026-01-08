@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
 /// Shows all mapped memory regions in the bus-based system.
@@ -14,6 +15,10 @@ using BadMango.Emulator.Bus;
 /// Displays a formatted table of all memory regions defined in the page table,
 /// grouped by region type. This command provides visibility into the memory map
 /// at the page level.
+/// </para>
+/// <para>
+/// For composite regions, this command also displays the subregions within each
+/// composite page, showing the internal structure of complex memory regions.
 /// </para>
 /// <para>
 /// This command requires a bus to be attached to the debug context.
@@ -39,7 +44,8 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
     public string DetailedDescription =>
         "Displays a formatted table of all memory regions defined in the page table, " +
         "grouped by region type (RAM, ROM, I/O, etc.). Shows start address, end address, " +
-        "size, type, permissions (RWX), and device ID. Requires a bus-based system.";
+        "size, type, permissions (RWX), and device ID. For composite regions, also displays " +
+        "subregions within the composite. Requires a bus-based system.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -84,6 +90,7 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
         RegionTag? currentTag = null;
         PagePerms? currentPerms = null;
         int? currentDeviceId = null;
+        IBusTarget? currentTarget = null;
 
         for (int pageIndex = 0; pageIndex < bus.PageCount; pageIndex++)
         {
@@ -105,7 +112,8 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
                     pageSize,
                     currentTag!.Value,
                     currentPerms!.Value,
-                    currentDeviceId!.Value);
+                    currentDeviceId!.Value,
+                    currentTarget);
             }
 
             if (!isContinuation)
@@ -115,6 +123,7 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
                 currentTag = entry.RegionTag;
                 currentPerms = entry.Perms;
                 currentDeviceId = entry.DeviceId;
+                currentTarget = entry.Target;
             }
         }
 
@@ -128,7 +137,8 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
                 pageSize,
                 currentTag!.Value,
                 currentPerms!.Value,
-                currentDeviceId!.Value);
+                currentDeviceId!.Value,
+                currentTarget);
         }
 
         debugContext.Output.WriteLine();
@@ -144,7 +154,8 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
         int pageSize,
         RegionTag tag,
         PagePerms perms,
-        int deviceId)
+        int deviceId,
+        IBusTarget? target)
     {
         uint startAddr = (uint)(startPage * pageSize);
         uint endAddr = (uint)((endPage + 1) * pageSize) - 1;
@@ -154,6 +165,31 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
         string tagStr = tag.ToString();
 
         output.WriteLine($"${startAddr:X4}    ${endAddr:X4}    ${size:X4}    {tagStr,-12} {permsStr,-8} {deviceId}");
+
+        // If this is a composite target, display its subregions
+        if (target is ICompositeTarget composite)
+        {
+            OutputCompositeSubRegions(output, composite, startAddr);
+        }
+    }
+
+    private static void OutputCompositeSubRegions(TextWriter output, ICompositeTarget composite, uint regionBaseAddr)
+    {
+        var subRegions = composite.EnumerateSubRegions().ToList();
+        if (subRegions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (startOffset, size, tag, targetName) in subRegions)
+        {
+            uint subAddr = regionBaseAddr + startOffset;
+            uint endAddr = subAddr + size - 1;
+
+            // Indent subregions and use a different format
+            output.WriteLine(
+                $"  └─ ${subAddr:X4}    ${endAddr:X4}    ${size:X4}    {tag,-12}          {targetName}");
+        }
     }
 
     private static string FormatPerms(PagePerms perms)

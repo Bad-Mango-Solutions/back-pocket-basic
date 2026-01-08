@@ -163,6 +163,29 @@ public sealed class Pocket2eIOPage : ICompositeTarget, IScheduledDevice
     }
 
     /// <inheritdoc />
+    public IEnumerable<(Addr StartOffset, Addr Size, RegionTag Tag, string TargetName)> EnumerateSubRegions()
+    {
+        // Return the fixed logical subregions of the I/O page
+        yield return (0x000, 0x100, RegionTag.Io, "Soft Switches");
+
+        // Slot ROM regions ($C100-$C7FF) - one per slot
+        for (int slot = 1; slot <= 7; slot++)
+        {
+            Addr slotOffset = (Addr)(slot * 0x100);
+            var slotRom = slotManager.GetSlotRomRegion(slot);
+            string slotName = slotRom?.Name ?? $"Slot {slot} (empty)";
+            yield return (slotOffset, 0x100, RegionTag.Slot, slotName);
+        }
+
+        // Expansion ROM region ($C800-$CFFF)
+        int? activeSlot = slotManager.ActiveExpansionSlot;
+        string expRomName = activeSlot.HasValue
+            ? $"Expansion ROM (Slot {activeSlot.Value})"
+            : "Expansion ROM (none selected)";
+        yield return (0x800, 0x800, RegionTag.Rom, expRomName);
+    }
+
+    /// <inheritdoc />
     public void Initialize(IEventContext context)
     {
         // No initialization required for scheduled events.

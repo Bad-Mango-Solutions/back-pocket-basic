@@ -19,6 +19,10 @@ using Interfaces;
 /// but can participate in instruction trapping and soft switch behaviors.
 /// </para>
 /// <para>
+/// Subregions must be aligned to 256-byte ($100) boundaries. This constraint ensures
+/// consistent addressing within the Apple II I/O page architecture.
+/// </para>
+/// <para>
 /// When no subregion is registered for a given offset, the composite target provides
 /// open-bus behavior:
 /// </para>
@@ -33,6 +37,11 @@ using Interfaces;
 /// </remarks>
 public abstract class CompositeTargetBase : ICompositeTarget
 {
+    /// <summary>
+    /// The required alignment for subregion start offsets and sizes (256 bytes).
+    /// </summary>
+    public const uint SubRegionAlignment = 0x100;
+
     /// <summary>
     /// The value returned for reads to unmapped subregions (floating bus).
     /// </summary>
@@ -70,13 +79,20 @@ public abstract class CompositeTargetBase : ICompositeTarget
     /// <summary>
     /// Registers a subregion within this composite target.
     /// </summary>
-    /// <param name="startOffset">The starting offset within the composite region.</param>
-    /// <param name="size">The size of the subregion in bytes.</param>
+    /// <param name="startOffset">The starting offset within the composite region (must be 256-byte aligned).</param>
+    /// <param name="size">The size of the subregion in bytes (must be 256-byte aligned).</param>
     /// <param name="target">The bus target to handle accesses to this subregion.</param>
     /// <param name="tag">The region tag for this subregion.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="target"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="size"/> is zero.</exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="startOffset"/> or <paramref name="size"/> is not 256-byte aligned.
+    /// </exception>
     /// <remarks>
+    /// <para>
+    /// Subregions must be aligned to 256-byte ($100) boundaries for both start offset and size.
+    /// This constraint ensures consistent addressing within the Apple II I/O page architecture.
+    /// </para>
     /// <para>
     /// Subregions are checked in registration order. If subregions overlap, the first
     /// registered subregion that contains the offset wins. This allows for layered
@@ -90,6 +106,22 @@ public abstract class CompositeTargetBase : ICompositeTarget
         if (size == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(size), "Subregion size must be greater than zero.");
+        }
+
+        if ((startOffset % SubRegionAlignment) != 0)
+        {
+            throw new ArgumentException(
+                $"Subregion start offset 0x{startOffset:X} is not 256-byte aligned. " +
+                $"Start offset must be a multiple of 0x{SubRegionAlignment:X}.",
+                nameof(startOffset));
+        }
+
+        if ((size % SubRegionAlignment) != 0)
+        {
+            throw new ArgumentException(
+                $"Subregion size 0x{size:X} is not 256-byte aligned. " +
+                $"Size must be a multiple of 0x{SubRegionAlignment:X}.",
+                nameof(size));
         }
 
         subRegions.Add(new SubRegion(startOffset, size, target, tag));
@@ -133,6 +165,15 @@ public abstract class CompositeTargetBase : ICompositeTarget
 
         // No subregion found - this is part of the composite itself
         return RegionTag.Composite;
+    }
+
+    /// <inheritdoc />
+    public virtual IEnumerable<(Addr StartOffset, Addr Size, RegionTag Tag, string TargetName)> EnumerateSubRegions()
+    {
+        foreach (var subRegion in subRegions)
+        {
+            yield return (subRegion.StartOffset, subRegion.Size, subRegion.Tag, subRegion.Target.Name);
+        }
     }
 
     /// <inheritdoc />

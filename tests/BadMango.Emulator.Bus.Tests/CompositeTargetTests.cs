@@ -192,6 +192,8 @@ public class CompositeTargetTests
             this.subTarget2 = subTarget2;
         }
 
+        public string Name => "TestComposite";
+
         public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
         public byte Read8(Addr physicalAddress, in BusAccess access)
@@ -215,6 +217,19 @@ public class CompositeTargetTests
         {
             return offset < 0x100 ? RegionTag.Io : RegionTag.Slot;
         }
+
+        public IEnumerable<(Addr StartOffset, Addr Size, RegionTag Tag, string TargetName)> EnumerateSubRegions()
+        {
+            if (subTarget1 is not null)
+            {
+                yield return (0x000, 0x100, RegionTag.Io, subTarget1.Name);
+            }
+
+            if (subTarget2 is not null)
+            {
+                yield return (0x100, 0xF00, RegionTag.Slot, subTarget2.Name);
+            }
+        }
     }
 
     /// <summary>
@@ -232,6 +247,8 @@ public class CompositeTargetTests
             this.offsetCapture = offset;
             this.intentCapture = intent;
         }
+
+        public string Name => "CapturingComposite";
 
         public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
@@ -255,6 +272,11 @@ public class CompositeTargetTests
         public RegionTag GetSubRegionTag(Addr offset)
         {
             return RegionTag.Unknown;
+        }
+
+        public IEnumerable<(Addr StartOffset, Addr Size, RegionTag Tag, string TargetName)> EnumerateSubRegions()
+        {
+            yield return (0x000, 0x1000, RegionTag.Unknown, subTarget.Name);
         }
     }
 }
