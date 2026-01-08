@@ -28,6 +28,7 @@ using Interfaces;
 /// </list>
 /// </para>
 /// </remarks>
+[DeviceType("pocketwatch")]
 public sealed class PocketWatchCard : IClockDevice
 {
     /// <summary>

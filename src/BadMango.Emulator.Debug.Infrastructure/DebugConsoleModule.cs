@@ -142,6 +142,9 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        // Register device-specific debug commands (auto-discovered)
+        builder.RegisterModule<DeviceDebugCommandsModule>();
+
         builder.RegisterType<MachineProfileLoader>()
             .As<IMachineProfileLoader>()
             .SingleInstance();

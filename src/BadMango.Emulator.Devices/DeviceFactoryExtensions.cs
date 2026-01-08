@@ -16,6 +16,11 @@ using BadMango.Emulator.Devices.Speaker;
 /// They allow profiles to declare devices in the <c>devices.motherboard</c> section that
 /// are created when the profile is loaded.
 /// </para>
+/// <para>
+/// The preferred approach is to use <see cref="DeviceFactoryRegistry.RegisterAllDeviceFactories"/>
+/// which auto-discovers all devices marked with <see cref="DeviceTypeAttribute"/>. The manual
+/// registration methods are retained for backward compatibility and special cases.
+/// </para>
 /// </remarks>
 public static class DeviceFactoryExtensions
 {
@@ -39,8 +44,8 @@ public static class DeviceFactoryExtensions
         /// for audio synthesis.
         /// </para>
         /// <para>
-        /// Call this method before <see cref="MachineBuilder.FromProfile"/> when loading
-        /// profiles that include a speaker device.
+        /// Prefer using <see cref="RegisterStandardDeviceFactories"/> which registers all
+        /// known device factories automatically.
         /// </para>
         /// </remarks>
         public MachineBuilder RegisterSpeakerDeviceFactory()
@@ -49,24 +54,50 @@ public static class DeviceFactoryExtensions
         }
 
         /// <summary>
-        /// Registers all standard motherboard device factories for profile-based loading.
+        /// Registers the PocketWatch slot card factory for profile-based loading.
         /// </summary>
         /// <returns>This builder instance for method chaining.</returns>
         /// <remarks>
         /// <para>
-        /// This convenience method registers factories for all standard motherboard devices:
+        /// This method registers the "pocketwatch" slot card factory. When a profile
+        /// includes a PocketWatch card in its <c>devices.slots.cards</c> section, this factory
+        /// creates a <see cref="PocketWatchCard"/> instance.
+        /// </para>
+        /// <para>
+        /// Prefer using <see cref="RegisterStandardDeviceFactories"/> which registers all
+        /// known device factories automatically.
+        /// </para>
+        /// </remarks>
+        public MachineBuilder RegisterPocketWatchCardFactory()
+        {
+            return builder.RegisterSlotCardFactory("pocketwatch", _ => new PocketWatchCard());
+        }
+
+        /// <summary>
+        /// Registers all standard device factories for profile-based loading using auto-discovery.
+        /// </summary>
+        /// <returns>This builder instance for method chaining.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method uses reflection to discover all device types marked with
+        /// <see cref="DeviceTypeAttribute"/> and registers their factories automatically.
+        /// This includes both motherboard devices and slot cards.
+        /// </para>
+        /// <para>
+        /// Currently registered devices:
         /// </para>
         /// <list type="bullet">
-        /// <item><description>Speaker ($C030)</description></item>
+        /// <item><description>Motherboard: Speaker ($C030)</description></item>
+        /// <item><description>Slot Cards: PocketWatch (Thunderclock-compatible RTC)</description></item>
         /// </list>
         /// <para>
-        /// Additional device factories (keyboard, video, game I/O) will be added as they
-        /// are implemented.
+        /// Additional devices are automatically registered as they are added with
+        /// the <see cref="DeviceTypeAttribute"/>.
         /// </para>
         /// </remarks>
         public MachineBuilder RegisterStandardDeviceFactories()
         {
-            return builder.RegisterSpeakerDeviceFactory();
+            return builder.RegisterAllDeviceFactories();
         }
     }
 }

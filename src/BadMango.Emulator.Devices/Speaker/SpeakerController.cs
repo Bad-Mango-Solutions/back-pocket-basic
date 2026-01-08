@@ -23,6 +23,7 @@ using BadMango.Emulator.Devices.Interfaces;
 /// It also generates audible click sounds using the host audio system.
 /// </para>
 /// </remarks>
+[DeviceType("speaker")]
 public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDisposable
 {
     private const byte SpeakerToggleOffset = 0x30;

@@ -57,6 +57,7 @@ public sealed partial class MachineBuilder
     private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly Dictionary<string, Func<MachineBuilder, IBusTarget>> compositeHandlerFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardDeviceFactories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories = new(StringComparer.OrdinalIgnoreCase);
 
     // Track physical memory instances created from profile
     private readonly Dictionary<string, PhysicalMemory> physicalMemoryBlocks = new(StringComparer.OrdinalIgnoreCase);
@@ -411,6 +412,42 @@ public sealed partial class MachineBuilder
         ArgumentNullException.ThrowIfNull(factory, nameof(factory));
 
         motherboardDeviceFactories[deviceType] = factory;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a factory function for creating slot cards from profiles.
+    /// </summary>
+    /// <param name="cardType">The card type identifier (e.g., "pocketwatch", "disk-ii-compatible").</param>
+    /// <param name="factory">A factory function that creates the <see cref="ISlotCard"/>.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="cardType"/> or <paramref name="factory"/> is <see langword="null"/>.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// Slot card factories are used by <see cref="FromProfile"/> when processing the
+    /// <c>devices.slots.cards</c> section. Each card entry in the profile specifies a type
+    /// that is matched against registered factories.
+    /// </para>
+    /// <para>
+    /// If no factory is registered for a card type declared in a profile, the card is
+    /// silently skipped. This allows profiles to declare cards that may not be supported
+    /// by all hosts.
+    /// </para>
+    /// <para>
+    /// Example:
+    /// </para>
+    /// <code>
+    /// builder.RegisterSlotCardFactory("pocketwatch", _ => new PocketWatchCard());
+    /// </code>
+    /// </remarks>
+    public MachineBuilder RegisterSlotCardFactory(string cardType, Func<MachineBuilder, ISlotCard> factory)
+    {
+        ArgumentNullException.ThrowIfNull(cardType, nameof(cardType));
+        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
+
+        slotCardFactories[cardType] = factory;
         return this;
     }
 

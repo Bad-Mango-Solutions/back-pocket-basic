@@ -106,6 +106,15 @@ public sealed partial class MachineBuilder
             }
         }
 
+        // Configure slot cards (from the devices.slots.cards section)
+        if (profile.Devices?.Slots?.Cards is not null && profile.Devices.Slots.Enabled)
+        {
+            foreach (var cardEntry in profile.Devices.Slots.Cards)
+            {
+                ConfigureSlotCard(cardEntry);
+            }
+        }
+
         return this;
     }
 
@@ -467,4 +476,49 @@ public sealed partial class MachineBuilder
             registry.Register(deviceId, capturedType, capturedName, $"Motherboard/{capturedType}");
         });
     }
+
+    private void ConfigureSlotCard(SlotCardProfile cardEntry)
+    {
+        // Validate slot number
+        if (cardEntry.Slot < 1 || cardEntry.Slot > 7)
+        {
+            throw new InvalidOperationException(
+                $"Invalid slot number {cardEntry.Slot} for card type '{cardEntry.Type}'. " +
+                $"Slot must be between 1 and 7.");
+        }
+
+        // Look up the card factory
+        if (!slotCardFactories.TryGetValue(cardEntry.Type, out var factory))
+        {
+            // No factory registered - silently skip
+            // This allows profiles to declare cards that may not be supported by all hosts
+            return;
+        }
+
+        // Create the card instance
+        var card = factory(this);
+
+        // Add as a pending slot card (will be installed during build when SlotManager is available)
+        AddComponent(new PendingSlotCardFromProfile(cardEntry.Slot, card));
+
+        // Also add the card as a device so it gets initialized
+        AddDevice(card);
+
+        // Register the card in the device registry during build
+        var capturedSlot = cardEntry.Slot;
+        var capturedName = card.Name;
+        var capturedType = card.DeviceType;
+        memoryConfigurations.Add((bus, registry) =>
+        {
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, capturedType, capturedName, $"Slot/{capturedSlot}/{capturedType}");
+        });
+    }
+
+    /// <summary>
+    /// Represents a slot card pending installation during profile-based machine build.
+    /// </summary>
+    /// <param name="Slot">The slot number (1-7).</param>
+    /// <param name="Card">The slot card to install.</param>
+    private sealed record PendingSlotCardFromProfile(int Slot, ISlotCard Card) : IPendingSlotCard;
 }
