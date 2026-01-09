@@ -100,7 +100,7 @@ public class DeviceFactoryRegistryTests
         var device = factory(null!);
 
         Assert.That(device, Is.Not.Null);
-        Assert.That(device, Is.InstanceOf<IVideoModeDevice>());
+        Assert.That(device, Is.InstanceOf<IVideoDevice>());
         Assert.That(device.Name, Is.EqualTo("Video Device"));
     }
 

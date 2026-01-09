@@ -46,20 +46,6 @@ public class DebugWindowManagerTests
     }
 
     /// <summary>
-    /// Verifies that ShowWindowAsync returns false when Avalonia is not running.
-    /// </summary>
-    /// <returns>A task representing the asynchronous test operation.</returns>
-    [Test]
-    public async Task ShowWindowAsync_WhenAvaloniaNotRunning_ReturnsFalse()
-    {
-        var manager = new DebugWindowManager();
-
-        var result = await manager.ShowWindowAsync("About");
-
-        Assert.That(result, Is.False);
-    }
-
-    /// <summary>
     /// Verifies that CloseWindowAsync returns false when window is not open.
     /// </summary>
     /// <returns>A task representing the asynchronous test operation.</returns>

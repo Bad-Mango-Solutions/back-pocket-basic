@@ -1,4 +1,4 @@
-// <copyright file="IVideoModeDevice.cs" company="Bad Mango Solutions">
+// <copyright file="IVideoDevice.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -42,7 +42,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>$C01F: RD80COL - 80-column mode status</description></item>
 /// </list>
 /// </remarks>
-public interface IVideoModeDevice : IMotherboardDevice
+public interface IVideoDevice : IMotherboardDevice
 {
     /// <summary>
     /// Event raised when the video mode changes.

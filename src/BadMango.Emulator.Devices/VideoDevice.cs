@@ -49,7 +49,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("video")]
-public sealed class VideoDevice : IVideoModeDevice, ISoftSwitchProvider
+public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 {
     private const byte StatusBitSet = 0x80;
     private const byte StatusBitClear = 0x00;
