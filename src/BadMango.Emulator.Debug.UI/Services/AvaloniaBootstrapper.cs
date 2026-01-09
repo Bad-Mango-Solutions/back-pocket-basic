@@ -29,11 +29,21 @@ using Avalonia.Threading;
 /// </seealso>
 public sealed class AvaloniaBootstrapper : IDisposable
 {
+    /// <summary>
+    /// Timeout for waiting for Avalonia to fully initialize.
+    /// </summary>
+    private static readonly TimeSpan InitializationTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Timeout for waiting for the Avalonia thread to complete during shutdown.
+    /// </summary>
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
+
     private static readonly object SyncLock = new();
     private static AvaloniaBootstrapper? instance;
     private static bool isInitialized;
 
-    private readonly Thread? avaloniaThread;
+    private readonly Thread avaloniaThread;
     private readonly ManualResetEventSlim startedEvent = new(false);
     private readonly CancellationTokenSource cancellationTokenSource = new();
     private bool disposed;
@@ -121,7 +131,7 @@ public sealed class AvaloniaBootstrapper : IDisposable
         }
 
         // Wait for the thread to complete
-        this.avaloniaThread?.Join(TimeSpan.FromSeconds(5));
+        this.avaloniaThread.Join(ShutdownTimeout);
 
         this.startedEvent.Dispose();
         this.cancellationTokenSource.Dispose();
@@ -135,10 +145,10 @@ public sealed class AvaloniaBootstrapper : IDisposable
 
     private void Start()
     {
-        this.avaloniaThread?.Start();
+        this.avaloniaThread.Start();
 
         // Wait for Avalonia to be fully initialized before returning
-        if (!this.startedEvent.Wait(TimeSpan.FromSeconds(30)))
+        if (!this.startedEvent.Wait(InitializationTimeout))
         {
             throw new TimeoutException("Avalonia failed to initialize within the timeout period.");
         }
