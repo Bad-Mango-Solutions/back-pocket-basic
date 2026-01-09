@@ -65,15 +65,16 @@ public sealed class AboutCommand : CommandHandlerBase, ICommandHelp
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // If a window manager is available and Avalonia is running, show the popup
-        if (this.windowManager is not null && this.windowManager.IsAvaloniaRunning)
+        // If a window manager is available, try to show the popup window
+        // ShowWindowAsync will initialize Avalonia if needed
+        if (this.windowManager is not null)
         {
             // Fire and forget the async operation - we don't want to block the REPL
             _ = this.windowManager.ShowWindowAsync("About");
             return CommandResult.Ok("Opening About window...");
         }
 
-        // Fallback: display version information in the console
+        // Fallback: display version information in the console (no UI available)
         return this.DisplayConsoleVersion(context);
     }
 

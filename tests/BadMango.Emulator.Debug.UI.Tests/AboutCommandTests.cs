@@ -52,23 +52,26 @@ public class AboutCommandTests
     }
 
     /// <summary>
-    /// Verifies that Execute displays console output when window manager is provided but Avalonia is not running.
+    /// Verifies that Execute calls ShowWindowAsync even when Avalonia is not initially running.
+    /// This triggers Avalonia initialization on demand.
     /// </summary>
     [Test]
-    public void Execute_WithWindowManagerButAvaloniaNotRunning_DisplaysConsoleOutput()
+    public void Execute_WithWindowManagerButAvaloniaNotRunning_StillCallsShowWindowAsync()
     {
         var windowManager = new Mock<IDebugWindowManager>();
         windowManager.Setup(w => w.IsAvaloniaRunning).Returns(false);
+        windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).ReturnsAsync(true);
 
         var command = new AboutCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        var context = CreateTestContext(out _);
 
         var result = command.Execute(context, []);
 
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("BackPocket BASIC"));
+            Assert.That(result.Message, Does.Contain("Opening"));
+            windowManager.Verify(w => w.ShowWindowAsync("About"), Times.Once);
         });
     }
 
