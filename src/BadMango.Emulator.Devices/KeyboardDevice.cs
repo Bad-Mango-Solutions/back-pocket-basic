@@ -1,4 +1,4 @@
-// <copyright file="KeyboardController.cs" company="Bad Mango Solutions">
+// <copyright file="KeyboardDevice.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,7 +10,7 @@ using BadMango.Emulator.Bus.Interfaces;
 using Interfaces;
 
 /// <summary>
-/// Keyboard controller handling $C000 (KBD) and $C010 (KBDSTRB).
+/// Keyboard device handling $C000 (KBD) and $C010 (KBDSTRB).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,8 +25,12 @@ using Interfaces;
 /// with the high bit (strobe) set. The strobe remains set until cleared by accessing $C010.
 /// </para>
 /// </remarks>
-public sealed class KeyboardController : IKeyboardDevice
+[DeviceType("keyboard")]
+public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 {
+    private const ushort KeyboardDataAddress = 0xC000;
+    private const ushort KeyboardStrobeAddress = 0xC010;
+
     private const byte KeyboardDataOffset = 0x00;
     private const byte KeyboardStrobeOffset = 0x10;
     private const byte StrobeBit = 0x80;
@@ -45,7 +49,7 @@ public sealed class KeyboardController : IKeyboardDevice
     private IScheduler? scheduler;
 
     /// <inheritdoc />
-    public string Name => "Keyboard Controller";
+    public string Name => "Keyboard";
 
     /// <inheritdoc />
     public string DeviceType => "Keyboard";
@@ -61,6 +65,19 @@ public sealed class KeyboardController : IKeyboardDevice
 
     /// <inheritdoc />
     public KeyboardModifiers Modifiers => modifiers;
+
+    /// <inheritdoc />
+    public string ProviderName => "Keyboard";
+
+    /// <inheritdoc />
+    public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
+    {
+        return
+        [
+            new("KBD", KeyboardDataAddress, strobe, "Keyboard data register (strobe set when key available)"),
+            new("KBDSTRB", KeyboardStrobeAddress, keyDown, "Any key down flag"),
+        ];
+    }
 
     /// <inheritdoc />
     public void Initialize(IEventContext context)

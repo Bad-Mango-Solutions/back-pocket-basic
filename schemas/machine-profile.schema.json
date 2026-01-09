@@ -1,6 +1,6 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "id": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "title": "Machine Profile",
     "description": "Schema for defining emulated machine configurations including CPU, memory, devices, and boot options",
     "type": "object",
@@ -24,7 +24,7 @@
             "description": "Detailed description of the machine configuration"
         },
         "cpu": {
-            "$ref": "#/definitions/cpuSection"
+            "$ref": "#/$defs/cpuSection"
         },
         "addressSpace": {
             "type": "integer",
@@ -34,16 +34,16 @@
             "maximum": 32
         },
         "memory": {
-            "$ref": "#/definitions/memorySection"
+            "$ref": "#/$defs/memorySection"
         },
         "devices": {
-            "$ref": "#/definitions/devicesSection"
+            "$ref": "#/$defs/devicesSection"
         },
         "boot": {
-            "$ref": "#/definitions/bootSection"
+            "$ref": "#/$defs/bootSection"
         }
     },
-    "definitions": {
+    "$defs": {
         "hexString": {
             "type": "string",
             "description": "Hexadecimal value (e.g., '0x1000', '0xC000')",
@@ -73,35 +73,35 @@
                     "type": "array",
                     "description": "ROM image definitions that can be loaded into physical memory",
                     "items": {
-                        "$ref": "#/definitions/romImageDefinition"
+                        "$ref": "#/$defs/romImageDefinition"
                     }
                 },
                 "physical": {
                     "type": "array",
                     "description": "Physical memory blocks that back virtual regions",
                     "items": {
-                        "$ref": "#/definitions/physicalMemory"
+                        "$ref": "#/$defs/physicalMemory"
                     }
                 },
                 "regions": {
                     "type": "array",
                     "description": "Memory regions in the address space",
                     "items": {
-                        "$ref": "#/definitions/memoryRegion"
+                        "$ref": "#/$defs/memoryRegion"
                     }
                 },
                 "swapGroups": {
                     "type": "array",
                     "description": "Swap groups for bank switching",
                     "items": {
-                        "$ref": "#/definitions/swapGroup"
+                        "$ref": "#/$defs/swapGroup"
                     }
                 },
                 "controllers": {
                     "type": "array",
                     "description": "Memory controllers that manage dynamic regions",
                     "items": {
-                        "$ref": "#/definitions/memoryController"
+                        "$ref": "#/$defs/memoryController"
                     }
                 }
             }
@@ -120,7 +120,7 @@
                     "description": "Source file path (supports library://path, app://path, absolute, or relative paths)"
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Expected size of the ROM image in bytes"
                 },
                 "required": {
@@ -135,7 +135,7 @@
                     "default": "stop"
                 },
                 "hash": {
-                    "$ref": "#/definitions/romHash"
+                    "$ref": "#/$defs/romHash"
                 }
             }
         },
@@ -149,18 +149,18 @@
                     "description": "Unique name for this physical memory (used as source reference from regions)"
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Size of the physical memory in bytes"
                 },
                 "fill": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Fill pattern for initialization (single byte value, e.g., '0x00' or '0xFF')"
                 },
                 "sources": {
                     "type": "array",
                     "description": "Sources to load into this physical memory at specified offsets",
                     "items": {
-                        "$ref": "#/definitions/physicalMemorySource"
+                        "$ref": "#/$defs/physicalMemorySource"
                     }
                 }
             }
@@ -184,7 +184,7 @@
                     "description": "Reference to a ROM image defined in rom-images array"
                 },
                 "offset": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Offset within the physical memory where this source is loaded"
                 }
             }
@@ -204,11 +204,11 @@
                     "enum": ["ram", "rom", "io", "composite"]
                 },
                 "start": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Starting address (must be 4KB page-aligned)"
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Size in bytes (must be 4KB page-aligned)"
                 },
                 "permissions": {
@@ -222,7 +222,7 @@
                     "description": "Reference to a physical memory block defined in the physical array"
                 },
                 "source-offset": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Offset within the physical memory backing store (must be 4KB page-aligned, defaults to 0x0000)"
                 },
                 "handler": {
@@ -245,11 +245,11 @@
                     "description": "Controller that manages this swap group"
                 },
                 "virtualBase": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Base address in virtual address space"
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Size of the swapped region"
                 },
                 "comment": {
@@ -260,7 +260,7 @@
                     "type": "array",
                     "description": "Available variants for this swap group",
                     "items": {
-                        "$ref": "#/definitions/swapVariant"
+                        "$ref": "#/$defs/swapVariant"
                     },
                     "minItems": 1
                 },
@@ -285,7 +285,7 @@
                     "enum": ["ram", "rom"]
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Size override (defaults to swap group size)"
                 },
                 "source": {
@@ -293,7 +293,7 @@
                     "description": "Reference to a physical memory block"
                 },
                 "source-offset": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Offset within the physical memory"
                 },
                 "permissions": {
@@ -318,7 +318,7 @@
                     "description": "Controller type identifier (e.g., 'pocket2e-aux-controller')"
                 },
                 "size": {
-                    "$ref": "#/definitions/hexString",
+                    "$ref": "#/$defs/hexString",
                     "description": "Size of memory managed by this controller"
                 },
                 "comment": {
@@ -329,7 +329,7 @@
                     "type": "array",
                     "description": "Sub-regions managed by this controller",
                     "items": {
-                        "$ref": "#/definitions/memoryRegion"
+                        "$ref": "#/$defs/memoryRegion"
                     }
                 },
                 "config": {
@@ -361,11 +361,11 @@
                     "type": "array",
                     "description": "Motherboard devices (speaker, keyboard, video, game I/O, etc.)",
                     "items": {
-                        "$ref": "#/definitions/motherboardDevice"
+                        "$ref": "#/$defs/motherboardDevice"
                     }
                 },
                 "slots": {
-                    "$ref": "#/definitions/slotsSection"
+                    "$ref": "#/$defs/slotsSection"
                 }
             }
         },
@@ -421,7 +421,7 @@
                     "type": "array",
                     "description": "Cards installed in slots",
                     "items": {
-                        "$ref": "#/definitions/slotCard"
+                        "$ref": "#/$defs/slotCard"
                     }
                 }
             }
