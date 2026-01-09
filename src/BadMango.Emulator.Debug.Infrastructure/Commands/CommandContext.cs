@@ -50,6 +50,6 @@ public sealed class CommandContext : ICommandContext
     /// <returns>A new <see cref="CommandContext"/> using console streams.</returns>
     public static CommandContext CreateConsoleContext(ICommandDispatcher dispatcher)
     {
-        return new CommandContext(dispatcher, Console.Out, Console.Error, Console.In);
+        return new(dispatcher, Console.Out, Console.Error, Console.In);
     }
 }

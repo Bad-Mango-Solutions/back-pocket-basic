@@ -29,7 +29,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// change the write address. A blank line ends interactive mode.
 /// </para>
 /// </remarks>
-public sealed class PokeCommand : CommandHandlerBase
+public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="PokeCommand"/> class.
@@ -40,10 +40,45 @@ public sealed class PokeCommand : CommandHandlerBase
     }
 
     /// <inheritdoc/>
-    public override IReadOnlyList<string> Aliases { get; } = ["w", "write"];
+    public override IReadOnlyList<string> Aliases { get; } = ["pk"];
 
     /// <inheritdoc/>
     public override string Usage => "poke <address> <byte> [byte...]  or  poke <address> -i  or  poke <address> \"string\"";
+
+    /// <inheritdoc/>
+    public string Synopsis => "poke <address> <byte> [byte...] | -i | \"string\"";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Writes bytes to memory using DebugWrite intent, bypassing ROM write protection " +
+        "and I/O handlers. Supports single bytes, multiple bytes, ASCII strings, and " +
+        "interactive mode (-i). Values can be hex (ab, $AB, 0xAB) or decimal. This is " +
+        "a side-effect-free write; use 'write' for hardware-like writes. " +
+        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
+        "names registered by the current machine (e.g., SPEAKER, KBDSTRB).";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("-i", "--interactive", "flag", "Enter interactive mode for continuous input", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "poke $300 A9 00 60        Write LDA #$00; RTS at $0300",
+        "poke $F000 \"Hello\"        Write ASCII string at $F000 (bypasses ROM)",
+        "poke $800 -i              Start interactive mode at $0800",
+        "poke KBD 00               Poke keyboard address using soft switch name",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Modifies memory content. Uses DebugWrite intent which bypasses ROM write " +
+        "protection and does not trigger I/O side effects.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["write", "peek", "mem", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -65,9 +100,9 @@ public sealed class PokeCommand : CommandHandlerBase
             return CommandResult.Error("Address required. Usage: poke <address> <byte> [byte...] or poke <address> -i");
         }
 
-        if (!TryParseAddress(args[0], out uint startAddress))
+        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint startAddress))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         // Check for interactive mode
@@ -141,6 +176,7 @@ public sealed class PokeCommand : CommandHandlerBase
 
         uint currentAddress = startAddress;
         int totalBytesWritten = 0;
+        var allFaults = new List<(uint Address, BusFault Fault)>();
 
         while (true)
         {
@@ -156,7 +192,7 @@ public sealed class PokeCommand : CommandHandlerBase
 
             // Check for address prefix (e.g., "$1234: ab cd ef")
             var trimmedLine = line.Trim();
-            if (TryParseAddressPrefix(trimmedLine, out uint newAddress, out string remainingBytes))
+            if (TryParseAddressPrefix(trimmedLine, context.Machine, out uint newAddress, out string remainingBytes))
             {
                 currentAddress = newAddress;
                 context.Output.WriteLine($"  Address changed to ${currentAddress:X4}");
@@ -198,14 +234,29 @@ public sealed class PokeCommand : CommandHandlerBase
                     break;
                 }
 
-                // Write bytes
+                // Write bytes and track faults
+                var faults = new List<(uint Address, BusFault Fault)>();
                 for (int i = 0; i < bytes.Count; i++)
                 {
-                    WriteByte(context.Bus, currentAddress + (uint)i, bytes[i]);
+                    var result = WriteByteWithFault(context.Bus, currentAddress + (uint)i, bytes[i]);
+                    if (result.Failed)
+                    {
+                        faults.Add((currentAddress + (uint)i, result.Fault));
+                        allFaults.Add((currentAddress + (uint)i, result.Fault));
+                    }
                 }
 
                 var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
                 context.Output.WriteLine($"  Wrote: {hexValues}");
+
+                // Report faults immediately for this line
+                if (faults.Count > 0)
+                {
+                    foreach (var (faultAddr, fault) in faults)
+                    {
+                        context.Output.WriteLine($"  Fault at ${faultAddr:X4}: {FormatFault(fault)}");
+                    }
+                }
 
                 currentAddress += (uint)bytes.Count;
                 totalBytesWritten += bytes.Count;
@@ -221,6 +272,10 @@ public sealed class PokeCommand : CommandHandlerBase
         if (totalBytesWritten > 0)
         {
             context.Output.WriteLine($"Interactive mode complete. Wrote {totalBytesWritten} byte(s) from ${startAddress:X4} to ${currentAddress - 1:X4}.");
+            if (allFaults.Count > 0)
+            {
+                context.Output.WriteLine($"  ({allFaults.Count} fault(s) encountered)");
+            }
         }
         else
         {
@@ -230,7 +285,7 @@ public sealed class PokeCommand : CommandHandlerBase
         return CommandResult.Ok();
     }
 
-    private static bool TryParseAddressPrefix(string line, out uint address, out string remainingBytes)
+    private static bool TryParseAddressPrefix(string line, IMachine? machine, out uint address, out string remainingBytes)
     {
         address = 0;
         remainingBytes = string.Empty;
@@ -243,7 +298,7 @@ public sealed class PokeCommand : CommandHandlerBase
         }
 
         var addressPart = line[..colonIndex].Trim();
-        if (!TryParseAddress(addressPart, out address))
+        if (!AddressParser.TryParse(addressPart, machine, out address))
         {
             return false;
         }
@@ -283,9 +338,15 @@ public sealed class PokeCommand : CommandHandlerBase
             return;
         }
 
+        var faults = new List<(uint Address, BusFault Fault)>();
+
         for (int i = 0; i < bytes.Count; i++)
         {
-            WriteByte(context.Bus, startAddress + (uint)i, bytes[i]);
+            var result = WriteByteWithFault(context.Bus, startAddress + (uint)i, bytes[i]);
+            if (result.Failed)
+            {
+                faults.Add((startAddress + (uint)i, result.Fault));
+            }
         }
 
         // Display confirmation
@@ -294,9 +355,20 @@ public sealed class PokeCommand : CommandHandlerBase
         // Show what was written
         var hexValues = string.Join(" ", bytes.Select(b => $"{b:X2}"));
         context.Output.WriteLine($"  {hexValues}");
+
+        // Report any faults
+        if (faults.Count > 0)
+        {
+            context.Output.WriteLine();
+            context.Output.WriteLine($"Bus faults encountered ({faults.Count}):");
+            foreach (var (faultAddr, fault) in faults)
+            {
+                context.Output.WriteLine($"  ${faultAddr:X4}: {FormatFault(fault)}");
+            }
+        }
     }
 
-    private static void WriteByte(IMemoryBus bus, uint address, byte value)
+    private static BusResult WriteByteWithFault(IMemoryBus bus, uint address, byte value)
     {
         var access = new BusAccess(
             Address: address,
@@ -309,24 +381,20 @@ public sealed class PokeCommand : CommandHandlerBase
             Cycle: 0,
             Flags: AccessFlags.None);
 
-        bus.TryWrite8(access, value);
+        return bus.TryWrite8(access, value);
     }
 
-    private static bool TryParseAddress(string value, out uint result)
+    private static string FormatFault(BusFault fault)
     {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
+        return fault.Kind switch
         {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+            FaultKind.Unmapped => "Unmapped - no memory or device at this address",
+            FaultKind.Permission => $"Permission denied - region {fault.RegionTag} does not allow write",
+            FaultKind.Nx => "No execute - this fault should not occur for writes",
+            FaultKind.Misaligned => "Misaligned access",
+            FaultKind.DeviceFault => "Device fault - device rejected the write",
+            _ => $"Unknown fault kind: {fault.Kind}",
+        };
     }
 
     /// <summary>

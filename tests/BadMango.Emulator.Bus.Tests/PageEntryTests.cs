@@ -278,12 +278,12 @@ public class PageEntryTests
     private static PageEntry CreateEntry(TargetCaps caps)
     {
         var mockTarget = new Mock<IBusTarget>();
-        return new PageEntry(1, RegionTag.Ram, PagePerms.All, caps, mockTarget.Object, 0);
+        return new(1, RegionTag.Ram, PagePerms.All, caps, mockTarget.Object, 0);
     }
 
     private static PageEntry CreateEntryWithPerms(PagePerms perms)
     {
         var mockTarget = new Mock<IBusTarget>();
-        return new PageEntry(1, RegionTag.Ram, perms, TargetCaps.None, mockTarget.Object, 0);
+        return new(1, RegionTag.Ram, perms, TargetCaps.None, mockTarget.Object, 0);
     }
 }

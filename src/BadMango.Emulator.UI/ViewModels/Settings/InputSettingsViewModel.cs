@@ -71,7 +71,7 @@ public partial class InputSettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            Input = new InputSettings
+            Input = new()
             {
                 KeyboardMapping = KeyboardMapping,
                 CustomKeyMapFile = CustomKeyMapFile,

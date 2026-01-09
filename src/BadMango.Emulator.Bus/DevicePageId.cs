@@ -61,6 +61,12 @@ public readonly struct DevicePageId : IEquatable<DevicePageId>
     }
 
     /// <summary>
+    /// Gets the default (invalid) device page ID.
+    /// </summary>
+    /// <value>A device page ID with class <see cref="DevicePageClass.Invalid"/>.</value>
+    public static DevicePageId Default => default;
+
+    /// <summary>
     /// Gets the raw encoded value.
     /// </summary>
     /// <value>The 24-bit encoded device page identifier.</value>
@@ -91,10 +97,20 @@ public readonly struct DevicePageId : IEquatable<DevicePageId>
     public bool IsValid => Class != DevicePageClass.Invalid;
 
     /// <summary>
-    /// Gets the default (invalid) device page ID.
+    /// Determines whether two <see cref="DevicePageId"/> values are equal.
     /// </summary>
-    /// <value>A device page ID with class <see cref="DevicePageClass.Invalid"/>.</value>
-    public static DevicePageId Default => default;
+    /// <param name="left">The first value.</param>
+    /// <param name="right">The second value.</param>
+    /// <returns><see langword="true"/> if equal; otherwise, <see langword="false"/>.</returns>
+    public static bool operator ==(DevicePageId left, DevicePageId right) => left.Equals(right);
+
+    /// <summary>
+    /// Determines whether two <see cref="DevicePageId"/> values are not equal.
+    /// </summary>
+    /// <param name="left">The first value.</param>
+    /// <param name="right">The second value.</param>
+    /// <returns><see langword="true"/> if not equal; otherwise, <see langword="false"/>.</returns>
+    public static bool operator !=(DevicePageId left, DevicePageId right) => !left.Equals(right);
 
     /// <summary>
     /// Creates a device page ID for a compatibility I/O device.
@@ -162,20 +178,4 @@ public readonly struct DevicePageId : IEquatable<DevicePageId>
 
     /// <inheritdoc />
     public override string ToString() => $"{Class}:{Instance}:{Page}";
-
-    /// <summary>
-    /// Determines whether two <see cref="DevicePageId"/> values are equal.
-    /// </summary>
-    /// <param name="left">The first value.</param>
-    /// <param name="right">The second value.</param>
-    /// <returns><see langword="true"/> if equal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator ==(DevicePageId left, DevicePageId right) => left.Equals(right);
-
-    /// <summary>
-    /// Determines whether two <see cref="DevicePageId"/> values are not equal.
-    /// </summary>
-    /// <param name="left">The first value.</param>
-    /// <param name="right">The second value.</param>
-    /// <returns><see langword="true"/> if not equal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator !=(DevicePageId left, DevicePageId right) => !left.Equals(right);
 }

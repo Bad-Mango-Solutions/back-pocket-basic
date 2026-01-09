@@ -41,7 +41,8 @@ public enum RegionTag : ushort
     /// </summary>
     /// <remarks>
     /// Address range used for device control and status registers.
-    /// Typically has side effects on access and may not support Peek/Poke.
+    /// Typically has side effects on access. Supports Peek/Poke but may have
+    /// additional constraints or behaviors.
     /// </remarks>
     Io = 3,
 
@@ -98,4 +99,13 @@ public enum RegionTag : ushort
     /// Memory used by the hardware stack (typically $0100-$01FF on 6502).
     /// </remarks>
     Stack = 9,
+
+    /// <summary>
+    /// Composite region.
+    /// </summary>
+    /// <remarks>
+    /// Memory region that combines multiple underlying regions, typically with
+    /// different access permissions or behaviors.
+    /// </remarks>
+    Composite = 10,
 }

@@ -5,6 +5,7 @@
 namespace BadMango.Basic.Tests;
 
 using Emulation;
+
 using Runtime;
 
 /// <summary>

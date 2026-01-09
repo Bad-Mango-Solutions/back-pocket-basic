@@ -237,7 +237,7 @@ public class EventContextTests
         var mockScheduler = new Mock<IScheduler>();
         var mockSignals = new Mock<ISignalBus>();
         var mockBus = new Mock<IMemoryBus>();
-        return new EventContext(mockScheduler.Object, mockSignals.Object, mockBus.Object);
+        return new(mockScheduler.Object, mockSignals.Object, mockBus.Object);
     }
 
     private sealed class TestComponent

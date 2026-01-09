@@ -34,7 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
         this.settingsService = settingsService;
 
         // Initialize settings pages
-        SettingsPages = new ObservableCollection<ISettingsPage>
+        SettingsPages = new()
         {
             new GeneralSettingsViewModel(settingsService),
             new LibrarySettingsViewModel(settingsService),

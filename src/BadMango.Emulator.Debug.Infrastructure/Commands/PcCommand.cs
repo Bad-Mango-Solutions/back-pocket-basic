@@ -13,7 +13,7 @@ using System.Globalization;
 /// When invoked without arguments, displays the current PC value.
 /// When invoked with an address argument, sets the PC to that address.
 /// </remarks>
-public sealed class PcCommand : CommandHandlerBase
+public sealed class PcCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="PcCommand"/> class.
@@ -28,6 +28,34 @@ public sealed class PcCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "pc [address]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "pc [address]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Gets or sets the Program Counter (PC) register. Without arguments, displays " +
+        "the current PC value and the instruction at that address. With an address " +
+        "argument, sets PC to the specified value. Useful for redirecting execution " +
+        "to a specific memory location.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "pc                      Display current PC and instruction",
+        "pc $1000                Set PC to $1000",
+        "pc 0x800                Set PC to $0800",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "When an address is provided, modifies the CPU program counter.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["regs", "step", "run", "dasm"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

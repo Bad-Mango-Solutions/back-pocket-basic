@@ -94,9 +94,13 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // ─── Assert: Opcodes executed correctly ─────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0xA9),
+            Assert.That(
+                machine.Cpu.Registers.A.GetByte(),
+                Is.EqualTo(0xA9),
                 "A should contain LDA immediate opcode value");
-            Assert.That(machine.Cpu.Registers.X.GetByte(), Is.EqualTo(0x85),
+            Assert.That(
+                machine.Cpu.Registers.X.GetByte(),
+                Is.EqualTo(0x85),
                 "X should contain STA zero page opcode value");
             Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
@@ -146,11 +150,17 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // ─── Assert: LDA executed correctly ─────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
+            Assert.That(
+                machine.Cpu.Registers.A.GetByte(),
+                Is.EqualTo(0x42),
                 "LDA should load the immediate value into A");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0302),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(0x0302),
                 "PC should advance to next instruction");
-            Assert.That(machine.Cpu.GetCycles(), Is.GreaterThan(initialCycles),
+            Assert.That(
+                machine.Cpu.GetCycles(),
+                Is.GreaterThan(initialCycles),
                 "Cycles should advance during execution");
         });
 
@@ -215,9 +225,13 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // ─── Assert: Both addressing modes worked correctly ─────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x99),
+            Assert.That(
+                machine.Cpu.Registers.A.GetByte(),
+                Is.EqualTo(0x99),
                 "LDA ZP should load from zero page address $50");
-            Assert.That(machine.Cpu.Registers.X.GetByte(), Is.EqualTo(0x77),
+            Assert.That(
+                machine.Cpu.Registers.X.GetByte(),
+                Is.EqualTo(0x77),
                 "LDX absolute should load from address $0400");
         });
 
@@ -264,7 +278,9 @@ public class Cpu65C02GenericBuilderIntegrationTests
         machine.Cpu.Write8(addr, 0xDB);       // $0304: STP
 
         // Verify initial value at $50 is not $42
-        Assert.That(machine.Cpu.Read8(0x0050), Is.Not.EqualTo(0x42),
+        Assert.That(
+            machine.Cpu.Read8(0x0050),
+            Is.Not.EqualTo(0x42),
             "Initial value at $50 should not be $42");
 
         // ─── Act: Execute the ML program ────────────────────────────────────────
@@ -272,14 +288,22 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Step 1: Execute LDA #$42
         machine.Step();
-        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0302), "PC should be at STA instruction");
+        Assert.That(
+            machine.Cpu.GetPC(),
+            Is.EqualTo(0x0302),
+            "PC should be at STA instruction");
 
         // Step 2: Execute STA $50
         machine.Step();
-        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0304), "PC should be at STP instruction");
+        Assert.That(
+            machine.Cpu.GetPC(),
+            Is.EqualTo(0x0304),
+            "PC should be at STP instruction");
 
         // ─── Assert: STA stored the value correctly ─────────────────────────────
-        Assert.That(machine.Cpu.Read8(0x0050), Is.EqualTo(0x42),
+        Assert.That(
+            machine.Cpu.Read8(0x0050),
+            Is.EqualTo(0x42),
             "STA should store accumulator value to zero page address $50");
 
         // Step 3: Execute STP
@@ -362,18 +386,15 @@ public class Cpu65C02GenericBuilderIntegrationTests
 
         // Step 1: Execute LDA #$42
         machine.Step();
-        Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
-            "A should be $42 after first LDA");
+        Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "A should be $42 after first LDA");
 
         // Step 2: Execute STA $50
         machine.Step();
-        Assert.That(machine.Cpu.Read8(0x0050), Is.EqualTo(0x42),
-            "Memory at $50 should be $42 after STA");
+        Assert.That(machine.Cpu.Read8(0x0050), Is.EqualTo(0x42), "Memory at $50 should be $42 after STA");
 
         // Step 3: Execute LDA #$00
         machine.Step();
-        Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x00),
-            "A should be $00 after clearing");
+        Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x00), "A should be $00 after clearing");
 
         // Step 4: Execute LDA $50
         machine.Step();
@@ -381,12 +402,9 @@ public class Cpu65C02GenericBuilderIntegrationTests
         // ─── Assert: Complete round-trip worked ─────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
-                "A should contain the stored value from $50");
-            Assert.That(machine.Cpu.Read8(0x0050), Is.EqualTo(0x42),
-                "Memory at $50 should still contain $42");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0308),
-                "PC should be at STP instruction");
+            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "A should contain the stored value from $50");
+            Assert.That(machine.Cpu.Read8(0x0050), Is.EqualTo(0x42), "Memory at $50 should still contain $42");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0308), "PC should be at STP instruction");
         });
 
         // Step 5: Execute STP

@@ -81,22 +81,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
     }
 
     /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlice(uint offset, uint length)
-    {
-        ValidateSliceParameters(offset, length);
-        return mem.Slice((int)offset, (int)length);
-    }
-
-    /// <inheritdoc />
     public Memory<byte> SlicePage(uint pageIndex, uint pageSize = 4096)
-    {
-        ValidatePageParameters(pageIndex, pageSize);
-        uint offset = pageIndex * pageSize;
-        return mem.Slice((int)offset, (int)pageSize);
-    }
-
-    /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlicePage(uint pageIndex, uint pageSize = 4096)
     {
         ValidatePageParameters(pageIndex, pageSize);
         uint offset = pageIndex * pageSize;
@@ -120,6 +105,29 @@ public sealed class PhysicalMemory : IPhysicalMemory
     {
         ArgumentOutOfRangeException.ThrowIfZero(pageSize);
         return (uint)data.Length / pageSize;
+    }
+
+    /// <summary>
+    /// Writes data to this physical memory at the specified offset.
+    /// </summary>
+    /// <param name="offset">The offset within this memory where writing starts.</param>
+    /// <param name="dataToWrite">The data to write.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the write would exceed memory bounds.
+    /// </exception>
+    /// <remarks>
+    /// This method is used during initialization to load ROM images into physical memory.
+    /// </remarks>
+    public void WriteSpan(uint offset, ReadOnlySpan<byte> dataToWrite)
+    {
+        if (offset + (uint)dataToWrite.Length > data.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(offset),
+                $"Write at offset {offset} with length {dataToWrite.Length} exceeds memory size ({data.Length}).");
+        }
+
+        dataToWrite.CopyTo(mem.Span.Slice((int)offset));
     }
 
     /// <inheritdoc />

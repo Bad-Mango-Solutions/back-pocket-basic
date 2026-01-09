@@ -27,12 +27,12 @@ public sealed class ThunderclockCard : IClockDevice
 {
     private readonly SlotIOHandlers handlers = new();
     private readonly IBusTarget romRegion;
+    private readonly byte[] timeData = new byte[8];
     private DateTime fixedTime;
     private bool useHostTime = true;
 
     // Thunderclock state
     private int readIndex;
-    private readonly byte[] timeData = new byte[8];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ThunderclockCard"/> class.

@@ -198,91 +198,38 @@ public static class Pocket2eMachineBuilderExtensions
     /// </para>
     /// <para>
     /// Bank selection and RAM read/write enable are controlled through 16 soft switches
-    /// at $C080-$C08F. The controller is added as both a device and a component.
+    /// at $C080-$C08F. The device is added as both a scheduled device and a component.
     /// </para>
     /// <para>
-    /// This method creates the swap group and layer required by the Language Card:
+    /// This method creates the layers required by the Language Card:
     /// <list type="bullet">
-    /// <item><description>Swap group for $D000-$DFFF bank switching (ROM/Bank1/Bank2)</description></item>
+    /// <item><description>Layer for $D000-$DFFF RAM with Bank1/Bank2 swap group</description></item>
     /// <item><description>Layer for $E000-$FFFF RAM overlay</description></item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// When Language Card RAM is disabled, both layers are deactivated and reads
+    /// fall through to the underlying base ROM mapping.
     /// </para>
     /// </remarks>
     public static MachineBuilder WithLanguageCard(this MachineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
-        // Create the Language Card RAM banks (4KB Bank1, 4KB Bank2, 8KB E000-FFFF)
-        var lcBank1Ram = new PhysicalMemory(0x1000, "LC_Bank1");
-        var lcBank2Ram = new PhysicalMemory(0x1000, "LC_Bank2");
-        var lcHighRam = new PhysicalMemory(0x2000, "LC_E000");
+        var languageCard = new Devices.LanguageCardDevice();
 
-        var lcBank1Target = new RamTarget(lcBank1Ram.Slice(0, 0x1000));
-        var lcBank2Target = new RamTarget(lcBank2Ram.Slice(0, 0x1000));
-        var lcHighTarget = new RamTarget(lcHighRam.Slice(0, 0x2000));
+        // Add the device as both a component and a scheduled device
+        builder.AddComponent(languageCard);
+        builder.AddDevice(languageCard);
 
-        // Add RAM components for potential retrieval
-        builder.AddComponent(new LcBank1RamComponent(lcBank1Ram, lcBank1Target));
-        builder.AddComponent(new LcBank2RamComponent(lcBank2Ram, lcBank2Target));
-        builder.AddComponent(new LcHighRamComponent(lcHighRam, lcHighTarget));
-
-        // Create the layer for E000-FFFF and add the layered mapping
-        builder
-            .CreateLayer(LanguageCardController.LayerName, LanguageCardController.LayerPriority)
-            .AddLayeredMapping(
-                LanguageCardController.LayerName,
-                0xE000,
-                0x2000,
-                lcHighTarget,
-                RegionTag.Ram,
-                PagePerms.All);
-
-        // Configure memory with swap group for D000-DFFF
-        builder.ConfigureMemory((bus, devices) =>
+        // Configure memory during the memory configuration phase.
+        // This sets up the required layers and swap groups BEFORE device.Initialize() is called.
+        builder.ConfigureMemory((bus, registry) =>
         {
-            // Create swap group for $D000-$DFFF bank switching
-            uint groupId = bus.CreateSwapGroup(
-                LanguageCardController.SwapGroupName,
-                0xD000,
-                0x1000);
-
-            // Create ROM variant placeholder for when Language Card RAM is disabled.
-            // This placeholder target is selected but doesn't override the base layer,
-            // allowing the underlying ROM mapping at D000-DFFF to show through.
-            // The actual ROM content comes from the base layer's ROM mapping.
-            var romPlaceholder = new RomTarget(
-                new PhysicalMemory(0x1000, "LC_PassthroughPlaceholder").Slice(0, 0x1000));
-            bus.AddSwapVariant(
-                groupId,
-                LanguageCardController.RomVariantName,
-                romPlaceholder,
-                0,
-                PagePerms.ReadExecute);
-
-            // Add Bank1 variant
-            bus.AddSwapVariant(
-                groupId,
-                LanguageCardController.Bank1VariantName,
-                lcBank1Target,
-                0,
-                PagePerms.All);
-
-            // Add Bank2 variant
-            bus.AddSwapVariant(
-                groupId,
-                LanguageCardController.Bank2VariantName,
-                lcBank2Target,
-                0,
-                PagePerms.All);
-
-            // Select ROM variant by default
-            bus.SelectSwapVariant(groupId, LanguageCardController.RomVariantName);
+            languageCard.ConfigureMemory(bus, registry);
         });
 
-        var languageCard = new LanguageCardController();
-        return builder
-            .AddComponent(languageCard)
-            .AddDevice(languageCard);
+        return builder;
     }
 
     /// <summary>
@@ -362,7 +309,7 @@ public static class Pocket2eMachineBuilderExtensions
             }
 
             // Create the I/O page composite target
-            var ioPage = new Pocket2eIOPage(dispatcher, slotManager);
+            var ioPage = new CompositeIOTarget("I/O Page", dispatcher, slotManager);
 
             // Register the I/O page device
             int ioPageDeviceId = machine.Devices.GenerateId();
@@ -373,7 +320,7 @@ public static class Pocket2eMachineBuilderExtensions
                 0xC000,
                 0x1000,
                 ioPageDeviceId,
-                RegionTag.Io,
+                RegionTag.Composite,
                 PagePerms.ReadWrite,
                 ioPage.Capabilities,
                 ioPage,
@@ -658,6 +605,38 @@ public static class Pocket2eMachineBuilderExtensions
             nmiHandler: 0xFA40,   // Typical NMI handler
             resetHandler: 0xFA62, // Typical RESET handler
             irqHandler: 0xFA40);  // Typical IRQ/BRK handler
+    }
+
+    /// <summary>
+    /// Registers the minimal composite-io handler for profile-based loading.
+    /// </summary>
+    /// <param name="builder">The machine builder to configure.</param>
+    /// <returns>The configured builder for method chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method registers the "composite-io" handler with only the minimal
+    /// infrastructure required: an IOPageDispatcher and SlotManager.
+    /// </para>
+    /// <para>
+    /// Use this for minimal profiles that only need the I/O page with soft switches
+    /// and slot management, but do NOT need:
+    /// <list type="bullet">
+    /// <item><description>128KB RAM (64KB main + 64KB auxiliary)</description></item>
+    /// <item><description>Language Card (16KB RAM bank at $D000-$FFFF)</description></item>
+    /// <item><description>Auxiliary memory controller</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    [Obsolete("Use MachineBuilderExtensions.RegisterCompositeIOHandler instead for profile-based loading.")]
+    public static MachineBuilder WithMinimalCompositeIOHandler(this MachineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+
+        // Only set up the slot manager - no extra RAM, Language Card, or Auxiliary Memory
+        builder.WithSlotManager();
+
+        // Delegate to the new extension method
+        return builder.RegisterCompositeIOHandler();
     }
 
     private static ICpu CreatePocket2eCpu(IEventContext context)

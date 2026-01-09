@@ -6,12 +6,10 @@ namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
 using Core.Debugger;
-using TestHelpers;
 using Core.Interfaces.Cpu;
 using Core.Interfaces.Debugging;
 
-using Emulation.Cpu;
-
+using TestHelpers;
 
 /// <summary>
 /// Unit tests for CPU debug introspection and control methods.
@@ -19,17 +17,12 @@ using Emulation.Cpu;
 [TestFixture]
 public class CpuDebugSupportTests : CpuTestBase
 {
-    
-    
-
     /// <summary>
     /// Sets up the test environment by initializing memory and CPU.
     /// </summary>
     [SetUp]
     public void Setup()
     {
-        
-        
     }
 
     #region Debugger Attachment Tests
@@ -521,12 +514,12 @@ public class CpuDebugSupportTests : CpuTestBase
     /// </summary>
     private sealed class StopAfterNStepsListener : IDebugStepListener
     {
-        private readonly ICpu Cpu;
+        private readonly ICpu cpu;
         private readonly int stopAfter;
 
-        public StopAfterNStepsListener(ICpu Cpu, int stopAfter)
+        public StopAfterNStepsListener(ICpu cpu, int stopAfter)
         {
-            this.Cpu = Cpu;
+            this.cpu = cpu;
             this.stopAfter = stopAfter;
         }
 
@@ -542,7 +535,7 @@ public class CpuDebugSupportTests : CpuTestBase
             StepCount++;
             if (StepCount >= stopAfter)
             {
-                Cpu.RequestStop();
+                cpu.RequestStop();
             }
         }
     }

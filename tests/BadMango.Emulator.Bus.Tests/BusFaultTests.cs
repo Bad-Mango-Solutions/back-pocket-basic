@@ -180,7 +180,7 @@ public class BusFaultTests
 
     private static BusAccess CreateTestAccess(AccessIntent intent = AccessIntent.DataRead)
     {
-        return new BusAccess(
+        return new(
             Address: 0x1000u,
             Value: 0,
             WidthBits: 8,

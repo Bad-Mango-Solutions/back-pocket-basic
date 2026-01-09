@@ -68,8 +68,8 @@ public class MappingStackTests
         var region1 = CreateTestRegion("test1");
         var region2 = CreateTestRegion("test2");
 
-        stack.Push(new MappingEntry(region1, IsActive: true));
-        stack.Push(new MappingEntry(region2, IsActive: true));
+        stack.Push(new(region1, IsActive: true));
+        stack.Push(new(region2, IsActive: true));
 
         var popped = stack.Pop();
 
@@ -106,9 +106,9 @@ public class MappingStackTests
         var region2 = CreateTestRegion("test2");
         var region3 = CreateTestRegion("test3");
 
-        stack.Push(new MappingEntry(region1, IsActive: true));
-        stack.Push(new MappingEntry(region2, IsActive: false));
-        stack.Push(new MappingEntry(region3, IsActive: true));
+        stack.Push(new(region1, IsActive: true));
+        stack.Push(new(region2, IsActive: false));
+        stack.Push(new(region3, IsActive: true));
 
         Assert.That(stack.ActiveEntry!.Value.Region.Id, Is.EqualTo("test3"));
     }
@@ -123,8 +123,8 @@ public class MappingStackTests
         var region1 = CreateTestRegion("test1");
         var region2 = CreateTestRegion("test2");
 
-        stack.Push(new MappingEntry(region1, IsActive: true));
-        stack.Push(new MappingEntry(region2, IsActive: false));
+        stack.Push(new(region1, IsActive: true));
+        stack.Push(new(region2, IsActive: false));
 
         Assert.That(stack.ActiveEntry!.Value.Region.Id, Is.EqualTo("test1"));
     }
@@ -138,7 +138,7 @@ public class MappingStackTests
         var stack = new MappingStack(0x1000, 4096);
         var region = CreateTestRegion("test1");
 
-        stack.Push(new MappingEntry(region, IsActive: false));
+        stack.Push(new(region, IsActive: false));
 
         var result = stack.SetActive("test1", true);
 
@@ -173,8 +173,8 @@ public class MappingStackTests
         var region1 = CreateTestRegion("test1");
         var region2 = CreateTestRegion("test2");
 
-        stack.Push(new MappingEntry(region1, IsActive: true));
-        stack.Replace(new MappingEntry(region2, IsActive: true));
+        stack.Push(new(region1, IsActive: true));
+        stack.Replace(new(region2, IsActive: true));
 
         Assert.Multiple(() =>
         {
@@ -192,7 +192,7 @@ public class MappingStackTests
         var stack = new MappingStack(0x1000, 4096);
         var region = CreateTestRegion("test1");
 
-        stack.Push(new MappingEntry(region, IsActive: true));
+        stack.Push(new(region, IsActive: true));
         stack.Clear();
 
         Assert.Multiple(() =>
@@ -211,7 +211,7 @@ public class MappingStackTests
         var stack = new MappingStack(0x1000, 4096);
         var region = CreateTestRegion("test1");
 
-        stack.Push(new MappingEntry(region, IsActive: true));
+        stack.Push(new(region, IsActive: true));
 
         var pageEntry = stack.ToPageEntry(deviceId: 1, pageOffset: 0);
 
@@ -233,7 +233,7 @@ public class MappingStackTests
         var stack = new MappingStack(0x1000, 4096);
         var region = CreateTestRegion("test1");
 
-        stack.Push(new MappingEntry(region, IsActive: false));
+        stack.Push(new(region, IsActive: false));
 
         var pageEntry = stack.ToPageEntry(deviceId: 1, pageOffset: 0);
 

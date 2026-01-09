@@ -62,4 +62,25 @@ public interface ICompositeTarget : IBusTarget
     /// <see cref="RegionTag.Io"/>, while $C100-$C7FF returns <see cref="RegionTag.Slot"/>.
     /// </remarks>
     RegionTag GetSubRegionTag(Addr offset);
+
+    /// <summary>
+    /// Enumerates all registered subregions within this composite target.
+    /// </summary>
+    /// <returns>
+    /// An enumerable of subregion information tuples containing the start offset,
+    /// size, region tag, and target name for each registered subregion.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method enables debug commands and observability tools to inspect the
+    /// internal structure of composite targets. Subregions are returned in their
+    /// registration order.
+    /// </para>
+    /// <para>
+    /// For composite targets with dynamic dispatch logic (like <c>Pocket2eIOPage</c>),
+    /// this method may return an empty enumerable or a fixed set of logical regions
+    /// that don't correspond to registered subregions.
+    /// </para>
+    /// </remarks>
+    IEnumerable<(Addr StartOffset, Addr Size, RegionTag Tag, string TargetName)> EnumerateSubRegions();
 }

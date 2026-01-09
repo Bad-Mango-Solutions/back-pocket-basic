@@ -71,7 +71,7 @@ public sealed class BringUpResult : IBringUpResult
         ArgumentNullException.ThrowIfNull(deviceRegistry);
         ArgumentNullException.ThrowIfNull(constants);
 
-        return new BringUpResult(
+        return new(
             success: true,
             errorMessage: null,
             regionManager: regionManager,
@@ -90,7 +90,7 @@ public sealed class BringUpResult : IBringUpResult
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
 
-        return new BringUpResult(
+        return new(
             success: false,
             errorMessage: errorMessage,
             regionManager: null,

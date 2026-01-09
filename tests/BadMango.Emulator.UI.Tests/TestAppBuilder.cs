@@ -19,7 +19,7 @@ public class TestAppBuilder
     /// </summary>
     /// <returns>An <see cref="AppBuilder"/> configured for headless testing.</returns>
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions
+        .UseHeadless(new()
         {
             UseHeadlessDrawing = true,
         });

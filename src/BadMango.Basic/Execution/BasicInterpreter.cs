@@ -49,7 +49,7 @@ public class BasicInterpreter : IBasicInterpreter
         this.runtime = runtime;
         this.system = system;
         this.logger = logger;
-        context = new ExecutionContext();
+        context = new();
     }
 
     /// <inheritdoc/>

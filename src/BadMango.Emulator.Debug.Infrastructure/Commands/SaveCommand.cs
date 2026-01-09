@@ -22,7 +22,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// flag is specified.
 /// </para>
 /// </remarks>
-public sealed class SaveCommand : CommandHandlerBase
+public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SaveCommand"/> class.
@@ -37,6 +37,37 @@ public sealed class SaveCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "save <filename> <address> <length> [--no-overwrite]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "save <filename> <address> <length> [--no-overwrite]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Saves memory contents to a binary file. Reads memory from the specified " +
+        "address for the specified length and writes raw bytes to the file. Uses " +
+        "debug read (no side effects). Overwrites existing files unless --no-overwrite " +
+        "is specified.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--no-overwrite", "-n", "flag", "Fail if file already exists", "off"),
+    ];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "save rom.bin $F000 $1000     Save 4KB from $F000 to rom.bin",
+        "save program.bin $800 $100  Save 256 bytes from $0800",
+        "save data.bin $300 $20 -n   Save with overwrite protection",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Creates or overwrites the specified file on disk.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["load", "mem", "peek"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

@@ -251,7 +251,7 @@ public class PocketWatchCardTests
     /// </summary>
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC400,
             Value: 0,
             WidthBits: 8,

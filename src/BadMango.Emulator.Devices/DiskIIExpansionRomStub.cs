@@ -47,8 +47,8 @@ public sealed class DiskIIExpansionRomStub : IBusTarget
         romData[0x01] = 0x00;  // #$00
         romData[0x02] = 0x60;  // RTS
 
-        physicalMemory = new PhysicalMemory(romData, "DiskII Expansion ROM");
-        romTarget = new RomTarget(physicalMemory.Slice(0, RomSize));
+        physicalMemory = new(romData, "DiskII Expansion ROM");
+        romTarget = new(physicalMemory.Slice(0, RomSize));
     }
 
     /// <inheritdoc />

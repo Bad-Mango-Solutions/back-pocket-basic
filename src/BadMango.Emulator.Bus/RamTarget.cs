@@ -39,8 +39,11 @@ public sealed class RamTarget : IBusTarget
     /// not owned storage. Changes to this target are visible through the original
     /// <see cref="IPhysicalMemory"/> instance.
     /// </param>
+    /// <param name="name">
+    /// Optional name for this RAM target. If not specified, defaults to "RAM".
+    /// </param>
     /// <exception cref="ArgumentException">Thrown when memorySlice is empty.</exception>
-    public RamTarget(Memory<byte> memorySlice)
+    public RamTarget(Memory<byte> memorySlice, string? name = null)
     {
         if (memorySlice.IsEmpty)
         {
@@ -48,7 +51,11 @@ public sealed class RamTarget : IBusTarget
         }
 
         memory = memorySlice;
+        Name = name ?? "RAM";
     }
+
+    /// <inheritdoc />
+    public string Name { get; }
 
     /// <inheritdoc />
     /// <remarks>

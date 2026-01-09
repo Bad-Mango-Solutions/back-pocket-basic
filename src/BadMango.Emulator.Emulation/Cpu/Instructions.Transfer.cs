@@ -8,7 +8,6 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using System.Runtime.CompilerServices;
 
 using Core.Cpu;
-using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Register transfer instructions (TAX, TAY, TXA, TYA, TXS, TSX).

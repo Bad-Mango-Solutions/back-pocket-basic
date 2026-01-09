@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using Interfaces;
+
 using Moq;
 
 /// <summary>
@@ -22,8 +23,8 @@ public class SlotManagerTests
     [SetUp]
     public void SetUp()
     {
-        dispatcher = new IOPageDispatcher();
-        slotManager = new SlotManager(dispatcher);
+        dispatcher = new();
+        slotManager = new(dispatcher);
     }
 
     /// <summary>
@@ -569,7 +570,7 @@ public class SlotManagerTests
     /// </summary>
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,

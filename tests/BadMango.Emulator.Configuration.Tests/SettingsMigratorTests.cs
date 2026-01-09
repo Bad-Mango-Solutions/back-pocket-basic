@@ -22,7 +22,7 @@ public class SettingsMigratorTests
     [SetUp]
     public void Setup()
     {
-        migrator = new SettingsMigrator();
+        migrator = new();
     }
 
     /// <summary>

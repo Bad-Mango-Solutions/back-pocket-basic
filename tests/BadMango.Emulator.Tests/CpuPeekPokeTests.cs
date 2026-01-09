@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Tests;
 
 using BadMango.Emulator.Bus;
-using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Systems;
 
 /// <summary>

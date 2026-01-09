@@ -5,9 +5,13 @@
 namespace BadMango.Basic.Tests;
 
 using AST;
+
 using Lexer;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Parser;
 
 /// <summary>

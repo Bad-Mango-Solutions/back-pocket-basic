@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using Interfaces;
+
 /// <summary>
 /// Layer system operations for the main memory bus.
 /// </summary>
@@ -277,13 +279,39 @@ public sealed partial class MainBus
                     int pageOffsetInMapping = pageIndex - mapping.GetStartPage(PageShift);
                     Addr physicalBase = mapping.PhysBase + (Addr)(pageOffsetInMapping * PageSize);
 
-                    effectiveEntry = new PageEntry(
+                    // Check if there's a swap group for this address range
+                    // If so, use the selected variant's target and physBase instead
+                    IBusTarget effectiveTarget = mapping.Target;
+                    Addr effectivePhysBase = physicalBase;
+                    PagePerms effectivePerms = mapping.Perms;
+
+                    lock (swapGroupLock)
+                    {
+                        foreach (var swapGroup in swapGroupsById.Values)
+                        {
+                            if (swapGroup.ContainsAddress(pageAddress) && swapGroup.ActiveVariantName is not null)
+                            {
+                                var variant = swapGroup.GetVariant(swapGroup.ActiveVariantName);
+                                effectiveTarget = variant.Target;
+
+                                // Calculate physical address within the variant
+                                int swapPageOffset = pageIndex - swapGroup.GetStartPage(PageShift);
+                                effectivePhysBase = variant.PhysBase + (Addr)(swapPageOffset * PageSize);
+
+                                // Use the layer's permissions (which may be updated via SetLayerPermissions)
+                                // but the swap group variant's target and physBase
+                                break;
+                            }
+                        }
+                    }
+
+                    effectiveEntry = new(
                         mapping.DeviceId,
                         mapping.RegionTag,
-                        mapping.Perms,
+                        effectivePerms,
                         mapping.Caps,
-                        mapping.Target,
-                        physicalBase);
+                        effectiveTarget,
+                        effectivePhysBase);
                 }
             }
         }

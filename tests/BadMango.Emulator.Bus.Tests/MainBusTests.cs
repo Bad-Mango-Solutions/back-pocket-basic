@@ -141,7 +141,7 @@ public class MainBusTests
         memory.AsSpan()[0x100] = 0x42;
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead);
         byte value = bus.Read8(access);
@@ -159,7 +159,7 @@ public class MainBusTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPoke, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPoke, target, 0));
 
         var access = CreateTestAccess(0x0200, AccessIntent.DataWrite);
         bus.Write8(access, 0x55);
@@ -211,10 +211,10 @@ public class MainBusTests
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestROM");
-        var target = new RomTarget(memory.ReadOnlySlice(0, PageSize));
+        var target = new RomTarget(memory.Slice(0, PageSize));
 
         // Map with no read permission (Write only)
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.Write, TargetCaps.None, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.Write, TargetCaps.None, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead);
         var result = bus.TryRead8(access);
@@ -234,10 +234,10 @@ public class MainBusTests
     {
         var bus = new MainBus();
         var memory = new PhysicalMemory(PageSize, "TestROM");
-        var target = new RomTarget(memory.ReadOnlySlice(0, PageSize));
+        var target = new RomTarget(memory.Slice(0, PageSize));
 
         // Map with read-only permission
-        bus.MapPage(0, new PageEntry(1, RegionTag.Rom, PagePerms.Read, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Rom, PagePerms.Read, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataWrite);
         var result = bus.TryWrite8(access, 0x42);
@@ -260,7 +260,7 @@ public class MainBusTests
         var target = new RamTarget(memory.Slice(0, PageSize));
 
         // Map with read/write but no execute
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Atomic);
         var result = bus.TryRead8(access);
@@ -284,7 +284,7 @@ public class MainBusTests
         var target = new RamTarget(memory.Slice(0, PageSize));
 
         // Map with read/write but no execute
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Decomposed);
         var result = bus.TryRead8(access);
@@ -308,7 +308,7 @@ public class MainBusTests
         memory.AsSpan()[0x101] = 0x12;  // High byte
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Decomposed, 16);
         Word value = bus.Read16(access);
@@ -328,7 +328,7 @@ public class MainBusTests
         memory.AsSpan()[0x101] = 0x56;  // High byte
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 16);
         Word value = bus.Read16(access);
@@ -368,7 +368,7 @@ public class MainBusTests
         memory.AsSpan()[0x101] = 0xBE;  // High byte
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 16, AccessFlags.Decompose);
         Word value = bus.Read16(access);
@@ -390,7 +390,7 @@ public class MainBusTests
         memory.AsSpan()[0x103] = 0x12;  // Byte 3
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead, BusAccessMode.Atomic, 32);
         DWord value = bus.Read32(access);
@@ -408,7 +408,7 @@ public class MainBusTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0200, AccessIntent.DataWrite, BusAccessMode.Atomic, 16);
         bus.Write16(access, 0xCAFE);
@@ -430,7 +430,7 @@ public class MainBusTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsWide, target, 0));
 
         var access = CreateTestAccess(0x0300, AccessIntent.DataWrite, BusAccessMode.Atomic, 32);
         bus.Write32(access, 0xDEADBEEFu);
@@ -455,7 +455,7 @@ public class MainBusTests
         var target = new RamTarget(memory.Slice(0, PageSize));
 
         // Only map page 0, leave page 1 unmapped
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         var access = CreateTestAccess(0x0FFF, AccessIntent.DataRead, BusAccessMode.Atomic, 16);
         var result = bus.TryRead16(access);
@@ -482,7 +482,7 @@ public class MainBusTests
         var target1 = new RamTarget(memory1.Slice(0, PageSize));
         var target2 = new RamTarget(memory2.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target1, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target1, 0));
 
         // Verify initial mapping
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead);
@@ -505,7 +505,7 @@ public class MainBusTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
 
         var newEntry = new PageEntry(2, RegionTag.Rom, PagePerms.ReadExecute, TargetCaps.SupportsWide, target, 0x100);
         bus.RemapPage(0, newEntry);
@@ -554,7 +554,7 @@ public class MainBusTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(5, new PageEntry(42, RegionTag.Stack, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.MapPage(5, new(42, RegionTag.Stack, PagePerms.ReadWrite, TargetCaps.None, target, 0));
 
         var entry = bus.GetPageEntryByIndex(5);
         Assert.Multiple(() =>
@@ -841,7 +841,7 @@ public class MainBusTests
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,

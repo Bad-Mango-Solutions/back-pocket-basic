@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Devices.Tests;
 
-using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
 using Moq;
@@ -24,9 +23,18 @@ public class SpeakerControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new SpeakerController();
-        dispatcher = new IOPageDispatcher();
+        controller = new();
+        dispatcher = new();
         controller.RegisterHandlers(dispatcher);
+    }
+
+    /// <summary>
+    /// Cleans up test fixtures after each test.
+    /// </summary>
+    [TearDown]
+    public void TearDown()
+    {
+        controller.Dispose();
     }
 
     /// <summary>
@@ -220,7 +228,7 @@ public class SpeakerControllerTests
 
     private static BusAccess CreateTestContext(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC030,
             Value: 0,
             WidthBits: 8,
@@ -234,7 +242,7 @@ public class SpeakerControllerTests
 
     private static BusAccess CreateTestContextWithNoSideEffects(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC030,
             Value: 0,
             WidthBits: 8,

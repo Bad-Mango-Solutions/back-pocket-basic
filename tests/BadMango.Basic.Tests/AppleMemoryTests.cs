@@ -26,8 +26,8 @@ public class AppleMemoryTests
     public void Setup()
     {
         var logger = new Mock<ILogger<AppleMemory>>();
-        speaker = new TestSpeaker();
-        memory = new AppleMemory(logger.Object);
+        speaker = new();
+        memory = new(logger.Object);
         memory.SetSpeaker(speaker);
     }
 

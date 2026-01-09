@@ -5,10 +5,8 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
+
 using TestHelpers;
-
-using Emulation.Cpu;
-
 
 /// <summary>
 /// Unit tests for CPU interrupt handling and halt state management.
@@ -16,17 +14,12 @@ using Emulation.Cpu;
 [TestFixture]
 public class InterruptAndHaltTests : CpuTestBase
 {
-    
-    
-
     /// <summary>
     /// Sets up the test environment by initializing memory and CPU.
     /// </summary>
     [SetUp]
     public void Setup()
     {
-        
-        
     }
 
     #region IRQ Tests
@@ -51,7 +44,6 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // Should process IRQ instead of executing NOP
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
         Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
 
@@ -82,7 +74,6 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // Should execute NOP normally
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
@@ -110,7 +101,6 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // Should process NMI even with I flag set
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
 
@@ -135,7 +125,6 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // Should process NMI, not IRQ
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
@@ -211,7 +200,6 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // Should resume and process NMI
 
         // Assert
-        
         Assert.That(Cpu.Halted, Is.False, "CPU should not be halted after NMI");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
     }
@@ -407,12 +395,11 @@ public class InterruptAndHaltTests : CpuTestBase
         // Deassert IRQ before executing RTI, simulating device acknowledgment
         // In a real system, the interrupt handler would read the device's status
         // register which clears the interrupt. For this test, we manually deassert.
-        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new Core.Cycle(Cpu.GetCycles()));
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
 
         Cpu.Step(); // Execute RTI
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
         Assert.That(Cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }

@@ -22,7 +22,7 @@ public class MachineProfileSerializerTests
     [SetUp]
     public void Setup()
     {
-        serializer = new MachineProfileSerializer();
+        serializer = new();
     }
 
     /// <summary>
@@ -228,54 +228,62 @@ public class MachineProfileSerializerTests
         var json = serializer.Serialize(original);
         var deserialized = serializer.Deserialize(json);
 
-        // Assert
-        Assert.That(deserialized.Slots, Is.Not.Null);
-        Assert.That(deserialized.Slots!.Enabled, Is.True);
-        Assert.That(deserialized.Slots.InternalC3Rom, Is.True);
-        Assert.That(deserialized.Slots.Cards, Is.Not.Null);
-        Assert.That(deserialized.Slots.Cards, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            // Assert
+            Assert.That(deserialized, Is.Not.Null);
+            Assert.That(deserialized.Devices, Is.Not.Null);
+            Assert.That(deserialized.Devices?.Slots, Is.Not.Null);
+            Assert.That(deserialized.Devices?.Slots?.Enabled, Is.True);
+            Assert.That(deserialized.Devices?.Slots?.InternalC3Rom, Is.True);
+            Assert.That(deserialized.Devices?.Slots?.Cards, Is.Not.Null);
+        });
+        Assert.That(deserialized.Devices.Slots.Cards, Has.Count.EqualTo(1));
 
-        var card = deserialized.Slots.Cards![0];
-        Assert.That(card.Slot, Is.EqualTo(4));
-        Assert.That(card.Type, Is.EqualTo("pocketwatch"));
+        var card = deserialized.Devices.Slots.Cards![0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(card?.Slot, Is.EqualTo(4));
+            Assert.That(card?.Type, Is.EqualTo("pocketwatch"));
+        });
     }
 
     /// <summary>
-    /// Tests serialization of ROM definitions.
+    /// Tests serialization of ROM image definitions.
     /// </summary>
     [Test]
-    public void Serialize_ProfileWithRoms_IncludesRomsSection()
+    public void Serialize_ProfileWithRomImages_IncludesRomImagesSection()
     {
         // Arrange
-        var profile = CreateProfileWithRoms();
+        var profile = CreateProfileWithRomImages();
 
         // Act
         var json = serializer.Serialize(profile);
 
         // Assert
-        Assert.That(json, Does.Contain("\"roms\""));
+        Assert.That(json, Does.Contain("\"rom-images\""));
         Assert.That(json, Does.Contain("\"system-rom\""));
         Assert.That(json, Does.Contain("\"on_verification_fail\""));
     }
 
     /// <summary>
-    /// Tests round-trip of ROM definitions with hash.
+    /// Tests round-trip of ROM image definitions with hash.
     /// </summary>
     [Test]
-    public void RoundTrip_ProfileWithRoms_PreservesRomConfiguration()
+    public void RoundTrip_ProfileWithRomImages_PreservesRomImageConfiguration()
     {
         // Arrange
-        var original = CreateProfileWithRoms();
+        var original = CreateProfileWithRomImages();
 
         // Act
         var json = serializer.Serialize(original);
         var deserialized = serializer.Deserialize(json);
 
         // Assert
-        Assert.That(deserialized.Roms, Is.Not.Null);
-        Assert.That(deserialized.Roms, Has.Count.EqualTo(1));
+        Assert.That(deserialized.Memory.RomImages, Is.Not.Null);
+        Assert.That(deserialized.Memory.RomImages, Has.Count.EqualTo(1));
 
-        var rom = deserialized.Roms![0];
+        var rom = deserialized.Memory.RomImages![0];
         Assert.That(rom.Name, Is.EqualTo("system-rom"));
         Assert.That(rom.Source, Is.EqualTo("library://roms/test.rom"));
         Assert.That(rom.Size, Is.EqualTo("0x4000"));
@@ -299,7 +307,7 @@ public class MachineProfileSerializerTests
 
         // Assert
         Assert.That(json, Does.Contain("\"devices\""));
-        Assert.That(json, Does.Contain("\"keyboard\""));
+        Assert.That(json, Does.Contain("\"motherboard\""));
         Assert.That(json, Does.Contain("\"speaker\""));
     }
 
@@ -318,12 +326,12 @@ public class MachineProfileSerializerTests
 
         // Assert
         Assert.That(deserialized.Devices, Is.Not.Null);
-        Assert.That(deserialized.Devices!.Keyboard, Is.Not.Null);
-        Assert.That(deserialized.Devices.Keyboard!.Preset, Is.EqualTo("enhanced"));
-        Assert.That(deserialized.Devices.Keyboard.AutoRepeat, Is.True);
-        Assert.That(deserialized.Devices.Speaker, Is.Not.Null);
-        Assert.That(deserialized.Devices.Speaker!.Enabled, Is.True);
-        Assert.That(deserialized.Devices.Speaker.SampleRate, Is.EqualTo(48000));
+        Assert.That(deserialized.Devices!.Motherboard, Is.Not.Null);
+        Assert.That(deserialized.Devices.Motherboard, Has.Count.EqualTo(2));
+
+        var speakerDevice = deserialized.Devices.Motherboard!.First(d => d.Type == "speaker");
+        Assert.That(speakerDevice.Enabled, Is.True);
+        Assert.That(speakerDevice.Name, Is.EqualTo("Speaker"));
     }
 
     /// <summary>
@@ -468,29 +476,81 @@ public class MachineProfileSerializerTests
             Throws.TypeOf<JsonException>());
     }
 
+    /// <summary>
+    /// Tests serialization of physical memory configuration.
+    /// </summary>
+    [Test]
+    public void Serialize_ProfileWithPhysicalMemory_IncludesPhysicalSection()
+    {
+        // Arrange
+        var profile = CreateProfileWithPhysicalMemory();
+
+        // Act
+        var json = serializer.Serialize(profile);
+
+        // Assert
+        Assert.That(json, Does.Contain("\"physical\""));
+        Assert.That(json, Does.Contain("\"main-ram-64k\""));
+        Assert.That(json, Does.Contain("\"fill\""));
+    }
+
+    /// <summary>
+    /// Tests round-trip of physical memory configuration.
+    /// </summary>
+    [Test]
+    public void RoundTrip_ProfileWithPhysicalMemory_PreservesPhysicalConfiguration()
+    {
+        // Arrange
+        var original = CreateProfileWithPhysicalMemory();
+
+        // Act
+        var json = serializer.Serialize(original);
+        var deserialized = serializer.Deserialize(json);
+
+        // Assert
+        Assert.That(deserialized.Memory.Physical, Is.Not.Null);
+        Assert.That(deserialized.Memory.Physical, Has.Count.EqualTo(1));
+
+        var physical = deserialized.Memory.Physical![0];
+        Assert.That(physical.Name, Is.EqualTo("main-ram-64k"));
+        Assert.That(physical.Size, Is.EqualTo("0x10000"));
+        Assert.That(physical.Fill, Is.EqualTo("0x00"));
+    }
+
     private static MachineProfile CreateMinimalProfile()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-profile",
             DisplayName = "Test Profile",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = "65C02",
                 ClockSpeed = 1000000,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
+                Physical =
+                [
+                    new()
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
                         Start = "0x0000",
                         Size = "0x10000",
                         Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
                     },
                 ],
             },
@@ -502,7 +562,7 @@ public class MachineProfileSerializerTests
         var profile = CreateMinimalProfile();
         profile.Memory.SwapGroups =
         [
-            new SwapGroupProfile
+            new()
             {
                 Name = "language-card-d000",
                 Controller = "language-card-controller",
@@ -511,13 +571,13 @@ public class MachineProfileSerializerTests
                 Comment = "Bank switching test",
                 Variants =
                 [
-                    new SwapVariantProfile
+                    new()
                     {
                         Name = "rom",
                         Type = "rom",
                         Permissions = "rx",
                     },
-                    new SwapVariantProfile
+                    new()
                     {
                         Name = "ram",
                         Type = "ram",
@@ -535,7 +595,7 @@ public class MachineProfileSerializerTests
         var profile = CreateMinimalProfile();
         profile.Memory.Controllers =
         [
-            new MemoryControllerProfile
+            new()
             {
                 Name = "aux-memory",
                 Type = "pocket2e-aux-controller",
@@ -549,37 +609,40 @@ public class MachineProfileSerializerTests
     private static MachineProfile CreateProfileWithSlots()
     {
         var profile = CreateMinimalProfile();
-        profile.Slots = new SlotSystemProfile
+        profile.Devices = new()
         {
-            Enabled = true,
-            InternalC3Rom = true,
-            InternalCxRom = false,
-            Cards =
-            [
-                new SlotCardProfile
-                {
-                    Slot = 4,
-                    Type = "pocketwatch",
-                    Config = JsonDocument.Parse("{\"timeSource\":\"host\"}").RootElement,
-                },
-            ],
+            Slots = new()
+            {
+                Enabled = true,
+                InternalC3Rom = true,
+                InternalCxRom = false,
+                Cards =
+                [
+                    new()
+                    {
+                        Slot = 4,
+                        Type = "pocketwatch",
+                        Config = JsonDocument.Parse("{\"timeSource\":\"host\"}").RootElement,
+                    },
+                ],
+            },
         };
         return profile;
     }
 
-    private static MachineProfile CreateProfileWithRoms()
+    private static MachineProfile CreateProfileWithRomImages()
     {
         var profile = CreateMinimalProfile();
-        profile.Roms =
+        profile.Memory.RomImages =
         [
-            new RomProfile
+            new()
             {
                 Name = "system-rom",
                 Source = "library://roms/test.rom",
                 Size = "0x4000",
                 Required = true,
                 OnVerificationFail = "fallback",
-                Hash = new RomHashProfile
+                Hash = new()
                 {
                     Sha256 = "test-hash",
                 },
@@ -591,28 +654,25 @@ public class MachineProfileSerializerTests
     private static MachineProfile CreateProfileWithDevices()
     {
         var profile = CreateMinimalProfile();
-        profile.Devices = new DevicesProfile
+        profile.Devices = new()
         {
-            Keyboard = new KeyboardDeviceProfile
-            {
-                Preset = "enhanced",
-                AutoRepeat = true,
-            },
-            Speaker = new SpeakerDeviceProfile
-            {
-                Enabled = true,
-                SampleRate = 48000,
-            },
-            Video = new VideoDeviceProfile
-            {
-                Preset = "enhanced",
-                ColorMode = "ntsc",
-            },
-            GameIO = new GameIODeviceProfile
-            {
-                Enabled = true,
-                JoystickDeadzone = 0.1,
-            },
+            Motherboard =
+            [
+                new()
+                {
+                    Type = "keyboard",
+                    Name = "Keyboard",
+                    Enabled = true,
+                    Config = JsonDocument.Parse("{\"preset\":\"enhanced\",\"autoRepeat\":true}").RootElement,
+                },
+                new()
+                {
+                    Type = "speaker",
+                    Name = "Speaker",
+                    Enabled = true,
+                    Config = JsonDocument.Parse("{\"sampleRate\":48000}").RootElement,
+                },
+            ],
         };
         return profile;
     }
@@ -620,7 +680,7 @@ public class MachineProfileSerializerTests
     private static MachineProfile CreateProfileWithBoot()
     {
         var profile = CreateMinimalProfile();
-        profile.Boot = new BootProfile
+        profile.Boot = new()
         {
             AutoStart = true,
             StartupSlot = 6,
@@ -631,7 +691,7 @@ public class MachineProfileSerializerTests
     private static MachineProfile CreateProfileWithCompositeRegion()
     {
         var profile = CreateMinimalProfile();
-        profile.Memory.Regions!.Add(new MemoryRegionProfile
+        profile.Memory.Regions!.Add(new()
         {
             Name = "io-page",
             Type = "composite",
@@ -642,34 +702,116 @@ public class MachineProfileSerializerTests
         return profile;
     }
 
+    private static MachineProfile CreateProfileWithPhysicalMemory()
+    {
+        return new()
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Cpu = new()
+            {
+                Type = "65C02",
+                ClockSpeed = 1000000,
+            },
+            AddressSpace = 16,
+            Memory = new()
+            {
+                Physical =
+                [
+                    new()
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
+                    },
+                ],
+            },
+        };
+    }
+
     private static MachineProfile CreateFullPocket2eProfile()
     {
-        return new MachineProfile
+        return new()
         {
             Schema = "../schemas/machine-profile.schema.json",
             Name = "pocket2e",
             DisplayName = "Pocket2e",
             Description = "Test Pocket2e configuration",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = "65C02",
                 ClockSpeed = 1020484,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
+                RomImages =
+                [
+                    new()
+                    {
+                        Name = "system-rom",
+                        Source = "library://roms/pocket2e-system.rom",
+                        Size = "0x4000",
+                        Required = true,
+                        OnVerificationFail = "fallback",
+                    },
+                ],
+                Physical =
+                [
+                    new()
+                    {
+                        Name = "main-ram-48k",
+                        Size = "0xC000",
+                        Fill = "0x00",
+                    },
+                    new()
+                    {
+                        Name = "system-rom-16k",
+                        Size = "0x4000",
+                        Sources =
+                        [
+                            new()
+                            {
+                                Type = "rom-image",
+                                Name = "system-rom",
+                                RomImage = "system-rom",
+                                Offset = "0x0000",
+                            },
+                        ],
+                    },
+                    new()
+                    {
+                        Name = "language-card-d000-bank1",
+                        Size = "0x1000",
+                        Fill = "0x00",
+                    },
+                ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
                         Start = "0x0000",
                         Size = "0xC000",
                         Permissions = "rwx",
-                        Fill = "0x00",
+                        Source = "main-ram-48k",
+                        SourceOffset = "0x0000",
                     },
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "io-page",
                         Type = "composite",
@@ -680,7 +822,7 @@ public class MachineProfileSerializerTests
                 ],
                 SwapGroups =
                 [
-                    new SwapGroupProfile
+                    new()
                     {
                         Name = "language-card-d000",
                         Controller = "language-card-controller",
@@ -688,18 +830,20 @@ public class MachineProfileSerializerTests
                         Size = "0x1000",
                         Variants =
                         [
-                            new SwapVariantProfile
+                            new()
                             {
                                 Name = "rom",
                                 Type = "rom",
-                                SourceRef = "system-rom",
+                                Source = "system-rom-16k",
                                 SourceOffset = "0x1000",
                                 Permissions = "rx",
                             },
-                            new SwapVariantProfile
+                            new()
                             {
                                 Name = "bank1",
                                 Type = "ram",
+                                Source = "language-card-d000-bank1",
+                                SourceOffset = "0x0000",
                                 Permissions = "rwx",
                             },
                         ],
@@ -708,7 +852,7 @@ public class MachineProfileSerializerTests
                 ],
                 Controllers =
                 [
-                    new MemoryControllerProfile
+                    new()
                     {
                         Name = "aux-memory",
                         Type = "pocket2e-aux-controller",
@@ -716,45 +860,42 @@ public class MachineProfileSerializerTests
                     },
                 ],
             },
-            Slots = new SlotSystemProfile
+            Devices = new()
             {
-                Enabled = true,
-                InternalC3Rom = true,
-                InternalCxRom = false,
-                Cards =
+                Motherboard =
                 [
-                    new SlotCardProfile
+                    new()
                     {
-                        Slot = 4,
-                        Type = "pocketwatch",
+                        Type = "keyboard",
+                        Name = "Keyboard",
+                        Enabled = true,
+                        Config = JsonDocument.Parse("{\"preset\":\"enhanced\",\"autoRepeat\":true}").RootElement,
+                    },
+                    new()
+                    {
+                        Type = "speaker",
+                        Name = "Speaker",
+                        Enabled = true,
+                        Config = JsonDocument.Parse("{\"sampleRate\":48000}").RootElement,
                     },
                 ],
-            },
-            Roms =
-            [
-                new RomProfile
+                Slots = new()
                 {
-                    Name = "system-rom",
-                    Source = "library://roms/pocket2e-system.rom",
-                    Size = "0x4000",
-                    Required = true,
-                    OnVerificationFail = "fallback",
-                },
-            ],
-            Devices = new DevicesProfile
-            {
-                Keyboard = new KeyboardDeviceProfile
-                {
-                    Preset = "enhanced",
-                    AutoRepeat = true,
-                },
-                Speaker = new SpeakerDeviceProfile
-                {
+                    IoRegion = "io-page",
                     Enabled = true,
-                    SampleRate = 48000,
+                    InternalC3Rom = true,
+                    InternalCxRom = false,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 4,
+                            Type = "pocketwatch",
+                        },
+                    ],
                 },
             },
-            Boot = new BootProfile
+            Boot = new()
             {
                 AutoStart = true,
                 StartupSlot = 6,

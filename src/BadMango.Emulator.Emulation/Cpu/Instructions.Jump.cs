@@ -9,7 +9,6 @@ using System.Runtime.CompilerServices;
 
 using Core;
 using Core.Cpu;
-using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Jump and subroutine instructions (JMP, JSR, RTS, RTI).

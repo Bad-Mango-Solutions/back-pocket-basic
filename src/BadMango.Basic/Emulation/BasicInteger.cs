@@ -106,7 +106,7 @@ public readonly struct BasicInteger : IEquatable<BasicInteger>
             throw new OverflowException($"Value {value} is outside the valid BasicInteger range ({MinValue} to {MaxValue}).");
         }
 
-        return new BasicInteger((short)value);
+        return new((short)value);
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ public readonly struct BasicInteger : IEquatable<BasicInteger>
             throw new OverflowException($"Value {value} is outside the valid BasicInteger range ({MinValue} to {MaxValue}).");
         }
 
-        return new BasicInteger((short)value);
+        return new((short)value);
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public readonly struct BasicInteger : IEquatable<BasicInteger>
             throw new OverflowException($"Value {value} (truncated to {truncated}) is outside the valid BasicInteger range.");
         }
 
-        return new BasicInteger((short)truncated);
+        return new((short)truncated);
     }
 
     /// <summary>
@@ -210,7 +210,7 @@ public readonly struct BasicInteger : IEquatable<BasicInteger>
 
         // Little-endian: low byte first
         short value = (short)(bytes[0] | (bytes[1] << 8));
-        return new BasicInteger(value);
+        return new(value);
     }
 
     /// <summary>

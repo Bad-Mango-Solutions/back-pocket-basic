@@ -87,7 +87,7 @@ public partial class GeneralSettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            General = new GeneralSettings
+            General = new()
             {
                 LoadLastProfile = LoadLastProfile,
                 StartPaused = StartPaused,

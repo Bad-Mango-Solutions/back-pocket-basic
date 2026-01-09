@@ -6,6 +6,7 @@
 
 global using BadMango.Emulator.Bus;
 global using BadMango.Emulator.Core.Signaling;
+
 global using NUnit.Framework;
 
 // Global type aliases matching the Bus project

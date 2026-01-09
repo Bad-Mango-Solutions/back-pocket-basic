@@ -33,7 +33,7 @@ public class PathValidator : IPathValidator
         // Check for empty path
         if (string.IsNullOrWhiteSpace(normalizedPath))
         {
-            return new PathValidationResult
+            return new()
             {
                 IsValid = false,
                 ErrorMessage = "Path cannot be empty.",
@@ -47,7 +47,7 @@ public class PathValidator : IPathValidator
         }
         catch (ArgumentException ex)
         {
-            return new PathValidationResult
+            return new()
             {
                 IsValid = false,
                 ErrorMessage = $"Path contains invalid characters: {ex.Message}",
@@ -55,7 +55,7 @@ public class PathValidator : IPathValidator
         }
         catch (NotSupportedException ex)
         {
-            return new PathValidationResult
+            return new()
             {
                 IsValid = false,
                 ErrorMessage = $"Path format is not supported: {ex.Message}",
@@ -103,7 +103,7 @@ public class PathValidator : IPathValidator
 
         logger?.LogDebug("Path validation completed for {Path} ({Purpose}): valid with {WarningCount} warnings", path, purpose, warnings.Count);
 
-        return new PathValidationResult
+        return new()
         {
             IsValid = true,
             NormalizedPath = normalizedPath,

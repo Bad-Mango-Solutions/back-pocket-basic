@@ -17,10 +17,10 @@ public class DeviceInfoTests
     public void DeviceInfo_CanBeCreatedWithProperties()
     {
         var info = new DeviceInfo(
-            Id: 42,
-            Kind: "SlotCard",
-            Name: "Disk II Controller",
-            WiringPath: "main/slots/6/disk2");
+            id: 42,
+            kind: "SlotCard",
+            name: "Disk II Controller",
+            wiringPath: "main/slots/6/disk2");
 
         Assert.Multiple(() =>
         {

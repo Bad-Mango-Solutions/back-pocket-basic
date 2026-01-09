@@ -1,4 +1,4 @@
-// <copyright file="Pocket2eIOPageTests.cs" company="Bad Mango Solutions">
+// <copyright file="CompositeIOTargetTests.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -9,17 +9,17 @@ using Interfaces;
 using Moq;
 
 /// <summary>
-/// Unit tests for the <see cref="Pocket2eIOPage"/> class.
+/// Unit tests for the <see cref="CompositeIOTarget"/> class.
 /// </summary>
 [TestFixture]
-public class Pocket2eIOPageTests
+public class CompositeIOTargetTests
 {
     private const int PageSize = 4096;
     private const byte FloatingBusValue = 0xFF;
 
     private IOPageDispatcher softSwitches = null!;
     private Mock<ISlotManager> mockSlotManager = null!;
-    private Pocket2eIOPage ioPage = null!;
+    private CompositeIOTarget ioPage = null!;
 
     /// <summary>
     /// Sets up the test fixture before each test.
@@ -27,12 +27,22 @@ public class Pocket2eIOPageTests
     [SetUp]
     public void SetUp()
     {
-        softSwitches = new IOPageDispatcher();
-        mockSlotManager = new Mock<ISlotManager>(MockBehavior.Strict);
-        ioPage = new Pocket2eIOPage(softSwitches, mockSlotManager.Object);
+        softSwitches = new();
+        mockSlotManager = new(MockBehavior.Strict);
+        ioPage = new("Test I/O Page", softSwitches, mockSlotManager.Object);
     }
 
     #region Constructor Tests
+
+    /// <summary>
+    /// Verifies that the constructor throws ArgumentNullException when name is null.
+    /// </summary>
+    [Test]
+    public void Constructor_NullName_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CompositeIOTarget(null!, softSwitches, mockSlotManager.Object));
+    }
 
     /// <summary>
     /// Verifies that the constructor throws ArgumentNullException when softSwitches is null.
@@ -41,7 +51,7 @@ public class Pocket2eIOPageTests
     public void Constructor_NullSoftSwitches_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new Pocket2eIOPage(null!, mockSlotManager.Object));
+            new CompositeIOTarget("Test", null!, mockSlotManager.Object));
     }
 
     /// <summary>
@@ -51,7 +61,7 @@ public class Pocket2eIOPageTests
     public void Constructor_NullSlotManager_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new Pocket2eIOPage(softSwitches, null!));
+            new CompositeIOTarget("Test", softSwitches, null!));
     }
 
     #endregion
@@ -64,11 +74,11 @@ public class Pocket2eIOPageTests
     [Test]
     public void Name_ReturnsExpectedValue()
     {
-        Assert.That(ioPage.Name, Is.EqualTo("Pocket2e I/O Page"));
+        Assert.That(ioPage.Name, Is.EqualTo("Test I/O Page"));
     }
 
     /// <summary>
-    /// Verifies that Capabilities includes HasSideEffects and TimingSensitive.
+    /// Verifies that Capabilities includes HasSideEffects, TimingSensitive, and base class capabilities.
     /// </summary>
     [Test]
     public void Capabilities_IncludesExpectedFlags()
@@ -77,15 +87,17 @@ public class Pocket2eIOPageTests
         {
             Assert.That(ioPage.Capabilities.HasFlag(TargetCaps.HasSideEffects), Is.True);
             Assert.That(ioPage.Capabilities.HasFlag(TargetCaps.TimingSensitive), Is.True);
+            Assert.That(ioPage.Capabilities.HasFlag(TargetCaps.SupportsPeek), Is.True, "Should include base class SupportsPeek");
+            Assert.That(ioPage.Capabilities.HasFlag(TargetCaps.SupportsPoke), Is.True, "Should include base class SupportsPoke");
         });
     }
 
     #endregion
 
-    #region Soft Switch Region Tests ($C000-$C0FF)
+    #region Soft Switch Region Tests ($x000-$x0FF)
 
     /// <summary>
-    /// Verifies that Read8 dispatches to soft switches for $C000-$C0FF.
+    /// Verifies that Read8 dispatches to soft switches for $x000-$x0FF.
     /// </summary>
     [Test]
     public void Read8_SoftSwitchRegion_DispatchesToIOPageDispatcher()
@@ -99,7 +111,7 @@ public class Pocket2eIOPageTests
     }
 
     /// <summary>
-    /// Verifies that Write8 dispatches to soft switches for $C000-$C0FF.
+    /// Verifies that Write8 dispatches to soft switches for $x000-$x0FF.
     /// </summary>
     [Test]
     public void Write8_SoftSwitchRegion_DispatchesToIOPageDispatcher()
@@ -128,7 +140,7 @@ public class Pocket2eIOPageTests
 
     #endregion
 
-    #region Slot ROM Region Tests ($C100-$C7FF)
+    #region Slot ROM Region Tests ($x100-$x7FF)
 
     /// <summary>
     /// Verifies that Read8 triggers expansion ROM selection for slot 6.
@@ -218,10 +230,10 @@ public class Pocket2eIOPageTests
 
     #endregion
 
-    #region Expansion ROM Region Tests ($C800-$CFFF)
+    #region Expansion ROM Region Tests ($x800-$xFFF)
 
     /// <summary>
-    /// Verifies that Read8 from $CFFF triggers expansion ROM deselection.
+    /// Verifies that Read8 from $xFFF triggers expansion ROM deselection.
     /// </summary>
     [Test]
     public void Read8_CFFF_DeselectsExpansionRom()
@@ -235,7 +247,7 @@ public class Pocket2eIOPageTests
     }
 
     /// <summary>
-    /// Verifies that Read8 from $CFFF returns floating bus.
+    /// Verifies that Read8 from $xFFF returns floating bus.
     /// </summary>
     [Test]
     public void Read8_CFFF_ReturnsFloatingBus()
@@ -249,7 +261,7 @@ public class Pocket2eIOPageTests
     }
 
     /// <summary>
-    /// Verifies that Write8 to $CFFF triggers expansion ROM deselection.
+    /// Verifies that Write8 to $xFFF triggers expansion ROM deselection.
     /// </summary>
     [Test]
     public void Write8_CFFF_DeselectsExpansionRom()
@@ -558,9 +570,9 @@ public class Pocket2eIOPageTests
     /// </summary>
     /// <remarks>
     /// The soft switch region (offsets 0-0xFF) is handled directly by the
-    /// Pocket2eIOPage's Read8/Write8 methods via the IOPageDispatcher.
+    /// CompositeIOTarget's Read8/Write8 methods via the IOPageDispatcher.
     /// ResolveTarget returns <c>this</c> so the bus calls Read8/Write8 on
-    /// the Pocket2eIOPage, which then dispatches to the appropriate handler.
+    /// the CompositeIOTarget, which then dispatches to the appropriate handler.
     /// </remarks>
     [Test]
     public void ResolveTarget_SoftSwitchRegion_ReturnsSelf()
@@ -617,10 +629,10 @@ public class Pocket2eIOPageTests
     }
 
     /// <summary>
-    /// Verifies ResolveTarget returns null for $CFFF.
+    /// Verifies ResolveTarget returns null for $xFFF.
     /// </summary>
     [Test]
-    public void ResolveTarget_CFFF_ReturnsNull()
+    public void ResolveTarget_xFFF_ReturnsNull()
     {
         IBusTarget? target = ioPage.ResolveTarget(0xFFF, AccessIntent.DataRead);
         Assert.That(target, Is.Null);
@@ -649,7 +661,7 @@ public class Pocket2eIOPageTests
     /// </summary>
     private static BusAccess CreateTestAccess(Addr address, AccessIntent intent)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: 8,

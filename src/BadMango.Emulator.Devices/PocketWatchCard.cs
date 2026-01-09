@@ -28,6 +28,7 @@ using Interfaces;
 /// </list>
 /// </para>
 /// </remarks>
+[DeviceType("pocketwatch")]
 public sealed class PocketWatchCard : IClockDevice
 {
     /// <summary>
@@ -38,19 +39,19 @@ public sealed class PocketWatchCard : IClockDevice
     private readonly SlotIOHandlers handlers = new();
     private readonly IBusTarget romRegion;
     private readonly PocketWatchConfig config;
+    private readonly byte[] timeData = new byte[8];
     private DateTime fixedTime;
     private bool useHostTime = true;
     private int timezoneOffsetMinutes;
 
-    // Thunderclock state
+    // Watch state
     private int readIndex;
-    private readonly byte[] timeData = new byte[8];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PocketWatchCard"/> class with default configuration.
     /// </summary>
     public PocketWatchCard()
-        : this(new PocketWatchConfig())
+        : this(new())
     {
     }
 

@@ -217,8 +217,8 @@ public class BuiltInCommandsTests
 
     private static CommandContext CreateTestContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
     {
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
-        return new CommandContext(dispatcher, outputWriter, errorWriter);
+        outputWriter = new();
+        errorWriter = new();
+        return new(dispatcher, outputWriter, errorWriter);
     }
 }

@@ -65,7 +65,7 @@ public partial class LibrarySettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            Library = new LibrarySettings
+            Library = new()
             {
                 LibraryRoot = LibraryRoot,
                 DiskImagesPath = DiskImagesPath,

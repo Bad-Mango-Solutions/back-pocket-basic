@@ -5,7 +5,9 @@
 namespace BadMango.Basic.Tests;
 
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Runtime;
 
 /// <summary>
@@ -56,6 +58,6 @@ public class VariableManagerTests
     private static VariableManager CreateManager()
     {
         var logger = new Mock<ILogger<VariableManager>>();
-        return new VariableManager(logger.Object);
+        return new(logger.Object);
     }
 }

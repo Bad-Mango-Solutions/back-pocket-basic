@@ -230,9 +230,9 @@ public class DebugReplTests
 
     private static DebugContext CreateTestDebugContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)
     {
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
-        return new DebugContext(dispatcher, outputWriter, errorWriter);
+        outputWriter = new();
+        errorWriter = new();
+        return new(dispatcher, outputWriter, errorWriter);
     }
 
     private sealed class TestCommand : CommandHandlerBase

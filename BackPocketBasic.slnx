@@ -32,6 +32,11 @@
     <File Path="SETUP_GUIDE.md" />
   </Folder>
   <Folder Name="/profiles/">
+    <File Path="profiles/pocket2e-devices.json" />
+    <File Path="profiles/pocket2e-lite.json" />
+    <File Path="profiles/pocket2e-min.json" />
+    <File Path="profiles/pocket2e.json" />
+    <File Path="profiles/simple-65c02-with-rom.json" />
     <File Path="profiles/simple-65c02.json" />
   </Folder>
   <Folder Name="/reference/">
@@ -48,7 +53,9 @@
     <File Path="samples/sleep.bas" />
     <File Path="samples/speaker.bas" />
   </Folder>
-  <Folder Name="/schemas/" />
+  <Folder Name="/schemas/">
+    <File Path="schemas/machine-profile.schema.json" />
+  </Folder>
   <Folder Name="/specs/">
     <File Path="specs/Architecture Spec v1.0 Appendix.md" />
     <File Path="specs/Architecture Spec v1.0 Part 1.md" />
@@ -66,6 +73,7 @@
     <File Path="specs/Apple Desktop Bus Specification.md" />
     <File Path="specs/Apple II 80-Column Card Specification.md" />
     <File Path="specs/Apple II Ethernet Networking Specification.md" />
+    <File Path="specs/Apple II Language Card Technical Reference and Memory Mapping Analysis.md" />
     <File Path="specs/Apple II Monitor ROM Reference.md" />
     <File Path="specs/Apple II Printing Specification.md" />
     <File Path="specs/Apple II Serial Communications Specification.md" />

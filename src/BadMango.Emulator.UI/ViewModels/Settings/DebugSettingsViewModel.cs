@@ -78,7 +78,7 @@ public partial class DebugSettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            Debug = new DebugSettings
+            Debug = new()
             {
                 AutoAttachDebugger = AutoAttachDebugger,
                 BreakOnReset = BreakOnReset,

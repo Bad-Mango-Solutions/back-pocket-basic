@@ -10,6 +10,7 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces;
 using BadMango.Emulator.Core.Interfaces.Cpu;
+using BadMango.Emulator.Devices;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
 
@@ -30,28 +31,55 @@ public static class MachineFactory
         MachineProfile profile,
         ProfilePathResolver? pathResolver = null)
     {
+        var (machine, disassembler, info) = CreateDebugSystem(profile, pathResolver);
+        return (machine.Cpu, machine.Bus, disassembler, info);
+    }
+
+    /// <summary>
+    /// Creates a complete debug system from a machine profile, including the full machine instance.
+    /// </summary>
+    /// <param name="profile">The machine profile to instantiate.</param>
+    /// <param name="pathResolver">Optional path resolver for loading ROM files. If null, a default resolver is used.</param>
+    /// <returns>A tuple containing the machine, disassembler, and machine info.</returns>
+    /// <exception cref="NotSupportedException">Thrown when the CPU type is not supported.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the memory configuration is invalid.</exception>
+    public static (IMachine Machine, IDisassembler Disassembler, MachineInfo Info) CreateDebugSystem(
+        MachineProfile profile,
+        ProfilePathResolver? pathResolver = null)
+    {
         ArgumentNullException.ThrowIfNull(profile);
 
-        pathResolver ??= new ProfilePathResolver(null);
+        pathResolver ??= new(null);
 
-        // Use MachineBuilder.FromProfile to create the machine
-        var machine = new MachineBuilder()
+        // Build the machine using FromProfile as the primary configuration source
+        var builder = new MachineBuilder();
+
+        // Register composite handler factories for handlers used by the profile.
+        // These only register factories - they don't create components or memory layouts.
+        // The actual components are created on-demand when FromProfile processes the regions.
+        if (RequiresCompositeIOHandler(profile))
+        {
+            builder.RegisterCompositeIOHandler();
+        }
+
+        // Register standard motherboard device factories for profile-based device loading.
+        // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        builder.RegisterStandardDeviceFactories();
+
+        var machine = builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
 
-        var cpu = machine.Cpu;
-        var bus = machine.Bus;
-
         // Create opcode table and disassembler
         var opcodeTable = GetOpcodeTable(profile.Cpu);
-        var disassembler = new Disassembler(opcodeTable, bus);
+        var disassembler = new Disassembler(opcodeTable, machine.Bus);
         var info = MachineInfo.FromProfile(profile);
 
         // Reset the CPU to initialize it
-        cpu.Reset();
+        machine.Reset();
 
-        return (cpu, bus, disassembler, info);
+        return (machine, disassembler, info);
     }
 
     /// <summary>
@@ -68,12 +96,44 @@ public static class MachineFactory
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        pathResolver ??= new ProfilePathResolver(null);
+        pathResolver ??= new(null);
 
-        return new MachineBuilder()
+        // Build the machine using FromProfile as the primary configuration source
+        var builder = new MachineBuilder();
+
+        // Register composite handler factories for handlers used by the profile.
+        // These only register factories - they don't create components or memory layouts.
+        // The actual components are created on-demand when FromProfile processes the regions.
+        if (RequiresCompositeIOHandler(profile))
+        {
+            builder.RegisterCompositeIOHandler();
+        }
+
+        // Register standard motherboard device factories for profile-based device loading.
+        // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        builder.RegisterStandardDeviceFactories();
+
+        return builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
+    }
+
+    /// <summary>
+    /// Determines if a profile uses the composite-io handler.
+    /// </summary>
+    /// <param name="profile">The profile to check.</param>
+    /// <returns>True if the profile uses composite-io handler; otherwise, false.</returns>
+    private static bool RequiresCompositeIOHandler(MachineProfile profile)
+    {
+        if (profile.Memory?.Regions is null)
+        {
+            return false;
+        }
+
+        return profile.Memory.Regions.Any(region =>
+            string.Equals(region.Type, "composite", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(region.Handler, "composite-io", StringComparison.OrdinalIgnoreCase));
     }
 
     private static Func<IEventContext, ICpu> CreateCpuFactory(CpuProfileSection cpuConfig)

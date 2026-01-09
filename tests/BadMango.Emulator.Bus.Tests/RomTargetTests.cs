@@ -18,7 +18,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0xEA, 0x00, 0xFF };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 3));
+        var rom = new RomTarget(physicalMemory.Slice(0, 3));
 
         Assert.That(rom.Size, Is.EqualTo(3));
     }
@@ -42,7 +42,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x00 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 1));
+        var rom = new RomTarget(physicalMemory.Slice(0, 1));
 
         Assert.Multiple(() =>
         {
@@ -61,7 +61,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 4));
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         Assert.Multiple(() =>
@@ -81,7 +81,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0xAA, 0xBB };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
         var access = CreateDefaultAccess();
 
         rom.Write8(0, 0xFF, in access);
@@ -97,7 +97,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x11, 0x22 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
         var access = CreateDefaultAccess();
 
         Assert.That(rom.Read8(0, in access), Is.EqualTo(0x11));
@@ -111,7 +111,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
         var access = CreateDefaultAccess();
 
         ushort value = rom.Read16(0, in access);
@@ -127,7 +127,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
+        var rom = new RomTarget(physicalMemory.Slice(0, 2));
         var access = CreateDefaultAccess();
 
         rom.Write16(0, 0xFFFF, in access);
@@ -143,7 +143,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x78, 0x56, 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 4));
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         uint value = rom.Read32(0, in access);
@@ -159,7 +159,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x78, 0x56, 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 4));
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         rom.Write32(0, 0xDEADBEEFu, in access);
@@ -181,7 +181,7 @@ public class RomTargetTests
         }
 
         var physicalMemory = new PhysicalMemory(data, "Apple II ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, (uint)data.Length));
+        var rom = new RomTarget(physicalMemory.Slice(0, (uint)data.Length));
         var access = CreateDefaultAccess();
 
         Assert.Multiple(() =>
@@ -201,7 +201,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x00, 0x00, 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 4));
+        var rom = new RomTarget(physicalMemory.Slice(0, 4));
         var access = CreateDefaultAccess();
 
         ushort value = rom.Read16(2, in access);
@@ -217,7 +217,7 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x00, 0x00, 0x78, 0x56, 0x34, 0x12 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 6));
+        var rom = new RomTarget(physicalMemory.Slice(0, 6));
         var access = CreateDefaultAccess();
 
         uint value = rom.Read32(2, in access);
@@ -233,8 +233,8 @@ public class RomTargetTests
     {
         var data = new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
         var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom1 = new RomTarget(physicalMemory.ReadOnlySlice(0, 4));
-        var rom2 = new RomTarget(physicalMemory.ReadOnlySlice(2, 4)); // Overlaps with rom1
+        var rom1 = new RomTarget(physicalMemory.Slice(0, 4));
+        var rom2 = new RomTarget(physicalMemory.Slice(2, 4)); // Overlaps with rom1
         var access = CreateDefaultAccess();
 
         // Both should see the same data at overlapping region
@@ -290,23 +290,6 @@ public class RomTargetTests
         rom.Write8(0, 0xFF, in normalAccess);
 
         Assert.That(rom.Read8(0, in readAccess), Is.EqualTo(0xAA), "ROM should not be modified by normal writes");
-    }
-
-    /// <summary>
-    /// Verifies that debug Write8 does not modify ROM when using ReadOnlyMemory slice.
-    /// </summary>
-    [Test]
-    public void RomTarget_DebugWrite8_IsIgnored_WhenReadOnlySlice()
-    {
-        var data = new byte[] { 0xAA, 0xBB };
-        var physicalMemory = new PhysicalMemory(data, "Test ROM");
-        var rom = new RomTarget(physicalMemory.ReadOnlySlice(0, 2));
-        var debugAccess = CreateDebugWriteAccess();
-        var readAccess = CreateDefaultAccess();
-
-        rom.Write8(0, 0xFF, in debugAccess);
-
-        Assert.That(rom.Read8(0, in readAccess), Is.EqualTo(0xAA), "ROM created with ReadOnlyMemory cannot be modified even by debug writes");
     }
 
     /// <summary>

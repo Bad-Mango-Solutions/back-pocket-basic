@@ -1,0 +1,98 @@
+{
+    "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
+    "name": "pocket2e-min",
+    "displayName": "Pocket2e Min",
+    "description": "Pocket2e Min system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, and ROM. Does not include slot cards or any other devices.",
+
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1020484
+    },
+
+    "addressSpace": 16,
+
+    "memory": {
+        "rom-images": [
+            {
+                "name": "monitor",
+                "source": "library://roms/monitor.rom",
+                "size": "0x0800",
+                "required": true,
+                "on_verification_fail": "fallback"
+            },
+            {
+                "name": "basic",
+                "source": "library://roms/basic.rom",
+                "size": "0x2800",
+                "required": true,
+                "on_verification_fail": "fallback"
+            }
+        ],
+        "physical": [
+            {
+                "name": "main-ram-48k",
+                "size": "0xC000",
+                "fill": "0x00"
+            },
+            {
+                "name": "system-rom-12k",
+                "size": "0x3000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "basic",
+                        "rom-image": "basic",
+                        "offset": "0x0000"
+                    },
+                    {
+                        "type": "rom-image",
+                        "name": "monitor",
+                        "rom-image": "monitor",
+                        "offset": "0x2800"
+                    }
+                ]
+            }
+        ],
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "source": "main-ram-48k",
+                "source-offset": "0x0000"
+            },
+            {
+                "name": "io-region",
+                "type": "composite",
+                "start": "0xC000",
+                "size": "0x1000",
+                "handler": "composite-io"
+            },
+            {
+                "name": "system-rom",
+                "type": "rom",
+                "start": "0xD000",
+                "size": "0x3000",
+                "permissions": "rx",
+                "source": "system-rom-12k",
+                "source-offset": "0x0000"
+            }
+        ]
+    },
+
+    "devices": {
+        "slots": {
+            "io-region": "io-region",
+            "enabled": true,
+            "internalC3Rom": false,
+            "internalCxRom": false,
+            "cards": []
+        }
+    },
+
+    "boot": {
+        "autoStart": false
+    }
+}

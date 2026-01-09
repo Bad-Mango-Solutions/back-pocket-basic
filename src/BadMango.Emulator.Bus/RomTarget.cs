@@ -44,7 +44,10 @@ public sealed class RomTarget : IBusTarget
     /// The read-only memory slice to use for this ROM target. This is a view into
     /// physical memory, not owned storage.
     /// </param>
-    public RomTarget(ReadOnlyMemory<byte> memorySlice)
+    /// <param name="name">
+    /// Optional name for this ROM target. If not specified, defaults to "ROM".
+    /// </param>
+    public RomTarget(ReadOnlyMemory<byte> memorySlice, string? name = null)
     {
         // We need writable backing for debug writes, but ReadOnlyMemory doesn't allow that.
         // This constructor maintains API compatibility but debug writes won't work.
@@ -52,6 +55,7 @@ public sealed class RomTarget : IBusTarget
         memory = default;
         readOnlyMemory = memorySlice;
         isWritable = false;
+        Name = name ?? "ROM";
     }
 
     /// <summary>
@@ -61,16 +65,23 @@ public sealed class RomTarget : IBusTarget
     /// The memory slice to use for this ROM target. This is a view into physical memory,
     /// not owned storage. Using this constructor enables debug writes.
     /// </param>
+    /// <param name="name">
+    /// Optional name for this ROM target. If not specified, defaults to "ROM".
+    /// </param>
     /// <remarks>
     /// Use this constructor when you need to support debug writes (Poke) to ROM.
     /// Normal writes are still ignored; only debug writes are allowed.
     /// </remarks>
-    public RomTarget(Memory<byte> memorySlice)
+    public RomTarget(Memory<byte> memorySlice, string? name = null)
     {
         memory = memorySlice;
         readOnlyMemory = memorySlice;
         isWritable = true;
+        Name = name ?? "ROM";
     }
+
+    /// <inheritdoc />
+    public string Name { get; }
 
     /// <inheritdoc />
     /// <remarks>

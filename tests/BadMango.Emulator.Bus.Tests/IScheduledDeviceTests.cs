@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
-using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 

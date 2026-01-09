@@ -78,8 +78,8 @@ public sealed class MachineProfileLoader : IMachineProfileLoader
         ArgumentException.ThrowIfNullOrWhiteSpace(profilesDirectory);
 
         this.profilesDirectory = Path.GetFullPath(profilesDirectory);
-        this.availableProfiles = new Lazy<IReadOnlyList<string>>(LoadAvailableProfiles);
-        this.defaultProfile = new Lazy<MachineProfile>(LoadDefaultProfile);
+        this.availableProfiles = new(LoadAvailableProfiles);
+        this.defaultProfile = new(LoadDefaultProfile);
     }
 
     /// <inheritdoc />
@@ -142,22 +142,22 @@ public sealed class MachineProfileLoader : IMachineProfileLoader
     /// <returns>A built-in default profile configuration.</returns>
     private static MachineProfile CreateFallbackProfile()
     {
-        return new MachineProfile
+        return new()
         {
             Name = DefaultProfileName,
             DisplayName = "Simple 65C02 System with 64KB RAM",
             Description = "Basic 65C02 with 64KB RAM - suitable for debugging and development",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = "65C02",
                 ClockSpeed = 1_000_000,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",

@@ -76,9 +76,9 @@ public partial class PopOutWindowViewModel : ViewModelBase
         // In a full implementation, this would create the appropriate content view model
         return componentType switch
         {
-            PopOutComponent.VideoDisplay => new PlaceholderViewModel("Video Display", "Video display content will be rendered here."),
-            PopOutComponent.DebugConsole => new PlaceholderViewModel("Debug Console", "Debug console content will be rendered here."),
-            PopOutComponent.AssemblyEditor => new PlaceholderViewModel("Assembly Editor", "Assembly editor content will be rendered here."),
+            PopOutComponent.VideoDisplay => new("Video Display", "Video display content will be rendered here."),
+            PopOutComponent.DebugConsole => new("Debug Console", "Debug console content will be rendered here."),
+            PopOutComponent.AssemblyEditor => new("Assembly Editor", "Assembly editor content will be rendered here."),
             PopOutComponent.HexEditor => new PlaceholderViewModel("Hex Editor", "Hex editor content will be rendered here."),
             _ => null,
         };

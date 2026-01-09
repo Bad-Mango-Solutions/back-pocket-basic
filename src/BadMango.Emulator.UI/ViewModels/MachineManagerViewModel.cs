@@ -39,7 +39,7 @@ public partial class MachineManagerViewModel : ViewModelBase
     public MachineManagerViewModel()
     {
         // Initialize with sample profiles for Phase 1 stub
-        Profiles = new ObservableCollection<MachineProfileViewModel>
+        Profiles = new()
         {
             new()
             {
@@ -59,7 +59,7 @@ public partial class MachineManagerViewModel : ViewModelBase
             },
         };
 
-        Instances = new ObservableCollection<MachineInstanceViewModel>();
+        Instances = new();
 
         if (Profiles.Count > 0)
         {

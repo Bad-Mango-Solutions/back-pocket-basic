@@ -50,7 +50,7 @@ public sealed class DeviceRegistry : IDeviceRegistry
             throw new ArgumentException($"Device with ID {id} is already registered.", nameof(id));
         }
 
-        devicesById[id] = new DeviceInfo(id, kind, name, wiringPath);
+        devicesById[id] = new(id, kind, name, wiringPath);
 
         // Keep nextId ahead of all registered IDs
         if (id >= nextId)

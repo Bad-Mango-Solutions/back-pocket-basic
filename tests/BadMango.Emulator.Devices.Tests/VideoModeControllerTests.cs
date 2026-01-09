@@ -24,8 +24,8 @@ public class VideoModeControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new VideoModeController();
-        dispatcher = new IOPageDispatcher();
+        controller = new();
+        dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
 
@@ -230,7 +230,7 @@ public class VideoModeControllerTests
 
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC050,
             Value: 0,
             WidthBits: 8,
@@ -244,7 +244,7 @@ public class VideoModeControllerTests
 
     private static BusAccess CreateTestContextWithNoSideEffects()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC050,
             Value: 0,
             WidthBits: 8,

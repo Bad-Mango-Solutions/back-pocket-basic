@@ -1,5 +1,5 @@
 {
-    "$schema": "../schemas/machine-profile.schema.json",
+    "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "name": "pocket2e",
     "displayName": "Pocket2e",
     "description": "Pocket2e system with 128KB RAM (64KB main + 64KB aux via bank switching), 80-column support, and full peripheral emulation",
@@ -12,6 +12,73 @@
     "addressSpace": 16,
 
     "memory": {
+        "rom-images": [
+            {
+                "name": "system-rom",
+                "source": "library://roms/pocket2e-system.rom",
+                "size": "0x4000",
+                "required": true,
+                "on_verification_fail": "fallback"
+            },
+            {
+                "name": "video-rom",
+                "source": "library://roms/pocket2e-video.rom",
+                "size": "0x1000",
+                "required": true,
+                "on_verification_fail": "fallback"
+            }
+        ],
+        "physical": [
+            {
+                "name": "main-ram-48k",
+                "size": "0xC000",
+                "fill": "0x00"
+            },
+            {
+                "name": "system-rom-16k",
+                "size": "0x4000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "system-rom",
+                        "rom-image": "system-rom",
+                        "offset": "0x0000"
+                    }
+                ]
+            },
+            {
+                "name": "video-rom-4k",
+                "size": "0x1000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "video-rom",
+                        "rom-image": "video-rom",
+                        "offset": "0x0000"
+                    }
+                ]
+            },
+            {
+                "name": "language-card-d000-bank1",
+                "size": "0x1000",
+                "fill": "0x00"
+            },
+            {
+                "name": "language-card-d000-bank2",
+                "size": "0x1000",
+                "fill": "0x00"
+            },
+            {
+                "name": "language-card-e000",
+                "size": "0x2000",
+                "fill": "0x00"
+            },
+            {
+                "name": "aux-memory-64k",
+                "size": "0x10000",
+                "fill": "0x00"
+            }
+        ],
         "regions": [
             {
                 "name": "main-ram",
@@ -19,7 +86,8 @@
                 "start": "0x0000",
                 "size": "0xC000",
                 "permissions": "rwx",
-                "fill": "0x00"
+                "source": "main-ram-48k",
+                "source-offset": "0x0000"
             },
             {
                 "name": "io-page",
@@ -41,18 +109,22 @@
                     {
                         "name": "rom",
                         "type": "rom",
-                        "sourceRef": "system-rom",
-                        "sourceOffset": "0x1000",
+                        "source": "system-rom-16k",
+                        "source-offset": "0x1000",
                         "permissions": "rx"
                     },
                     {
                         "name": "bank1",
                         "type": "ram",
+                        "source": "language-card-d000-bank1",
+                        "source-offset": "0x0000",
                         "permissions": "rwx"
                     },
                     {
                         "name": "bank2",
                         "type": "ram",
+                        "source": "language-card-d000-bank2",
+                        "source-offset": "0x0000",
                         "permissions": "rwx"
                     }
                 ],
@@ -68,13 +140,15 @@
                     {
                         "name": "rom",
                         "type": "rom",
-                        "sourceRef": "system-rom",
-                        "sourceOffset": "0x2000",
+                        "source": "system-rom-16k",
+                        "source-offset": "0x2000",
                         "permissions": "rx"
                     },
                     {
                         "name": "ram",
                         "type": "ram",
+                        "source": "language-card-e000",
+                        "source-offset": "0x0000",
                         "permissions": "rwx"
                     }
                 ],
@@ -92,63 +166,66 @@
         ]
     },
 
-    "slots": {
-        "enabled": true,
-        "internalC3Rom": true,
-        "internalCxRom": false,
-        "cards": [
+    "devices": {
+        "motherboard": [
             {
-                "slot": 4,
-                "type": "pocketwatch",
+                "type": "keyboard",
+                "name": "Keyboard",
+                "enabled": true,
                 "config": {
-                    "timeSource": "host",
-                    "timezoneOffset": 0
+                    "preset": "enhanced",
+                    "autoRepeat": true
                 }
             },
             {
-                "slot": 6,
-                "type": "disk-ii-compatible",
+                "type": "speaker",
+                "name": "Speaker",
+                "enabled": true,
                 "config": {
-                    "drive1": null,
-                    "drive2": null
+                    "sampleRate": 48000
+                }
+            },
+            {
+                "type": "video",
+                "name": "Video",
+                "enabled": true,
+                "config": {
+                    "preset": "enhanced",
+                    "colorMode": "ntsc"
+                }
+            },
+            {
+                "type": "gameio",
+                "name": "Game I/O",
+                "enabled": true,
+                "config": {
+                    "joystickDeadzone": 0.1
                 }
             }
-        ]
-    },
-
-    "roms": [
-        {
-            "name": "system-rom",
-            "source": "library://roms/pocket2e-system.rom",
-            "size": "0x4000",
-            "required": true,
-            "on_verification_fail": "fallback"
-        },
-        {
-            "name": "video-rom",
-            "source": "library://roms/pocket2e-video.rom",
-            "size": "0x1000",
-            "required": true,
-            "on_verification_fail": "fallback"
-        }
-    ],
-
-    "devices": {
-        "keyboard": {
-            "preset": "enhanced",
-            "autoRepeat": true
-        },
-        "speaker": {
+        ],
+        "slots": {
+            "io-region": "io-page",
             "enabled": true,
-            "sampleRate": 48000
-        },
-        "video": {
-            "preset": "enhanced",
-            "colorMode": "ntsc"
-        },
-        "gameIO": {
-            "enabled": true,
-            "joystickDeadzone": 0.1
+            "internalC3Rom": true,
+            "internalCxRom": false,
+            "cards": [
+                {
+                    "slot": 4,
+                    "type": "pocketwatch",
+                    "config": {
+                        "timeSource": "host",
+                        "timezoneOffset": 0
+                    }
+                },
+                {
+                    "slot": 6,
+                    "type": "disk-ii-compatible",
+                    "config": {
+                        "drive1": null,
+                        "drive2": null
+                    }
+                }
+            ]
         }
     },
 

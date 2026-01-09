@@ -1,5 +1,5 @@
 {
-    "$schema": "../schemas/machine-profile.schema.json",
+    "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "name": "simple-65c02",
     "displayName": "Simple 65C02 System",
     "description": "Basic 65C02 with 64KB RAM - suitable for debugging and development",
@@ -9,13 +9,22 @@
     },
     "addressSpace": 16,
     "memory": {
+        "physical": [
+            {
+                "name": "main-ram-64k",
+                "size": "0x10000",
+                "fill": "0x00"
+            }
+        ],
         "regions": [
             {
                 "name": "main-ram",
                 "type": "ram",
                 "start": "0x0000",
                 "size": "0x10000",
-                "permissions": "rwx"
+                "permissions": "rwx",
+                "source": "main-ram-64k",
+                "source-offset": "0x0000"
             }
         ]
     }

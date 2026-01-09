@@ -201,7 +201,7 @@ public class SettingsThemeIntegrationTests
         var settingsService = new SettingsService(settingsDirectory: tempDirectory);
         var initialSettings = new AppSettings
         {
-            General = new GeneralSettings { Theme = "Light" },
+            General = new() { Theme = "Light" },
         };
         await settingsService.SaveAsync(initialSettings);
         await settingsService.LoadAsync();

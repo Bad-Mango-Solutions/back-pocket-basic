@@ -68,7 +68,7 @@ public readonly record struct RomDescriptor(
     /// </remarks>
     public static RomDescriptor Pocket2eFull(byte[] data)
     {
-        return new RomDescriptor(
+        return new(
             data,
             FullRomBase,
             "Pocket2e Full ROM",
@@ -86,7 +86,7 @@ public readonly record struct RomDescriptor(
     /// </remarks>
     public static RomDescriptor Applesoft(byte[] data)
     {
-        return new RomDescriptor(
+        return new(
             data,
             ApplesoftBase,
             "Applesoft BASIC",
@@ -104,7 +104,7 @@ public readonly record struct RomDescriptor(
     /// </remarks>
     public static RomDescriptor Monitor(byte[] data)
     {
-        return new RomDescriptor(
+        return new(
             data,
             MonitorBase,
             "Monitor",
@@ -124,6 +124,6 @@ public readonly record struct RomDescriptor(
     /// </remarks>
     public static RomDescriptor Custom(byte[] data, Addr loadAddress, string? name = null)
     {
-        return new RomDescriptor(data, loadAddress, name);
+        return new(data, loadAddress, name);
     }
 }

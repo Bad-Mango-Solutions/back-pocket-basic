@@ -28,7 +28,7 @@ public class WindowManagerTests
     [SetUp]
     public void Setup()
     {
-        mockWindow = new Mock<IPopOutWindow>();
+        mockWindow = new();
         mockWindow.Setup(w => w.WindowId).Returns("test-window-1");
         mockWindow.Setup(w => w.ComponentType).Returns(PopOutComponent.VideoDisplay);
         mockWindow.Setup(w => w.State).Returns(WindowState.Normal);
@@ -41,7 +41,7 @@ public class WindowManagerTests
 
         testLayoutPath = Path.Combine(Path.GetTempPath(), $"backpocket-ui-test-{Guid.NewGuid()}");
 
-        windowManager = new WindowManager(
+        windowManager = new(
             (component, machineId) => mockWindow.Object,
             logger: null,
             layoutStoragePath: testLayoutPath);

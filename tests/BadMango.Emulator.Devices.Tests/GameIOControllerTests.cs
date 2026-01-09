@@ -24,8 +24,8 @@ public class GameIOControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new GameIOController();
-        dispatcher = new IOPageDispatcher();
+        controller = new();
+        dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
 
@@ -241,7 +241,7 @@ public class GameIOControllerTests
 
     private static BusAccess CreateTestContext(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC060,
             Value: 0,
             WidthBits: 8,
@@ -255,7 +255,7 @@ public class GameIOControllerTests
 
     private static BusAccess CreateTestContextWithNoSideEffects(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC060,
             Value: 0,
             WidthBits: 8,

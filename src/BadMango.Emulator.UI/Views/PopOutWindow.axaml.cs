@@ -81,7 +81,7 @@ public partial class PopOutWindow : Window, IPopOutWindow
     /// <inheritdoc />
     public WindowStateInfo GetStateInfo()
     {
-        return new WindowStateInfo
+        return new()
         {
             ComponentType = ComponentType,
             IsPopOut = true,
@@ -100,7 +100,7 @@ public partial class PopOutWindow : Window, IPopOutWindow
 
         if (stateInfo.Position is { } position)
         {
-            Position = new PixelPoint((int)position.X, (int)position.Y);
+            Position = new((int)position.X, (int)position.Y);
         }
 
         if (stateInfo.Size is { } size)

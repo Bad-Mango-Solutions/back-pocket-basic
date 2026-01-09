@@ -5,7 +5,6 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
-using BadMango.Emulator.Debug;
 using BadMango.Emulator.Debug.Infrastructure;
 
 using Microsoft.Extensions.DependencyInjection;

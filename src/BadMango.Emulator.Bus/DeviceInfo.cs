@@ -33,12 +33,12 @@ public readonly record struct DeviceInfo(
     /// <summary>
     /// Initializes a new instance of the <see cref="DeviceInfo"/> struct without a page ID.
     /// </summary>
-    /// <param name="Id">The structural instance identifier for the device.</param>
-    /// <param name="Kind">The type or category of device.</param>
-    /// <param name="Name">Human-readable name for display in tools and logs.</param>
-    /// <param name="WiringPath">Hierarchical path describing the device's location.</param>
-    public DeviceInfo(int Id, string Kind, string Name, string WiringPath)
-        : this(Id, default, Kind, Name, WiringPath)
+    /// <param name="id">The structural instance identifier for the device.</param>
+    /// <param name="kind">The type or category of device.</param>
+    /// <param name="name">Human-readable name for display in tools and logs.</param>
+    /// <param name="wiringPath">Hierarchical path describing the device's location.</param>
+    public DeviceInfo(int id, string kind, string name, string wiringPath)
+        : this(id, default, kind, name, wiringPath)
     {
     }
 

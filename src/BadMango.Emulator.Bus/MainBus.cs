@@ -192,8 +192,10 @@ public sealed partial class MainBus : IMemoryBus
             return BusFault.Unmapped(access);
         }
 
-        // Check read permission
-        if (!page.CanRead)
+        // Check read permission.
+        // Debug reads (AccessIntent.DebugRead) bypass this check to allow
+        // inspecting memory regardless of page permissions.
+        if (!page.CanRead && !access.IsDebugAccess)
         {
             return BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag);
         }

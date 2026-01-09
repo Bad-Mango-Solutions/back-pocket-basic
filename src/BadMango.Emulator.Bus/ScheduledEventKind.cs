@@ -1,4 +1,4 @@
-﻿// <copyright file="ScheduledEventKind.cs" company="Bad Mango Solutions">
+// <copyright file="ScheduledEventKind.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 

@@ -23,7 +23,7 @@ public class DiskIIControllerStubTests
     [SetUp]
     public void SetUp()
     {
-        card = new DiskIIControllerStub();
+        card = new();
     }
 
     /// <summary>
@@ -288,7 +288,7 @@ public class DiskIIControllerStubTests
 
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC0E0,
             Value: 0,
             WidthBits: 8,
@@ -302,7 +302,7 @@ public class DiskIIControllerStubTests
 
     private static BusAccess CreateTestContextWithNoSideEffects()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC0E0,
             Value: 0,
             WidthBits: 8,

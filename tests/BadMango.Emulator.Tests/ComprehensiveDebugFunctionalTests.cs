@@ -6,11 +6,9 @@ namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
 using Core.Debugger;
-using TestHelpers;
 using Core.Interfaces.Debugging;
 
-using Emulation.Cpu;
-
+using TestHelpers;
 
 /// <summary>
 /// Comprehensive functional tests that exercise the debug infrastructure with complex code.
@@ -23,8 +21,6 @@ using Emulation.Cpu;
 [TestFixture]
 public class ComprehensiveDebugFunctionalTests : CpuTestBase
 {
-    
-    
     private RecordingDebugListener listener = null!;
 
     /// <summary>
@@ -33,9 +29,7 @@ public class ComprehensiveDebugFunctionalTests : CpuTestBase
     [SetUp]
     public void Setup()
     {
-        
-        
-        listener = new RecordingDebugListener();
+        listener = new();
     }
 
     /// <summary>
@@ -649,7 +643,7 @@ public class ComprehensiveDebugFunctionalTests : CpuTestBase
         public void OnBeforeStep(in DebugStepEventArgs eventData)
         {
             // Start a new record
-            StepRecords.Add(new StepRecord { BeforeStep = eventData });
+            StepRecords.Add(new() { BeforeStep = eventData });
         }
 
         /// <inheritdoc/>

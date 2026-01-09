@@ -14,7 +14,7 @@ using System.Globalization;
 /// When invoked with a count, executes that many instructions.
 /// Displays disassembly and register state after each step.
 /// </remarks>
-public sealed class StepCommand : CommandHandlerBase
+public sealed class StepCommand : CommandHandlerBase, ICommandHelp
 {
     private const int DefaultStepCount = 1;
     private const int MaxStepCount = 10000;
@@ -32,6 +32,35 @@ public sealed class StepCommand : CommandHandlerBase
 
     /// <inheritdoc/>
     public override string Usage => "step [count]";
+
+    /// <inheritdoc/>
+    public string Synopsis => "step [count]";
+
+    /// <inheritdoc/>
+    public string DetailedDescription =>
+        "Executes one or more CPU instructions in single-step mode. Without arguments, " +
+        "executes a single instruction. With a count, executes that many instructions. " +
+        "Displays the disassembled instruction before execution and reports the total " +
+        "cycles consumed. Stops early if CPU halts or stop is requested.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<CommandOption> Options { get; } = [];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Examples { get; } =
+    [
+        "step                    Execute one instruction",
+        "step 10                 Execute 10 instructions",
+        "s                       Alias for step",
+    ];
+
+    /// <inheritdoc/>
+    public string? SideEffects =>
+        "Modifies CPU registers (PC, A, X, Y, SP, P) and potentially memory based on " +
+        "the executed instructions. May trigger I/O side effects.";
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> SeeAlso { get; } = ["run", "stop", "regs", "pc"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)

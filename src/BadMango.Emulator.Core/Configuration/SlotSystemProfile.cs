@@ -26,6 +26,17 @@ using System.Text.Json.Serialization;
 public sealed class SlotSystemProfile
 {
     /// <summary>
+    /// Gets or sets the name of the composite region that handles I/O.
+    /// </summary>
+    /// <remarks>
+    /// This references a composite region defined in the memory regions array.
+    /// The slot manager uses this to find and configure the I/O page handler.
+    /// Example: "io-page".
+    /// </remarks>
+    [JsonPropertyName("io-region")]
+    public string? IoRegion { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether the slot system is enabled.
     /// </summary>
     /// <remarks>

@@ -81,7 +81,7 @@ public sealed partial class MainBus
         for (int i = 0; i < pageCount; i++)
         {
             Addr pagePhysBase = physicalBase + (Addr)(i * PageSize);
-            pageTable[startPage + i] = new PageEntry(
+            pageTable[startPage + i] = new(
                 deviceId,
                 regionTag,
                 perms,

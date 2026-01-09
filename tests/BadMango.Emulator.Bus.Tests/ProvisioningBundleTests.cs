@@ -39,7 +39,7 @@ public class ProvisioningBundleTests
         var bundle = ProvisioningBundle.CreateBuilder()
             .WithRamSize(131072)
             .WithRomImage("boot", romData)
-            .WithDevice(new DeviceConfiguration("keyboard", "kbd0"))
+            .WithDevice(new("keyboard", "kbd0"))
             .WithLayoutOverride("ram", 0x40000)
             .WithDebugFeatures()
             .Build();

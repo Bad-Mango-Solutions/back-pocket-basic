@@ -37,7 +37,7 @@ public abstract class CpuTestBase
     {
         // Create bus and physical memory
         var mainBus = new MainBus(16); // 16-bit address space = 64KB
-        PhysicalMemory = new PhysicalMemory(0x10000, "test-ram");
+        PhysicalMemory = new(0x10000, "test-ram");
         var target = new RamTarget(PhysicalMemory.Slice(0, 0x10000));
         mainBus.MapPageRange(
             startPage: 0,
@@ -55,7 +55,7 @@ public abstract class CpuTestBase
         var scheduler = new Scheduler();
         var signalBus = new SignalBus();
         var eventContext = new EventContext(scheduler, signalBus, mainBus);
-        Cpu = new Cpu65C02(eventContext);
+        Cpu = new(eventContext);
     }
 
     /// <summary>

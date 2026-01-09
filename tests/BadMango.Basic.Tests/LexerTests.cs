@@ -5,8 +5,11 @@
 namespace BadMango.Basic.Tests;
 
 using Lexer;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Tokens;
 
 /// <summary>

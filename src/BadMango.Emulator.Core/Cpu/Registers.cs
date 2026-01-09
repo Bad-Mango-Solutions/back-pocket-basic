@@ -1,4 +1,4 @@
-﻿// <copyright file="Registers.cs" company="Bad Mango Solutions">
+// <copyright file="Registers.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 

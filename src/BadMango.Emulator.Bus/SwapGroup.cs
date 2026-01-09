@@ -87,6 +87,13 @@ public sealed class SwapGroup
     public int VariantCount => variants.Count;
 
     /// <summary>
+    /// Checks if the specified address falls within this swap group's address range.
+    /// </summary>
+    /// <param name="address">The address to check.</param>
+    /// <returns><see langword="true"/> if the address is within the swap group's range; otherwise, <see langword="false"/>.</returns>
+    public bool ContainsAddress(Addr address) => address >= VirtualBase && address < VirtualEnd;
+
+    /// <summary>
     /// Adds a variant to this swap group.
     /// </summary>
     /// <param name="variant">The variant to add.</param>

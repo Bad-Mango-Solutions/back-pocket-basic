@@ -25,8 +25,8 @@ public class MainWindowViewModelTests
     [SetUp]
     public void Setup()
     {
-        mockThemeService = new Mock<IThemeService>();
-        mockNavigationService = new Mock<INavigationService>();
+        mockThemeService = new();
+        mockNavigationService = new();
     }
 
     /// <summary>
