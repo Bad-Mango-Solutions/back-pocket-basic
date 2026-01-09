@@ -6,9 +6,7 @@ namespace BadMango.Emulator.Debug.UI.Services;
 
 using System.Collections.Concurrent;
 
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 
 using BadMango.Emulator.Debug.Infrastructure;
@@ -22,6 +20,11 @@ using BadMango.Emulator.Debug.UI.Views;
 /// This implementation handles the Avalonia threading model by dispatching all UI
 /// operations to the Avalonia UI thread. Windows are tracked in a thread-safe
 /// dictionary to support the non-blocking async pattern required by the REPL.
+/// </para>
+/// <para>
+/// The manager automatically initializes Avalonia on a background thread when
+/// a window is requested, allowing the console REPL to continue running on the
+/// main thread while UI windows are managed separately.
 /// </para>
 /// <para>
 /// The manager supports creating different types of debug windows based on a
@@ -39,12 +42,14 @@ public class DebugWindowManager : IDebugWindowManager
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
-    public bool IsAvaloniaRunning =>
-        Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime;
+    public bool IsAvaloniaRunning => AvaloniaBootstrapper.IsRunning;
 
     /// <inheritdoc />
     public async Task<bool> ShowWindowAsync(string windowType)
     {
+        // Ensure Avalonia is initialized
+        AvaloniaBootstrapper.EnsureInitialized();
+
         if (!this.IsAvaloniaRunning)
         {
             return false;

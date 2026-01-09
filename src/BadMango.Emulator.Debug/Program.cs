@@ -6,6 +6,7 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Debug.UI;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,6 +38,7 @@ try
         .ConfigureContainer<ContainerBuilder>(builder =>
         {
             builder.RegisterModule<DebugConsoleModule>();
+            builder.RegisterModule<DebugUiModule>();
         })
         .UseSerilog()
         .Build();

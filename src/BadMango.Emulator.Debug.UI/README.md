@@ -16,14 +16,16 @@ This project provides the infrastructure for launching Avalonia UI popup windows
 
 3. **Non-Blocking REPL**: All window operations use async patterns to keep the REPL responsive while windows are being created or shown.
 
+4. **On-Demand Avalonia**: Avalonia is only initialized when a window is first requested, allowing the console to start quickly.
+
 ### Threading Model
 
 The debugger operates in a multi-threaded environment:
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐
-│   Console Thread    │     │   Avalonia UI       │
-│   (REPL Input)      │     │   Thread            │
+│   Main Thread       │     │   Avalonia UI       │
+│   (Console REPL)    │     │   Thread            │
 ├─────────────────────┤     ├─────────────────────┤
 │ - Read commands     │     │ - Window lifecycle  │
 │ - Execute handlers  │────▶│ - User input        │
@@ -32,6 +34,9 @@ The debugger operates in a multi-threaded environment:
          │                           │
          ▼                           ▼
 ┌─────────────────────────────────────────────────┐
+│        AvaloniaBootstrapper                     │
+│   (Manages Avalonia lifecycle on bg thread)    │
+├─────────────────────────────────────────────────┤
 │            IDebugWindowManager                  │
 │   (Thread-safe window management)               │
 └─────────────────────────────────────────────────┘
@@ -39,10 +44,12 @@ The debugger operates in a multi-threaded environment:
 
 **Key Points:**
 
-- All UI operations are dispatched to the Avalonia UI thread via `Dispatcher.UIThread.InvokeAsync()`
-- Window state is tracked in thread-safe collections (`ConcurrentDictionary`)
-- Commands fire-and-forget window operations to avoid blocking the REPL
-- Windows can be closed independently without affecting the console
+- **Background Avalonia Thread**: The `AvaloniaBootstrapper` starts Avalonia on a dedicated background thread when the first window is requested
+- **Main Thread for REPL**: The console REPL continues running on the main thread, accepting commands while windows are displayed
+- **Thread-Safe Dispatch**: All UI operations are dispatched to the Avalonia UI thread via `Dispatcher.UIThread.InvokeAsync()`
+- **Concurrent Window Tracking**: Window state is tracked in thread-safe collections (`ConcurrentDictionary`)
+- **Non-Blocking Commands**: Commands fire-and-forget window operations to avoid blocking the REPL
+- **Independent Lifecycle**: Windows can be closed independently without affecting the console
 
 ### Component Types
 
@@ -59,43 +66,24 @@ The `DebugWindowComponent` enum defines available window types:
 
 ### Dependency Injection Setup
 
-Register the module with Autofac when UI support is desired:
+The `BadMango.Emulator.Debug` console application registers both modules:
 
 ```csharp
-// In your container configuration
+// In Program.cs
+builder.RegisterModule<DebugConsoleModule>();
 builder.RegisterModule<DebugUiModule>();
 ```
 
-### REPL Integration
-
-Create a REPL with window support:
-
-```csharp
-// Get the window manager from DI
-var windowManager = container.Resolve<IDebugWindowManager>();
-
-// Create REPL with window support
-var repl = DebugRepl.CreateConsoleRepl(windowManager);
-repl.Run();
-```
-
 ### Using the About Command
+
+When running the debug console, use the `about` command to open the About window:
 
 ```
 > about
 Opening About window...
 ```
 
-If Avalonia is not running, the command falls back to console output:
-
-```
-> about
-═══════════════════════════════════════════════════════════════════════
-  BackPocket BASIC - Emulator Debug Console
-  Version: 1.0.0
-  ...
-═══════════════════════════════════════════════════════════════════════
-```
+The About window will appear in a new popup window while the console remains active for further commands.
 
 ## Extension Points
 
@@ -129,6 +117,32 @@ private Window? CreateWindow(string windowType)
     };
 }
 ```
+
+## Key Components
+
+### AvaloniaBootstrapper
+
+Manages the Avalonia UI thread lifecycle:
+
+- **Thread-Safe Initialization**: Uses double-checked locking to ensure single initialization
+- **Background Thread**: Runs Avalonia message loop on a dedicated thread
+- **Explicit Shutdown Mode**: Uses `ShutdownMode.OnExplicitShutdown` so Avalonia doesn't exit when windows close
+- **Synchronization**: Uses `ManualResetEventSlim` to block until Avalonia is fully initialized
+
+### DebugWindowManager
+
+Implements `IDebugWindowManager` to manage window lifecycle:
+
+- **Auto-Initialization**: Calls `AvaloniaBootstrapper.EnsureInitialized()` when a window is requested
+- **Window Tracking**: Maintains a concurrent dictionary of open windows
+- **Bring to Front**: Reactivates existing windows instead of creating duplicates
+
+### DebugApp
+
+Minimal Avalonia Application:
+
+- **No Main Window**: Unlike the full UI app, doesn't create a main window on startup
+- **On-Demand Windows**: Windows are created by `DebugWindowManager` when requested
 
 ## References
 
