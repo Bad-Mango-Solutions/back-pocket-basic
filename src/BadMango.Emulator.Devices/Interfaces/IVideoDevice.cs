@@ -41,8 +41,12 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>$C01E: RDALTCHAR - Alternate character set status</description></item>
 /// <item><description>$C01F: RD80COL - 80-column mode status</description></item>
 /// </list>
+/// <para>
+/// The video device also provides access to character ROM data for text rendering
+/// through the <see cref="ICharacterRomProvider"/> interface.
+/// </para>
 /// </remarks>
-public interface IVideoDevice : IMotherboardDevice
+public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
 {
     /// <summary>
     /// Event raised when the video mode changes.
@@ -119,4 +123,29 @@ public interface IVideoDevice : IMotherboardDevice
     /// </summary>
     /// <value>A read-only list of the four annunciator output states.</value>
     IReadOnlyList<bool> Annunciators { get; }
+
+    /// <summary>
+    /// Loads character ROM data into the video device.
+    /// </summary>
+    /// <param name="romData">
+    /// The character ROM data to load. Must be exactly 4096 bytes (4KB)
+    /// containing two 2KB character sets (primary and alternate).
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="romData"/> is not exactly 4096 bytes.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The character ROM is organized as two 2KB segments:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>$0000-$07FF: Primary character set (256 × 8 bytes)</description></item>
+    /// <item><description>$0800-$0FFF: Alternate character set with MouseText (256 × 8 bytes)</description></item>
+    /// </list>
+    /// <para>
+    /// Each character occupies 8 consecutive bytes, one per scanline from top to bottom.
+    /// Each byte contains 7 pixel bits (bits 0-6), with bit 7 unused.
+    /// </para>
+    /// </remarks>
+    void LoadCharacterRom(ReadOnlySpan<byte> romData);
 }
