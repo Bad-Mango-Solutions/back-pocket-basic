@@ -94,6 +94,7 @@
   </Folder>
   <Folder Name="/specs/video/">
     <File Path="specs/video/Apple II 80-Column Card Specification.md" />
+    <File Path="specs/video/Apple II Character Generation Specification.md" />
     <File Path="specs/video/Apple II Video Display Specification.md" />
     <File Path="specs/video/Apple IIgs Video Display Specification.md" />
     <File Path="specs/video/Display Rendering Integration Specification.md" />
