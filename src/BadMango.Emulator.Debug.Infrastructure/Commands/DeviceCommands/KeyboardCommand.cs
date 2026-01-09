@@ -247,10 +247,43 @@ public sealed class KeyboardCommand : CommandHandlerBase, ICommandHelp
 
     private static string ProcessEscapes(string s)
     {
-        return s
-            .Replace("\\r", "\r")
-            .Replace("\\n", "\n")
-            .Replace("\\t", "\t")
-            .Replace("\\e", "\x1B");
+        // Simple escape sequence processing
+        // Note: To include a literal backslash before r/n/t/e, use \\\\
+        var result = new System.Text.StringBuilder(s.Length);
+
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                char next = s[i + 1];
+                switch (next)
+                {
+                    case 'r':
+                        result.Append('\r');
+                        i++;
+                        continue;
+                    case 'n':
+                        result.Append('\n');
+                        i++;
+                        continue;
+                    case 't':
+                        result.Append('\t');
+                        i++;
+                        continue;
+                    case 'e':
+                        result.Append('\x1B');
+                        i++;
+                        continue;
+                    case '\\':
+                        result.Append('\\');
+                        i++;
+                        continue;
+                }
+            }
+
+            result.Append(s[i]);
+        }
+
+        return result.ToString();
     }
 }
