@@ -26,8 +26,11 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("keyboard")]
-public sealed class KeyboardDevice : IKeyboardDevice
+public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 {
+    private const ushort KeyboardDataAddress = 0xC000;
+    private const ushort KeyboardStrobeAddress = 0xC010;
+
     private const byte KeyboardDataOffset = 0x00;
     private const byte KeyboardStrobeOffset = 0x10;
     private const byte StrobeBit = 0x80;
@@ -62,6 +65,19 @@ public sealed class KeyboardDevice : IKeyboardDevice
 
     /// <inheritdoc />
     public KeyboardModifiers Modifiers => modifiers;
+
+    /// <inheritdoc />
+    public string ProviderName => "Keyboard";
+
+    /// <inheritdoc />
+    public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
+    {
+        return
+        [
+            new("KBD", KeyboardDataAddress, strobe, "Keyboard data register (strobe set when key available)"),
+            new("KBDSTRB", KeyboardStrobeAddress, keyDown, "Any key down flag"),
+        ];
+    }
 
     /// <inheritdoc />
     public void Initialize(IEventContext context)

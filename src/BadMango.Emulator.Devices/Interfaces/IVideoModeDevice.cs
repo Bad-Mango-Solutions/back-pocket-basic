@@ -29,6 +29,18 @@ using BadMango.Emulator.Bus.Interfaces;
 /// The IIe adds 80-column and double-resolution modes controlled by additional
 /// soft switches and the auxiliary memory system.
 /// </para>
+/// <para>
+/// Status read registers at $C019-$C01F provide read-back of video state:
+/// </para>
+/// <list type="bullet">
+/// <item><description>$C019: RDVBL - Vertical blanking (inverted: bit 7 = 0 during VBL)</description></item>
+/// <item><description>$C01A: RDTEXT - Text mode status</description></item>
+/// <item><description>$C01B: RDMIXED - Mixed mode status</description></item>
+/// <item><description>$C01C: RDPAGE2 - Page 2 status</description></item>
+/// <item><description>$C01D: RDHIRES - Hi-res mode status</description></item>
+/// <item><description>$C01E: RDALTCHAR - Alternate character set status</description></item>
+/// <item><description>$C01F: RD80COL - 80-column mode status</description></item>
+/// </list>
 /// </remarks>
 public interface IVideoModeDevice : IMotherboardDevice
 {
@@ -84,6 +96,23 @@ public interface IVideoModeDevice : IMotherboardDevice
     /// </summary>
     /// <value><see langword="true"/> if alternate character set is active; otherwise, <see langword="false"/>.</value>
     bool IsAltCharSet { get; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether vertical blanking is in progress.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This property is typically updated by the video timing subsystem.
+    /// </para>
+    /// <para>
+    /// When read via the $C019 soft switch, the status is inverted from other
+    /// status reads: bit 7 = 0 during vertical blanking, bit 7 = 1 when NOT
+    /// in vertical blanking. This convention allows efficient BMI/BPL testing
+    /// for waiting for VBL.
+    /// </para>
+    /// </remarks>
+    /// <value><see langword="true"/> if vertical blanking is in progress; otherwise, <see langword="false"/>.</value>
+    bool IsVerticalBlanking { get; set; }
 
     /// <summary>
     /// Gets the annunciator states (0-3).

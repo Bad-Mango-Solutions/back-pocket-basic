@@ -200,6 +200,89 @@ public class KeyboardDeviceTests
         Assert.DoesNotThrow(() => device.Initialize(mockContext.Object));
     }
 
+    /// <summary>
+    /// Verifies that KeyboardDevice implements ISoftSwitchProvider.
+    /// </summary>
+    [Test]
+    public void KeyboardDevice_ImplementsISoftSwitchProvider()
+    {
+        Assert.That(device, Is.InstanceOf<ISoftSwitchProvider>());
+    }
+
+    /// <summary>
+    /// Verifies that ProviderName returns Keyboard.
+    /// </summary>
+    [Test]
+    public void ProviderName_ReturnsKeyboard()
+    {
+        var provider = (ISoftSwitchProvider)device;
+        Assert.That(provider.ProviderName, Is.EqualTo("Keyboard"));
+    }
+
+    /// <summary>
+    /// Verifies that GetSoftSwitchStates returns keyboard soft switches.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_ReturnsKeyboardSwitches()
+    {
+        var provider = (ISoftSwitchProvider)device;
+
+        var states = provider.GetSoftSwitchStates();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(states, Has.Count.EqualTo(2));
+            Assert.That(states.Any(s => s.Name == "KBD" && s.Address == 0xC000), Is.True);
+            Assert.That(states.Any(s => s.Name == "KBDSTRB" && s.Address == 0xC010), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that KBD switch reflects strobe state when key is pressed.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_KBD_ReflectsStrobeState_WhenKeyPressed()
+    {
+        var provider = (ISoftSwitchProvider)device;
+
+        // Initially no key pressed
+        var initialStates = provider.GetSoftSwitchStates();
+        var kbdState = initialStates.First(s => s.Name == "KBD");
+        Assert.That(kbdState.Value, Is.False);
+
+        // Press a key
+        device.KeyDown(0x41);
+        var pressedStates = provider.GetSoftSwitchStates();
+        var kbdAfterPress = pressedStates.First(s => s.Name == "KBD");
+        Assert.That(kbdAfterPress.Value, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that KBDSTRB switch reflects key down state.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_KBDSTRB_ReflectsKeyDownState()
+    {
+        var provider = (ISoftSwitchProvider)device;
+
+        // Initially no key down
+        var initialStates = provider.GetSoftSwitchStates();
+        var strbState = initialStates.First(s => s.Name == "KBDSTRB");
+        Assert.That(strbState.Value, Is.False);
+
+        // Press a key
+        device.KeyDown(0x41);
+        var pressedStates = provider.GetSoftSwitchStates();
+        var strbAfterPress = pressedStates.First(s => s.Name == "KBDSTRB");
+        Assert.That(strbAfterPress.Value, Is.True);
+
+        // Release the key
+        device.KeyUp();
+        var releasedStates = provider.GetSoftSwitchStates();
+        var strbAfterRelease = releasedStates.First(s => s.Name == "KBDSTRB");
+        Assert.That(strbAfterRelease.Value, Is.False);
+    }
+
     private static BusAccess CreateTestContext()
     {
         return new(
