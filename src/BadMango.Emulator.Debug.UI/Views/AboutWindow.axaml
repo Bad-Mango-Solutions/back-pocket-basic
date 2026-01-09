@@ -1,0 +1,84 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="350"
+        x:Class="BadMango.Emulator.Debug.UI.Views.AboutWindow"
+        Title="About BackPocket BASIC"
+        Width="450"
+        Height="400"
+        MinWidth="400"
+        MinHeight="300"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Logo and Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
+            <Image Source="avares://BadMango.Emulator.Debug.UI/back-pocket-logo.png"
+                   Width="64"
+                   Height="64"
+                   Margin="0,0,15,0" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="BackPocket BASIC"
+                           FontSize="24"
+                           FontWeight="Bold" />
+                <TextBlock x:Name="VersionText"
+                           Text="Version 1.0.0"
+                           FontSize="14"
+                           Foreground="Gray" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Separator -->
+        <Separator Grid.Row="1" Margin="0,5,0,15" />
+
+        <!-- Description -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Top">
+            <TextBlock TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,0,0,15">
+                A fully-featured Applesoft BASIC interpreter with
+                6502/65C02/65816 CPU emulation and Apple II memory space.
+            </TextBlock>
+
+            <TextBlock TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,0,0,15">
+                This debug console provides an interactive command-line interface
+                for debugging and testing emulator functionality.
+            </TextBlock>
+
+            <TextBlock Text="Copyright © Bad Mango Solutions"
+                       TextAlignment="Center"
+                       Margin="0,0,0,5" />
+
+            <TextBlock Text="Licensed under the MIT License"
+                       TextAlignment="Center"
+                       Foreground="Gray"
+                       Margin="0,0,0,15" />
+
+            <TextBlock x:Name="GitHubLink"
+                       Text="https://github.com/Bad-Mango-Solutions/back-pocket-basic"
+                       TextAlignment="Center"
+                       Foreground="DodgerBlue"
+                       Cursor="Hand"
+                       TextDecorations="Underline" />
+        </StackPanel>
+
+        <!-- Close Button -->
+        <Button Grid.Row="3"
+                Content="Close"
+                HorizontalAlignment="Center"
+                Padding="30,8"
+                Click="OnCloseClick" />
+    </Grid>
+</Window>

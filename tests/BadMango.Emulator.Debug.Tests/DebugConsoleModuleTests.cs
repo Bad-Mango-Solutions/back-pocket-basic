@@ -56,12 +56,13 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        // 4 built-in + 11 debug commands + 11 bus-aware commands + 3 device commands = 29 total
-        Assert.That(handlers, Has.Count.EqualTo(29));
+        // 5 built-in (help, exit, version, clear, about) + 11 debug commands + 11 bus-aware commands + 3 device commands = 30 total
+        Assert.That(handlers, Has.Count.EqualTo(30));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("help"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("exit"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("version"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("clear"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("about"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("regs"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("step"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("run"));
@@ -110,8 +111,8 @@ public class DebugConsoleModuleTests
         {
             Assert.That(repl, Is.Not.Null);
 
-            // 4 built-in + 11 debug commands + 11 bus-aware commands + 3 device commands = 29 total
-            Assert.That(dispatcher.Commands, Has.Count.EqualTo(29));
+            // 5 built-in (help, exit, version, clear, about) + 11 debug commands + 11 bus-aware commands + 3 device commands = 30 total
+            Assert.That(dispatcher.Commands, Has.Count.EqualTo(30));
         });
     }
 
@@ -146,8 +147,8 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        // 4 built-in + 11 debug + 11 bus-aware + 3 device + 1 custom = 30 total
-        Assert.That(handlers, Has.Count.EqualTo(30));
+        // 5 built-in + 11 debug + 11 bus-aware + 3 device + 1 custom = 31 total
+        Assert.That(handlers, Has.Count.EqualTo(31));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("testcmd"));
     }
 

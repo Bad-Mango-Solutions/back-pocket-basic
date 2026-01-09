@@ -51,8 +51,12 @@ public sealed class DebugRepl
     /// <summary>
     /// Creates a REPL with standard console I/O and default built-in commands.
     /// </summary>
+    /// <param name="windowManager">
+    /// Optional debug window manager for opening popup windows from commands.
+    /// If null, commands that support popups will fall back to console output.
+    /// </param>
     /// <returns>A new <see cref="DebugRepl"/> configured for console use.</returns>
-    public static DebugRepl CreateConsoleRepl()
+    public static DebugRepl CreateConsoleRepl(IDebugWindowManager? windowManager = null)
     {
         var dispatcher = new CommandDispatcher();
 
@@ -61,6 +65,7 @@ public sealed class DebugRepl
         dispatcher.Register(new ExitCommand());
         dispatcher.Register(new VersionCommand());
         dispatcher.Register(new ClearCommand());
+        dispatcher.Register(new AboutCommand(windowManager));
 
         var context = DebugContext.CreateConsoleContext(dispatcher);
 

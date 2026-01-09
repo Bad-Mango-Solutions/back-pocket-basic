@@ -1,52 +1,46 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>emudbg</AssemblyName>
-    <RootNamespace>BadMango.Emulator.Debug</RootNamespace>
+    <RootNamespace>BadMango.Emulator.Debug.UI</RootNamespace>
+    <NeutralLanguage>en</NeutralLanguage>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Features>IOperation;flow-analysis</Features>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    
-    <!-- Application Metadata -->
-    <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Emulator Debug Console</Product>
-    <Description>Interactive debug console for 6502/65816/65832 CPU and bus emulation with REPL interface.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
 
-    <!-- NuGet Package Metadata -->
+    <!-- Package Metadata -->
+    <Company>Bad Mango Solutions</Company>
+    <Product>BackPocketBASIC - Debug UI</Product>
+    <Description>Avalonia-based popup window infrastructure for the console debugger. Provides About window and extensible window management for debug workflows.</Description>
+    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>emulator;debugger;6502;65816;65832;cpu;bus;console;repl</PackageTags>
+    <PackageTags>emulator;debugger;avalonia;ui;popup;console;repl</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="BadMango.Emulator.Debug.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BadMango.Emulator.Core\BadMango.Emulator.Core.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Bus\BadMango.Emulator.Bus.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Emulation\BadMango.Emulator.Emulation.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Debug.UI\BadMango.Emulator.Debug.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+    <!-- Avalonia UI Framework -->
+    <PackageReference Include="Avalonia" Version="11.2.7" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.7" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.7" />
+
+    <!-- Dependency Injection with Autofac -->
+    <PackageReference Include="Autofac" Version="8.3.0" />
+
+    <!-- Analyzers -->
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -55,6 +49,11 @@
 
   <ItemGroup>
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
+    <AvaloniaResource Include="..\..\back-pocket-logo.png" Link="back-pocket-logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BadMango.Emulator.Debug.UI.Tests" />
   </ItemGroup>
 
 </Project>
