@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using Interfaces;
-
 /// <summary>
 /// A default composite bus target that serves as a container for subpages and subregions.
 /// </summary>

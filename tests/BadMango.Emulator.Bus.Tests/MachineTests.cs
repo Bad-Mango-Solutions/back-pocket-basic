@@ -6,10 +6,7 @@ namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
-using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
-
-using Interfaces;
 
 using Moq;
 

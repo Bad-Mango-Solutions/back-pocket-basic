@@ -81,22 +81,7 @@ public sealed class PhysicalMemory : IPhysicalMemory
     }
 
     /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlice(uint offset, uint length)
-    {
-        ValidateSliceParameters(offset, length);
-        return mem.Slice((int)offset, (int)length);
-    }
-
-    /// <inheritdoc />
     public Memory<byte> SlicePage(uint pageIndex, uint pageSize = 4096)
-    {
-        ValidatePageParameters(pageIndex, pageSize);
-        uint offset = pageIndex * pageSize;
-        return mem.Slice((int)offset, (int)pageSize);
-    }
-
-    /// <inheritdoc />
-    public ReadOnlyMemory<byte> ReadOnlySlicePage(uint pageIndex, uint pageSize = 4096)
     {
         ValidatePageParameters(pageIndex, pageSize);
         uint offset = pageIndex * pageSize;

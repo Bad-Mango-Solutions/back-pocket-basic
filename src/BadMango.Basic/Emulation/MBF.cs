@@ -103,7 +103,7 @@ public readonly struct MBF : IEquatable<MBF>
     /// Gets the MBF representation of zero.
     /// </summary>
     /// <value>An MBF struct representing zero.</value>
-    public static MBF Zero => new MBF(0, 0, 0, 0, 0);
+    public static MBF Zero => new(0, 0, 0, 0, 0);
 
     /// <summary>
     /// Gets the exponent byte (biased by 128).
@@ -287,7 +287,7 @@ public readonly struct MBF : IEquatable<MBF>
         // Clear the MSB of m1 (which would be the implicit 1) and set sign bit if negative
         m1 = (byte)((m1 & 0x7F) | (negative ? 0x80 : 0x00));
 
-        return new MBF((byte)biasedExp, m1, m2, m3, m4);
+        return new((byte)biasedExp, m1, m2, m3, m4);
     }
 
     /// <summary>
@@ -326,7 +326,7 @@ public readonly struct MBF : IEquatable<MBF>
             throw new ArgumentException($"Byte array must contain at least {ByteSize} bytes.", nameof(bytes));
         }
 
-        return new MBF(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
+        return new(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
     }
 
     /// <summary>

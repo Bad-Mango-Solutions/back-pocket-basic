@@ -33,7 +33,7 @@ public class CompositeTargetTests
 
         var composite = new TestCompositeTarget(subTarget1, subTarget2);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
 
         // Read from first sub-region (offset < 0x100 returns subTarget1)
         var access1 = CreateTestAccess(0x0050, AccessIntent.DataRead);
@@ -58,7 +58,7 @@ public class CompositeTargetTests
         var subTarget = new RamTarget(memory.Slice(0, PageSize));
         var composite = new TestCompositeTarget(subTarget, subTarget);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPoke, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPoke, composite, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataWrite);
         bus.Write8(access, 0x42);
@@ -77,7 +77,7 @@ public class CompositeTargetTests
 
         var composite = new TestCompositeTarget(null, null);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead);
         byte value = bus.Read8(access);
@@ -98,7 +98,7 @@ public class CompositeTargetTests
         var subTarget = new RamTarget(memory.Slice(0, PageSize));
         var composite = new TestCompositeTarget(subTarget, subTarget);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.DataRead);
         var result = bus.TryRead8(access);
@@ -125,7 +125,7 @@ public class CompositeTargetTests
         var subTarget = new RamTarget(memory.Slice(0, PageSize));
         var composite = new CapturingCompositeTarget(subTarget, offset => capturedOffset = offset);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadWrite, TargetCaps.SupportsPeek, composite, 0));
 
         // Access address 0x0ABC - offset within page should be 0xABC
         var access = CreateTestAccess(0x0ABC, AccessIntent.DataRead);
@@ -148,7 +148,7 @@ public class CompositeTargetTests
         var subTarget = new RamTarget(memory.Slice(0, PageSize));
         var composite = new CapturingCompositeTarget(subTarget, intent: intent => capturedIntent = intent);
 
-        bus.MapPage(0, new PageEntry(1, RegionTag.Io, PagePerms.ReadExecute, TargetCaps.SupportsPeek, composite, 0));
+        bus.MapPage(0, new(1, RegionTag.Io, PagePerms.ReadExecute, TargetCaps.SupportsPeek, composite, 0));
 
         var access = CreateTestAccess(0x0100, AccessIntent.InstructionFetch, BusAccessMode.Decomposed);
         bus.Read8(access);
@@ -166,7 +166,7 @@ public class CompositeTargetTests
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,

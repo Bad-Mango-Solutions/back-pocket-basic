@@ -30,6 +30,15 @@ using BadMango.Emulator.Bus.Interfaces;
 public static class DeviceFactoryRegistry
 {
     private static readonly Lock SyncLock = new();
+
+#pragma warning disable SA1311
+    private static readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardFactories
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories
+        = new(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore SA1311
+
     private static bool isInitialized;
 
     /// <summary>
@@ -45,12 +54,6 @@ public static class DeviceFactoryRegistry
     /// <value>A dictionary mapping type IDs to slot card factory functions.</value>
     public static IReadOnlyDictionary<string, Func<MachineBuilder, ISlotCard>> SlotCardFactories
         => slotCardFactories;
-
-    private static readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardFactories
-        = new(StringComparer.OrdinalIgnoreCase);
-
-    private static readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories
-        = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Ensures device factories are discovered and registered.
@@ -129,13 +132,13 @@ public static class DeviceFactoryRegistry
             // Check if it's a motherboard device
             if (typeof(IMotherboardDevice).IsAssignableFrom(type))
             {
-                RegisterMotherboardFactory(attribute.TypeId, type);
+                RegisterMotherboardFactory(attribute.DeviceTypeId, type);
             }
 
             // Check if it's a slot card
             if (typeof(ISlotCard).IsAssignableFrom(type))
             {
-                RegisterSlotCardFactory(attribute.TypeId, type);
+                RegisterSlotCardFactory(attribute.DeviceTypeId, type);
             }
         }
     }

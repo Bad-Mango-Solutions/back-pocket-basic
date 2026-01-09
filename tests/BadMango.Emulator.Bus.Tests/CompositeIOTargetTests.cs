@@ -27,9 +27,9 @@ public class CompositeIOTargetTests
     [SetUp]
     public void SetUp()
     {
-        softSwitches = new IOPageDispatcher();
-        mockSlotManager = new Mock<ISlotManager>(MockBehavior.Strict);
-        ioPage = new CompositeIOTarget("Test I/O Page", softSwitches, mockSlotManager.Object);
+        softSwitches = new();
+        mockSlotManager = new(MockBehavior.Strict);
+        ioPage = new("Test I/O Page", softSwitches, mockSlotManager.Object);
     }
 
     #region Constructor Tests
@@ -661,7 +661,7 @@ public class CompositeIOTargetTests
     /// </summary>
     private static BusAccess CreateTestAccess(Addr address, AccessIntent intent)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: 8,

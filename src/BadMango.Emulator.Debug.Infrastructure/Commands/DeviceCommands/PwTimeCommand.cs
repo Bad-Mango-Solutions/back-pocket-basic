@@ -125,6 +125,82 @@ public sealed class PwTimeCommand : CommandHandlerBase, ICommandHelp
         };
     }
 
+    private static void DisplayRawTimestamp(
+        IDebugContext debugContext,
+        int month,
+        int dayOfWeek,
+        int day,
+        int hour,
+        int minute,
+        int second,
+        int fullYear,
+        int year)
+    {
+        debugContext.Output.WriteLine($"  Month:       {month} (expected 1-12)");
+        debugContext.Output.WriteLine($"  Day of Week: {dayOfWeek} (expected 0-6)");
+        debugContext.Output.WriteLine($"  Day:         {day} (expected 1-31)");
+        debugContext.Output.WriteLine($"  Hour:        {hour} (expected 0-23)");
+        debugContext.Output.WriteLine($"  Minute:      {minute} (expected 0-59)");
+        debugContext.Output.WriteLine($"  Second:      {second} (expected 0-59)");
+        debugContext.Output.WriteLine($"  Year:        {fullYear} (1900 + {year})");
+    }
+
+    private static BusResult<byte> ReadByte(IMemoryBus bus, uint address)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+
+        return bus.TryRead8(access);
+    }
+
+    private static BusResult WriteByte(IMemoryBus bus, uint address, byte value)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: value,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugWrite,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        return bus.TryWrite8(access, value);
+    }
+
+    private static bool TryParseAddress(string input, out uint address)
+    {
+        address = 0;
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return false;
+        }
+
+        // Handle hex prefix ($, 0x, or just hex digits)
+        if (input.StartsWith('$'))
+        {
+            return uint.TryParse(input[1..], System.Globalization.NumberStyles.HexNumber, null, out address);
+        }
+
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return uint.TryParse(input[2..], System.Globalization.NumberStyles.HexNumber, null, out address);
+        }
+
+        // Try decimal
+        return uint.TryParse(input, out address);
+    }
+
     private CommandResult ExecuteRead(IDebugContext debugContext, string[] args)
     {
         if (args.Length < 2)
@@ -360,81 +436,5 @@ public sealed class PwTimeCommand : CommandHandlerBase, ICommandHelp
         debugContext.Output.WriteLine($"  Time: {time:HH:mm:ss}");
         debugContext.Output.WriteLine();
         debugContext.Output.WriteLine($"  ISO 8601: {time:O}");
-    }
-
-    private static void DisplayRawTimestamp(
-        IDebugContext debugContext,
-        int month,
-        int dayOfWeek,
-        int day,
-        int hour,
-        int minute,
-        int second,
-        int fullYear,
-        int year)
-    {
-        debugContext.Output.WriteLine($"  Month:       {month} (expected 1-12)");
-        debugContext.Output.WriteLine($"  Day of Week: {dayOfWeek} (expected 0-6)");
-        debugContext.Output.WriteLine($"  Day:         {day} (expected 1-31)");
-        debugContext.Output.WriteLine($"  Hour:        {hour} (expected 0-23)");
-        debugContext.Output.WriteLine($"  Minute:      {minute} (expected 0-59)");
-        debugContext.Output.WriteLine($"  Second:      {second} (expected 0-59)");
-        debugContext.Output.WriteLine($"  Year:        {fullYear} (1900 + {year})");
-    }
-
-    private static BusResult<byte> ReadByte(IMemoryBus bus, uint address)
-    {
-        var access = new BusAccess(
-            Address: address,
-            Value: 0,
-            WidthBits: 8,
-            Mode: BusAccessMode.Decomposed,
-            EmulationFlag: true,
-            Intent: AccessIntent.DebugRead,
-            SourceId: 0,
-            Cycle: 0,
-            Flags: AccessFlags.NoSideEffects);
-
-        return bus.TryRead8(access);
-    }
-
-    private static BusResult WriteByte(IMemoryBus bus, uint address, byte value)
-    {
-        var access = new BusAccess(
-            Address: address,
-            Value: value,
-            WidthBits: 8,
-            Mode: BusAccessMode.Decomposed,
-            EmulationFlag: true,
-            Intent: AccessIntent.DebugWrite,
-            SourceId: 0,
-            Cycle: 0,
-            Flags: AccessFlags.None);
-
-        return bus.TryWrite8(access, value);
-    }
-
-    private static bool TryParseAddress(string input, out uint address)
-    {
-        address = 0;
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return false;
-        }
-
-        // Handle hex prefix ($, 0x, or just hex digits)
-        if (input.StartsWith('$'))
-        {
-            return uint.TryParse(input[1..], System.Globalization.NumberStyles.HexNumber, null, out address);
-        }
-
-        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(input[2..], System.Globalization.NumberStyles.HexNumber, null, out address);
-        }
-
-        // Try decimal
-        return uint.TryParse(input, out address);
     }
 }

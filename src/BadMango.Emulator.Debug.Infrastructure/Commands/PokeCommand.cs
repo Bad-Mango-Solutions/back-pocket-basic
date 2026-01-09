@@ -53,7 +53,9 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         "Writes bytes to memory using DebugWrite intent, bypassing ROM write protection " +
         "and I/O handlers. Supports single bytes, multiple bytes, ASCII strings, and " +
         "interactive mode (-i). Values can be hex (ab, $AB, 0xAB) or decimal. This is " +
-        "a side-effect-free write; use 'write' for hardware-like writes.";
+        "a side-effect-free write; use 'write' for hardware-like writes. " +
+        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
+        "names registered by the current machine (e.g., SPEAKER, KBDSTRB).";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -67,6 +69,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         "poke $300 A9 00 60        Write LDA #$00; RTS at $0300",
         "poke $F000 \"Hello\"        Write ASCII string at $F000 (bypasses ROM)",
         "poke $800 -i              Start interactive mode at $0800",
+        "poke KBD 00               Poke keyboard address using soft switch name",
     ];
 
     /// <inheritdoc/>
@@ -75,7 +78,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         "protection and does not trigger I/O side effects.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["write", "peek", "mem"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["write", "peek", "mem", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -97,9 +100,9 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Address required. Usage: poke <address> <byte> [byte...] or poke <address> -i");
         }
 
-        if (!TryParseAddress(args[0], out uint startAddress))
+        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint startAddress))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         // Check for interactive mode
@@ -189,7 +192,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
 
             // Check for address prefix (e.g., "$1234: ab cd ef")
             var trimmedLine = line.Trim();
-            if (TryParseAddressPrefix(trimmedLine, out uint newAddress, out string remainingBytes))
+            if (TryParseAddressPrefix(trimmedLine, context.Machine, out uint newAddress, out string remainingBytes))
             {
                 currentAddress = newAddress;
                 context.Output.WriteLine($"  Address changed to ${currentAddress:X4}");
@@ -282,7 +285,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         return CommandResult.Ok();
     }
 
-    private static bool TryParseAddressPrefix(string line, out uint address, out string remainingBytes)
+    private static bool TryParseAddressPrefix(string line, IMachine? machine, out uint address, out string remainingBytes)
     {
         address = 0;
         remainingBytes = string.Empty;
@@ -295,7 +298,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         }
 
         var addressPart = line[..colonIndex].Trim();
-        if (!TryParseAddress(addressPart, out address))
+        if (!AddressParser.TryParse(addressPart, machine, out address))
         {
             return false;
         }
@@ -392,23 +395,6 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
             FaultKind.DeviceFault => "Device fault - device rejected the write",
             _ => $"Unknown fault kind: {fault.Kind}",
         };
-    }
-
-    private static bool TryParseAddress(string value, out uint result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
     }
 
     /// <summary>

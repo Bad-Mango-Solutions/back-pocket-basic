@@ -97,7 +97,7 @@ public partial class EditorSettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            Editor = new EditorSettings
+            Editor = new()
             {
                 FontFamily = FontFamily,
                 FontSize = FontSize,

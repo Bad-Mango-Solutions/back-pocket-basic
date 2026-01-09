@@ -69,7 +69,7 @@ public static class MachineBuilderExtensions
                 // Create them if they don't exist
                 if (dispatcher is null)
                 {
-                    dispatcher = new IOPageDispatcher();
+                    dispatcher = new();
                     b.AddComponent(dispatcher);
                 }
 

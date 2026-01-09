@@ -5,10 +5,10 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
-using TestHelpers;
 
 using Emulation.Cpu;
 
+using TestHelpers;
 
 /// <summary>
 /// Comprehensive unit tests for newly implemented 65C02 instructions.
@@ -23,17 +23,12 @@ public class NewInstructionsTests : CpuTestBase
     private const ProcessorStatusFlags FlagV = ProcessorStatusFlags.V;
     private const ProcessorStatusFlags FlagN = ProcessorStatusFlags.N;
 
-    
-    
-
     /// <summary>
     /// Sets up test environment.
     /// </summary>
     [SetUp]
     public void Setup()
     {
-        
-        
     }
 
     #region Register Transfer Tests

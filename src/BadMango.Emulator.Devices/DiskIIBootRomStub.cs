@@ -51,8 +51,8 @@ public sealed class DiskIIBootRomStub : IBusTarget
         // In a real implementation, this would load and execute the boot sector
         romData[0x00] = 0x60;  // RTS - Return to caller
 
-        physicalMemory = new PhysicalMemory(romData, "DiskII Boot ROM");
-        romTarget = new RomTarget(physicalMemory.Slice(0, RomSize));
+        physicalMemory = new(romData, "DiskII Boot ROM");
+        romTarget = new(physicalMemory.Slice(0, RomSize));
     }
 
     /// <inheritdoc />

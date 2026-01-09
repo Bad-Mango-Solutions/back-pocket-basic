@@ -6,7 +6,6 @@ namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
-using BadMango.Emulator.Core.Interfaces.Signaling;
 
 using Interfaces;
 
@@ -641,12 +640,12 @@ public class MachineBuilderTests
             DisplayName = "Test Profile",
             Description = "Test",
             AddressSpace = 16,
-            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new Core.Configuration.MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Regions =
                 [
-                    new Core.Configuration.MemoryRegionProfile
+                    new()
                     {
                         Name = "test-composite",
                         Type = "composite",
@@ -699,12 +698,12 @@ public class MachineBuilderTests
             DisplayName = "Test Profile",
             Description = "Test",
             AddressSpace = 16,
-            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new Core.Configuration.MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Regions =
                 [
-                    new Core.Configuration.MemoryRegionProfile
+                    new()
                     {
                         Name = "test-composite",
                         Type = "composite",
@@ -757,12 +756,12 @@ public class MachineBuilderTests
             DisplayName = "Test Profile",
             Description = "Test",
             AddressSpace = 16,
-            Cpu = new Core.Configuration.CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new Core.Configuration.MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Regions =
                 [
-                    new Core.Configuration.MemoryRegionProfile
+                    new()
                     {
                         Name = "test-composite",
                         Type = "composite",

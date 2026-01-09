@@ -24,8 +24,8 @@ public class KeyboardControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new KeyboardController();
-        dispatcher = new IOPageDispatcher();
+        controller = new();
+        dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
 
@@ -202,7 +202,7 @@ public class KeyboardControllerTests
 
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,
@@ -216,7 +216,7 @@ public class KeyboardControllerTests
 
     private static BusAccess CreateTestContextWithNoSideEffects()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,

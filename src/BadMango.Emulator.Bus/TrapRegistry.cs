@@ -46,9 +46,9 @@ public sealed class TrapRegistry : ITrapRegistry
     private readonly ISlotManager? slotManager;
 
     /// <summary>
-    /// Language Card controller for LC RAM state checks.
+    /// Language Card state for LC RAM state checks.
     /// </summary>
-    private readonly LanguageCardController? languageCard;
+    private readonly ILanguageCardState? languageCard;
 
     /// <summary>
     /// Optional delegate to determine the active memory context for an address.
@@ -74,11 +74,11 @@ public sealed class TrapRegistry : ITrapRegistry
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrapRegistry"/> class
-    /// with slot manager and Language Card controller for full context-awareness.
+    /// with slot manager and Language Card state for full context-awareness.
     /// </summary>
     /// <param name="slotManager">The slot manager for slot dependency checks.</param>
-    /// <param name="languageCard">The Language Card controller for RAM state checks.</param>
-    public TrapRegistry(ISlotManager slotManager, LanguageCardController? languageCard)
+    /// <param name="languageCard">The Language Card state for RAM state checks.</param>
+    public TrapRegistry(ISlotManager slotManager, ILanguageCardState? languageCard)
     {
         this.slotManager = slotManager;
         this.languageCard = languageCard;
@@ -89,14 +89,14 @@ public sealed class TrapRegistry : ITrapRegistry
     /// with a custom memory context resolver for advanced memory configurations.
     /// </summary>
     /// <param name="slotManager">The slot manager for slot dependency checks.</param>
-    /// <param name="languageCard">The Language Card controller for RAM state checks.</param>
+    /// <param name="languageCard">The Language Card state for RAM state checks.</param>
     /// <param name="memoryContextResolver">
     /// A delegate that determines the active memory context for a given address.
     /// If null, the default behavior uses Language Card state for $D000-$FFFF addresses.
     /// </param>
     public TrapRegistry(
         ISlotManager? slotManager,
-        LanguageCardController? languageCard,
+        ILanguageCardState? languageCard,
         Func<Addr, MemoryContext>? memoryContextResolver)
     {
         this.slotManager = slotManager;
@@ -162,7 +162,7 @@ public sealed class TrapRegistry : ITrapRegistry
                 $"A trap for operation '{operation}' in context '{memoryContext}' is already registered at address ${address:X4}.");
         }
 
-        traps[key] = new TrapEntry
+        traps[key] = new()
         {
             Address = address,
             Operation = operation,
@@ -210,7 +210,7 @@ public sealed class TrapRegistry : ITrapRegistry
         // Determine if this is in expansion ROM space ($C800-$CFFF)
         bool requiresExpansionRom = address >= 0xC800 && address <= 0xCFFF;
 
-        traps[key] = new TrapEntry
+        traps[key] = new()
         {
             Address = address,
             Operation = operation,
@@ -486,6 +486,24 @@ public sealed class TrapRegistry : ITrapRegistry
     }
 
     /// <summary>
+    /// Validates that a slot number is in the valid range (1-7).
+    /// </summary>
+    /// <param name="slot">The slot number to validate.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="slot"/> is not in the range 1-7.
+    /// </exception>
+    private static void ValidateSlotNumber(int slot)
+    {
+        if (slot < 1 || slot > 7)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(slot),
+                slot,
+                "Slot number must be between 1 and 7.");
+        }
+    }
+
+    /// <summary>
     /// Resolves the active memory context for an address.
     /// </summary>
     /// <param name="address">The address to resolve.</param>
@@ -505,24 +523,6 @@ public sealed class TrapRegistry : ITrapRegistry
         }
 
         return MemoryContexts.Rom;
-    }
-
-    /// <summary>
-    /// Validates that a slot number is in the valid range (1-7).
-    /// </summary>
-    /// <param name="slot">The slot number to validate.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="slot"/> is not in the range 1-7.
-    /// </exception>
-    private static void ValidateSlotNumber(int slot)
-    {
-        if (slot < 1 || slot > 7)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(slot),
-                slot,
-                "Slot number must be between 1 and 7.");
-        }
     }
 
     /// <summary>

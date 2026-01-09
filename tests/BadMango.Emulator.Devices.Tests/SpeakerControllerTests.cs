@@ -23,8 +23,8 @@ public class SpeakerControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new SpeakerController();
-        dispatcher = new IOPageDispatcher();
+        controller = new();
+        dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
 
@@ -228,7 +228,7 @@ public class SpeakerControllerTests
 
     private static BusAccess CreateTestContext(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC030,
             Value: 0,
             WidthBits: 8,
@@ -242,7 +242,7 @@ public class SpeakerControllerTests
 
     private static BusAccess CreateTestContextWithNoSideEffects(ulong cycle)
     {
-        return new BusAccess(
+        return new(
             Address: 0xC030,
             Value: 0,
             WidthBits: 8,

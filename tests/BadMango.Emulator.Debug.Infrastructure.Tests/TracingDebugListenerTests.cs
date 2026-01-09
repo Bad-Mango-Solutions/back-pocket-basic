@@ -193,7 +193,7 @@ public class TracingDebugListenerTests
             Instruction = CpuInstructions.LDA,
             AddressingMode = CpuAddressingModes.Immediate,
             OperandSize = 1,
-            Operands = new OperandBuffer { [0] = 0x42 },
+            Operands = new() { [0] = 0x42 },
             A = 0x42,
             X = 0x00,
             Y = 0x00,
@@ -261,7 +261,7 @@ public class TracingDebugListenerTests
             Instruction = CpuInstructions.BEQ,
             AddressingMode = CpuAddressingModes.Relative,
             OperandSize = 1,
-            Operands = new OperandBuffer { [0] = 0x10 }, // +16 forward
+            Operands = new() { [0] = 0x10 }, // +16 forward
             A = 0x00,
             X = 0x00,
             Y = 0x00,
@@ -330,21 +330,21 @@ public class TracingDebugListenerTests
 
     private static DebugStepEventArgs CreateTestEventData()
     {
-        return new DebugStepEventArgs
+        return new()
         {
             PC = 0x1000,
             Opcode = 0xA9,
             Instruction = CpuInstructions.LDA,
             AddressingMode = CpuAddressingModes.Immediate,
             OperandSize = 1,
-            Operands = new OperandBuffer { [0] = 0x42 },
+            Operands = new() { [0] = 0x42 },
             EffectiveAddress = 0,
-            Registers = new Registers
+            Registers = new()
             {
-                A = new RegisterAccumulator { acc = 0x42 },
-                X = new RegisterIndex { index = 0 },
-                Y = new RegisterIndex { index = 0 },
-                SP = new RegisterStackPointer { stack = 0xFF },
+                A = new() { acc = 0x42 },
+                X = new() { index = 0 },
+                Y = new() { index = 0 },
+                SP = new() { stack = 0xFF },
                 P = ProcessorStatusFlags.I,
             },
             Cycles = 2,

@@ -136,12 +136,12 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     {
         return
         [
-            new SoftSwitchState("80STORE", 0xC000, store80, "PAGE2 controls display memory switching"),
-            new SoftSwitchState("RAMRD", 0xC002, ramrd, "Reads from auxiliary RAM ($0200-$BFFF)"),
-            new SoftSwitchState("RAMWRT", 0xC004, ramwrt, "Writes to auxiliary RAM ($0200-$BFFF)"),
-            new SoftSwitchState("ALTZP", 0xC008, altzp, "Alternate zero page/stack enabled"),
-            new SoftSwitchState("PAGE2", 0xC054, page2, "Page 2 selected for 80STORE"),
-            new SoftSwitchState("HIRES", 0xC056, hires, "Hi-res mode (extends 80STORE)"),
+            new("80STORE", 0xC000, store80, "PAGE2 controls display memory switching"),
+            new("RAMRD", 0xC002, ramrd, "Reads from auxiliary RAM ($0200-$BFFF)"),
+            new("RAMWRT", 0xC004, ramwrt, "Writes to auxiliary RAM ($0200-$BFFF)"),
+            new("ALTZP", 0xC008, altzp, "Alternate zero page/stack enabled"),
+            new("PAGE2", 0xC054, page2, "Page 2 selected for 80STORE"),
+            new("HIRES", 0xC056, hires, "Hi-res mode (extends 80STORE)"),
         ];
     }
 

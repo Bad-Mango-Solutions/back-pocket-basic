@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using System.Diagnostics;
 using System.Globalization;
 
+using BadMango.Emulator.Bus.Interfaces;
+
 /// <summary>
 /// Base class for commands that execute CPU instructions.
 /// </summary>
@@ -70,114 +72,6 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
 
     /// <inheritdoc/>
     public abstract IReadOnlyList<string> SeeAlso { get; }
-
-    /// <summary>
-    /// Executes the instruction loop with the given termination condition.
-    /// </summary>
-    /// <param name="debugContext">The debug context.</param>
-    /// <param name="options">Execution options.</param>
-    /// <param name="shouldTerminate">A function that returns true when execution should stop, along with the stop reason.</param>
-    /// <returns>The execution result containing statistics.</returns>
-    protected ExecutionResult ExecuteInstructionLoop(
-        IDebugContext debugContext,
-        ExecutionOptions options,
-        Func<IDebugContext, byte, bool> shouldTerminate)
-    {
-        ArgumentNullException.ThrowIfNull(debugContext);
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(shouldTerminate);
-
-        var cpu = debugContext.Cpu!;
-        var tracingListener = debugContext.TracingListener;
-        bool tracingWasEnabled = tracingListener?.IsEnabled ?? false;
-
-        // Configure tracing
-        if (options.EnableTrace && tracingListener is not null)
-        {
-            ConfigureTracing(debugContext, tracingListener, options);
-        }
-
-        var stopwatch = Stopwatch.StartNew();
-        int instructionCount = 0;
-        long cycleCount = 0;
-        string stopReason = "unknown";
-        bool normalCompletion = false;
-
-        try
-        {
-            cpu.ClearStopRequest();
-
-            while (instructionCount < options.InstructionLimit && cycleCount < options.CycleLimit)
-            {
-                // Check timeout
-                if (options.TimeoutMs > 0 && stopwatch.ElapsedMilliseconds >= options.TimeoutMs)
-                {
-                    stopReason = "timeout";
-                    break;
-                }
-
-                if (cpu.Halted)
-                {
-                    stopReason = $"CPU halted ({cpu.HaltReason})";
-                    normalCompletion = true;
-                    break;
-                }
-
-                if (cpu.IsStopRequested)
-                {
-                    stopReason = "stop requested";
-                    cpu.ClearStopRequest();
-                    break;
-                }
-
-                // Get the opcode before stepping (for derived class termination check)
-                byte opcode = cpu.Peek8(cpu.GetPC());
-
-                var result = cpu.Step();
-                instructionCount++;
-                cycleCount += (long)result.CyclesConsumed.Value;
-
-                // Check custom termination condition
-                if (shouldTerminate(debugContext, opcode))
-                {
-                    stopReason = "completed";
-                    normalCompletion = true;
-                    break;
-                }
-            }
-
-            // Determine final stop reason if limits were reached and no other reason was set
-            if (stopReason == "unknown")
-            {
-                if (instructionCount >= options.InstructionLimit)
-                {
-                    stopReason = "instruction limit reached";
-                }
-                else if (cycleCount >= options.CycleLimit)
-                {
-                    stopReason = "cycle limit reached";
-                }
-            }
-
-            return new ExecutionResult(
-                instructionCount,
-                cycleCount,
-                stopwatch.ElapsedMilliseconds,
-                stopReason,
-                normalCompletion);
-        }
-        finally
-        {
-            // Restore tracing state
-            if (tracingListener is not null)
-            {
-                tracingListener.IsEnabled = tracingWasEnabled;
-                tracingListener.SetConsoleOutput(null);
-                tracingListener.CloseFileOutput();
-                tracingListener.BufferOutput = false;
-            }
-        }
-    }
 
     /// <summary>
     /// Configures tracing based on options.
@@ -375,19 +269,127 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
     /// <returns>True if parsing succeeded; otherwise, false.</returns>
     protected static bool TryParseAddress(string value, out uint result)
     {
-        result = 0;
+        return TryParseAddress(value, null, out result);
+    }
 
-        if (value.StartsWith("$", StringComparison.Ordinal))
+    /// <summary>
+    /// Tries to parse an address from a string, with soft switch name resolution.
+    /// </summary>
+    /// <param name="value">The string value to parse.</param>
+    /// <param name="machine">The machine to query for soft switch providers, or <see langword="null"/>.</param>
+    /// <param name="result">The parsed address.</param>
+    /// <returns>True if parsing succeeded; otherwise, false.</returns>
+    protected static bool TryParseAddress(string value, IMachine? machine, out uint result)
+    {
+        return AddressParser.TryParse(value, machine, out result);
+    }
+
+    /// <summary>
+    /// Executes the instruction loop with the given termination condition.
+    /// </summary>
+    /// <param name="debugContext">The debug context.</param>
+    /// <param name="options">Execution options.</param>
+    /// <param name="shouldTerminate">A function that returns true when execution should stop, along with the stop reason.</param>
+    /// <returns>The execution result containing statistics.</returns>
+    protected ExecutionResult ExecuteInstructionLoop(
+        IDebugContext debugContext,
+        ExecutionOptions options,
+        Func<IDebugContext, byte, bool> shouldTerminate)
+    {
+        ArgumentNullException.ThrowIfNull(debugContext);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(shouldTerminate);
+
+        var cpu = debugContext.Cpu!;
+        var tracingListener = debugContext.TracingListener;
+        bool tracingWasEnabled = tracingListener?.IsEnabled ?? false;
+
+        // Configure tracing
+        if (options.EnableTrace && tracingListener is not null)
         {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
+            ConfigureTracing(debugContext, tracingListener, options);
         }
 
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
+        var stopwatch = Stopwatch.StartNew();
+        int instructionCount = 0;
+        long cycleCount = 0;
+        string stopReason = "unknown";
+        bool normalCompletion = false;
 
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+        try
+        {
+            cpu.ClearStopRequest();
+
+            while (instructionCount < options.InstructionLimit && cycleCount < options.CycleLimit)
+            {
+                // Check timeout
+                if (options.TimeoutMs > 0 && stopwatch.ElapsedMilliseconds >= options.TimeoutMs)
+                {
+                    stopReason = "timeout";
+                    break;
+                }
+
+                if (cpu.Halted)
+                {
+                    stopReason = $"CPU halted ({cpu.HaltReason})";
+                    normalCompletion = true;
+                    break;
+                }
+
+                if (cpu.IsStopRequested)
+                {
+                    stopReason = "stop requested";
+                    cpu.ClearStopRequest();
+                    break;
+                }
+
+                // Get the opcode before stepping (for derived class termination check)
+                byte opcode = cpu.Peek8(cpu.GetPC());
+
+                var result = cpu.Step();
+                instructionCount++;
+                cycleCount += (long)result.CyclesConsumed.Value;
+
+                // Check custom termination condition
+                if (shouldTerminate(debugContext, opcode))
+                {
+                    stopReason = "completed";
+                    normalCompletion = true;
+                    break;
+                }
+            }
+
+            // Determine final stop reason if limits were reached and no other reason was set
+            if (stopReason == "unknown")
+            {
+                if (instructionCount >= options.InstructionLimit)
+                {
+                    stopReason = "instruction limit reached";
+                }
+                else if (cycleCount >= options.CycleLimit)
+                {
+                    stopReason = "cycle limit reached";
+                }
+            }
+
+            return new(
+                instructionCount,
+                cycleCount,
+                stopwatch.ElapsedMilliseconds,
+                stopReason,
+                normalCompletion);
+        }
+        finally
+        {
+            // Restore tracing state
+            if (tracingListener is not null)
+            {
+                tracingListener.IsEnabled = tracingWasEnabled;
+                tracingListener.SetConsoleOutput(null);
+                tracingListener.CloseFileOutput();
+                tracingListener.BufferOutput = false;
+            }
+        }
     }
 
     /// <summary>

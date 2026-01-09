@@ -57,7 +57,7 @@ public class ExecutionVisitor : IAstVisitor<BasicValue>
         this.context = context;
         this.appleSystem = appleSystem;
         this.logger = logger;
-        random = new Random();
+        random = new();
     }
 
     /// <summary>

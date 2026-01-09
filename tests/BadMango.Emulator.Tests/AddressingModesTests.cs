@@ -5,10 +5,10 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
-using TestHelpers;
 
 using Emulation.Cpu;
 
+using TestHelpers;
 
 /// <summary>
 /// Comprehensive unit tests for addressing mode implementations.
@@ -16,17 +16,12 @@ using Emulation.Cpu;
 [TestFixture]
 public class AddressingModesTests : CpuTestBase
 {
-    
-    
-
     /// <summary>
     /// Sets up test environment.
     /// </summary>
     [SetUp]
     public void Setup()
     {
-        
-        
     }
 
     /// <summary>

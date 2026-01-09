@@ -71,7 +71,7 @@ public sealed class Scheduler : IScheduler
     /// </summary>
     public Scheduler()
     {
-        eventQueue = new PriorityQueue<ScheduledEvent, ScheduledEvent>(
+        eventQueue = new(
             Comparer<ScheduledEvent>.Create(static (a, b) => a.CompareTo(b)));
         cancelledHandles = new();
     }

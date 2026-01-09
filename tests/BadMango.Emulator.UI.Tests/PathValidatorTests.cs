@@ -23,7 +23,7 @@ public class PathValidatorTests
     {
         tempDirectory = Path.Combine(Path.GetTempPath(), $"backpocket_path_tests_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
-        validator = new PathValidator();
+        validator = new();
     }
 
     /// <summary>

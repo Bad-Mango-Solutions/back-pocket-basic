@@ -30,9 +30,9 @@ public class AppleSpeakerTests
     [SetUp]
     public void Setup()
     {
-        mockLogger = new Mock<ILogger<AppleSpeaker>>();
-        testAudioOutput = new TestAudioOutput();
-        speaker = new AppleSpeaker(mockLogger.Object);
+        mockLogger = new();
+        testAudioOutput = new();
+        speaker = new(mockLogger.Object);
 
         // Use reflection to inject the test audio output
         var audioOutputField = typeof(AppleSpeaker).GetField("audioOutput", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -184,7 +184,7 @@ public class AppleSpeakerTests
         // Act - Create multiple threads that call Click concurrently
         for (int i = 0; i < threadCount; i++)
         {
-            threads[i] = new Thread(() =>
+            threads[i] = new(() =>
             {
                 try
                 {

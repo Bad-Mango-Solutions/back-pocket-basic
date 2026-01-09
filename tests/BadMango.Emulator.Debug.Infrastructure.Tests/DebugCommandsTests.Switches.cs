@@ -4,8 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 
 using Moq;
 

@@ -50,7 +50,9 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
         "Performs a side-effectful write to the memory bus using DataWrite intent, " +
         "which will trigger soft switches and I/O device behavior. Use this when you " +
         "want to test actual hardware behavior. For side-effect-free writes that bypass " +
-        "ROM protection, use 'poke' instead.";
+        "ROM protection, use 'poke' instead. " +
+        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
+        "names registered by the current machine (e.g., SPEAKER, KBDSTRB).";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -59,8 +61,10 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
     public IReadOnlyList<string> Examples { get; } =
     [
         "write $C010 00            Clear keyboard strobe",
+        "write KBDSTRB 00          Same as above using soft switch name",
         "write $300 A9 00 60       Write LDA #$00; RTS to $0300",
         "write 0xC050 00           Toggle text/graphics mode",
+        "write GRAPHICS 00         Same as above using soft switch name",
     ];
 
     /// <inheritdoc/>
@@ -70,7 +74,7 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
         "change system state significantly.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["poke", "read", "mem"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["poke", "read", "mem", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -92,9 +96,9 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Address required. Usage: write <address> <byte> [byte...]");
         }
 
-        if (!TryParseAddress(args[0], out uint address))
+        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint address))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         if (args.Length < 2)
@@ -192,23 +196,6 @@ public sealed class WriteCommand : CommandHandlerBase, ICommandHelp
             FaultKind.DeviceFault => "Device fault - device rejected the write",
             _ => $"Unknown fault kind: {fault.Kind}",
         };
-    }
-
-    private static bool TryParseAddress(string value, out uint result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
     }
 
     private static bool TryParseByteValue(string value, out byte result)

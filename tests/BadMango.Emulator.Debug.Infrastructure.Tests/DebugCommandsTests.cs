@@ -61,10 +61,10 @@ public partial class DebugCommandsTests
     [SetUp]
     public void SetUp()
     {
-        dispatcher = new CommandDispatcher();
+        dispatcher = new();
 
         // Create a bus-based memory system
-        bus = new MainBus(16); // 16-bit address space = 64KB
+        bus = new(16); // 16-bit address space = 64KB
         var physical = new PhysicalMemory(0x10000, "test-ram");
         var target = new RamTarget(physical.Slice(0, 0x10000));
         bus.MapPageRange(
@@ -81,14 +81,14 @@ public partial class DebugCommandsTests
         var scheduler = new Scheduler();
         var signalBus = new SignalBus();
         var eventContext = new EventContext(scheduler, signalBus, bus);
-        cpu = new Cpu65C02(eventContext);
+        cpu = new(eventContext);
 
         var opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        disassembler = new Disassembler(opcodeTable, bus);
+        disassembler = new(opcodeTable, bus);
 
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
-        debugContext = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
+        outputWriter = new();
+        errorWriter = new();
+        debugContext = new(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
 
         // Set up reset vector so CPU can be reset properly
         WriteWord(bus, 0xFFFC, 0x1000);
@@ -182,7 +182,7 @@ public partial class DebugCommandsTests
         // 64KB address space: 16 pages × 4KB = 65536 bytes
         const int TestMemorySize = 0x10000;
 
-        physicalMemory = new PhysicalMemory(TestMemorySize, "TestRam");
+        physicalMemory = new(TestMemorySize, "TestRam");
         var ramTarget = new RamTarget(physicalMemory.Slice(0, TestMemorySize));
         var bus = new MainBus(16); // 16-bit address space = 64KB
 

@@ -73,6 +73,7 @@
     <File Path="specs/Apple Desktop Bus Specification.md" />
     <File Path="specs/Apple II 80-Column Card Specification.md" />
     <File Path="specs/Apple II Ethernet Networking Specification.md" />
+    <File Path="specs/Apple II Language Card Technical Reference and Memory Mapping Analysis.md" />
     <File Path="specs/Apple II Monitor ROM Reference.md" />
     <File Path="specs/Apple II Printing Specification.md" />
     <File Path="specs/Apple II Serial Communications Specification.md" />

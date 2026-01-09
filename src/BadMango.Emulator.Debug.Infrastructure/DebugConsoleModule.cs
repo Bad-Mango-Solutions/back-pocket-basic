@@ -9,7 +9,6 @@ using Autofac;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Interfaces;
-using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
 /// <summary>

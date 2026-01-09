@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using System.Globalization;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -52,7 +50,9 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
         "Performs a side-effect-free read from memory using DebugRead intent. This " +
         "bypasses I/O handlers and soft switches, returning the raw memory value. " +
         "Output is in hex format only. Use this for safe memory inspection without " +
-        "affecting emulation state. For side-effectful reads, use 'read' instead.";
+        "affecting emulation state. For side-effectful reads, use 'read' instead. " +
+        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
+        "names registered by the current machine (e.g., SPEAKER, KBD, KBDSTRB).";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -61,15 +61,17 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
     public IReadOnlyList<string> Examples { get; } =
     [
         "peek $C000               Read keyboard data without triggering strobe",
+        "peek KBD                  Same as above using soft switch name",
         "peek $300 16             Read 16 bytes starting at $0300",
         "peek 0x6000              Read a single byte from $6000",
+        "peek SPEAKER              Peek at speaker address (no click)",
     ];
 
     /// <inheritdoc/>
     public string? SideEffects => null;
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["read", "poke", "mem"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["read", "poke", "mem", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -91,13 +93,13 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Address required. Usage: peek <address> [count]");
         }
 
-        if (!TryParseAddress(args[0], out uint address))
+        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint address))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         int count = DefaultByteCount;
-        if (args.Length > 1 && !TryParseCount(args[1], out count))
+        if (args.Length > 1 && !AddressParser.TryParseCount(args[1], out count))
         {
             return CommandResult.Error($"Invalid count: '{args[1]}'. Expected a positive integer.");
         }
@@ -194,39 +196,5 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
             FaultKind.DeviceFault => "Device fault - device rejected the access",
             _ => $"Unknown fault kind: {fault.Kind}",
         };
-    }
-
-    private static bool TryParseAddress(string value, out uint result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
-    }
-
-    private static bool TryParseCount(string value, out int result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return int.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return int.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
     }
 }

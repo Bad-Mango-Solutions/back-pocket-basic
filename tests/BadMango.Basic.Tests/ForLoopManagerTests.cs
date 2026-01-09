@@ -19,9 +19,9 @@ public class ForLoopManagerTests
     public void PushFor_ReplacesExistingLoopForVariable()
     {
         var manager = new ForLoopManager();
-        manager.PushFor(new ForLoopState("I", 3, 1, 0, 0));
-        manager.PushFor(new ForLoopState("J", 2, 1, 0, 0));
-        manager.PushFor(new ForLoopState("I", 5, 1, 1, 1));
+        manager.PushFor(new("I", 3, 1, 0, 0));
+        manager.PushFor(new("J", 2, 1, 0, 0));
+        manager.PushFor(new("I", 5, 1, 1, 1));
 
         var state = manager.GetForLoop("I");
         Assert.That(state?.ReturnLineIndex, Is.EqualTo(1));
@@ -34,8 +34,8 @@ public class ForLoopManagerTests
     public void PopFor_WithVariableRestoresStackAndThrowsWhenMissing()
     {
         var manager = new ForLoopManager();
-        manager.PushFor(new ForLoopState("I", 3, 1, 0, 0));
-        manager.PushFor(new ForLoopState("J", 2, 1, 0, 0));
+        manager.PushFor(new("I", 3, 1, 0, 0));
+        manager.PushFor(new("J", 2, 1, 0, 0));
 
         Assert.That(() => manager.PopFor("K"), Throws.TypeOf<BasicRuntimeException>());
         Assert.That(manager.GetForLoop("I"), Is.Not.Null);
@@ -48,7 +48,7 @@ public class ForLoopManagerTests
     public void PopFor_WithoutVariableReturnsTop()
     {
         var manager = new ForLoopManager();
-        manager.PushFor(new ForLoopState("I", 3, 1, 0, 0));
+        manager.PushFor(new("I", 3, 1, 0, 0));
 
         var state = manager.PopFor(null);
 

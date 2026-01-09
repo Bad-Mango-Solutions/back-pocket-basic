@@ -22,7 +22,7 @@ public class ThunderclockCardTests
     [SetUp]
     public void SetUp()
     {
-        card = new ThunderclockCard();
+        card = new();
     }
 
     /// <summary>
@@ -231,7 +231,7 @@ public class ThunderclockCardTests
     /// </summary>
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,

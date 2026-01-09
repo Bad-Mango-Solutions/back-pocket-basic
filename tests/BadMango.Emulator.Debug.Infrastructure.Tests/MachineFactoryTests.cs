@@ -15,46 +15,6 @@ using Core.Cpu;
 public class MachineFactoryTests
 {
     /// <summary>
-    /// Creates a standard test profile using the new regions-based schema.
-    /// </summary>
-    /// <returns>A machine profile for testing.</returns>
-    private static MachineProfile CreateTestProfile()
-    {
-        return new MachineProfile
-        {
-            Name = "test-65c02",
-            DisplayName = "Test 65C02",
-            Cpu = new CpuProfileSection { Type = "65C02" },
-            AddressSpace = 16,
-            Memory = new MemoryProfileSection
-            {
-                Physical =
-                [
-                    new PhysicalMemoryProfile
-                    {
-                        Name = "main-ram-64k",
-                        Size = "0x10000",
-                        Fill = "0x00",
-                    },
-                ],
-                Regions =
-                [
-                    new MemoryRegionProfile
-                    {
-                        Name = "main-ram",
-                        Type = "ram",
-                        Start = "0x0000",
-                        Size = "0x10000",
-                        Permissions = "rwx",
-                        Source = "main-ram-64k",
-                        SourceOffset = "0x0000",
-                    },
-                ],
-            },
-        };
-    }
-
-    /// <summary>
     /// Verifies that the CPU is properly reset after creation, setting E and CP flags appropriately
     /// for 65C02 emulation mode.
     /// </summary>
@@ -122,5 +82,45 @@ public class MachineFactoryTests
             Assert.That(disassembler, Is.Not.Null);
             Assert.That(info, Is.Not.Null);
         });
+    }
+
+    /// <summary>
+    /// Creates a standard test profile using the new regions-based schema.
+    /// </summary>
+    /// <returns>A machine profile for testing.</returns>
+    private static MachineProfile CreateTestProfile()
+    {
+        return new()
+        {
+            Name = "test-65c02",
+            DisplayName = "Test 65C02",
+            Cpu = new() { Type = "65C02" },
+            AddressSpace = 16,
+            Memory = new()
+            {
+                Physical =
+                [
+                    new()
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
+                    },
+                ],
+            },
+        };
     }
 }

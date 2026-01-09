@@ -59,7 +59,7 @@ public class WindowManager : IWindowManager
         var window = windowFactory(component, machineId);
         windows[window.WindowId] = window;
 
-        WindowCreated?.Invoke(this, new PopOutWindowEventArgs(window));
+        WindowCreated?.Invoke(this, new(window));
 
         logger?.LogInformation("Created pop-out window {WindowId} for component {Component}", window.WindowId, component);
 
@@ -76,7 +76,7 @@ public class WindowManager : IWindowManager
         await window.CloseAsync(dockContent: true).ConfigureAwait(false);
         windows.TryRemove(window.WindowId, out _);
 
-        WindowClosed?.Invoke(this, new PopOutWindowEventArgs(window));
+        WindowClosed?.Invoke(this, new(window));
 
         logger?.LogInformation("Docked window {WindowId}", window.WindowId);
     }
@@ -164,7 +164,7 @@ public class WindowManager : IWindowManager
             {
                 await window.CloseAsync(dockContent: false).ConfigureAwait(false);
                 windows.TryRemove(window.WindowId, out _);
-                WindowClosed?.Invoke(this, new PopOutWindowEventArgs(window));
+                WindowClosed?.Invoke(this, new(window));
             }
             catch (Exception ex)
             {
@@ -191,7 +191,7 @@ public class WindowManager : IWindowManager
 
     private static JsonSerializerOptions GetJsonOptions()
     {
-        return new JsonSerializerOptions
+        return new()
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

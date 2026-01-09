@@ -328,6 +328,7 @@ public partial class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
+
             // The ASCII column should show ? for faulted bytes
             Assert.That(outputWriter.ToString(), Does.Contain("|????????????????|"), "Should show ? in ASCII column for faulted bytes");
         });
@@ -375,7 +376,7 @@ public partial class DebugCommandsTests
         var partialBus = new MainBus(16);
         var physical = new PhysicalMemory(0x8000, "test-memory");
         var ramTarget = new RamTarget(physical.Slice(0, 0x4000));
-        var romTarget = new RomTarget(physical.ReadOnlySlice(0x4000, 0x4000));
+        var romTarget = new RomTarget(physical.Slice(0x4000, 0x4000));
 
         // Pages 0-3: RAM (read/write)
         partialBus.MapPageRange(
@@ -413,15 +414,16 @@ public partial class DebugCommandsTests
     }
 
     /// <summary>
-    /// Verifies that PeekCommand reports permission faults for write-only regions.
+    /// Verifies that PeekCommand succeeds for write-only regions (debug reads bypass permission checks).
     /// </summary>
     [Test]
-    public void PeekCommand_WriteOnlyRegion_ShowsPermissionFault()
+    public void PeekCommand_WriteOnlyRegion_SucceedsWithDebugRead()
     {
         // Create a bus with a write-only region
         var partialBus = new MainBus(16);
         var physical = new PhysicalMemory(0x8000, "test-memory");
         var ramTarget = new RamTarget(physical.Slice(0, 0x4000));
+        var writeOnlyTarget = new RamTarget(physical.Slice(0x4000, 0x4000));
 
         // Pages 0-3: RAM (read/write)
         partialBus.MapPageRange(
@@ -435,15 +437,17 @@ public partial class DebugCommandsTests
             physicalBase: 0);
 
         // Pages 4-7: Write-only (unusual but possible)
+        // Note: Write to the backing memory first so peek can read something
+        physical.Slice(0x4000, 0x1000).Span[0] = 0xAB;
         partialBus.MapPageRange(
             startPage: 4,
             pageCount: 4,
             deviceId: 1,
             regionTag: RegionTag.Io,
             perms: PagePerms.Write,
-            caps: ramTarget.Capabilities,
-            target: ramTarget,
-            physicalBase: 0x4000);
+            caps: writeOnlyTarget.Capabilities,
+            target: writeOnlyTarget,
+            physicalBase: 0);
 
         var context = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, partialBus, disassembler);
 
@@ -452,10 +456,11 @@ public partial class DebugCommandsTests
 
         Assert.Multiple(() =>
         {
+            // Debug reads (peek) bypass permission checks, so this should succeed
             Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("??"), "Should show ?? for permission fault");
-            Assert.That(outputWriter.ToString(), Does.Contain("Bus faults encountered"), "Should report fault");
-            Assert.That(outputWriter.ToString(), Does.Contain("Permission denied"), "Should identify as permission fault");
+            Assert.That(outputWriter.ToString(), Does.Not.Contain("??"), "Debug reads bypass permission checks");
+            Assert.That(outputWriter.ToString(), Does.Not.Contain("Bus faults"), "No faults for debug reads");
+            Assert.That(outputWriter.ToString(), Does.Contain("AB"), "Should read the value from memory");
         });
     }
 

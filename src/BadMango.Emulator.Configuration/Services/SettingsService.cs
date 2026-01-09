@@ -43,7 +43,7 @@ public class SettingsService : ISettingsService
     {
         this.logger = logger;
         this.migrator = migrator;
-        this.current = new AppSettings();
+        this.current = new();
 
         var directory = settingsDirectory ?? GetDefaultSettingsDirectory();
         this.settingsFilePath = Path.Combine(directory, "settings.json");
@@ -63,7 +63,7 @@ public class SettingsService : ISettingsService
             if (!File.Exists(settingsFilePath))
             {
                 logger?.LogInformation("Settings file not found at {Path}, using defaults", settingsFilePath);
-                current = new AppSettings();
+                current = new();
                 return current;
             }
 
@@ -89,19 +89,19 @@ public class SettingsService : ISettingsService
             }
 
             logger?.LogInformation("Settings loaded from {Path}", settingsFilePath);
-            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new() { IsFullReload = true });
             return current;
         }
         catch (JsonException ex)
         {
             logger?.LogError(ex, "Failed to parse settings file, using defaults");
-            current = new AppSettings();
+            current = new();
             return current;
         }
         catch (IOException ex)
         {
             logger?.LogError(ex, "Failed to read settings file, using defaults");
-            current = new AppSettings();
+            current = new();
             return current;
         }
     }
@@ -124,7 +124,7 @@ public class SettingsService : ISettingsService
 
             current = settings;
             logger?.LogInformation("Settings saved to {Path}", settingsFilePath);
-            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new() { IsFullReload = true });
         }
         catch (IOException ex)
         {
@@ -137,8 +137,8 @@ public class SettingsService : ISettingsService
     public Task<AppSettings> ResetToDefaultsAsync()
     {
         logger?.LogInformation("Resetting settings to defaults");
-        current = new AppSettings();
-        OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
+        current = new();
+        OnSettingsChanged(new() { IsFullReload = true });
         return Task.FromResult(current);
     }
 
@@ -173,7 +173,7 @@ public class SettingsService : ISettingsService
 
             current = settings;
             logger?.LogInformation("Settings imported from {Path}", path);
-            OnSettingsChanged(new SettingsChangedEventArgs { IsFullReload = true });
+            OnSettingsChanged(new() { IsFullReload = true });
             return current;
         }
         catch (JsonException ex)
@@ -269,7 +269,7 @@ public class SettingsService : ISettingsService
         if (newSettings is not null)
         {
             current = newSettings;
-            OnSettingsChanged(new SettingsChangedEventArgs { ChangedKeys = [key] });
+            OnSettingsChanged(new() { ChangedKeys = [key] });
         }
     }
 

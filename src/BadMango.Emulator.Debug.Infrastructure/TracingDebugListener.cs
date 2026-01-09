@@ -154,7 +154,7 @@ public sealed class TracingDebugListener : IDebugStepListener
 
             if (!string.IsNullOrEmpty(filePath))
             {
-                fileOutput = new StreamWriter(filePath, append: false, Encoding.UTF8)
+                fileOutput = new(filePath, append: false, Encoding.UTF8)
                 {
                     AutoFlush = true,
                 };

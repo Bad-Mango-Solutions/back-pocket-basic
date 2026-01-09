@@ -29,10 +29,10 @@ public class AppleSystemTests
     {
         var logger = new Mock<ILogger<AppleSystem>>();
         var memoryLogger = new Mock<ILogger<AppleMemory>>();
-        memory = new AppleMemory(memoryLogger.Object);
-        cpu = new TestCpu(memory);
-        speaker = new TestSpeaker();
-        system = new AppleSystem(memory, cpu, speaker, logger.Object);
+        memory = new(memoryLogger.Object);
+        cpu = new(memory);
+        speaker = new();
+        system = new(memory, cpu, speaker, logger.Object);
     }
 
     /// <summary>
@@ -111,7 +111,7 @@ public class AppleSystemTests
         public TestCpu(IMemory memory)
         {
             Memory = memory;
-            Registers = new Cpu6502Registers();
+            Registers = new();
         }
 
         public Cpu6502Registers Registers { get; }

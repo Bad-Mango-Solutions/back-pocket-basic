@@ -13,9 +13,6 @@ using BadMango.Emulator.Core.Signaling;
 using Core;
 using Core.Cpu;
 using Core.Debugger;
-using Core.Interfaces.Cpu;
-using Core.Interfaces.Debugging;
-using Core.Interfaces.Signaling;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
@@ -105,7 +102,7 @@ public class Cpu65C02 : CpuBase
 
             // Clear TCU after advancing scheduler
             Registers.TCU = Cycle.Zero;
-            return new CpuStepResult(CpuRunState.Running, interruptCycles);
+            return new(CpuRunState.Running, interruptCycles);
         }
 
         if (Halted)
@@ -116,7 +113,7 @@ public class Cpu65C02 : CpuBase
                 HaltState.Stp => CpuRunState.Stopped,
                 _ => CpuRunState.Halted,
             };
-            return new CpuStepResult(haltedState, Cycle.Zero);
+            return new(haltedState, Cycle.Zero);
         }
 
         // Capture state before execution for debug listener
@@ -189,7 +186,7 @@ public class Cpu65C02 : CpuBase
                 // Clear TCU after advancing scheduler
                 Registers.TCU = Cycle.Zero;
 
-                return new CpuStepResult(CpuRunState.Running, trapCycles);
+                return new(CpuRunState.Running, trapCycles);
             }
         }
 
@@ -199,9 +196,9 @@ public class Cpu65C02 : CpuBase
         if (DebugListener is not null)
         {
             // Initialize trace for this instruction
-            var opcodeBuffer = new OpcodeBuffer();
+            var opcodeBuffer = default(OpcodeBuffer);
             opcodeBuffer[0] = opcode;
-            Trace = new InstructionTrace(
+            Trace = new(
                 StartPC: pcBefore,
                 OpCode: opcodeBuffer,
                 Instruction: CpuInstructions.None,
@@ -269,11 +266,10 @@ public class Cpu65C02 : CpuBase
             _ => CpuRunState.Halted,
         };
 
-        return new CpuStepResult(runState, instructionCycles);
+        return new(runState, instructionCycles);
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {

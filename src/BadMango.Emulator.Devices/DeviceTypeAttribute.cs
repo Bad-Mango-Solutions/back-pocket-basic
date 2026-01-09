@@ -13,7 +13,7 @@ namespace BadMango.Emulator.Devices;
 /// or <see cref="Bus.Interfaces.ISlotCard"/> to enable automatic factory registration.
 /// </para>
 /// <para>
-/// The <see cref="TypeId"/> corresponds to the "type" field in machine profile device entries:
+/// The <see cref="DeviceTypeId"/> corresponds to the "type" field in machine profile device entries:
 /// </para>
 /// <code>
 /// // Profile JSON
@@ -34,15 +34,15 @@ public sealed class DeviceTypeAttribute : Attribute
     /// <summary>
     /// Initializes a new instance of the <see cref="DeviceTypeAttribute"/> class.
     /// </summary>
-    /// <param name="typeId">The device type identifier used in profiles (e.g., "speaker", "pocketwatch").</param>
-    public DeviceTypeAttribute(string typeId)
+    /// <param name="deviceTypeId">The device type identifier used in profiles (e.g., "speaker", "pocketwatch").</param>
+    public DeviceTypeAttribute(string deviceTypeId)
     {
-        TypeId = typeId ?? throw new ArgumentNullException(nameof(typeId));
+        DeviceTypeId = deviceTypeId ?? throw new ArgumentNullException(nameof(deviceTypeId));
     }
 
     /// <summary>
     /// Gets the device type identifier.
     /// </summary>
     /// <value>The type identifier used in profile device entries.</value>
-    public string TypeId { get; }
+    public string DeviceTypeId { get; }
 }

@@ -120,7 +120,7 @@ public sealed class MemoryRegion : IMemoryRegion
         ArgumentNullException.ThrowIfNull(physicalMemory);
 
         var target = new RamTarget(physicalMemory.Slice(0, physicalMemory.Size));
-        return new MemoryRegion(
+        return new(
             id: id,
             name: name,
             preferredBase: preferredBase,
@@ -151,8 +151,9 @@ public sealed class MemoryRegion : IMemoryRegion
     {
         ArgumentNullException.ThrowIfNull(physicalMemory);
 
-        var target = new RomTarget(physicalMemory.ReadOnlySlice(0, physicalMemory.Size));
-        return new MemoryRegion(
+        // Use Slice to get writable memory, which enables debug writes (Poke) to ROM
+        var target = new RomTarget(physicalMemory.Slice(0, physicalMemory.Size));
+        return new(
             id: id,
             name: name,
             preferredBase: preferredBase,
@@ -160,7 +161,7 @@ public sealed class MemoryRegion : IMemoryRegion
             size: physicalMemory.Size,
             tag: RegionTag.Rom,
             defaultPermissions: PagePerms.Read | PagePerms.Execute,
-            capabilities: TargetCaps.SupportsPeek | TargetCaps.SupportsWide,
+            capabilities: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke | TargetCaps.SupportsWide,
             physicalMemory: physicalMemory,
             isRelocatable: false,
             supportsOverlay: true,

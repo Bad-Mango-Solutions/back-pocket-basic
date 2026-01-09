@@ -371,7 +371,7 @@ public class CompositeLayerTests
         bank2Memory.AsSpan()[0] = 0xB2;
         upperMemory.AsSpan()[0] = 0xEE;
 
-        var romTarget = new RomTarget(romMemory.ReadOnlySlice(0, 0x3000));
+        var romTarget = new RomTarget(romMemory.Slice(0, 0x3000));
         var bank1Target = new RamTarget(bank1Memory.Slice(0, 0x1000));
         var bank2Target = new RamTarget(bank2Memory.Slice(0, 0x1000));
         var upperTarget = new RamTarget(upperMemory.Slice(0, 0x2000));

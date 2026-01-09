@@ -64,7 +64,7 @@ public sealed class DebugRepl
 
         var context = DebugContext.CreateConsoleContext(dispatcher);
 
-        return new DebugRepl(dispatcher, context, Console.In);
+        return new(dispatcher, context, Console.In);
     }
 
     /// <summary>

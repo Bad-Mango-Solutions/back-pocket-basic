@@ -73,13 +73,13 @@ public class SettingsServiceTests
         var service = new SettingsService(settingsDirectory: tempDirectory);
         var settings = new AppSettings
         {
-            General = new GeneralSettings
+            General = new()
             {
                 Theme = "Light",
                 Language = "de-DE",
                 LoadLastProfile = false,
             },
-            Display = new DisplaySettings
+            Display = new()
             {
                 ScaleFactor = 3,
                 ScanlineEffect = true,
@@ -129,9 +129,9 @@ public class SettingsServiceTests
     {
         // Arrange
         var service = new SettingsService(settingsDirectory: tempDirectory);
-        await service.SaveAsync(new AppSettings
+        await service.SaveAsync(new()
         {
-            General = new GeneralSettings { Theme = "Light" },
+            General = new() { Theme = "Light" },
         });
 
         // Act
@@ -210,7 +210,7 @@ public class SettingsServiceTests
         var service = new SettingsService(settingsDirectory: tempDirectory);
 
         // Create a settings file first
-        await service.SaveAsync(new AppSettings());
+        await service.SaveAsync(new());
 
         // Create a new service and subscribe to events
         var service2 = new SettingsService(settingsDirectory: tempDirectory);
@@ -237,7 +237,7 @@ public class SettingsServiceTests
         service.SettingsChanged += (_, _) => eventRaised = true;
 
         // Act
-        await service.SaveAsync(new AppSettings());
+        await service.SaveAsync(new());
 
         // Assert
         Assert.That(eventRaised, Is.True);

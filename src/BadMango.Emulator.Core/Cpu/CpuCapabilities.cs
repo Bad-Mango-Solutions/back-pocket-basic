@@ -1,4 +1,4 @@
-﻿// <copyright file="CpuCapabilities.cs" company="Bad Mango Solutions">
+// <copyright file="CpuCapabilities.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 

@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Devices.Tests;
 
-using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
 
 /// <summary>
@@ -156,19 +155,19 @@ public class MotherboardDeviceFactoryTests
 
     private static MachineProfile CreateProfileWithSpeaker()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-with-speaker",
-            Cpu = new CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
+                    new() { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
@@ -179,11 +178,11 @@ public class MotherboardDeviceFactoryTests
                     },
                 ],
             },
-            Devices = new DevicesProfile
+            Devices = new()
             {
                 Motherboard =
                 [
-                    new MotherboardDeviceEntry
+                    new()
                     {
                         Type = "speaker",
                         Name = "Speaker",
@@ -196,20 +195,20 @@ public class MotherboardDeviceFactoryTests
 
     private static MachineProfile CreateProfileWithSpeakerAndIORegion()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-with-speaker-io",
-            Cpu = new CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile { Name = "main-ram", Size = "0xC000", Fill = "0x00" },
-                    new PhysicalMemoryProfile { Name = "rom", Size = "0x3000", Fill = "0x00" },
+                    new() { Name = "main-ram", Size = "0xC000", Fill = "0x00" },
+                    new() { Name = "rom", Size = "0x3000", Fill = "0x00" },
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
@@ -218,7 +217,7 @@ public class MotherboardDeviceFactoryTests
                         Source = "main-ram",
                         SourceOffset = "0x0000",
                     },
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "io-region",
                         Type = "composite",
@@ -226,7 +225,7 @@ public class MotherboardDeviceFactoryTests
                         Size = "0x1000",
                         Handler = "composite-io",
                     },
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "rom",
                         Type = "rom",
@@ -237,11 +236,11 @@ public class MotherboardDeviceFactoryTests
                     },
                 ],
             },
-            Devices = new DevicesProfile
+            Devices = new()
             {
                 Motherboard =
                 [
-                    new MotherboardDeviceEntry
+                    new()
                     {
                         Type = "speaker",
                         Name = "Speaker",
@@ -254,19 +253,19 @@ public class MotherboardDeviceFactoryTests
 
     private static MachineProfile CreateProfileWithDisabledSpeaker()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-with-disabled-speaker",
-            Cpu = new CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
+                    new() { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
@@ -277,11 +276,11 @@ public class MotherboardDeviceFactoryTests
                     },
                 ],
             },
-            Devices = new DevicesProfile
+            Devices = new()
             {
                 Motherboard =
                 [
-                    new MotherboardDeviceEntry
+                    new()
                     {
                         Type = "speaker",
                         Name = "Speaker",
@@ -294,19 +293,19 @@ public class MotherboardDeviceFactoryTests
 
     private static MachineProfile CreateProfileWithUnknownDevice()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-with-unknown-device",
-            Cpu = new CpuProfileSection { Type = "65C02", ClockSpeed = 1000000 },
-            Memory = new MemoryProfileSection
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
+                    new() { Name = "main-ram", Size = "0x10000", Fill = "0x00" },
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
@@ -317,11 +316,11 @@ public class MotherboardDeviceFactoryTests
                     },
                 ],
             },
-            Devices = new DevicesProfile
+            Devices = new()
             {
                 Motherboard =
                 [
-                    new MotherboardDeviceEntry
+                    new()
                     {
                         Type = "unknown-device-xyz",
                         Name = "Unknown",

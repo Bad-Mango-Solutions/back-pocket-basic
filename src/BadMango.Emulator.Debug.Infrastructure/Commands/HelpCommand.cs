@@ -131,46 +131,6 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
         return sb.ToString();
     }
 
-    private CommandResult ShowAllCommands(ICommandContext context)
-    {
-        context.Output.WriteLine("Available commands:");
-        context.Output.WriteLine();
-
-        var commands = context.Dispatcher.Commands.OrderBy(c => c.Name);
-        var maxNameLength = commands.Max(c => c.Name.Length);
-
-        foreach (var command in commands)
-        {
-            var padding = new string(' ', maxNameLength - command.Name.Length + 2);
-            context.Output.WriteLine($"  {command.Name}{padding}{command.Description}");
-        }
-
-        context.Output.WriteLine();
-        context.Output.WriteLine("Type 'help <command>' for more information on a specific command.");
-
-        return CommandResult.Ok();
-    }
-
-    private CommandResult ShowCommandHelp(ICommandContext context, string commandName)
-    {
-        if (!context.Dispatcher.TryGetHandler(commandName, out var handler) || handler is null)
-        {
-            return CommandResult.Error($"Unknown command: '{commandName}'");
-        }
-
-        // Check if the handler provides enhanced help
-        if (handler is ICommandHelp helpProvider)
-        {
-            ShowEnhancedHelp(context, handler, helpProvider);
-        }
-        else
-        {
-            ShowBasicHelp(context, handler);
-        }
-
-        return CommandResult.Ok();
-    }
-
     private static void ShowBasicHelp(ICommandContext context, ICommandHandler handler)
     {
         context.Output.WriteLine($"Command: {handler.Name}");
@@ -241,14 +201,9 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
 
         // Side effects (with word wrapping)
         context.Output.WriteLine("SIDE EFFECTS");
-        if (!string.IsNullOrEmpty(helpProvider.SideEffects))
-        {
-            context.Output.WriteLine(WrapText(helpProvider.SideEffects, Indent, Indent));
-        }
-        else
-        {
-            context.Output.WriteLine($"{Indent}None - this command does not modify emulation state.");
-        }
+        context.Output.WriteLine(!string.IsNullOrEmpty(helpProvider.SideEffects)
+            ? WrapText(helpProvider.SideEffects, Indent, Indent)
+            : $"{Indent}None - this command does not modify emulation state.");
 
         context.Output.WriteLine();
 
@@ -258,5 +213,45 @@ public sealed class HelpCommand : CommandHandlerBase, ICommandHelp
             context.Output.WriteLine("SEE ALSO");
             context.Output.WriteLine($"{Indent}{string.Join(", ", helpProvider.SeeAlso)}");
         }
+    }
+
+    private CommandResult ShowAllCommands(ICommandContext context)
+    {
+        context.Output.WriteLine("Available commands:");
+        context.Output.WriteLine();
+
+        var commands = context.Dispatcher.Commands.OrderBy(c => c.Name);
+        var maxNameLength = commands.Max(c => c.Name.Length);
+
+        foreach (var command in commands)
+        {
+            var padding = new string(' ', maxNameLength - command.Name.Length + 2);
+            context.Output.WriteLine($"  {command.Name}{padding}{command.Description}");
+        }
+
+        context.Output.WriteLine();
+        context.Output.WriteLine("Type 'help <command>' for more information on a specific command.");
+
+        return CommandResult.Ok();
+    }
+
+    private CommandResult ShowCommandHelp(ICommandContext context, string commandName)
+    {
+        if (!context.Dispatcher.TryGetHandler(commandName, out var handler) || handler is null)
+        {
+            return CommandResult.Error($"Unknown command: '{commandName}'");
+        }
+
+        // Check if the handler provides enhanced help
+        if (handler is ICommandHelp helpProvider)
+        {
+            ShowEnhancedHelp(context, handler, helpProvider);
+        }
+        else
+        {
+            ShowBasicHelp(context, handler);
+        }
+
+        return CommandResult.Ok();
     }
 }

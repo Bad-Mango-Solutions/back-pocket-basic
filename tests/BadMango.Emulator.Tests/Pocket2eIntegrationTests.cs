@@ -137,19 +137,19 @@ public class Pocket2eIntegrationTests
             .Build();
 
         // Act
-        var languageCard = machine.GetComponent<LanguageCardController>();
+        var languageCard = machine.GetComponent<LanguageCardDevice>();
         var auxMemory = machine.GetComponent<AuxiliaryMemoryController>();
 
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(languageCard, Is.Not.Null, "Language Card controller should be present");
+            Assert.That(languageCard, Is.Not.Null, "Language Card device should be present");
             Assert.That(auxMemory, Is.Not.Null, "Auxiliary Memory controller should be present");
         });
     }
 
     /// <summary>
-    /// Verifies that the Language Card controller reports correct initial state.
+    /// Verifies that the Language Card device reports correct initial state.
     /// </summary>
     [Test]
     public void LanguageCard_InitialState_IsCorrect()
@@ -160,14 +160,14 @@ public class Pocket2eIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
 
-        // Assert - Default state: ROM visible, writes disabled, Bank 2 selected
+        // Assert - Default state: ROM visible, writes disabled, Bank 1 selected
         Assert.Multiple(() =>
         {
             Assert.That(languageCard.IsRamReadEnabled, Is.False, "RAM read should be disabled initially");
             Assert.That(languageCard.IsRamWriteEnabled, Is.False, "RAM write should be disabled initially");
-            Assert.That(languageCard.SelectedBank, Is.EqualTo(2), "Bank 2 should be selected initially");
+            Assert.That(languageCard.SelectedBank, Is.EqualTo(1), "Bank 1 should be selected initially");
         });
     }
 
@@ -419,8 +419,7 @@ public class Pocket2eIntegrationTests
         // ─── Assert ─────────────────────────────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(6),
-                "Should return June (month 6)");
+            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(6), "Should return June (month 6)");
             Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
     }
@@ -469,8 +468,7 @@ public class Pocket2eIntegrationTests
         slotManager.HandleSlotROMAccess(0xC600); // Slot 6 ROM
 
         // Assert
-        Assert.That(slotManager.ActiveExpansionSlot, Is.EqualTo(6),
-            "Expansion slot 6 should be selected after $C600 access");
+        Assert.That(slotManager.ActiveExpansionSlot, Is.EqualTo(6), "Expansion slot 6 should be selected after $C600 access");
     }
 
     /// <summary>
@@ -492,8 +490,7 @@ public class Pocket2eIntegrationTests
         slotManager.DeselectExpansionSlot();
 
         // Assert
-        Assert.That(slotManager.ActiveExpansionSlot, Is.Null,
-            "Expansion slot should be deselected");
+        Assert.That(slotManager.ActiveExpansionSlot, Is.Null, "Expansion slot should be deselected");
     }
 
     /// <summary>
@@ -517,8 +514,7 @@ public class Pocket2eIntegrationTests
         slotManager.SelectExpansionSlot(5);
 
         // Assert
-        mockCard.Verify(c => c.OnExpansionROMSelected(), Times.Once(),
-            "Card should be notified of expansion ROM selection");
+        mockCard.Verify(c => c.OnExpansionROMSelected(), Times.Once(), "Card should be notified of expansion ROM selection");
     }
 
     /// <summary>
@@ -547,12 +543,9 @@ public class Pocket2eIntegrationTests
         // Assert
         Assert.Multiple(() =>
         {
-            card3.Verify(c => c.OnExpansionROMSelected(), Times.Once(),
-                "Card 3 should have been selected");
-            card3.Verify(c => c.OnExpansionROMDeselected(), Times.Once(),
-                "Card 3 should have been deselected when switching to card 5");
-            card5.Verify(c => c.OnExpansionROMSelected(), Times.Once(),
-                "Card 5 should be selected");
+            card3.Verify(c => c.OnExpansionROMSelected(), Times.Once(), "Card 3 should have been selected");
+            card3.Verify(c => c.OnExpansionROMDeselected(), Times.Once(), "Card 3 should have been deselected when switching to card 5");
+            card5.Verify(c => c.OnExpansionROMSelected(), Times.Once(), "Card 5 should be selected");
         });
     }
 
@@ -663,10 +656,8 @@ public class Pocket2eIntegrationTests
         // ─── Assert ─────────────────────────────────────────────────────────────
         Assert.Multiple(() =>
         {
-            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
-                "A should contain value from zero page $00");
-            Assert.That(machine.Cpu.Registers.X.GetByte(), Is.EqualTo(0xA5),
-                "X should contain value from zero page $FF");
+            Assert.That(machine.Cpu.Registers.A.GetByte(), Is.EqualTo(0x42), "A should contain value from zero page $00");
+            Assert.That(machine.Cpu.Registers.X.GetByte(), Is.EqualTo(0xA5), "X should contain value from zero page $FF");
             Assert.That(machine.Cpu.Halted, Is.True, "CPU should be halted after STP");
         });
     }
@@ -715,10 +706,8 @@ public class Pocket2eIntegrationTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped),
-                "Machine should be stopped after STP");
-            Assert.That(stateChanges, Contains.Item(MachineState.Running),
-                "Should have transitioned to Running");
+            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped), "Machine should be stopped after STP");
+            Assert.That(stateChanges, Contains.Item(MachineState.Running), "Should have transitioned to Running");
         });
     }
 
@@ -744,8 +733,7 @@ public class Pocket2eIntegrationTests
         }
 
         // Assert
-        Assert.That(machine.Now, Is.GreaterThan(initialCycle),
-            "Cycle counter should advance during execution");
+        Assert.That(machine.Now, Is.GreaterThan(initialCycle), "Cycle counter should advance during execution");
     }
 
     /// <summary>
@@ -793,7 +781,7 @@ public class Pocket2eIntegrationTests
     {
         // Arrange
         var thunderclock = new ThunderclockCard();
-        thunderclock.SetFixedTime(new DateTime(2025, 12, 25, 10, 30, 00));
+        thunderclock.SetFixedTime(new(2025, 12, 25, 10, 30, 00));
 
         var machine = new MachineBuilder()
             .AsPocket2e()
@@ -851,7 +839,7 @@ public class Pocket2eIntegrationTests
         machine.Cpu.Write8(addr++, 0x55);     // Store at $55
 
         // STP (opcode $DB)
-        machine.Cpu.Write8(addr, 0xDB);       // STP
+        machine.Cpu.Write8(addr, 0xDB);       // $0303: STP
 
         // ─── Act: Execute the ML program ────────────────────────────────────────
         machine.Cpu.SetPC(TestProgramAddress);
@@ -1006,11 +994,14 @@ public class Pocket2eIntegrationTests
         var handlers = new SlotIOHandlers();
         byte receivedOffset = 0;
 
-        handlers.Set(5, (offset, in ctx) =>
-        {
-            receivedOffset = offset;
-            return 0xAB;
-        }, null);
+        handlers.Set(
+            5,
+            (offset, in ctx) =>
+            {
+                receivedOffset = offset;
+                return 0xAB;
+            },
+            null);
 
         dispatcher.InstallSlotHandlers(3, handlers);
 
@@ -1029,7 +1020,6 @@ public class Pocket2eIntegrationTests
     }
 
     // ─── Helper Methods ─────────────────────────────────────────────────────────
-
     private static Mock<ISlotCard> CreateMockSlotCard(string name)
     {
         var mock = new Mock<ISlotCard>();
@@ -1043,7 +1033,7 @@ public class Pocket2eIntegrationTests
 
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,

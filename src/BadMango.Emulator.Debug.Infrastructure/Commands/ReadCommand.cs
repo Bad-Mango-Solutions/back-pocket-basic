@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
-using System.Globalization;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -53,7 +51,9 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
         "Performs a side-effectful read from the memory bus using DataRead intent, " +
         "which will trigger soft switches and I/O device behavior. Output is in hex " +
         "format only. Use this when you want to test actual hardware behavior. " +
-        "For side-effect-free reads, use 'peek' instead.";
+        "For side-effect-free reads, use 'peek' instead. " +
+        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
+        "names registered by the current machine (e.g., SPEAKER, KBD, KBDSTRB).";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -62,6 +62,8 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
     public IReadOnlyList<string> Examples { get; } =
     [
         "read $C000               Read keyboard data (triggers strobe)",
+        "read KBD                  Same as above using soft switch name",
+        "read SPEAKER              Toggle speaker (makes a click)",
         "read $300 16             Read 16 bytes starting at $0300",
         "read 0xC050              Toggle graphics soft switch",
     ];
@@ -72,7 +74,7 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
         "operations. Reading from I/O addresses ($C000-$CFFF) may change system state.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> SeeAlso { get; } = ["peek", "write", "mem"];
+    public IReadOnlyList<string> SeeAlso { get; } = ["peek", "write", "mem", "switches"];
 
     /// <inheritdoc/>
     public override CommandResult Execute(ICommandContext context, string[] args)
@@ -94,13 +96,13 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Address required. Usage: read <address> [count]");
         }
 
-        if (!TryParseAddress(args[0], out uint address))
+        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint address))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         int count = DefaultByteCount;
-        if (args.Length > 1 && !TryParseCount(args[1], out count))
+        if (args.Length > 1 && !AddressParser.TryParseCount(args[1], out count))
         {
             return CommandResult.Error($"Invalid count: '{args[1]}'. Expected a positive integer.");
         }
@@ -193,39 +195,5 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
             FaultKind.DeviceFault => "Device fault - device rejected the access",
             _ => $"Unknown fault kind: {fault.Kind}",
         };
-    }
-
-    private static bool TryParseAddress(string value, out uint result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return uint.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return uint.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
-    }
-
-    private static bool TryParseCount(string value, out int result)
-    {
-        result = 0;
-
-        if (value.StartsWith("$", StringComparison.Ordinal))
-        {
-            return int.TryParse(value[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            return int.TryParse(value[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
-        }
-
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
     }
 }

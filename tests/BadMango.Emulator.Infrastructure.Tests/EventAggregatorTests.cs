@@ -20,7 +20,7 @@ public class EventAggregatorTests
     [SetUp]
     public void Setup()
     {
-        aggregator = new EventAggregator();
+        aggregator = new();
     }
 
     /// <summary>

@@ -56,8 +56,8 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        // 4 built-in + 11 debug commands + 11 bus-aware commands + 1 device command = 27 total
-        Assert.That(handlers, Has.Count.EqualTo(27));
+        // 4 built-in + 11 debug commands + 11 bus-aware commands + 2 device commands = 28 total
+        Assert.That(handlers, Has.Count.EqualTo(28));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("help"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("exit"));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("version"));
@@ -89,6 +89,7 @@ public class DebugConsoleModuleTests
 
         // Device debug commands
         Assert.That(handlers.Select(h => h.Name), Does.Contain("pwtime"));
+        Assert.That(handlers.Select(h => h.Name), Does.Contain("lcstatus"));
     }
 
     /// <summary>
@@ -108,8 +109,8 @@ public class DebugConsoleModuleTests
         {
             Assert.That(repl, Is.Not.Null);
 
-            // 4 built-in + 11 debug commands + 11 bus-aware commands + 1 device command = 27 total
-            Assert.That(dispatcher.Commands, Has.Count.EqualTo(27));
+            // 4 built-in + 11 debug commands + 11 bus-aware commands + 2 device commands = 28 total
+            Assert.That(dispatcher.Commands, Has.Count.EqualTo(28));
         });
     }
 
@@ -144,8 +145,8 @@ public class DebugConsoleModuleTests
 
         var handlers = container.Resolve<IEnumerable<ICommandHandler>>().ToList();
 
-        // 4 built-in + 11 debug + 11 bus-aware + 1 device + 1 custom = 28 total
-        Assert.That(handlers, Has.Count.EqualTo(28));
+        // 4 built-in + 11 debug + 11 bus-aware + 2 device + 1 custom = 29 total
+        Assert.That(handlers, Has.Count.EqualTo(29));
         Assert.That(handlers.Select(h => h.Name), Does.Contain("testcmd"));
     }
 

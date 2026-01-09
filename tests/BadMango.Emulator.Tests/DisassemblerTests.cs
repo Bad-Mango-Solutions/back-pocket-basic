@@ -8,11 +8,11 @@ using Bus.Interfaces;
 
 using Core;
 using Core.Cpu;
-using TestHelpers;
 
 using Emulation.Cpu;
 using Emulation.Debugging;
 
+using TestHelpers;
 
 /// <summary>
 /// Unit tests for the disassembler helper functionality.
@@ -20,7 +20,6 @@ using Emulation.Debugging;
 [TestFixture]
 public class DisassemblerTests : CpuTestBase
 {
-    
     private OpcodeTable opcodeTable = null!;
     private Disassembler disassembler = null!;
 
@@ -30,9 +29,8 @@ public class DisassemblerTests : CpuTestBase
     [SetUp]
     public void Setup()
     {
-        
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
-        disassembler = new Disassembler(opcodeTable, Bus);
+        disassembler = new(opcodeTable, Bus);
     }
 
     #region OpcodeInfo Tests

@@ -6,8 +6,7 @@ namespace BadMango.Emulator.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
-using BadMango.Emulator.Core;
-using BadMango.Emulator.Core.Cpu;
+using BadMango.Emulator.Devices;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Systems;
 
@@ -98,7 +97,7 @@ public class TrapRegistryIntegrationTests
             .Build();
 
         // Get required components
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
 
         // Create trap registry with Language Card awareness
@@ -113,7 +112,7 @@ public class TrapRegistryIntegrationTests
             {
                 romTrapInvoked = true;
                 trapInvocationOrder.Add("ROM");
-                return TrapResult.Success(new Cycle(6));
+                return TrapResult.Success(new(6));
             },
             "ROM COUT trap for testing");
 
@@ -126,7 +125,7 @@ public class TrapRegistryIntegrationTests
             {
                 lcRamTrapInvoked = true;
                 trapInvocationOrder.Add("LC_RAM");
-                return TrapResult.Success(new Cycle(6));
+                return TrapResult.Success(new(6));
             },
             "LC RAM COUT trap for testing");
 
@@ -247,7 +246,7 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
@@ -321,7 +320,7 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
@@ -333,7 +332,7 @@ public class TrapRegistryIntegrationTests
             (cpu, bus, ctx) =>
             {
                 trapInvoked = true;
-                return TrapResult.Success(new Cycle(6));
+                return TrapResult.Success(new(6));
             });
 
         // Disable the trap
@@ -414,7 +413,7 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
@@ -426,7 +425,7 @@ public class TrapRegistryIntegrationTests
             (cpu, bus, ctx) =>
             {
                 homeInvoked = true;
-                return TrapResult.Success(new Cycle(6));
+                return TrapResult.Success(new(6));
             });
 
         trapRegistry.Register(
@@ -436,7 +435,7 @@ public class TrapRegistryIntegrationTests
             (cpu, bus, ctx) =>
             {
                 coutInvoked = true;
-                return TrapResult.Success(new Cycle(6));
+                return TrapResult.Success(new(6));
             });
 
         // Disable entire MonitorRom category
@@ -531,7 +530,7 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
@@ -567,7 +566,7 @@ public class TrapRegistryIntegrationTests
             .WithStubRom()
             .Build();
 
-        var languageCard = machine.GetComponent<LanguageCardController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
@@ -633,7 +632,7 @@ public class TrapRegistryIntegrationTests
             (cpu, bus, ctx) =>
             {
                 trapInvoked = true;
-                return TrapResult.Success(new Cycle(10));
+                return TrapResult.Success(new(10));
             });
 
         // Attach trap registry to CPU

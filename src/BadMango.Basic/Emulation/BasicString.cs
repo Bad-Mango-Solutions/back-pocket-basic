@@ -192,7 +192,7 @@ public readonly struct BasicString : IEquatable<BasicString>
             bytes[i] = (byte)(value[i] & SevenBitMask);
         }
 
-        return new BasicString(bytes);
+        return new(bytes);
     }
 
     /// <summary>
@@ -225,7 +225,7 @@ public readonly struct BasicString : IEquatable<BasicString>
             maskedBytes[i] = (byte)(bytes[i] & SevenBitMask);
         }
 
-        return new BasicString(maskedBytes);
+        return new(maskedBytes);
     }
 
     /// <summary>
@@ -255,7 +255,7 @@ public readonly struct BasicString : IEquatable<BasicString>
         // Create a copy without masking
         byte[] copyBytes = new byte[bytes.Length];
         Array.Copy(bytes, copyBytes, bytes.Length);
-        return new BasicString(copyBytes);
+        return new(copyBytes);
     }
 
     /// <summary>
@@ -305,7 +305,7 @@ public readonly struct BasicString : IEquatable<BasicString>
             maskedBytes[i] = (byte)(span[i] & SevenBitMask);
         }
 
-        return new BasicString(maskedBytes);
+        return new(maskedBytes);
     }
 
     /// <summary>
@@ -332,7 +332,7 @@ public readonly struct BasicString : IEquatable<BasicString>
             throw new ArgumentException($"Span length {span.Length} exceeds maximum BasicString length of {MaxLength}.", nameof(span));
         }
 
-        return new BasicString(span.ToArray());
+        return new(span.ToArray());
     }
 
     /// <summary>
@@ -601,7 +601,7 @@ public readonly struct BasicString : IEquatable<BasicString>
 
         byte[] subBytes = new byte[length];
         Array.Copy(bytes, startIndex, subBytes, 0, length);
-        return new BasicString(subBytes);
+        return new(subBytes);
     }
 
     /// <summary>
@@ -633,7 +633,7 @@ public readonly struct BasicString : IEquatable<BasicString>
         byte[] newBytes = new byte[newLength];
         Array.Copy(bytes, 0, newBytes, 0, Length);
         Array.Copy(other.bytes, 0, newBytes, Length, other.Length);
-        return new BasicString(newBytes);
+        return new(newBytes);
     }
 
     /// <inheritdoc/>

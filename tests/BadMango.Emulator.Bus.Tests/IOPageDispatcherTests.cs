@@ -424,7 +424,7 @@ public class IOPageDispatcherTests
     /// </summary>
     private static BusAccess CreateTestContext()
     {
-        return new BusAccess(
+        return new(
             Address: 0xC000,
             Value: 0,
             WidthBits: 8,

@@ -529,7 +529,7 @@ public class MbfTests
     [Test]
     public void Constructor_SetsAllBytesCorrectly()
     {
-        MBF mbf = new MBF(0x81, 0x00, 0x00, 0x00, 0x00);
+        MBF mbf = new(0x81, 0x00, 0x00, 0x00, 0x00);
 
         Assert.That(mbf.Exponent, Is.EqualTo(0x81));
         Assert.That(mbf.Mantissa1, Is.EqualTo(0x00));

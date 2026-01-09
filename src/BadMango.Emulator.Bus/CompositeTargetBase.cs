@@ -124,7 +124,7 @@ public abstract class CompositeTargetBase : ICompositeTarget
                 nameof(size));
         }
 
-        subRegions.Add(new SubRegion(startOffset, size, target, tag));
+        subRegions.Add(new(startOffset, size, target, tag));
     }
 
     /// <summary>

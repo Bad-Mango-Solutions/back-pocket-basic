@@ -9,7 +9,6 @@ using System.Runtime.CompilerServices;
 
 using Core;
 using Core.Cpu;
-using Core.Interfaces.Cpu;
 
 /// <summary>
 /// Provides instruction implementations that compose with addressing modes.

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+
 using Moq;
 
 /// <summary>
@@ -874,7 +875,7 @@ public class AuxiliaryMemoryControllerTests
         Assert.That(bus.Read8(generalReadAccess), Is.EqualTo(0x00), "Should read from aux after final toggle");
     }
 
-    // ─── Helper Methods ─────────────────────────────────────────────────────────
+    //// ─── Helper Methods ─────────────────────────────────────────────────────────
 
     private static (AuxiliaryMemoryController Controller, MainBus Bus, IOPageDispatcher Dispatcher) CreateInitializedController()
     {
@@ -907,7 +908,7 @@ public class AuxiliaryMemoryControllerTests
             controller);
 
         // Map page 0 to composite target
-        bus.MapPage(0, new PageEntry(
+        bus.MapPage(0, new(
             DeviceId: 1,
             RegionTag: RegionTag.Ram,
             Perms: PagePerms.All,
@@ -932,17 +933,27 @@ public class AuxiliaryMemoryControllerTests
         var auxHires1Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage1, AuxiliaryMemoryController.LayerPriority);
         var auxHires2Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage2, AuxiliaryMemoryController.LayerPriority);
 
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x2000, Size: 0x2000, Layer: auxHires1Layer,
-            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x2000,
+            Size: 0x2000,
+            Layer: auxHires1Layer,
+            DeviceId: 2,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires1Target, PhysBase: 0));
+            Target: auxHires1Target,
+            PhysBase: 0));
 
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x4000, Size: 0x2000, Layer: auxHires2Layer,
-            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x4000,
+            Size: 0x2000,
+            Layer: auxHires2Layer,
+            DeviceId: 2,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires2Target, PhysBase: 0));
+            Target: auxHires2Target,
+            PhysBase: 0));
 
         controller.RegisterHandlers(dispatcher);
         var context = CreateMockEventContext(bus);
@@ -991,7 +1002,7 @@ public class AuxiliaryMemoryControllerTests
             auxGeneralPage0Target);
 
         // Map page 0 to composite target
-        bus.MapPage(0, new PageEntry(
+        bus.MapPage(0, new(
             DeviceId: 1,
             RegionTag: RegionTag.Ram,
             Perms: PagePerms.All,
@@ -1015,8 +1026,15 @@ public class AuxiliaryMemoryControllerTests
             baseOffset: 0x1000);
 
         // Map pages 1-11 to the general switching target
-        bus.MapPageRange(1, 11, 1, RegionTag.Ram, PagePerms.All,
-            TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, generalTarget, 0x1000);
+        bus.MapPageRange(
+            1,
+            11,
+            1,
+            RegionTag.Ram,
+            PagePerms.All,
+            TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
+            generalTarget,
+            0x1000);
         bus.SaveBaseMappingRange(1, 11);
 
         // Create auxiliary hi-res memory (8KB each)
@@ -1030,17 +1048,27 @@ public class AuxiliaryMemoryControllerTests
         var auxHires1Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage1, AuxiliaryMemoryController.LayerPriority);
         var auxHires2Layer = bus.CreateLayer(AuxiliaryMemoryController.LayerNameHiResPage2, AuxiliaryMemoryController.LayerPriority);
 
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x2000, Size: 0x2000, Layer: auxHires1Layer,
-            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x2000,
+            Size: 0x2000,
+            Layer: auxHires1Layer,
+            DeviceId: 2,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires1Target, PhysBase: 0));
+            Target: auxHires1Target,
+            PhysBase: 0));
 
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0x4000, Size: 0x2000, Layer: auxHires2Layer,
-            DeviceId: 2, RegionTag: RegionTag.Ram, Perms: PagePerms.All,
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x4000,
+            Size: 0x2000,
+            Layer: auxHires2Layer,
+            DeviceId: 2,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
             Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: auxHires2Target, PhysBase: 0));
+            Target: auxHires2Target,
+            PhysBase: 0));
 
         controller.RegisterHandlers(dispatcher);
         var context = CreateMockEventContext(bus);
@@ -1082,8 +1110,15 @@ public class AuxiliaryMemoryControllerTests
 
     private static BusAccess CreateTestAccess(Addr address, AccessIntent intent, AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
-            Address: address, Value: 0, WidthBits: 8, Mode: BusAccessMode.Decomposed,
-            EmulationFlag: true, Intent: intent, SourceId: 0, Cycle: 0, Flags: flags);
+        return new(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: intent,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: flags);
     }
 }

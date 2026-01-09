@@ -7,7 +7,6 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Interfaces;
-using BadMango.Emulator.Core.Interfaces.Cpu;
 
 /// <summary>
 /// Shows and manages machine profiles.
@@ -54,7 +53,7 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
         : base("profile", "Show and manage machine profiles")
     {
         this.profileLoader = profileLoader ?? new MachineProfileLoader();
-        this.serializer = new MachineProfileSerializer();
+        this.serializer = new();
     }
 
     /// <inheritdoc/>
@@ -76,11 +75,11 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
-        new CommandOption("list", null, "subcommand", "List all available loadable profiles", null),
-        new CommandOption("load", null, "subcommand", "Load a profile by name and rebuild the machine", "<name>"),
-        new CommandOption("save", null, "subcommand", "Save the current profile to the profiles directory", "<name>"),
-        new CommandOption("default", null, "subcommand", "View or set the default profile for future sessions", "[name]"),
-        new CommandOption("initroms", null, "subcommand", "Create blank ROM files required by a profile", "<name>"),
+        new("list", null, "subcommand", "List all available loadable profiles", null),
+        new("load", null, "subcommand", "Load a profile by name and rebuild the machine", "<name>"),
+        new("save", null, "subcommand", "Save the current profile to the profiles directory", "<name>"),
+        new("default", null, "subcommand", "View or set the default profile for future sessions", "[name]"),
+        new("initroms", null, "subcommand", "Create blank ROM files required by a profile", "<name>"),
     ];
 
     /// <inheritdoc/>
@@ -486,17 +485,17 @@ public sealed class ProfileCommand : CommandHandlerBase, ICommandHelp
             Name = profileName,
             DisplayName = $"{profileName} (saved profile)",
             Description = $"Profile saved from debug console on {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = machineInfo.CpuType,
                 ClockSpeed = DefaultClockSpeedHz,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",

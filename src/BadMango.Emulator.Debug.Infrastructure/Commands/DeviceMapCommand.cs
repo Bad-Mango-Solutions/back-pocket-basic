@@ -118,6 +118,6 @@ public sealed class DeviceMapCommand : CommandHandlerBase, ICommandHelp
     {
         // Count the depth based on '/' separators in the wiring path
         int depth = wiringPath.Count(c => c == '/');
-        return new string(' ', depth * 2);
+        return new(' ', depth * 2);
     }
 }

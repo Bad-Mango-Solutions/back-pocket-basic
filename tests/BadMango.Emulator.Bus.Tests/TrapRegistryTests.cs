@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
-using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Moq;
@@ -29,10 +28,10 @@ public class TrapRegistryTests
     [SetUp]
     public void SetUp()
     {
-        registry = new TrapRegistry();
-        mockCpu = new Mock<ICpu>();
-        mockBus = new Mock<IMemoryBus>();
-        mockContext = new Mock<IEventContext>();
+        registry = new();
+        mockCpu = new();
+        mockBus = new();
+        mockContext = new();
     }
 
     // ─── Constructor Tests ──────────────────────────────────────────────────────
@@ -65,8 +64,8 @@ public class TrapRegistryTests
     public void Constructor_WithSlotManagerAndLanguageCard_Succeeds()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var languageCard = new LanguageCardController();
-        var testRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var mockLanguageCard = new Mock<ILanguageCardState>();
+        var testRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         Assert.That(testRegistry.Count, Is.EqualTo(0));
     }
 
@@ -433,7 +432,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
@@ -470,7 +469,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
@@ -495,7 +494,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
@@ -525,7 +524,7 @@ public class TrapRegistryTests
             capturedCpu = cpu;
             capturedBus = bus;
             capturedContext = ctx;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
@@ -556,7 +555,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterSlotDependent(0xC600, 6, "DISK_BOOT", TrapCategory.SlotFirmware, handler);
@@ -584,7 +583,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterSlotDependent(0xC600, 6, "DISK_BOOT", TrapCategory.SlotFirmware, handler);
@@ -614,7 +613,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterSlotDependent(0xC803, 6, "DISK_ENTRY", TrapCategory.SlotFirmware, handler);
@@ -644,7 +643,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterSlotDependent(0xC803, 6, "DISK_ENTRY", TrapCategory.SlotFirmware, handler);
@@ -668,7 +667,7 @@ public class TrapRegistryTests
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         registry.RegisterSlotDependent(0xC600, 6, "DISK_BOOT", TrapCategory.SlotFirmware, handler);
@@ -689,17 +688,17 @@ public class TrapRegistryTests
     public void TryExecute_RomTrap_LanguageCardRamDisabled_ExecutesTrap()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
         // By default, RAM read is disabled (ROM is visible)
-        Assert.That(languageCard.IsRamReadEnabled, Is.False, "Precondition: RAM should be disabled");
+        Assert.That(mockLanguageCard.Object.IsRamReadEnabled, Is.False, "Precondition: RAM should be disabled");
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         bool handlerCalled = false;
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.Register(0xD000, "APPLESOFT", TrapCategory.BasicInterpreter, handler);
@@ -720,18 +719,18 @@ public class TrapRegistryTests
     public void TryExecute_RomTrap_LanguageCardRamEnabled_DoesNotExecute()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
-        // Enable RAM read by accessing $C080
-        SimulateLanguageCardRead(languageCard, 0x00);
-        Assert.That(languageCard.IsRamReadEnabled, Is.True, "Precondition: RAM should be enabled");
+        // Enable RAM read
+        setRamEnabled(true);
+        Assert.That(mockLanguageCard.Object.IsRamReadEnabled, Is.True, "Precondition: RAM should be enabled");
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         bool handlerCalled = false;
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.Register(0xD000, "APPLESOFT", TrapCategory.BasicInterpreter, handler);
@@ -752,17 +751,17 @@ public class TrapRegistryTests
     public void TryExecute_TrapBelowD000_LanguageCardRamEnabled_StillExecutes()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
         // Enable RAM read
-        SimulateLanguageCardRead(languageCard, 0x00);
+        setRamEnabled(true);
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         bool handlerCalled = false;
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         // Trap at $CFFF is below $D000 and should not be affected by LC state
@@ -854,8 +853,8 @@ public class TrapRegistryTests
     [Test]
     public void RegisterLanguageCardRam_SameAddressAsRom_AllowsBothTraps()
     {
-        TrapHandler romHandler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
-        TrapHandler lcHandler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(20));
+        TrapHandler romHandler = (cpu, bus, ctx) => TrapResult.Success(new(10));
+        TrapHandler lcHandler = (cpu, bus, ctx) => TrapResult.Success(new(20));
 
         registry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, romHandler);
         registry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, lcHandler);
@@ -870,18 +869,18 @@ public class TrapRegistryTests
     public void TryExecute_LcRamTrap_LanguageCardRamEnabled_ExecutesTrap()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
-        // Enable RAM read by accessing $C080
-        SimulateLanguageCardRead(languageCard, 0x00);
-        Assert.That(languageCard.IsRamReadEnabled, Is.True, "Precondition: RAM should be enabled");
+        // Enable RAM read
+        setRamEnabled(true);
+        Assert.That(mockLanguageCard.Object.IsRamReadEnabled, Is.True, "Precondition: RAM should be enabled");
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         bool handlerCalled = false;
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
@@ -902,17 +901,17 @@ public class TrapRegistryTests
     public void TryExecute_LcRamTrap_LanguageCardRamDisabled_DoesNotExecute()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
         // By default, RAM read is disabled (ROM is visible)
-        Assert.That(languageCard.IsRamReadEnabled, Is.False, "Precondition: RAM should be disabled");
+        Assert.That(mockLanguageCard.Object.IsRamReadEnabled, Is.False, "Precondition: RAM should be disabled");
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         bool handlerCalled = false;
         TrapHandler handler = (cpu, bus, ctx) =>
         {
             handlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler);
@@ -933,9 +932,9 @@ public class TrapRegistryTests
     public void TryExecute_BothRomAndLcRamTraps_SelectsCorrectTrap()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
 
         bool romHandlerCalled = false;
         bool lcHandlerCalled = false;
@@ -943,13 +942,13 @@ public class TrapRegistryTests
         TrapHandler romHandler = (cpu, bus, ctx) =>
         {
             romHandlerCalled = true;
-            return TrapResult.Success(new Cycle(10));
+            return TrapResult.Success(new(10));
         };
 
         TrapHandler lcHandler = (cpu, bus, ctx) =>
         {
             lcHandlerCalled = true;
-            return TrapResult.Success(new Cycle(20));
+            return TrapResult.Success(new(20));
         };
 
         contextRegistry.Register(0xD000, "ROM_ENTRY", TrapCategory.BasicInterpreter, romHandler);
@@ -969,8 +968,8 @@ public class TrapRegistryTests
         lcHandlerCalled = false;
 
         // Enable LC RAM
-        SimulateLanguageCardRead(languageCard, 0x00);
-        Assert.That(languageCard.IsRamReadEnabled, Is.True);
+        setRamEnabled(true);
+        Assert.That(mockLanguageCard.Object.IsRamReadEnabled, Is.True);
 
         // Now LC RAM trap should fire
         var result2 = contextRegistry.TryExecute(0xD000, mockCpu.Object, mockBus.Object, mockContext.Object);
@@ -1064,12 +1063,12 @@ public class TrapRegistryTests
     public void GetTrapInfo_LcRamTrap_ReturnsCorrectInfo()
     {
         var mockSlotManager = new Mock<ISlotManager>();
-        var (languageCard, _) = CreateInitializedLanguageCard();
+        var (mockLanguageCard, setRamEnabled) = CreateMockLanguageCard();
 
         // Enable LC RAM to make LC RAM trap visible
-        SimulateLanguageCardRead(languageCard, 0x00);
+        setRamEnabled(true);
 
-        var contextRegistry = new TrapRegistry(mockSlotManager.Object, languageCard);
+        var contextRegistry = new TrapRegistry(mockSlotManager.Object, mockLanguageCard.Object);
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
         contextRegistry.RegisterLanguageCardRam(0xD000, "LC_RAM_ENTRY", TrapCategory.BasicInterpreter, handler, "Test LC RAM trap");
 
@@ -1163,7 +1162,7 @@ public class TrapRegistryTests
     [Test]
     public void Clear_AlsoClearsDisabledCategories()
     {
-        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new(10));
         registry.Register(0xD000, "TEST", TrapCategory.BasicInterpreter, handler);
 
         // Disable the category
@@ -1186,7 +1185,7 @@ public class TrapRegistryTests
     [Test]
     public void RegisterWithContext_CustomContext_RegistersTrap()
     {
-        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new(10));
         var customContext = MemoryContexts.Custom("PRODOS_RAM");
 
         registry.RegisterWithContext(0xD000, customContext, "PRODOS_ENTRY", TrapCategory.OperatingSystem, handler);
@@ -1270,68 +1269,24 @@ public class TrapRegistryTests
     // ─── Helper Methods ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a fully initialized Language Card controller with required infrastructure.
+    /// Creates a mock Language Card state for testing trap context-awareness.
     /// </summary>
-    /// <returns>A tuple containing the initialized controller and the configured memory bus.</returns>
-    private static (LanguageCardController Controller, MainBus Bus) CreateInitializedLanguageCard()
+    /// <returns>A tuple containing the mock Language Card state and a function to enable/disable RAM.</returns>
+    private static (Mock<ILanguageCardState> MockLanguageCard, Action<bool> SetRamEnabled) CreateMockLanguageCard()
     {
-        var bus = new MainBus();
+        var mockLanguageCard = new Mock<ILanguageCardState>();
+        bool ramEnabled = false;
 
-        // Create ROM for D000-FFFF (3 pages)
-        var romMemory = new PhysicalMemory(0x3000, "ROM");
-        for (int i = 0; i < 0x3000; i++)
+        mockLanguageCard.Setup(lc => lc.IsRamReadEnabled).Returns(() => ramEnabled);
+        mockLanguageCard.Setup(lc => lc.IsRamWriteEnabled).Returns(() => ramEnabled);
+        mockLanguageCard.Setup(lc => lc.SelectedBank).Returns(1);
+
+        void SetRamEnabled(bool enabled)
         {
-            romMemory.AsSpan()[i] = 0xFF;
+            ramEnabled = enabled;
         }
 
-        var romTarget = new RomTarget(romMemory.ReadOnlySlice(0, 0x3000));
-
-        // Create Language Card RAM Bank 1 (D000-DFFF, 1 page)
-        var lcBank1Memory = new PhysicalMemory(PageSize, "LCBank1");
-        var lcBank1Target = new RamTarget(lcBank1Memory.Slice(0, PageSize));
-
-        // Create Language Card RAM Bank 2 (D000-DFFF, 1 page)
-        var lcBank2Memory = new PhysicalMemory(PageSize, "LCBank2");
-        var lcBank2Target = new RamTarget(lcBank2Memory.Slice(0, PageSize));
-
-        // Create Language Card upper RAM (E000-FFFF, 2 pages)
-        var lcUpperMemory = new PhysicalMemory(0x2000, "LCUpper");
-        var lcUpperTarget = new RamTarget(lcUpperMemory.Slice(0, 0x2000));
-
-        // Map ROM as base at D000-FFFF
-        bus.MapPageRange(0xD, 3, 1, RegionTag.Rom, PagePerms.ReadExecute, TargetCaps.SupportsPeek, romTarget, 0);
-        bus.SaveBaseMappingRange(0xD, 3);
-
-        // Create Language Card layer (priority 20)
-        var lcLayer = bus.CreateLayer(LanguageCardController.LayerName, LanguageCardController.LayerPriority);
-
-        // Add E000-FFFF mapping to the layer
-        bus.AddLayeredMapping(new LayeredMapping(
-            VirtualBase: 0xE000,
-            Size: 0x2000,
-            Layer: lcLayer,
-            DeviceId: 2,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.ReadExecute,
-            Caps: TargetCaps.SupportsPeek | TargetCaps.SupportsPoke,
-            Target: lcUpperTarget,
-            PhysBase: 0));
-
-        // Create swap group for D000 bank switching
-        uint groupId = bus.CreateSwapGroup(LanguageCardController.SwapGroupName, virtualBase: 0xD000, size: 0x1000);
-
-        // Create ROM target for D000 (first page of ROM)
-        var d000RomTarget = new RomTarget(romMemory.ReadOnlySlice(0, PageSize));
-        bus.AddSwapVariant(groupId, LanguageCardController.RomVariantName, d000RomTarget, physBase: 0, perms: PagePerms.ReadExecute);
-        bus.AddSwapVariant(groupId, LanguageCardController.Bank1VariantName, lcBank1Target, physBase: 0, perms: PagePerms.All);
-        bus.AddSwapVariant(groupId, LanguageCardController.Bank2VariantName, lcBank2Target, physBase: 0, perms: PagePerms.All);
-
-        // Create and initialize controller
-        var controller = new LanguageCardController();
-        var context = CreateMockEventContext(bus);
-        controller.Initialize(context);
-
-        return (controller, bus);
+        return (mockLanguageCard, SetRamEnabled);
     }
 
     /// <summary>
@@ -1347,17 +1302,6 @@ public class TrapRegistryTests
     }
 
     /// <summary>
-    /// Simulates a read access to a Language Card soft switch.
-    /// </summary>
-    /// <param name="controller">The Language Card controller to invoke.</param>
-    /// <param name="offset">The offset within the soft switch range (0x00-0x0F).</param>
-    private static void SimulateLanguageCardRead(LanguageCardController controller, byte offset)
-    {
-        var context = CreateTestAccess((uint)(0xC080 + offset), AccessIntent.DataRead);
-        controller.IOHandlers.ReadHandlers[offset]?.Invoke((byte)(0x80 + offset), in context);
-    }
-
-    /// <summary>
     /// Helper method to create test bus access structures.
     /// </summary>
     /// <param name="address">The memory address for the access.</param>
@@ -1369,7 +1313,7 @@ public class TrapRegistryTests
         AccessIntent intent,
         AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: 8,

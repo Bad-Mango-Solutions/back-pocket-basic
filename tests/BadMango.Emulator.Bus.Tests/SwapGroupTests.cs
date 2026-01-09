@@ -145,7 +145,7 @@ public class SwapGroupTests
         var bank2Target = new RamTarget(bank2Memory.Slice(0, PageSize));
 
         // Set up initial page mapping
-        bus.MapPage(0xD, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, bank1Target, 0));
+        bus.MapPage(0xD, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, bank1Target, 0));
 
         uint groupId = bus.CreateSwapGroup("LanguageCard", virtualBase: 0xD000, size: 0x1000);
         bus.AddSwapVariant(groupId, "BANK1", bank1Target, physBase: 0, perms: PagePerms.ReadWrite);
@@ -267,7 +267,7 @@ public class SwapGroupTests
         var bank2Target = new RamTarget(bank2Memory.Slice(0, PageSize));
 
         // Set up initial mapping with specific device ID and region tag
-        bus.MapPage(0xD, new PageEntry(42, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, bank1Target, 0));
+        bus.MapPage(0xD, new(42, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, bank1Target, 0));
 
         uint groupId = bus.CreateSwapGroup("TestGroup", virtualBase: 0xD000, size: 0x1000);
         bus.AddSwapVariant(groupId, "BANK1", bank1Target, physBase: 0, perms: PagePerms.ReadWrite);
@@ -309,8 +309,8 @@ public class SwapGroupTests
         var g2b2 = new RamTarget(group2Bank2Memory.Slice(0, PageSize));
 
         // Set up initial mappings
-        bus.MapPage(0xD, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, g1b1, 0));
-        bus.MapPage(0xE, new PageEntry(2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, g2b1, 0));
+        bus.MapPage(0xD, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, g1b1, 0));
+        bus.MapPage(0xE, new(2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, g2b1, 0));
 
         // Create two separate swap groups
         uint group1Id = bus.CreateSwapGroup("Group1", virtualBase: 0xD000, size: 0x1000);
@@ -368,7 +368,7 @@ public class SwapGroupTests
         var lcBank2Target = new RamTarget(lcBank2Memory.Slice(0, PageSize));
 
         // Set up initial mapping (page 0xD = D000-DFFF)
-        bus.MapPage(0xD, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, lcBank1Target, 0));
+        bus.MapPage(0xD, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek | TargetCaps.SupportsPoke, lcBank1Target, 0));
 
         // Create swap group for the D000 bank switching
         uint groupId = bus.CreateSwapGroup("D000Banks", virtualBase: 0xD000, size: 0x1000);
@@ -456,7 +456,7 @@ public class SwapGroupTests
 
         var target = new RamTarget(memory.Slice(0, (uint)(PageSize * 2)));
 
-        bus.MapPage(0xD, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0xD, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         uint groupId = bus.CreateSwapGroup("TestGroup", virtualBase: 0xD000, size: 0x1000);
 
@@ -482,7 +482,7 @@ public class SwapGroupTests
         var target = new RamTarget(memory.Slice(0, PageSize));
 
         // Initial mapping with ReadWrite
-        bus.MapPage(0xD, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0xD, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         uint groupId = bus.CreateSwapGroup("TestGroup", virtualBase: 0xD000, size: 0x1000);
 
@@ -517,7 +517,7 @@ public class SwapGroupTests
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,

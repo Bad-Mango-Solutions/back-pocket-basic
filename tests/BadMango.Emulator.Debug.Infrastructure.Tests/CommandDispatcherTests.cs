@@ -327,7 +327,7 @@ public class CommandDispatcherTests
 
     private static CommandContext CreateTestContext(ICommandDispatcher dispatcher)
     {
-        return new CommandContext(dispatcher, TextWriter.Null, TextWriter.Null);
+        return new(dispatcher, TextWriter.Null, TextWriter.Null);
     }
 
     private sealed class TestCommand : CommandHandlerBase

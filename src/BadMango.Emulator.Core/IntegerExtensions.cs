@@ -1,4 +1,4 @@
-﻿// <copyright file="IntegerExtensions.cs" company="Bad Mango Solutions">
+// <copyright file="IntegerExtensions.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 

@@ -132,7 +132,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         return
         [
-            new SoftSwitchState("SPEAKER", SpeakerToggleAddress, speakerState, "Speaker output state (toggled on access)"),
+            new("SPEAKER", SpeakerToggleAddress, speakerState, "Speaker output state (toggled on access)"),
         ];
     }
 

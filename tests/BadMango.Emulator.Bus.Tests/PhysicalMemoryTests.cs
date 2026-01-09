@@ -160,25 +160,6 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
-    /// Verifies that ReadOnlySlice returns a read-only memory segment.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_ReadOnlySlice_ReturnsReadOnlyMemory()
-    {
-        var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
-        var memory = new PhysicalMemory(data, "Test");
-
-        var slice = memory.ReadOnlySlice(1, 2);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(slice.Length, Is.EqualTo(2));
-            Assert.That(slice.Span[0], Is.EqualTo(0x22));
-            Assert.That(slice.Span[1], Is.EqualTo(0x33));
-        });
-    }
-
-    /// <summary>
     /// Verifies that SlicePage returns a full page.
     /// </summary>
     [Test]
@@ -231,24 +212,6 @@ public class PhysicalMemoryTests
         var memory = new PhysicalMemory(4096, "Test");
 
         Assert.Throws<ArgumentOutOfRangeException>(() => memory.SlicePage(1)); // Page 1 of 1-page memory
-    }
-
-    /// <summary>
-    /// Verifies that ReadOnlySlicePage returns a read-only page.
-    /// </summary>
-    [Test]
-    public void PhysicalMemory_ReadOnlySlicePage_ReturnsReadOnlyPage()
-    {
-        var memory = new PhysicalMemory(8192, "Test");
-        memory.AsSpan().Slice(4096, 1)[0] = 0xAA; // Write to start of page 1
-
-        var page = memory.ReadOnlySlicePage(1);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(page.Length, Is.EqualTo(4096));
-            Assert.That(page.Span[0], Is.EqualTo(0xAA));
-        });
     }
 
     /// <summary>
@@ -405,14 +368,14 @@ public class PhysicalMemoryTests
     }
 
     /// <summary>
-    /// Verifies that a read-only slice can be used with RomTarget.
+    /// Verifies that a slice can be used with RomTarget for read-only access.
     /// </summary>
     [Test]
-    public void PhysicalMemory_ReadOnlySlice_CanBeUsedWithRomTarget()
+    public void PhysicalMemory_Slice_CanBeUsedWithRomTarget()
     {
         var data = new byte[] { 0x11, 0x22, 0x33, 0x44 };
         var memory = new PhysicalMemory(data, "Test ROM");
-        var slice = memory.ReadOnlySlice(0, 4);
+        var slice = memory.Slice(0, 4);
         var rom = new RomTarget(slice);
         var access = CreateDefaultAccess();
 

@@ -56,7 +56,7 @@ public sealed class SlotManager : ISlotManager
         ArgumentNullException.ThrowIfNull(dispatcher);
         this.dispatcher = dispatcher;
         this.slots = new ISlotCard?[SlotCount];
-        this.slotsView = new Dictionary<int, ISlotCard>();
+        this.slotsView = new();
         this.slotsReadOnly = new ReadOnlyDictionary<int, ISlotCard>(this.slotsView);
     }
 

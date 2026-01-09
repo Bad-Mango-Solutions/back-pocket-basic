@@ -136,7 +136,7 @@ public sealed class Disassembler : IDisassembler
             operandBuffer[i] = readByte(address + 1 + (uint)i);
         }
 
-        return new DisassembledInstruction(
+        return new(
             address,
             opcode,
             operandBuffer,

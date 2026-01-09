@@ -2,7 +2,7 @@
     "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
     "name": "pocket2e-lite",
     "displayName": "Pocket2e Lite",
-    "description": "Pocket2e Lite system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, and ROM. Includes PocketWatch RTC in slot 4.",
+    "description": "Pocket2e Lite system - Apple IIe clone with full 48KB RAM, I/O page with soft switches, slot manager, Language Card, and ROM. Includes PocketWatch RTC in slot 4.",
 
     "cpu": {
         "type": "65C02",
@@ -87,6 +87,11 @@
             {
                 "type": "speaker",
                 "name": "Speaker",
+                "enabled": true
+            },
+            {
+                "type": "languagecard",
+                "name": "Language Card",
                 "enabled": true
             }
         ],

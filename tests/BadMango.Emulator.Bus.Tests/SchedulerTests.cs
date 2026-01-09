@@ -30,9 +30,9 @@ public class SchedulerTests
     [SetUp]
     public void SetUp()
     {
-        scheduler = new Scheduler();
-        mockSignals = new Mock<ISignalBus>();
-        mockBus = new Mock<IMemoryBus>();
+        scheduler = new();
+        mockSignals = new();
+        mockBus = new();
         eventContext = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
         scheduler.SetEventContext(eventContext);
     }
@@ -266,7 +266,7 @@ public class SchedulerTests
             testScheduler.ScheduleAt(20ul, ScheduledEventKind.DeviceTimer, 0, _ => executionOrder.Add("B"));
 
             testScheduler.Advance(30ul);
-            results.Add(new List<string>(executionOrder));
+            results.Add(new(executionOrder));
         }
 
         // All runs should produce identical results
@@ -725,7 +725,7 @@ public class SchedulerTests
         testScheduler.ScheduleAt(30ul, ScheduledEventKind.DeviceTimer, 0, _ =>
         {
             events.Add("Event2");
-            signalBus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new Cycle(testScheduler.Now));
+            signalBus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: new(testScheduler.Now));
         });
 
         // Verify initial state

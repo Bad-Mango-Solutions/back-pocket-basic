@@ -124,9 +124,9 @@ public sealed class CallCommand : ExecutionCommandBase
             return CommandResult.Error("Address required. Usage: call <address> [options]");
         }
 
-        if (!TryParseAddress(args[0], out uint targetAddress))
+        if (!TryParseAddress(args[0], debugContext.Machine, out uint targetAddress))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         // Parse options

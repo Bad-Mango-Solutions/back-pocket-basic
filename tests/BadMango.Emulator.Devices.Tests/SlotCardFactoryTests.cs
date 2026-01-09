@@ -58,7 +58,7 @@ public class SlotCardFactoryTests
             .FirstOrDefault() as DeviceTypeAttribute;
 
         Assert.That(attribute, Is.Not.Null);
-        Assert.That(attribute!.TypeId, Is.EqualTo("pocketwatch"));
+        Assert.That(attribute!.DeviceTypeId, Is.EqualTo("pocketwatch"));
     }
 
     /// <summary>
@@ -104,21 +104,21 @@ public class SlotCardFactoryTests
 
     private static MachineProfile CreateMinimalProfileWithPocketWatch()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-profile",
             DisplayName = "Test Profile",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = "65C02",
                 ClockSpeed = 1000000,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile
+                    new()
                     {
                         Name = "main-ram-64k",
                         Size = "0x10000",
@@ -127,7 +127,7 @@ public class SlotCardFactoryTests
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",
@@ -139,14 +139,14 @@ public class SlotCardFactoryTests
                     },
                 ],
             },
-            Devices = new DevicesProfile
+            Devices = new()
             {
-                Slots = new SlotSystemProfile
+                Slots = new()
                 {
                     Enabled = true,
                     Cards =
                     [
-                        new SlotCardProfile
+                        new()
                         {
                             Slot = 4,
                             Type = "pocketwatch",

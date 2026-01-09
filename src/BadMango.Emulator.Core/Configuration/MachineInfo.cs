@@ -48,7 +48,7 @@ public sealed record MachineInfo(
 
         uint memorySize = CalculateMemorySize(profile);
 
-        return new MachineInfo(
+        return new(
             Name: profile.Name,
             DisplayName: profile.DisplayName ?? profile.Name,
             CpuType: profile.Cpu.Type,

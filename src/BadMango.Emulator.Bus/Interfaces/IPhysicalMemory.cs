@@ -52,18 +52,11 @@ public interface IPhysicalMemory
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
     /// </exception>
+    /// <remarks>
+    /// The returned <see cref="Memory{T}"/> can be implicitly converted to
+    /// <see cref="ReadOnlyMemory{T}"/> if read-only access is needed.
+    /// </remarks>
     Memory<byte> Slice(uint offset, uint length);
-
-    /// <summary>
-    /// Gets a read-only slice of the memory.
-    /// </summary>
-    /// <param name="offset">The starting offset within the memory.</param>
-    /// <param name="length">The length of the slice in bytes.</param>
-    /// <returns>A <see cref="ReadOnlyMemory{T}"/> representing the requested slice.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="offset"/> + <paramref name="length"/> exceeds <see cref="Size"/>.
-    /// </exception>
-    ReadOnlyMemory<byte> ReadOnlySlice(uint offset, uint length);
 
     /// <summary>
     /// Gets a writable slice for a specific page.
@@ -75,19 +68,11 @@ public interface IPhysicalMemory
     /// Thrown when <paramref name="pageSize"/> is zero,
     /// or the requested page extends beyond <see cref="Size"/>.
     /// </exception>
+    /// <remarks>
+    /// The returned <see cref="Memory{T}"/> can be implicitly converted to
+    /// <see cref="ReadOnlyMemory{T}"/> if read-only access is needed.
+    /// </remarks>
     Memory<byte> SlicePage(uint pageIndex, uint pageSize = 4096);
-
-    /// <summary>
-    /// Gets a read-only slice for a specific page.
-    /// </summary>
-    /// <param name="pageIndex">The zero-based page index.</param>
-    /// <param name="pageSize">The size of each page in bytes. Defaults to 4096.</param>
-    /// <returns>A <see cref="ReadOnlyMemory{T}"/> representing the requested page.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="pageSize"/> is zero,
-    /// or the requested page extends beyond <see cref="Size"/>.
-    /// </exception>
-    ReadOnlyMemory<byte> ReadOnlySlicePage(uint pageIndex, uint pageSize = 4096);
 
     /// <summary>
     /// Gets a writable span over the entire memory.

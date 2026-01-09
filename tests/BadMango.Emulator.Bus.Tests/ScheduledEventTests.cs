@@ -44,8 +44,8 @@ public class ScheduledEventTests
     [Test]
     public void ScheduledEvent_CompareTo_OrdersByCycleFirst()
     {
-        var earlier = new ScheduledEvent(new EventHandle(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
-        var later = new ScheduledEvent(new EventHandle(2), 200ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var earlier = new ScheduledEvent(new(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var later = new ScheduledEvent(new(2), 200ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
 
         Assert.Multiple(() =>
         {
@@ -60,8 +60,8 @@ public class ScheduledEventTests
     [Test]
     public void ScheduledEvent_CompareTo_UsesPrioritySecond()
     {
-        var highPriority = new ScheduledEvent(new EventHandle(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
-        var lowPriority = new ScheduledEvent(new EventHandle(2), 100ul, 10, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var highPriority = new ScheduledEvent(new(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var lowPriority = new ScheduledEvent(new(2), 100ul, 10, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
 
         Assert.Multiple(() =>
         {
@@ -76,8 +76,8 @@ public class ScheduledEventTests
     [Test]
     public void ScheduledEvent_CompareTo_UsesSequenceAsTieBreaker()
     {
-        var first = new ScheduledEvent(new EventHandle(1), 100ul, 0, 1L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
-        var second = new ScheduledEvent(new EventHandle(2), 100ul, 0, 2L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var first = new ScheduledEvent(new(1), 100ul, 0, 1L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var second = new ScheduledEvent(new(2), 100ul, 0, 2L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
 
         Assert.Multiple(() =>
         {
@@ -92,8 +92,8 @@ public class ScheduledEventTests
     [Test]
     public void ScheduledEvent_CompareTo_ReturnsZeroForEqualOrdering()
     {
-        var event1 = new ScheduledEvent(new EventHandle(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
-        var event2 = new ScheduledEvent(new EventHandle(2), 100ul, 5, 10L, ScheduledEventKind.AudioTick, NoOpCallback, "different");
+        var event1 = new ScheduledEvent(new(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var event2 = new ScheduledEvent(new(2), 100ul, 5, 10L, ScheduledEventKind.AudioTick, NoOpCallback, "different");
 
         // Different handle, kind, callback, tag - but same cycle, priority, sequence should compare equal
         Assert.That(event1.CompareTo(event2), Is.EqualTo(0));
@@ -106,9 +106,9 @@ public class ScheduledEventTests
     public void ScheduledEvent_RecordEquality_Works()
     {
         var callback = NoOpCallback;
-        var event1 = new ScheduledEvent(new EventHandle(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
-        var event2 = new ScheduledEvent(new EventHandle(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
-        var event3 = new ScheduledEvent(new EventHandle(2), 200ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
+        var event1 = new ScheduledEvent(new(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
+        var event2 = new ScheduledEvent(new(1), 100ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
+        var event3 = new ScheduledEvent(new(2), 200ul, 5, 10L, ScheduledEventKind.DeviceTimer, callback, null);
 
         Assert.Multiple(() =>
         {
@@ -123,7 +123,7 @@ public class ScheduledEventTests
     [Test]
     public void ScheduledEvent_NullTag_IsAllowed()
     {
-        var evt = new ScheduledEvent(new EventHandle(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
+        var evt = new ScheduledEvent(new(1), 100ul, 0, 0L, ScheduledEventKind.DeviceTimer, NoOpCallback, null);
 
         Assert.That(evt.Tag, Is.Null);
     }
@@ -138,7 +138,7 @@ public class ScheduledEventTests
 
         foreach (var kind in kinds)
         {
-            var evt = new ScheduledEvent(new EventHandle(1), 100ul, 0, 0L, kind, NoOpCallback, null);
+            var evt = new ScheduledEvent(new(1), 100ul, 0, 0L, kind, NoOpCallback, null);
             Assert.That(evt.Kind, Is.EqualTo(kind));
         }
     }

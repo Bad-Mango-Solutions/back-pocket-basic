@@ -5,10 +5,10 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
-using TestHelpers;
 
 using Emulation.Cpu;
 
+using TestHelpers;
 
 /// <summary>
 /// Comprehensive unit tests for instruction implementations.
@@ -23,17 +23,12 @@ public class InstructionsTests : CpuTestBase
     private const ProcessorStatusFlags FlagV = ProcessorStatusFlags.V;
     private const ProcessorStatusFlags FlagN = ProcessorStatusFlags.N;
 
-    
-    
-
     /// <summary>
     /// Sets up test environment.
     /// </summary>
     [SetUp]
     public void Setup()
     {
-        
-        
         Cpu.Reset();
     }
 
@@ -438,15 +433,13 @@ public class InstructionsTests : CpuTestBase
         WriteWord(0xFFFC, 0x1000);
         Write(0x1000, 0x58); // CLI opcode
         Cpu.Reset();
-        
+
         Cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagI, Is.EqualTo((ProcessorStatusFlags)0), "Interrupt disable flag should be clear");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
@@ -466,7 +459,6 @@ public class InstructionsTests : CpuTestBase
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "Interrupt disable flag should be set");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
@@ -481,15 +473,13 @@ public class InstructionsTests : CpuTestBase
         WriteWord(0xFFFC, 0x1000);
         Write(0x1000, 0xD8); // CLD opcode
         Cpu.Reset();
-        
+
         Cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagD, Is.EqualTo((ProcessorStatusFlags)0), "Decimal mode flag should be clear");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
@@ -509,7 +499,6 @@ public class InstructionsTests : CpuTestBase
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagD, Is.EqualTo(FlagD), "Decimal mode flag should be set");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
@@ -524,15 +513,13 @@ public class InstructionsTests : CpuTestBase
         WriteWord(0xFFFC, 0x1000);
         Write(0x1000, 0xB8); // CLV opcode
         Cpu.Reset();
-        
+
         Cpu.Registers.P = (ProcessorStatusFlags)0xFF; // Set all flags
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "Overflow flag should be clear");
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001));
     }
@@ -556,17 +543,15 @@ public class InstructionsTests : CpuTestBase
 
         // Set initial state
         Cpu.Reset();
-        
+
         Cpu.Registers.PC.SetWord(0x1000);
         Cpu.Registers.SP.SetByte(0xFD); // Stack pointer starts at 0xFD
         Cpu.Registers.P = (ProcessorStatusFlags)0x24; // Some flags set
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
 
         // Check stack pointer decremented by 3
         Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFA), "SP should be decremented by 3");
@@ -602,17 +587,15 @@ public class InstructionsTests : CpuTestBase
         Write(0x1000, 0x00); // BRK
 
         Cpu.Reset();
-        
+
         Cpu.Registers.PC.SetWord(0x1000);
         Cpu.Registers.SP.SetByte(0xFF);
         Cpu.Registers.P = (ProcessorStatusFlags)0x00; // I flag clear initially
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.P & FlagI, Is.EqualTo(FlagI), "I flag should be set");
     }
 
@@ -630,17 +613,15 @@ public class InstructionsTests : CpuTestBase
         Write(0x2000, 0x00); // BRK
 
         Cpu.Reset();
-        
+
         Cpu.Registers.PC.SetWord(0x2000);
         Cpu.Registers.SP.SetByte(0xFD);
         Cpu.Registers.P = (ProcessorStatusFlags)0x20;
-        
 
         // Act
         Cpu.Step();
 
         // Assert
-        
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0xA000), "Should jump to interrupt vector");
         Assert.That(Cpu.Halted, Is.False, "Should not be halted - execution continues from interrupt vector");
         Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFA), "Stack pointer should be decremented by 3");

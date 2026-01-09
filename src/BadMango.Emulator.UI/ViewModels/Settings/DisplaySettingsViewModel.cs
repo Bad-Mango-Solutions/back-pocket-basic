@@ -88,7 +88,7 @@ public partial class DisplaySettingsViewModel : SettingsPageViewModelBase
         var current = SettingsService.Current;
         var newSettings = current with
         {
-            Display = new DisplaySettings
+            Display = new()
             {
                 ScalingMode = ScalingMode,
                 ScaleFactor = ScaleFactor,

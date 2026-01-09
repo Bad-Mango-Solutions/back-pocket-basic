@@ -7,7 +7,6 @@ namespace BadMango.Emulator.Bus;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
-using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 
 using Interfaces;
@@ -462,7 +461,7 @@ public sealed partial class MachineBuilder
     public MachineBuilder WithRom(byte[] data, Addr loadAddress, string? name = null)
     {
         ArgumentNullException.ThrowIfNull(data, nameof(data));
-        romDescriptors.Add(new RomDescriptor(data, loadAddress, name));
+        romDescriptors.Add(new(data, loadAddress, name));
         return this;
     }
 
@@ -735,7 +734,8 @@ public sealed partial class MachineBuilder
     /// <list type="number">
     /// <item><description>Creates infrastructure (scheduler, signal bus, device registry)</description></item>
     /// <item><description>Creates the memory bus with configured address space</description></item>
-    /// <item><description>Applies memory configurations and ROM mappings</description></item>
+    /// <item><description>Applies memory configurations (base RAM, device layers)</description></item>
+    /// <item><description>Maps ROMs (overlay on top of RAM)</description></item>
     /// <item><description>Creates mapping layers and layered mappings</description></item>
     /// <item><description>Creates the CPU</description></item>
     /// <item><description>Assembles the machine with all components</description></item>
@@ -759,13 +759,14 @@ public sealed partial class MachineBuilder
         var devices = new DeviceRegistry();
         var bus = new MainBus(addressSpaceBits);
 
-        // Apply memory configurations
+        // Apply memory configurations (base RAM mappings, device layer setup)
         foreach (var configure in memoryConfigurations)
         {
             configure(bus, devices);
         }
 
-        // Create and map ROMs (for programmatic usage, not profile-based)
+        // Create and map ROMs AFTER memory configurations
+        // This ensures ROMs overlay on top of base RAM mappings
         foreach (var rom in romDescriptors)
         {
             MapRom(bus, devices, rom);

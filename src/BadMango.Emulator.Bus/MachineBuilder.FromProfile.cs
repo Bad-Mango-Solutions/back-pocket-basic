@@ -377,7 +377,9 @@ public sealed partial class MachineBuilder
         // Get physical memory backing
         var (physical, sourceOffset) = GetPhysicalMemoryForRegion(region, size);
 
-        var target = new RomTarget(physical.ReadOnlySlice(sourceOffset, size), physical.Name);
+        // Use Slice (writable) instead of ReadOnlySlice to allow debug writes (Poke8) to ROM.
+        // The RomTarget will still ignore normal writes, but debug writes will work.
+        var target = new RomTarget(physical.Slice(sourceOffset, size), physical.Name);
 
         // Add memory configuration callback
         memoryConfigurations.Add((bus, registry) =>

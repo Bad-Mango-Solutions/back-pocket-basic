@@ -121,7 +121,7 @@ public sealed class DebugContext : IDebugContext
     /// <returns>A new <see cref="DebugContext"/> using console streams.</returns>
     public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher)
     {
-        return new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
+        return new(dispatcher, Console.Out, Console.Error, Console.In);
     }
 
     /// <summary>

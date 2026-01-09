@@ -80,7 +80,7 @@ public sealed class ProvisioningBundleBuilder
     /// <returns>The configured provisioning bundle.</returns>
     public ProvisioningBundle Build()
     {
-        return new ProvisioningBundle(
+        return new(
             requestedRamSize,
             romImages.Count > 0 ? new Dictionary<string, ReadOnlyMemory<byte>>(romImages) : null,
             devices.Count > 0 ? devices.ToArray() : null,

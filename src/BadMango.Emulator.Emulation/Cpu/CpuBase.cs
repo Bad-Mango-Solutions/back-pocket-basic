@@ -11,10 +11,7 @@ using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 
-using Core;
 using Core.Cpu;
-using Core.Debugger;
-using Core.Interfaces;
 using Core.Interfaces.Cpu;
 using Core.Interfaces.Debugging;
 
@@ -214,7 +211,7 @@ public abstract class CpuBase : ICpu
         // This maintains backward compatibility with code that sets cycles via state
         if (cycles > context.Now.Value)
         {
-            context.Scheduler.Advance(new Cycle(cycles - context.Now.Value));
+            context.Scheduler.Advance(new(cycles - context.Now.Value));
         }
     }
 
@@ -466,7 +463,7 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateReadAccess(Addr address, byte widthBits)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,
@@ -487,7 +484,7 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateWriteAccess(Addr address, byte widthBits)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,
@@ -513,7 +510,7 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateInstructionFetchAccess(Addr address, byte widthBits)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,
@@ -537,7 +534,7 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateDebugReadAccess(Addr address)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: 8,
@@ -561,7 +558,7 @@ public abstract class CpuBase : ICpu
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateDebugWriteAccess(Addr address)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: 8,

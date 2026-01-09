@@ -13,7 +13,6 @@ using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Emulation.Cpu;
 using BadMango.Emulator.Emulation.Debugging;
-using BadMango.Emulator.Systems;
 
 /// <summary>
 /// Factory for creating emulator components from machine profiles.
@@ -50,7 +49,7 @@ public static class MachineFactory
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        pathResolver ??= new ProfilePathResolver(null);
+        pathResolver ??= new(null);
 
         // Build the machine using FromProfile as the primary configuration source
         var builder = new MachineBuilder();
@@ -97,7 +96,7 @@ public static class MachineFactory
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        pathResolver ??= new ProfilePathResolver(null);
+        pathResolver ??= new(null);
 
         // Build the machine using FromProfile as the primary configuration source
         var builder = new MachineBuilder();

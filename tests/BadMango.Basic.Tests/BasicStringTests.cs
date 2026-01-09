@@ -72,7 +72,7 @@ public class BasicStringTests
     [Test]
     public void FromString_TooLong_ThrowsException()
     {
-        string tooLong = new string('A', 256);
+        string tooLong = new('A', 256);
 
         Assert.Throws<ArgumentException>(() => BasicString.FromString(tooLong));
     }
@@ -83,7 +83,7 @@ public class BasicStringTests
     [Test]
     public void FromString_MaxLength_AcceptsCorrectly()
     {
-        string maxLength = new string('A', 255);
+        string maxLength = new('A', 255);
         BasicString value = maxLength;
 
         Assert.That(value.Length, Is.EqualTo(255));

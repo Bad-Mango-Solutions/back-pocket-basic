@@ -84,10 +84,16 @@ public static class DeviceFactoryExtensions
         /// This includes both motherboard devices and slot cards.
         /// </para>
         /// <para>
+        /// Additionally, this method registers device factories that require special
+        /// configuration beyond simple instantiation, such as the Language Card which
+        /// needs memory layers and swap groups configured.
+        /// </para>
+        /// <para>
         /// Currently registered devices:
         /// </para>
         /// <list type="bullet">
         /// <item><description>Motherboard: Speaker ($C030)</description></item>
+        /// <item><description>Motherboard: Language Card (16KB RAM at $D000-$FFFF)</description></item>
         /// <item><description>Slot Cards: PocketWatch (Thunderclock-compatible RTC)</description></item>
         /// </list>
         /// <para>
@@ -97,7 +103,16 @@ public static class DeviceFactoryExtensions
         /// </remarks>
         public MachineBuilder RegisterStandardDeviceFactories()
         {
-            return builder.RegisterAllDeviceFactories();
+            // Register auto-discovered device factories (simple devices with parameterless constructors)
+            builder.RegisterAllDeviceFactories();
+
+            // Register devices that require special memory configuration.
+            // The Language Card needs memory layers and swap groups configured, which can't
+            // be done through simple auto-discovery. We use a placeholder ROM target that
+            // allows the underlying base ROM mapping to show through when LC RAM is disabled.
+            builder.RegisterLanguageCardFactory();
+
+            return builder;
         }
     }
 }

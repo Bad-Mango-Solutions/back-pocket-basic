@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Bus;
-using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 using BadMango.Emulator.Emulation.Cpu;
@@ -35,9 +34,9 @@ public class ProfileCommandIntegrationTests
     [SetUp]
     public void SetUp()
     {
-        dispatcher = new CommandDispatcher();
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
+        dispatcher = new();
+        outputWriter = new();
+        errorWriter = new();
     }
 
     /// <summary>
@@ -325,21 +324,21 @@ public class ProfileCommandIntegrationTests
     /// <returns>A simple 65C02 machine profile.</returns>
     private static MachineProfile CreateSimple65C02Profile()
     {
-        return new MachineProfile
+        return new()
         {
             Name = "test-65c02",
             DisplayName = "Test 65C02 System",
-            Cpu = new CpuProfileSection
+            Cpu = new()
             {
                 Type = "65C02",
                 ClockSpeed = 1000000,
             },
             AddressSpace = 16,
-            Memory = new MemoryProfileSection
+            Memory = new()
             {
                 Physical =
                 [
-                    new PhysicalMemoryProfile
+                    new()
                     {
                         Name = "main-ram-64k",
                         Size = "0x10000",
@@ -348,7 +347,7 @@ public class ProfileCommandIntegrationTests
                 ],
                 Regions =
                 [
-                    new MemoryRegionProfile
+                    new()
                     {
                         Name = "main-ram",
                         Type = "ram",

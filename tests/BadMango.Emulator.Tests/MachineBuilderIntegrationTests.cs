@@ -17,54 +17,6 @@ using BadMango.Emulator.Emulation.Cpu;
 public class MachineBuilderIntegrationTests
 {
     /// <summary>
-    /// Creates a minimal 64KB RAM machine with CPU factory.
-    /// </summary>
-    private static MachineBuilder CreateMinimalMachineBuilder()
-    {
-        return new MachineBuilder()
-            .WithAddressSpace(16)
-            .WithCpu(CpuFamily.Cpu65C02)
-            .WithCpuFactory(ctx => new Cpu65C02(ctx));
-    }
-
-    /// <summary>
-    /// Creates a 64KB RAM region.
-    /// </summary>
-    private static (PhysicalMemory Memory, RamTarget Target) Create64KRam()
-    {
-        var memory = new PhysicalMemory(64 * 1024, "MainRAM");
-        var target = new RamTarget(memory.Slice(0, 64 * 1024));
-        return (memory, target);
-    }
-
-    /// <summary>
-    /// Creates a stub ROM with vectors at $FFFA-$FFFF pointing to $FF00,
-    /// and a NOP sled at $FF00 that jumps to itself.
-    /// </summary>
-    private static byte[] CreateStubRom()
-    {
-        // Create 16KB ROM starting at $C000
-        var rom = new byte[16384];
-        Array.Fill(rom, (byte)0xEA); // NOP fill
-
-        // Put JMP $FF00 at $FF00 (offset $3F00 in the ROM)
-        rom[0x3F00] = 0x4C; // JMP
-        rom[0x3F01] = 0x00; // low byte
-        rom[0x3F02] = 0xFF; // high byte
-
-        // Set up vectors at the end of ROM ($FFFA-$FFFF = offsets $3FFA-$3FFF)
-        // NMI, RESET, IRQ -> $FF00
-        rom[0x3FFA] = 0x00;
-        rom[0x3FFB] = 0xFF;
-        rom[0x3FFC] = 0x00;
-        rom[0x3FFD] = 0xFF;
-        rom[0x3FFE] = 0x00;
-        rom[0x3FFF] = 0xFF;
-
-        return rom;
-    }
-
-    /// <summary>
     /// Verifies that a minimal machine can be built with a RAM and ROM configuration.
     /// </summary>
     [Test]
@@ -110,7 +62,9 @@ public class MachineBuilderIntegrationTests
 
         // Assert - PC should be loaded from reset vector ($FFFC-$FFFD)
         // The stub ROM sets reset vector to $FF00
-        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0xFF00),
+        Assert.That(
+            machine.Cpu.GetPC(),
+            Is.EqualTo(0xFF00),
             "PC should be loaded from reset vector");
     }
 
@@ -138,8 +92,11 @@ public class MachineBuilderIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(result.State, Is.EqualTo(CpuRunState.Running), "CPU should still be running");
+
             // JMP is 3 bytes but jumps back to same address, so PC is still $FF00
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0xFF00),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(0xFF00),
                 "PC should be at $FF00 after JMP $FF00");
         });
     }
@@ -179,7 +136,9 @@ public class MachineBuilderIntegrationTests
         machine.Run();
 
         // Assert - Should have transitioned to Running then to Stopped
-        Assert.That(stateChanges, Contains.Item(MachineState.Running),
+        Assert.That(
+            stateChanges,
+            Contains.Item(MachineState.Running),
             "Should have transitioned to Running state");
     }
 
@@ -275,7 +234,9 @@ public class MachineBuilderIntegrationTests
         machine.Reset();
 
         // Verify PC is at $1000
-        Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x1000),
+        Assert.That(
+            machine.Cpu.GetPC(),
+            Is.EqualTo(0x1000),
             "PC should be at factorial code start ($1000)");
 
         // Act - Run until halted (STP instruction) or max cycles
@@ -301,7 +262,9 @@ public class MachineBuilderIntegrationTests
 
             // Read result from $0010
             var factorialResult = machine.Cpu.Read8(0x0010);
-            Assert.That(factorialResult, Is.EqualTo(0x78), // 5! = 120 = 0x78
+            Assert.That(
+                factorialResult,
+                Is.EqualTo(0x78),
                 "Factorial result should be 120 (0x78)");
         });
     }
@@ -327,7 +290,9 @@ public class MachineBuilderIntegrationTests
         machine.Stop();
 
         // Assert
-        Assert.That(machine.State, Is.EqualTo(MachineState.Stopped),
+        Assert.That(
+            machine.State,
+            Is.EqualTo(MachineState.Stopped),
             "Machine should be in Stopped state");
     }
 
@@ -377,7 +342,9 @@ public class MachineBuilderIntegrationTests
 
         // Assert - ROM should be unchanged
         var afterWrite = machine.Cpu.Read8(0xC000);
-        Assert.That(afterWrite, Is.EqualTo(originalValue),
+        Assert.That(
+            afterWrite,
+            Is.EqualTo(originalValue),
             "ROM should be read-only");
     }
 
@@ -406,7 +373,9 @@ public class MachineBuilderIntegrationTests
         }
 
         // Assert - Cycles should have advanced
-        Assert.That(machine.Now, Is.GreaterThan(initialCycle),
+        Assert.That(
+            machine.Now,
+            Is.GreaterThan(initialCycle),
             "Cycle counter should advance as instructions execute");
     }
 
@@ -429,9 +398,13 @@ public class MachineBuilderIntegrationTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(machine.HasComponent<TestComponent>(), Is.True,
+            Assert.That(
+                machine.HasComponent<TestComponent>(),
+                Is.True,
                 "Should have TestComponent");
-            Assert.That(machine.HasComponent<string>(), Is.False,
+            Assert.That(
+                machine.HasComponent<string>(),
+                Is.False,
                 "Should not have string component");
         });
     }
@@ -490,7 +463,9 @@ public class MachineBuilderIntegrationTests
 
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
-        Assert.That(ex!.Message, Does.Contain("CPU factory"),
+        Assert.That(
+            ex!.Message,
+            Does.Contain("CPU factory"),
             "Error should mention CPU factory requirement");
     }
 
@@ -519,7 +494,10 @@ public class MachineBuilderIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(callbackInvoked, Is.True, "AfterBuild callback should be invoked");
-            Assert.That(machineFromCallback, Is.SameAs(machine), "Callback should receive the built machine");
+            Assert.That(
+                machineFromCallback,
+                Is.SameAs(machine),
+                "Callback should receive the built machine");
         });
     }
 
@@ -543,6 +521,54 @@ public class MachineBuilderIntegrationTests
 
         // Assert
         Assert.That(order, Is.EqualTo(new[] { 1, 2, 3 }), "Callbacks should be invoked in order");
+    }
+
+    /// <summary>
+    /// Creates a minimal 64KB RAM machine with CPU factory.
+    /// </summary>
+    private static MachineBuilder CreateMinimalMachineBuilder()
+    {
+        return new MachineBuilder()
+            .WithAddressSpace(16)
+            .WithCpu(CpuFamily.Cpu65C02)
+            .WithCpuFactory(ctx => new Cpu65C02(ctx));
+    }
+
+    /// <summary>
+    /// Creates a 64KB RAM region.
+    /// </summary>
+    private static (PhysicalMemory Memory, RamTarget Target) Create64KRam()
+    {
+        var memory = new PhysicalMemory(64 * 1024, "MainRAM");
+        var target = new RamTarget(memory.Slice(0, 64 * 1024));
+        return (memory, target);
+    }
+
+    /// <summary>
+    /// Creates a stub ROM with vectors at $FFFA-$FFFF pointing to $FF00,
+    /// and a NOP sled at $FF00 that jumps to itself.
+    /// </summary>
+    private static byte[] CreateStubRom()
+    {
+        // Create 16KB ROM starting at $C000
+        var rom = new byte[16384];
+        Array.Fill(rom, (byte)0xEA); // NOP fill
+
+        // Put JMP $FF00 at $FF00 (offset $3F00 in the ROM)
+        rom[0x3F00] = 0x4C; // JMP
+        rom[0x3F01] = 0x00; // low byte
+        rom[0x3F02] = 0xFF; // high byte
+
+        // Set up vectors at the end of ROM ($FFFA-$FFFF = offsets $3FFA-$3FFF)
+        // NMI, RESET, IRQ -> $FF00
+        rom[0x3FFA] = 0x00;
+        rom[0x3FFB] = 0xFF;
+        rom[0x3FFC] = 0x00;
+        rom[0x3FFD] = 0xFF;
+        rom[0x3FFE] = 0x00;
+        rom[0x3FFF] = 0xFF;
+
+        return rom;
     }
 
     /// <summary>

@@ -24,10 +24,10 @@ public class ShutdownCoordinatorTests
     [SetUp]
     public void Setup()
     {
-        mockWindowManager = new Mock<IWindowManager>();
+        mockWindowManager = new();
         mockWindowManager.Setup(wm => wm.CloseAllWindowsAsync()).Returns(Task.CompletedTask);
 
-        coordinator = new ShutdownCoordinator(mockWindowManager.Object);
+        coordinator = new(mockWindowManager.Object);
     }
 
     /// <summary>

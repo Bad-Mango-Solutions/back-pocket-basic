@@ -4,9 +4,6 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-using BadMango.Emulator.Bus;
-using BadMango.Emulator.Bus.Interfaces;
-
 /// <summary>
 /// Unit tests for <see cref="PokeCommand"/>.
 /// </summary>

@@ -151,7 +151,7 @@ public class LayeredMappingTests
         var overlayTarget = new RamTarget(overlayMemory.Slice(0, PageSize));
 
         // Set up base mapping
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
         bus.SaveBaseMapping(0);
 
         // Create layer and add mapping
@@ -192,7 +192,7 @@ public class LayeredMappingTests
         var overlayTarget = new RamTarget(overlayMemory.Slice(0, PageSize));
 
         // Set up base mapping
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
         bus.SaveBaseMapping(0);
 
         // Create layer and add mapping
@@ -234,12 +234,12 @@ public class LayeredMappingTests
         var baseTarget = new RamTarget(baseMemory.Slice(0, PageSize));
 
         // Set up base mapping
-        bus.MapPage(0, new PageEntry(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
+        bus.MapPage(0, new(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
         bus.SaveBaseMapping(0);
 
         // Create low priority layer
         var lowLayer = bus.CreateLayer("LowPriority", priority: 5);
-        bus.AddLayeredMapping(new LayeredMapping(
+        bus.AddLayeredMapping(new(
             VirtualBase: 0x0000,
             Size: PageSize,
             Layer: lowLayer,
@@ -252,7 +252,7 @@ public class LayeredMappingTests
 
         // Create high priority layer
         var highLayer = bus.CreateLayer("HighPriority", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(
+        bus.AddLayeredMapping(new(
             VirtualBase: 0x0000,
             Size: PageSize,
             Layer: highLayer,
@@ -290,15 +290,15 @@ public class LayeredMappingTests
         var baseTarget = new RamTarget(baseMemory.Slice(0, PageSize));
 
         // Set up base mapping
-        bus.MapPage(0, new PageEntry(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
+        bus.MapPage(0, new(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
         bus.SaveBaseMapping(0);
 
         // Create and activate layers
         var lowLayer = bus.CreateLayer("LowPriority", priority: 5);
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, lowLayer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, lowTarget, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, lowLayer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, lowTarget, 0));
 
         var highLayer = bus.CreateLayer("HighPriority", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, highLayer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, highTarget, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, highLayer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, highTarget, 0));
 
         bus.ActivateLayer("LowPriority");
         bus.ActivateLayer("HighPriority");
@@ -321,7 +321,7 @@ public class LayeredMappingTests
         var memory = new PhysicalMemory(PageSize, "TestRAM");
         var target = new RamTarget(memory.Slice(0, PageSize));
 
-        bus.MapPage(0, new PageEntry(42, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(42, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
 
         var entry = bus.GetEffectiveMapping(0x0100);
 
@@ -342,8 +342,8 @@ public class LayeredMappingTests
         var layer1 = bus.CreateLayer("Layer1", priority: 5);
         var layer2 = bus.CreateLayer("Layer2", priority: 10);
 
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer1, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer2, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer1, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer2, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
 
         var mappings = bus.GetAllMappingsAt(0x0100).ToList();
 
@@ -365,9 +365,9 @@ public class LayeredMappingTests
         var layer2 = bus.CreateLayer("Layer2", priority: 15);
         var layer3 = bus.CreateLayer("Layer3", priority: 10);
 
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer1, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer2, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer3, 3, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer1, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer2, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer3, 3, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0));
 
         var layers = bus.GetLayersAt(0x0100).ToList();
 
@@ -391,12 +391,12 @@ public class LayeredMappingTests
         var target = new RamTarget(memory.Slice(0, PageSize));
 
         // Set up base mapping
-        bus.MapPage(0, new PageEntry(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.MapPage(0, new(0, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
         bus.SaveBaseMapping(0);
 
         // Create layer with ReadWrite permissions
         var layer = bus.CreateLayer("TestLayer", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, target, 0));
         bus.ActivateLayer("TestLayer");
 
         // Change to ReadOnly
@@ -431,7 +431,7 @@ public class LayeredMappingTests
         var fakeLayer = new MappingLayer("FakeLayer", 10, false);
 
         Assert.Throws<ArgumentException>(() => bus.AddLayeredMapping(
-            new LayeredMapping(0x0000, PageSize, fakeLayer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0)));
+            new(0x0000, PageSize, fakeLayer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0)));
     }
 
     /// <summary>
@@ -447,7 +447,7 @@ public class LayeredMappingTests
         var layer = bus.CreateLayer("TestLayer", priority: 10);
 
         Assert.Throws<ArgumentException>(() => bus.AddLayeredMapping(
-            new LayeredMapping(0x0100, PageSize, layer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0)));
+            new(0x0100, PageSize, layer, 1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.None, target, 0)));
     }
 
     /// <summary>
@@ -465,12 +465,12 @@ public class LayeredMappingTests
         var overlayTarget = new RamTarget(overlayMemory.Slice(0, PageSize));
 
         // Set up base mapping and save it
-        bus.MapPage(0, new PageEntry(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
+        bus.MapPage(0, new(1, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, baseTarget, 0));
         bus.SaveBaseMapping(0);
 
         // Create overlay
         var layer = bus.CreateLayer("Overlay", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize, layer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, overlayTarget, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize, layer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, overlayTarget, 0));
 
         // Activate and then deactivate
         bus.ActivateLayer("Overlay");
@@ -499,7 +499,7 @@ public class LayeredMappingTests
         var overlayTarget = new RamTarget(overlayMemory.Slice(0, (uint)(PageSize * 2)));
 
         var layer = bus.CreateLayer("Overlay", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(0x0000, PageSize * 2, layer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, overlayTarget, 0));
+        bus.AddLayeredMapping(new(0x0000, PageSize * 2, layer, 2, RegionTag.Ram, PagePerms.ReadWrite, TargetCaps.SupportsPeek, overlayTarget, 0));
         bus.ActivateLayer("Overlay");
         bus.DeactivateLayer("Overlay");
 
@@ -541,7 +541,7 @@ public class LayeredMappingTests
 
         // Create overlay for pages 1-2 only
         var layer = bus.CreateLayer("PartialOverlay", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(
+        bus.AddLayeredMapping(new(
             VirtualBase: 0x1000, // Page 1
             Size: PageSize * 2, // Pages 1-2
             Layer: layer,
@@ -628,7 +628,7 @@ public class LayeredMappingTests
             romMemory.AsSpan()[i] = 0xFF; // ROM typically reads as FF
         }
 
-        var romTarget = new RomTarget(romMemory.ReadOnlySlice(0, 0x3000));
+        var romTarget = new RomTarget(romMemory.Slice(0, 0x3000));
 
         // Create Language Card RAM (12KB)
         var lcRamMemory = new PhysicalMemory(0x3000, "LanguageCardRAM");
@@ -645,7 +645,7 @@ public class LayeredMappingTests
 
         // Create Language Card layer
         var lcLayer = bus.CreateLayer("LanguageCard", priority: 10);
-        bus.AddLayeredMapping(new LayeredMapping(
+        bus.AddLayeredMapping(new(
             VirtualBase: 0xD000,
             Size: 0x3000,
             Layer: lcLayer,
@@ -688,7 +688,7 @@ public class LayeredMappingTests
         byte widthBits = 8,
         AccessFlags flags = AccessFlags.None)
     {
-        return new BusAccess(
+        return new(
             Address: address,
             Value: 0,
             WidthBits: widthBits,
