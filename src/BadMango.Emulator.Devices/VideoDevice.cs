@@ -1,4 +1,4 @@
-// <copyright file="VideoModeController.cs" company="Bad Mango Solutions">
+// <copyright file="VideoDevice.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,7 +10,7 @@ using BadMango.Emulator.Bus.Interfaces;
 using Interfaces;
 
 /// <summary>
-/// Video mode soft switches ($C050-$C057) and annunciators ($C058-$C05F).
+/// Video device handling video mode soft switches ($C050-$C057) and annunciators ($C058-$C05F).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -33,7 +33,8 @@ using Interfaces;
 /// The video mode state is maintained here for display purposes.
 /// </para>
 /// </remarks>
-public sealed class VideoModeController : IVideoModeDevice
+[DeviceType("video")]
+public sealed class VideoDevice : IVideoModeDevice
 {
     private readonly bool[] annunciators = new bool[4];
     private bool textMode = true;
@@ -48,10 +49,10 @@ public sealed class VideoModeController : IVideoModeDevice
     public event Action<VideoMode>? ModeChanged;
 
     /// <inheritdoc />
-    public string Name => "Video Mode Controller";
+    public string Name => "Video Device";
 
     /// <inheritdoc />
-    public string DeviceType => "VideoMode";
+    public string DeviceType => "Video";
 
     /// <inheritdoc />
     public PeripheralKind Kind => PeripheralKind.Motherboard;

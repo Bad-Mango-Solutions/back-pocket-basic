@@ -1,4 +1,4 @@
-// <copyright file="VideoModeControllerTests.cs" company="Bad Mango Solutions">
+// <copyright file="VideoDeviceTests.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,12 +10,12 @@ using BadMango.Emulator.Bus.Interfaces;
 using Moq;
 
 /// <summary>
-/// Unit tests for the <see cref="VideoModeController"/> class.
+/// Unit tests for the <see cref="VideoDevice"/> class.
 /// </summary>
 [TestFixture]
-public class VideoModeControllerTests
+public class VideoDeviceTests
 {
-    private VideoModeController controller = null!;
+    private VideoDevice device = null!;
     private IOPageDispatcher dispatcher = null!;
 
     /// <summary>
@@ -24,27 +24,27 @@ public class VideoModeControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new();
+        device = new();
         dispatcher = new();
-        controller.RegisterHandlers(dispatcher);
+        device.RegisterHandlers(dispatcher);
     }
 
     /// <summary>
     /// Verifies that Name returns the correct value.
     /// </summary>
     [Test]
-    public void Name_ReturnsVideoModeController()
+    public void Name_ReturnsVideoDevice()
     {
-        Assert.That(controller.Name, Is.EqualTo("Video Mode Controller"));
+        Assert.That(device.Name, Is.EqualTo("Video Device"));
     }
 
     /// <summary>
     /// Verifies that DeviceType returns the correct value.
     /// </summary>
     [Test]
-    public void DeviceType_ReturnsVideoMode()
+    public void DeviceType_ReturnsVideo()
     {
-        Assert.That(controller.DeviceType, Is.EqualTo("VideoMode"));
+        Assert.That(device.DeviceType, Is.EqualTo("Video"));
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public class VideoModeControllerTests
     [Test]
     public void Kind_ReturnsMotherboard()
     {
-        Assert.That(controller.Kind, Is.EqualTo(PeripheralKind.Motherboard));
+        Assert.That(device.Kind, Is.EqualTo(PeripheralKind.Motherboard));
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ public class VideoModeControllerTests
     [Test]
     public void IsTextMode_InitiallyTrue()
     {
-        Assert.That(controller.IsTextMode, Is.True);
+        Assert.That(device.IsTextMode, Is.True);
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class VideoModeControllerTests
 
         _ = dispatcher.Read(0x50, in context);
 
-        Assert.That(controller.IsTextMode, Is.False);
+        Assert.That(device.IsTextMode, Is.False);
     }
 
     /// <summary>
@@ -88,11 +88,11 @@ public class VideoModeControllerTests
 
         // First set to graphics mode
         _ = dispatcher.Read(0x50, in context);
-        Assert.That(controller.IsTextMode, Is.False);
+        Assert.That(device.IsTextMode, Is.False);
 
         // Then set back to text mode
         _ = dispatcher.Read(0x51, in context);
-        Assert.That(controller.IsTextMode, Is.True);
+        Assert.That(device.IsTextMode, Is.True);
     }
 
     /// <summary>
@@ -104,10 +104,10 @@ public class VideoModeControllerTests
         var context = CreateTestContext();
 
         _ = dispatcher.Read(0x53, in context); // First enable mixed
-        Assert.That(controller.IsMixedMode, Is.True);
+        Assert.That(device.IsMixedMode, Is.True);
 
         _ = dispatcher.Read(0x52, in context); // Then disable
-        Assert.That(controller.IsMixedMode, Is.False);
+        Assert.That(device.IsMixedMode, Is.False);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public class VideoModeControllerTests
 
         _ = dispatcher.Read(0x53, in context);
 
-        Assert.That(controller.IsMixedMode, Is.True);
+        Assert.That(device.IsMixedMode, Is.True);
     }
 
     /// <summary>
@@ -134,14 +134,14 @@ public class VideoModeControllerTests
         // $C058 = Annunciator 0 off
         // $C059 = Annunciator 0 on
         _ = dispatcher.Read(0x59, in context); // ANN0 on
-        Assert.That(controller.Annunciators[0], Is.True);
+        Assert.That(device.Annunciators[0], Is.True);
 
         _ = dispatcher.Read(0x58, in context); // ANN0 off
-        Assert.That(controller.Annunciators[0], Is.False);
+        Assert.That(device.Annunciators[0], Is.False);
 
         // $C05B = Annunciator 1 on
         _ = dispatcher.Read(0x5B, in context);
-        Assert.That(controller.Annunciators[1], Is.True);
+        Assert.That(device.Annunciators[1], Is.True);
     }
 
     /// <summary>
@@ -150,10 +150,10 @@ public class VideoModeControllerTests
     [Test]
     public void CurrentMode_ReturnsCorrectMode()
     {
-        Assert.That(controller.CurrentMode, Is.EqualTo(VideoMode.Text40));
+        Assert.That(device.CurrentMode, Is.EqualTo(VideoMode.Text40));
 
-        controller.Set80ColumnMode(true);
-        Assert.That(controller.CurrentMode, Is.EqualTo(VideoMode.Text80));
+        device.Set80ColumnMode(true);
+        Assert.That(device.CurrentMode, Is.EqualTo(VideoMode.Text80));
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public class VideoModeControllerTests
     public void ModeChanged_RaisedWhenModeChanges()
     {
         VideoMode? changedMode = null;
-        controller.ModeChanged += mode => changedMode = mode;
+        device.ModeChanged += mode => changedMode = mode;
 
         var context = CreateTestContext();
         _ = dispatcher.Read(0x50, in context); // Switch to graphics
@@ -182,13 +182,13 @@ public class VideoModeControllerTests
         _ = dispatcher.Read(0x53, in context); // Mixed
         _ = dispatcher.Read(0x59, in context); // ANN0 on
 
-        controller.Reset();
+        device.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.IsTextMode, Is.True);
-            Assert.That(controller.IsMixedMode, Is.False);
-            Assert.That(controller.Annunciators[0], Is.False);
+            Assert.That(device.IsTextMode, Is.True);
+            Assert.That(device.IsMixedMode, Is.False);
+            Assert.That(device.Annunciators[0], Is.False);
         });
     }
 
@@ -202,7 +202,7 @@ public class VideoModeControllerTests
 
         _ = dispatcher.Read(0x50, in context); // Try to switch to graphics
 
-        Assert.That(controller.IsTextMode, Is.True); // Should remain in text mode
+        Assert.That(device.IsTextMode, Is.True); // Should remain in text mode
     }
 
     /// <summary>
@@ -215,7 +215,7 @@ public class VideoModeControllerTests
 
         dispatcher.Write(0x50, 0x00, in context);
 
-        Assert.That(controller.IsTextMode, Is.False);
+        Assert.That(device.IsTextMode, Is.False);
     }
 
     /// <summary>
@@ -225,7 +225,7 @@ public class VideoModeControllerTests
     public void Initialize_DoesNotThrow()
     {
         var mockContext = new Mock<IEventContext>();
-        Assert.DoesNotThrow(() => controller.Initialize(mockContext.Object));
+        Assert.DoesNotThrow(() => device.Initialize(mockContext.Object));
     }
 
     private static BusAccess CreateTestContext()

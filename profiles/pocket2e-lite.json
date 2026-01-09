@@ -84,6 +84,8 @@
 
     "devices": {
         "motherboard": [
+            { "type": "keyboard", "name": "Keyboard", "enabled": true },
+            { "type": "video", "name": "Video Device", "enabled": true },
             {
                 "type": "speaker",
                 "name": "Speaker",

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Unit tests for the <see cref="DeviceFactoryRegistry"/> class.
@@ -21,6 +22,28 @@ public class DeviceFactoryRegistryTests
         DeviceFactoryRegistry.EnsureInitialized();
 
         Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("speaker"));
+    }
+
+    /// <summary>
+    /// Verifies that EnsureInitialized discovers keyboard device factory.
+    /// </summary>
+    [Test]
+    public void EnsureInitialized_DiscoversKeyboardDeviceFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("keyboard"));
+    }
+
+    /// <summary>
+    /// Verifies that EnsureInitialized discovers video device factory.
+    /// </summary>
+    [Test]
+    public void EnsureInitialized_DiscoversVideoDeviceFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("video"));
     }
 
     /// <summary>
@@ -47,6 +70,38 @@ public class DeviceFactoryRegistryTests
 
         Assert.That(device, Is.Not.Null);
         Assert.That(device, Is.InstanceOf<IMotherboardDevice>());
+    }
+
+    /// <summary>
+    /// Verifies that keyboard factory creates a valid KeyboardDevice.
+    /// </summary>
+    [Test]
+    public void KeyboardFactory_CreatesKeyboardDevice()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        var factory = DeviceFactoryRegistry.MotherboardDeviceFactories["keyboard"];
+        var device = factory(null!);
+
+        Assert.That(device, Is.Not.Null);
+        Assert.That(device, Is.InstanceOf<IKeyboardDevice>());
+        Assert.That(device.Name, Is.EqualTo("Keyboard"));
+    }
+
+    /// <summary>
+    /// Verifies that video factory creates a valid VideoDevice.
+    /// </summary>
+    [Test]
+    public void VideoFactory_CreatesVideoDevice()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        var factory = DeviceFactoryRegistry.MotherboardDeviceFactories["video"];
+        var device = factory(null!);
+
+        Assert.That(device, Is.Not.Null);
+        Assert.That(device, Is.InstanceOf<IVideoModeDevice>());
+        Assert.That(device.Name, Is.EqualTo("Video Device"));
     }
 
     /// <summary>
@@ -77,6 +132,10 @@ public class DeviceFactoryRegistryTests
         {
             Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("SPEAKER"));
             Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("Speaker"));
+            Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("KEYBOARD"));
+            Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("Keyboard"));
+            Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("VIDEO"));
+            Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("Video"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("POCKETWATCH"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("PocketWatch"));
         });

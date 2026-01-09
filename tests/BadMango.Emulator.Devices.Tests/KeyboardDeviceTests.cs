@@ -1,4 +1,4 @@
-// <copyright file="KeyboardControllerTests.cs" company="Bad Mango Solutions">
+// <copyright file="KeyboardDeviceTests.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,12 +10,12 @@ using BadMango.Emulator.Bus.Interfaces;
 using Moq;
 
 /// <summary>
-/// Unit tests for the <see cref="KeyboardController"/> class.
+/// Unit tests for the <see cref="KeyboardDevice"/> class.
 /// </summary>
 [TestFixture]
-public class KeyboardControllerTests
+public class KeyboardDeviceTests
 {
-    private KeyboardController controller = null!;
+    private KeyboardDevice device = null!;
     private IOPageDispatcher dispatcher = null!;
 
     /// <summary>
@@ -24,18 +24,18 @@ public class KeyboardControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new();
+        device = new();
         dispatcher = new();
-        controller.RegisterHandlers(dispatcher);
+        device.RegisterHandlers(dispatcher);
     }
 
     /// <summary>
     /// Verifies that Name returns the correct value.
     /// </summary>
     [Test]
-    public void Name_ReturnsKeyboardController()
+    public void Name_ReturnsKeyboard()
     {
-        Assert.That(controller.Name, Is.EqualTo("Keyboard Controller"));
+        Assert.That(device.Name, Is.EqualTo("Keyboard"));
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ public class KeyboardControllerTests
     [Test]
     public void DeviceType_ReturnsKeyboard()
     {
-        Assert.That(controller.DeviceType, Is.EqualTo("Keyboard"));
+        Assert.That(device.DeviceType, Is.EqualTo("Keyboard"));
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public class KeyboardControllerTests
     [Test]
     public void Kind_ReturnsMotherboard()
     {
-        Assert.That(controller.Kind, Is.EqualTo(PeripheralKind.Motherboard));
+        Assert.That(device.Kind, Is.EqualTo(PeripheralKind.Motherboard));
     }
 
     /// <summary>
@@ -62,12 +62,12 @@ public class KeyboardControllerTests
     [Test]
     public void KeyDown_SetsKeyDataAndStrobe()
     {
-        controller.KeyDown(0x41); // 'A'
+        device.KeyDown(0x41); // 'A'
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.HasKeyDown, Is.True);
-            Assert.That(controller.KeyData, Is.EqualTo(0xC1)); // 0x41 | 0x80 (strobe)
+            Assert.That(device.HasKeyDown, Is.True);
+            Assert.That(device.KeyData, Is.EqualTo(0xC1)); // 0x41 | 0x80 (strobe)
         });
     }
 
@@ -77,13 +77,13 @@ public class KeyboardControllerTests
     [Test]
     public void KeyUp_ClearsKeyDownButPreservesKeyData()
     {
-        controller.KeyDown(0x41);
-        controller.KeyUp();
+        device.KeyDown(0x41);
+        device.KeyUp();
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.HasKeyDown, Is.False);
-            Assert.That(controller.KeyData, Is.EqualTo(0xC1)); // Key data still has strobe
+            Assert.That(device.HasKeyDown, Is.False);
+            Assert.That(device.KeyData, Is.EqualTo(0xC1)); // Key data still has strobe
         });
     }
 
@@ -93,7 +93,7 @@ public class KeyboardControllerTests
     [Test]
     public void ReadC000_ReturnsKeyData()
     {
-        controller.KeyDown(0x42); // 'B'
+        device.KeyDown(0x42); // 'B'
         var context = CreateTestContext();
 
         byte result = dispatcher.Read(0x00, in context);
@@ -107,13 +107,13 @@ public class KeyboardControllerTests
     [Test]
     public void ReadC010_ClearsStrobe()
     {
-        controller.KeyDown(0x41);
+        device.KeyDown(0x41);
         var context = CreateTestContext();
 
         // Read $C010 to clear strobe
         _ = dispatcher.Read(0x10, in context);
 
-        Assert.That(controller.KeyData, Is.EqualTo(0x41)); // Strobe cleared
+        Assert.That(device.KeyData, Is.EqualTo(0x41)); // Strobe cleared
     }
 
     /// <summary>
@@ -122,7 +122,7 @@ public class KeyboardControllerTests
     [Test]
     public void ReadC010_ReturnsKeyDownStatus()
     {
-        controller.KeyDown(0x41);
+        device.KeyDown(0x41);
         var context = CreateTestContext();
 
         byte result = dispatcher.Read(0x10, in context);
@@ -136,12 +136,12 @@ public class KeyboardControllerTests
     [Test]
     public void WriteC010_ClearsStrobe()
     {
-        controller.KeyDown(0x41);
+        device.KeyDown(0x41);
         var context = CreateTestContext();
 
         dispatcher.Write(0x10, 0x00, in context);
 
-        Assert.That(controller.KeyData, Is.EqualTo(0x41)); // Strobe cleared
+        Assert.That(device.KeyData, Is.EqualTo(0x41)); // Strobe cleared
     }
 
     /// <summary>
@@ -150,16 +150,16 @@ public class KeyboardControllerTests
     [Test]
     public void Reset_ClearsAllState()
     {
-        controller.KeyDown(0x41);
-        controller.SetModifiers(KeyboardModifiers.Shift);
+        device.KeyDown(0x41);
+        device.SetModifiers(KeyboardModifiers.Shift);
 
-        controller.Reset();
+        device.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.HasKeyDown, Is.False);
-            Assert.That(controller.KeyData, Is.EqualTo(0x00));
-            Assert.That(controller.Modifiers, Is.EqualTo(KeyboardModifiers.None));
+            Assert.That(device.HasKeyDown, Is.False);
+            Assert.That(device.KeyData, Is.EqualTo(0x00));
+            Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.None));
         });
     }
 
@@ -169,9 +169,9 @@ public class KeyboardControllerTests
     [Test]
     public void SetModifiers_SetsModifierState()
     {
-        controller.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple);
+        device.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple);
 
-        Assert.That(controller.Modifiers, Is.EqualTo(KeyboardModifiers.Control | KeyboardModifiers.OpenApple));
+        Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.Control | KeyboardModifiers.OpenApple));
     }
 
     /// <summary>
@@ -180,12 +180,12 @@ public class KeyboardControllerTests
     [Test]
     public void ReadC010_WithNoSideEffects_DoesNotClearStrobe()
     {
-        controller.KeyDown(0x41);
+        device.KeyDown(0x41);
         var context = CreateTestContextWithNoSideEffects();
 
         _ = dispatcher.Read(0x10, in context);
 
-        Assert.That(controller.KeyData, Is.EqualTo(0xC1)); // Strobe still set
+        Assert.That(device.KeyData, Is.EqualTo(0xC1)); // Strobe still set
     }
 
     /// <summary>
@@ -197,7 +197,7 @@ public class KeyboardControllerTests
         var mockContext = new Mock<IEventContext>();
         mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
 
-        Assert.DoesNotThrow(() => controller.Initialize(mockContext.Object));
+        Assert.DoesNotThrow(() => device.Initialize(mockContext.Object));
     }
 
     private static BusAccess CreateTestContext()

@@ -1,4 +1,4 @@
-// <copyright file="KeyboardController.cs" company="Bad Mango Solutions">
+// <copyright file="KeyboardDevice.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -10,7 +10,7 @@ using BadMango.Emulator.Bus.Interfaces;
 using Interfaces;
 
 /// <summary>
-/// Keyboard controller handling $C000 (KBD) and $C010 (KBDSTRB).
+/// Keyboard device handling $C000 (KBD) and $C010 (KBDSTRB).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,7 +25,8 @@ using Interfaces;
 /// with the high bit (strobe) set. The strobe remains set until cleared by accessing $C010.
 /// </para>
 /// </remarks>
-public sealed class KeyboardController : IKeyboardDevice
+[DeviceType("keyboard")]
+public sealed class KeyboardDevice : IKeyboardDevice
 {
     private const byte KeyboardDataOffset = 0x00;
     private const byte KeyboardStrobeOffset = 0x10;
@@ -45,7 +46,7 @@ public sealed class KeyboardController : IKeyboardDevice
     private IScheduler? scheduler;
 
     /// <inheritdoc />
-    public string Name => "Keyboard Controller";
+    public string Name => "Keyboard";
 
     /// <inheritdoc />
     public string DeviceType => "Keyboard";
