@@ -50,7 +50,7 @@ public interface ICharacterRomProvider
     byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet);
 
     /// <summary>
-    /// Gets all 8 scanlines for a character as a span.
+    /// Gets all 8 scanlines for a character.
     /// </summary>
     /// <param name="charCode">The 8-bit character code (0-255).</param>
     /// <param name="useAltCharSet">
@@ -58,8 +58,8 @@ public interface ICharacterRomProvider
     /// <see langword="false"/> to use the primary character set.
     /// </param>
     /// <returns>
-    /// 8 bytes representing the character bitmap, or an empty span if
+    /// 8 bytes representing the character bitmap, or an empty memory region if
     /// no character ROM is loaded.
     /// </returns>
-    ReadOnlySpan<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet);
+    Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet);
 }

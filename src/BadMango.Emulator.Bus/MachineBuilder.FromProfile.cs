@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Reflection;
+
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 
@@ -102,7 +104,7 @@ public sealed partial class MachineBuilder
         {
             foreach (var deviceEntry in profile.Devices.Motherboard)
             {
-                ConfigureMotherboardDevice(deviceEntry);
+                ConfigureMotherboardDevice(deviceEntry, romImages, effectiveResolver);
             }
         }
 
@@ -211,6 +213,51 @@ public sealed partial class MachineBuilder
 
         // Write ROM data into physical memory at the specified offset
         physical.WriteSpan(offset, romData);
+    }
+
+    /// <summary>
+    /// Loads device-specific ROM images into a device.
+    /// </summary>
+    /// <param name="device">The device to configure.</param>
+    /// <param name="deviceEntry">The device entry from the profile.</param>
+    /// <param name="romImages">The ROM image lookup table.</param>
+    private static void LoadDeviceRoms(
+        IMotherboardDevice device,
+        MotherboardDeviceEntry deviceEntry,
+        Dictionary<string, (string ResolvedPath, uint Size)> romImages)
+    {
+        // Check for character ROM configuration on video devices
+        // Use reflection to avoid circular dependency with Devices project
+        if (string.Equals(device.DeviceType, "Video", StringComparison.OrdinalIgnoreCase) &&
+            deviceEntry.Config?.TryGetProperty("character-rom", out var charRomProp) == true)
+        {
+            string? romName = charRomProp.GetString();
+            if (!string.IsNullOrEmpty(romName) && romImages.TryGetValue(romName, out var romInfo))
+            {
+                byte[] romData = File.ReadAllBytes(romInfo.ResolvedPath);
+
+                // Validate and potentially truncate the ROM data
+                if (romData.Length > romInfo.Size)
+                {
+                    romData = romData.Take((int)romInfo.Size).ToArray();
+                }
+                else if (romData.Length < romInfo.Size)
+                {
+                    throw new InvalidOperationException(
+                        $"Character ROM file '{romInfo.ResolvedPath}' is too small ({romData.Length} bytes). " +
+                        $"Expected {romInfo.Size} bytes for ROM image '{romName}'.");
+                }
+
+                // Use reflection to call LoadCharacterRom(byte[]) method
+                // This avoids issues with ReadOnlySpan<T> and dynamic dispatch
+                MethodInfo? loadMethod = device.GetType().GetMethod(
+                    "LoadCharacterRom",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    [typeof(byte[])]);
+
+                loadMethod?.Invoke(device, [romData]);
+            }
+        }
     }
 
     private void CreatePhysicalMemory(
@@ -446,7 +493,10 @@ public sealed partial class MachineBuilder
         return (physical, sourceOffset);
     }
 
-    private void ConfigureMotherboardDevice(MotherboardDeviceEntry deviceEntry)
+    private void ConfigureMotherboardDevice(
+        MotherboardDeviceEntry deviceEntry,
+        Dictionary<string, (string ResolvedPath, uint Size)> romImages,
+        ProfilePathResolver pathResolver)
     {
         // Skip disabled devices
         if (!deviceEntry.Enabled)
@@ -464,6 +514,9 @@ public sealed partial class MachineBuilder
 
         // Create the device instance
         var device = factory(this);
+
+        // Load device-specific ROMs (e.g., character ROM for video device)
+        LoadDeviceRoms(device, deviceEntry, romImages);
 
         // Add the device as both a component and a scheduled device
         AddComponent(device);

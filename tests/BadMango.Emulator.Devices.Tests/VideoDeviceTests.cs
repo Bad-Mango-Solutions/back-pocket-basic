@@ -580,10 +580,10 @@ public class VideoDeviceTests
 
         var bitmap = device.GetCharacterBitmap(0x00, useAltCharSet: false);
 
-        // Note: Cannot use Span inside Assert.Multiple, so use separate assertions
+        // Memory<T> can be used with Assert.Multiple via Span property
         Assert.That(bitmap.Length, Is.EqualTo(8));
-        Assert.That(bitmap[0], Is.EqualTo(0));
-        Assert.That(bitmap[7], Is.EqualTo(7));
+        Assert.That(bitmap.Span[0], Is.EqualTo(0));
+        Assert.That(bitmap.Span[7], Is.EqualTo(7));
     }
 
     /// <summary>
@@ -598,10 +598,10 @@ public class VideoDeviceTests
     }
 
     /// <summary>
-    /// Verifies that GetCharacterBitmap returns empty span when no ROM is loaded.
+    /// Verifies that GetCharacterBitmap returns empty memory when no ROM is loaded.
     /// </summary>
     [Test]
-    public void GetCharacterBitmap_NoRomLoaded_ReturnsEmptySpan()
+    public void GetCharacterBitmap_NoRomLoaded_ReturnsEmptyMemory()
     {
         var result = device.GetCharacterBitmap(0xC1, useAltCharSet: false);
 

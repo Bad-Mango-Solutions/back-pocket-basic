@@ -233,8 +233,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
-    public void LoadCharacterRom(ReadOnlySpan<byte> romData)
+    public void LoadCharacterRom(byte[] romData)
     {
+        ArgumentNullException.ThrowIfNull(romData);
+
         if (romData.Length != CharacterRomSize)
         {
             throw new ArgumentException(
@@ -261,15 +263,15 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
-    public ReadOnlySpan<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
+    public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
     {
         if (characterRom == null)
         {
-            return ReadOnlySpan<byte>.Empty;
+            return Memory<byte>.Empty;
         }
 
         int offset = GetCharacterRomOffset(charCode, useAltCharSet);
-        return characterRom.AsReadOnlySpan().Slice(offset, 8);
+        return characterRom.Slice((uint)offset, 8);
     }
 
     /// <inheritdoc />

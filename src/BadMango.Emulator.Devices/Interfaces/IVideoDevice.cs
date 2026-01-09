@@ -131,6 +131,9 @@ public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
     /// The character ROM data to load. Must be exactly 4096 bytes (4KB)
     /// containing two 2KB character sets (primary and alternate).
     /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="romData"/> is null.
+    /// </exception>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="romData"/> is not exactly 4096 bytes.
     /// </exception>
@@ -147,5 +150,5 @@ public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
     /// Each byte contains 7 pixel bits (bits 0-6), with bit 7 unused.
     /// </para>
     /// </remarks>
-    void LoadCharacterRom(ReadOnlySpan<byte> romData);
+    void LoadCharacterRom(byte[] romData);
 }
