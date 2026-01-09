@@ -68,6 +68,7 @@
     <File Path="specs/Implementation Roadmap - Bus Architecture.md" />
     <File Path="specs/Keyboard Mapping Specification.md" />
     <File Path="specs/Unified Development Schedule.md" />
+    <File Path="specs/video/Pocket2e Debug Video Window (Avalonia) — Specification.md" />
   </Folder>
   <Folder Name="/specs/reference/">
     <File Path="specs/Apple Desktop Bus Specification.md" />
