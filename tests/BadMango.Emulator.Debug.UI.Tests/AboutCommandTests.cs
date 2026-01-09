@@ -41,14 +41,21 @@ public class AboutCommandTests
         var command = new AboutCommand();
         var context = CreateTestContext(out var outputWriter);
 
-        var result = command.Execute(context, []);
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(result.Success, Is.True);
-            Assert.That(outputWriter.ToString(), Does.Contain("BackPocket BASIC"));
-            Assert.That(outputWriter.ToString(), Does.Contain("Copyright"));
-        });
+            var result = command.Execute(context, []);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True);
+                Assert.That(outputWriter.ToString(), Does.Contain("BackPocket BASIC"));
+                Assert.That(outputWriter.ToString(), Does.Contain("Copyright"));
+            });
+        }
+        finally
+        {
+            outputWriter.Dispose();
+        }
     }
 
     /// <summary>
@@ -63,16 +70,23 @@ public class AboutCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).ReturnsAsync(true);
 
         var command = new AboutCommand(windowManager.Object);
-        var context = CreateTestContext(out _);
+        var context = CreateTestContext(out var outputWriter);
 
-        var result = command.Execute(context, []);
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(result.Success, Is.True);
-            Assert.That(result.Message, Does.Contain("Opening"));
-            windowManager.Verify(w => w.ShowWindowAsync("About"), Times.Once);
-        });
+            var result = command.Execute(context, []);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True);
+                Assert.That(result.Message, Does.Contain("Opening"));
+                windowManager.Verify(w => w.ShowWindowAsync("About"), Times.Once);
+            });
+        }
+        finally
+        {
+            outputWriter.Dispose();
+        }
     }
 
     /// <summary>
@@ -86,16 +100,23 @@ public class AboutCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).ReturnsAsync(true);
 
         var command = new AboutCommand(windowManager.Object);
-        var context = CreateTestContext(out _);
+        var context = CreateTestContext(out var outputWriter);
 
-        var result = command.Execute(context, []);
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(result.Success, Is.True);
-            Assert.That(result.Message, Does.Contain("Opening"));
-            windowManager.Verify(w => w.ShowWindowAsync("About"), Times.Once);
-        });
+            var result = command.Execute(context, []);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True);
+                Assert.That(result.Message, Does.Contain("Opening"));
+                windowManager.Verify(w => w.ShowWindowAsync("About"), Times.Once);
+            });
+        }
+        finally
+        {
+            outputWriter.Dispose();
+        }
     }
 
     /// <summary>
@@ -112,15 +133,22 @@ public class AboutCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).Returns(tcs.Task);
 
         var command = new AboutCommand(windowManager.Object);
-        var context = CreateTestContext(out _);
+        var context = CreateTestContext(out var outputWriter);
 
-        // Execute should return immediately without blocking
-        var result = command.Execute(context, []);
+        try
+        {
+            // Execute should return immediately without blocking
+            var result = command.Execute(context, []);
 
-        Assert.That(result.Success, Is.True);
+            Assert.That(result.Success, Is.True);
 
-        // Complete the task to clean up
-        tcs.SetResult(true);
+            // Complete the task to clean up
+            tcs.SetResult(true);
+        }
+        finally
+        {
+            outputWriter.Dispose();
+        }
     }
 
     /// <summary>
