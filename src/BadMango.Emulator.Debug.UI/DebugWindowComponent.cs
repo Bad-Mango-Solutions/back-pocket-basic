@@ -42,4 +42,9 @@ public enum DebugWindowComponent
     /// </summary>
     /// <remarks>Reserved for future implementation.</remarks>
     MemoryViewer,
+
+    /// <summary>
+    /// A character ROM preview window displaying the character set bitmap grid.
+    /// </summary>
+    CharacterPreview,
 }

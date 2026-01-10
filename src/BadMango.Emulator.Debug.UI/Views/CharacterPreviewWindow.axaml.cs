@@ -87,7 +87,6 @@ public partial class CharacterPreviewWindow : Window
         this.CharacterCanvas.Children.Clear();
 
         var foregroundBrush = new SolidColorBrush(Color.FromRgb(0x33, 0xFF, 0x33)); // Apple II green
-        var backgroundBrush = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A));
 
         for (int charIndex = 0; charIndex < 256; charIndex++)
         {
