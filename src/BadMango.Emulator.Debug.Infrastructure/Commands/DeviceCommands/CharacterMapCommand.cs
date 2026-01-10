@@ -261,9 +261,10 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
         }
 
         // If window manager is available, try to open preview window
+        // Pass the video device directly so the window can get its character ROM
         if (windowManager != null)
         {
-            _ = windowManager.ShowWindowAsync("CharacterPreview");
+            _ = windowManager.ShowWindowAsync("CharacterPreview", videoDevice);
             return CommandResult.Ok("Opening character preview window...");
         }
 

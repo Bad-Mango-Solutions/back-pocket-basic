@@ -275,6 +275,17 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    public Memory<byte> GetCharacterRomData()
+    {
+        if (characterRom == null)
+        {
+            return Memory<byte>.Empty;
+        }
+
+        return characterRom.Slice(0, CharacterRomSize);
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
         return

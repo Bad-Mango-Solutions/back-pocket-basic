@@ -62,4 +62,22 @@ public interface ICharacterRomProvider
     /// no character ROM is loaded.
     /// </returns>
     Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet);
+
+    /// <summary>
+    /// Gets the full character ROM data.
+    /// </summary>
+    /// <returns>
+    /// The complete 4KB character ROM data as a memory region, or an empty
+    /// memory region if no character ROM is loaded.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// The returned memory contains both character sets:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>$0000-$07FF: Primary character set (256 × 8 bytes)</description></item>
+    /// <item><description>$0800-$0FFF: Alternate character set (256 × 8 bytes)</description></item>
+    /// </list>
+    /// </remarks>
+    Memory<byte> GetCharacterRomData();
 }

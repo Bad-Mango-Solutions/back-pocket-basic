@@ -56,6 +56,7 @@ public partial class CharacterPreviewWindow : Window
     private const uint CellBackgroundColor = 0xFF222222;
 
     private byte[]? characterRomData;
+    private ICharacterRomProvider? characterRomProvider;
     private int currentSetOffset = PrimarySetOffset;
     private WriteableBitmap? characterBitmap;
     private IMemoryOwner<byte>? pixelBufferOwner;
@@ -83,6 +84,15 @@ public partial class CharacterPreviewWindow : Window
     {
         this.characterRomData = romData;
         this.RenderCharacters();
+    }
+
+    /// <summary>
+    /// Sets the character ROM provider to use for getting ROM data.
+    /// </summary>
+    /// <param name="provider">The character ROM provider (typically the video device).</param>
+    public void SetCharacterRomProvider(ICharacterRomProvider provider)
+    {
+        this.characterRomProvider = provider;
     }
 
     /// <inheritdoc/>
@@ -171,11 +181,24 @@ public partial class CharacterPreviewWindow : Window
 
     private void OnWindowOpened(object? sender, EventArgs e)
     {
-        // Try to load default character ROM
+        // Try to get ROM data from the provider first (e.g., video device from machine)
+        if (this.characterRomProvider != null && this.characterRomProvider.IsCharacterRomLoaded)
+        {
+            Memory<byte> romMemory = this.characterRomProvider.GetCharacterRomData();
+            if (!romMemory.IsEmpty)
+            {
+                this.characterRomData = romMemory.ToArray();
+                this.UpdateCharsetInfoText(fromProvider: true);
+                this.RenderCharacters();
+                return;
+            }
+        }
+
+        // Fall back to default character ROM if no provider or provider has no ROM
         if (DefaultCharacterRom.TryGetRomData(out var romData) && romData != null)
         {
             this.characterRomData = romData;
-            this.UpdateCharsetInfoText();
+            this.UpdateCharsetInfoText(fromProvider: false);
             this.RenderCharacters();
         }
         else
@@ -190,14 +213,16 @@ public partial class CharacterPreviewWindow : Window
             ? PrimarySetOffset
             : SecondarySetOffset;
 
-        this.UpdateCharsetInfoText();
+        bool fromProvider = this.characterRomProvider != null && this.characterRomProvider.IsCharacterRomLoaded;
+        this.UpdateCharsetInfoText(fromProvider);
         this.RenderCharacters();
     }
 
-    private void UpdateCharsetInfoText()
+    private void UpdateCharsetInfoText(bool fromProvider = false)
     {
         string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
-        this.CharsetInfoText.Text = $"{setName} Character Set (Default ROM)";
+        string source = fromProvider ? "Machine ROM" : "Default ROM";
+        this.CharsetInfoText.Text = $"{setName} Character Set ({source})";
     }
 
     private void RenderCharacters()
