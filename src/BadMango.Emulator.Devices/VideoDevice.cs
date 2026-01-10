@@ -311,14 +311,14 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
             new("HIRES", 0xC057, hiresMode, "Hi-res graphics mode"),
 
             // Annunciators ($C058-$C05F)
-            new("AN0", 0xC058, !annunciators[0], "Annunciator 0 off"),
-            new("AN0", 0xC059, annunciators[0], "Annunciator 0 on"),
-            new("AN1", 0xC05A, !annunciators[1], "Annunciator 1 off"),
-            new("AN1", 0xC05B, annunciators[1], "Annunciator 1 on"),
-            new("AN2", 0xC05C, !annunciators[2], "Annunciator 2 off"),
-            new("AN2", 0xC05D, annunciators[2], "Annunciator 2 on"),
-            new("AN3", 0xC05E, !annunciators[3], "Annunciator 3 off"),
-            new("AN3", 0xC05F, annunciators[3], "Annunciator 3 on"),
+            new("AN0OFF", 0xC058, !annunciators[0], "Annunciator 0 off"),
+            new("AN0ON", 0xC059, annunciators[0], "Annunciator 0 on"),
+            new("AN1OFF", 0xC05A, !annunciators[1], "Annunciator 1 off"),
+            new("AN1ON", 0xC05B, annunciators[1], "Annunciator 1 on"),
+            new("AN2OFF", 0xC05C, !annunciators[2], "Annunciator 2 off"),
+            new("AN2ON", 0xC05D, annunciators[2], "Annunciator 2 on"),
+            new("AN3OFF", 0xC05E, !annunciators[3], "Annunciator 3 off"),
+            new("AN3ON", 0xC05F, annunciators[3], "Annunciator 3 on"),
 
             // Additional mode controls
             new("80COL", 0xC00D, col80Mode, "80-column display mode"),

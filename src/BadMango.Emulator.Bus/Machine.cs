@@ -30,6 +30,11 @@ using Interfaces;
 /// </remarks>
 public sealed class Machine : IMachine
 {
+    /// <summary>
+    /// Interval in cycles between yield points for async execution.
+    /// </summary>
+    private const int YieldIntervalCycles = 10000;
+
     private readonly List<object> components = [];
     private readonly List<IScheduledDevice> scheduledDevices = [];
     private MachineState state = MachineState.Stopped;
@@ -135,9 +140,27 @@ public sealed class Machine : IMachine
         while (state == MachineState.Running && !Cpu.IsStopRequested)
         {
             var result = Cpu.Step();
-            Scheduler.Advance(result.CyclesConsumed);
 
-            // Check for halt conditions
+            // Handle WAI state specially - use scheduler to advance time efficiently
+            if (result.State == CpuRunState.WaitingForInterrupt)
+            {
+                // When CPU is waiting for interrupt, jump to next scheduled event
+                // This allows devices (video refresh, timers, etc.) to fire and potentially
+                // trigger interrupts that will wake the CPU from WAI state
+                if (!Scheduler.JumpToNextEventAndDispatch())
+                {
+                    // No events pending - need to wait for external interrupt
+                    // In a real emulator, this would yield to the OS or event loop
+                    // For now, just continue the loop (checking for stop requests)
+                    continue;
+                }
+
+                // After dispatching event, loop will call Step() again
+                // If an interrupt was signaled, Step() will process it and clear WAI state
+                continue;
+            }
+
+            // Check for halt conditions (STP instruction or true halt)
             if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
             {
                 break;
@@ -179,6 +202,62 @@ public sealed class Machine : IMachine
         SetState(MachineState.Paused);
 
         return result;
+    }
+
+    /// <inheritdoc />
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        if (state == MachineState.Running)
+        {
+            return;
+        }
+
+        SetState(MachineState.Running);
+        Cpu.ClearStopRequest();
+
+        await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public void Pause()
+    {
+        if (state != MachineState.Running)
+        {
+            return;
+        }
+
+        Cpu.RequestStop();
+        SetState(MachineState.Paused);
+    }
+
+    /// <inheritdoc />
+    public async Task ResumeAsync(CancellationToken cancellationToken = default)
+    {
+        if (state != MachineState.Paused)
+        {
+            return;
+        }
+
+        SetState(MachineState.Running);
+        Cpu.ClearStopRequest();
+
+        await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task BootAsync(CancellationToken cancellationToken = default)
+    {
+        Reset();
+        await RunAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public void Halt()
+    {
+        // Force CPU into halted state (equivalent to STP)
+        Cpu.HaltReason = HaltState.Stp;
+        Cpu.RequestStop();
+        SetState(MachineState.Stopped);
     }
 
     /// <inheritdoc />
@@ -237,6 +316,62 @@ public sealed class Machine : IMachine
         foreach (var device in scheduledDevices)
         {
             device.Initialize(this);
+        }
+    }
+
+    /// <summary>
+    /// Executes the main run loop asynchronously with periodic yields.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel execution.</param>
+    private async Task ExecuteLoopAsync(CancellationToken cancellationToken)
+    {
+        long cyclesSinceYield = 0;
+
+        while (state == MachineState.Running && !Cpu.IsStopRequested && !cancellationToken.IsCancellationRequested)
+        {
+            var result = Cpu.Step();
+
+            // Handle WAI state specially - use scheduler to advance time efficiently
+            if (result.State == CpuRunState.WaitingForInterrupt)
+            {
+                // When CPU is waiting for interrupt, jump to next scheduled event
+                if (!Scheduler.JumpToNextEventAndDispatch())
+                {
+                    // No events pending - yield to allow external interrupt injection
+                    await Task.Yield();
+                    continue;
+                }
+
+                // After dispatching event, loop will call Step() again
+                continue;
+            }
+
+            // Check for halt conditions (STP instruction or true halt)
+            if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
+            {
+                break;
+            }
+
+            // Yield periodically to keep the caller responsive
+            cyclesSinceYield += (long)result.CyclesConsumed.Value;
+            if (cyclesSinceYield >= YieldIntervalCycles)
+            {
+                cyclesSinceYield = 0;
+                await Task.Yield();
+            }
+        }
+
+        // If we exited the loop, transition to appropriate state
+        if (state == MachineState.Running)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                SetState(MachineState.Paused);
+            }
+            else
+            {
+                SetState(MachineState.Stopped);
+            }
         }
     }
 

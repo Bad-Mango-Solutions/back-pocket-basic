@@ -77,6 +77,24 @@ public interface ICpu
     HaltState HaltReason { get; set; }
 
     /// <summary>
+    /// Gets a value indicating whether the CPU is waiting for an interrupt (WAI state).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When <see langword="true"/>, the CPU is in WAI state and waiting for an interrupt.
+    /// Unlike the <see cref="Halted"/> property, this specifically identifies the WAI state
+    /// which allows time to advance via the scheduler while waiting for interrupts.
+    /// </para>
+    /// <para>
+    /// The run loop should use <c>IScheduler.JumpToNextEventAndDispatch()</c> to
+    /// efficiently skip idle cycles when the CPU is waiting for an interrupt. This allows
+    /// scheduled events (video refresh, timers, etc.) to continue firing while the CPU
+    /// waits for an interrupt to wake it.
+    /// </para>
+    /// </remarks>
+    bool IsWaitingForInterrupt { get; }
+
+    /// <summary>
     /// Gets a value indicating whether a debugger is currently attached.
     /// </summary>
     bool IsDebuggerAttached { get; }

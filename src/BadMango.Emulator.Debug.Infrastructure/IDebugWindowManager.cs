@@ -33,7 +33,7 @@ public interface IDebugWindowManager
     /// </summary>
     /// <remarks>
     /// This property can be used to check if windows can be shown before
-    /// attempting to call <see cref="ShowWindowAsync"/>.
+    /// attempting to call <see cref="ShowWindowAsync(string)"/> or <see cref="ShowWindowAsync(string,object)"/>.
     /// </remarks>
     bool IsAvaloniaRunning { get; }
 
@@ -104,7 +104,7 @@ public interface IDebugWindowManager
     /// <summary>
     /// Gets the list of available window types that can be opened.
     /// </summary>
-    /// <returns>An enumerable of available window type names.</returns>
+    /// <returns>A collection of available window type names.</returns>
     IEnumerable<string> GetAvailableWindowTypes();
 
     /// <summary>
