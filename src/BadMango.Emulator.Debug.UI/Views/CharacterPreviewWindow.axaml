@@ -2,13 +2,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="650"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="900"
         x:Class="BadMango.Emulator.Debug.UI.Views.CharacterPreviewWindow"
         Title="Character ROM Preview"
-        Width="580"
-        Height="650"
-        MinWidth="480"
-        MinHeight="550"
+        Width="1100"
+        Height="900"
+        MinWidth="900"
+        MinHeight="750"
         CanResize="True"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True">
@@ -23,7 +23,7 @@
 
         <!-- Title -->
         <TextBlock Grid.Row="0"
-                   Text="Apple II Character Set Preview"
+                   Text="Pocket2e Character Set Preview"
                    FontSize="18"
                    FontWeight="Bold"
                    HorizontalAlignment="Center"
@@ -37,17 +37,21 @@
                        Foreground="Gray" />
         </StackPanel>
 
-        <!-- Character Grid Canvas -->
+        <!-- Character Grid - Scrollable -->
         <Border Grid.Row="2" 
                 BorderBrush="Gray" 
                 BorderThickness="1" 
                 Background="#1A1A1A"
                 Margin="0,0,0,10">
-            <Canvas x:Name="CharacterCanvas"
-                    Width="544"
-                    Height="544"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center" />
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" 
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                <Canvas x:Name="CharacterCanvas"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="10" />
+            </ScrollViewer>
         </Border>
 
         <!-- Close Button -->
