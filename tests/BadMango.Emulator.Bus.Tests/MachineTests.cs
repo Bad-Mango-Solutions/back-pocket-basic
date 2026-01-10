@@ -394,8 +394,14 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that BootAsync calls Reset then RunAsync.
+    /// Verifies that the <see cref="Machine.BootAsync(System.Threading.CancellationToken)"/> method
+    /// calls the <see cref="ICpu.Reset"/> method followed by executing the machine's run logic.
     /// </summary>
+    /// <remarks>
+    /// This test ensures that the machine's boot sequence properly initializes the CPU by resetting it
+    /// and then transitions to the appropriate state after running.
+    /// </remarks>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
     [Test]
     public async Task BootAsync_CallsResetThenRun()
     {
@@ -418,8 +424,18 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that RunAsync can be cancelled.
+    /// Tests that the <see cref="Machine.RunAsync(System.Threading.CancellationToken)"/> method
+    /// can be cancelled successfully.
     /// </summary>
+    /// <remarks>
+    /// This test ensures that when a cancellation token is triggered during the execution of
+    /// <see cref="Machine.RunAsync(System.Threading.CancellationToken)"/>, the machine transitions
+    /// from the <see cref="MachineState.Running"/> state to the <see cref="MachineState.Paused"/> state.
+    /// </remarks>
+    /// <exception cref="System.OperationCanceledException">
+    /// Thrown if the cancellation token is triggered while the method is running.
+    /// </exception>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
     [Test]
     public async Task RunAsync_CanBeCancelled()
     {

@@ -284,10 +284,14 @@ public class VideoDeviceTests
         Assert.Multiple(() =>
         {
             // Check for annunciator switches (off and on for each)
-            Assert.That(states.Count(s => s.Name == "AN0"), Is.EqualTo(2));
-            Assert.That(states.Count(s => s.Name == "AN1"), Is.EqualTo(2));
-            Assert.That(states.Count(s => s.Name == "AN2"), Is.EqualTo(2));
-            Assert.That(states.Count(s => s.Name == "AN3"), Is.EqualTo(2));
+            Assert.That(states.Any(s => s.Name == "AN0OFF" && s.Address == 0xC058), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN0ON" && s.Address == 0xC059), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN1OFF" && s.Address == 0xC05A), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN1ON" && s.Address == 0xC05B), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN2OFF" && s.Address == 0xC05C), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN2ON" && s.Address == 0xC05D), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN3OFF" && s.Address == 0xC05E), Is.True);
+            Assert.That(states.Any(s => s.Name == "AN3ON" && s.Address == 0xC05F), Is.True);
         });
     }
 
