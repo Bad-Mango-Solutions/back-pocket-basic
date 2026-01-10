@@ -32,6 +32,18 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
     /// </summary>
     private const double AppleIIeClockMHz = 1.0227;
 
+    /// <summary>
+    /// Minimum sampling interval in seconds to avoid division by very small numbers.
+    /// </summary>
+    private const double MinSampleIntervalSeconds = 0.001;
+
+    /// <summary>
+    /// Estimated average cycles per instruction for 65C02 processor.
+    /// This is an approximation as actual CPI varies by instruction type
+    /// (e.g., branches 2-4, loads 2-5, stores 3-4, arithmetic 2-7).
+    /// </summary>
+    private const double EstimatedAverageCpi = 3.0;
+
     private readonly IMachine machine;
     private readonly IVideoDevice? videoDevice;
     private readonly Stopwatch stopwatch;
@@ -164,7 +176,7 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
         var elapsedTicks = currentTicks - lastSampleTicks;
         var elapsedSeconds = elapsedTicks / (double)Stopwatch.Frequency;
 
-        if (elapsedSeconds > 0.001)
+        if (elapsedSeconds > MinSampleIntervalSeconds)
         {
             // Calculate cycles per second
             var deltaCycles = currentCycles - lastCycles;
@@ -193,9 +205,7 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
                 waiStartTime = null;
             }
 
-            // Estimate IPS (since we don't track actual instruction counts,
-            // we estimate based on average CPI of ~3 for 65C02)
-            const double EstimatedAverageCpi = 3.0;
+            // Estimate IPS based on average CPI for 65C02
             instructionsPerSecond = cyclesPerSecond / EstimatedAverageCpi;
             TotalInstructions += (ulong)(instructionsPerSecond * elapsedSeconds);
 

@@ -39,7 +39,7 @@ public class StatMonCommandTests
     public void Execute_WithoutWindowManager_ReturnsError()
     {
         var command = new StatMonCommand();
-        var context = CreateTestContext(out var outputWriter);
+        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
         try
         {
@@ -54,6 +54,7 @@ public class StatMonCommandTests
         finally
         {
             outputWriter.Dispose();
+            errorWriter.Dispose();
         }
     }
 
@@ -68,7 +69,7 @@ public class StatMonCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).ReturnsAsync(true);
 
         var command = new StatMonCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
         try
         {
@@ -84,6 +85,7 @@ public class StatMonCommandTests
         finally
         {
             outputWriter.Dispose();
+            errorWriter.Dispose();
         }
     }
 
@@ -138,7 +140,7 @@ public class StatMonCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).Returns(tcs.Task);
 
         var command = new StatMonCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
         try
         {
@@ -153,16 +155,18 @@ public class StatMonCommandTests
         finally
         {
             outputWriter.Dispose();
+            errorWriter.Dispose();
         }
     }
 
-    private static ICommandContext CreateTestContext(out StringWriter outputWriter)
+    private static ICommandContext CreateTestContext(out StringWriter outputWriter, out StringWriter errorWriter)
     {
         outputWriter = new StringWriter();
+        errorWriter = new StringWriter();
         var mockDispatcher = new Mock<ICommandDispatcher>();
         var mockContext = new Mock<ICommandContext>();
         mockContext.Setup(c => c.Output).Returns(outputWriter);
-        mockContext.Setup(c => c.Error).Returns(new StringWriter());
+        mockContext.Setup(c => c.Error).Returns(errorWriter);
         mockContext.Setup(c => c.Dispatcher).Returns(mockDispatcher.Object);
         return mockContext.Object;
     }

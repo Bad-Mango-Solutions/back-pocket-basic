@@ -44,6 +44,11 @@ public partial class StatusMonitorWindow : Window
     private const int FadeFrames = 20;
 
     /// <summary>
+    /// Refresh interval in milliseconds, targeting approximately 60Hz refresh rate.
+    /// </summary>
+    private const double RefreshIntervalMs = 16.67;
+
+    /// <summary>
     /// Annunciator colors for each track.
     /// </summary>
     private static readonly IBrush[] AnnunciatorColors =
@@ -78,7 +83,7 @@ public partial class StatusMonitorWindow : Window
         // Set up update timer at ~60Hz
         updateTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(16.67),
+            Interval = TimeSpan.FromMilliseconds(RefreshIntervalMs),
         };
         updateTimer.Tick += OnTimerTick;
 
