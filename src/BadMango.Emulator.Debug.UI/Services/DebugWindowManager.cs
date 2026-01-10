@@ -9,7 +9,9 @@ using System.Collections.Concurrent;
 using Avalonia.Controls;
 using Avalonia.Threading;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Debug.UI.StatusMonitor;
 using BadMango.Emulator.Debug.UI.Views;
 using BadMango.Emulator.Devices.Interfaces;
 
@@ -38,7 +40,12 @@ using BadMango.Emulator.Devices.Interfaces;
 /// </seealso>
 public class DebugWindowManager : IDebugWindowManager
 {
-    private static readonly string[] AvailableTypes = [nameof(DebugWindowComponent.About), nameof(DebugWindowComponent.CharacterPreview)];
+    private static readonly string[] AvailableTypes =
+    [
+        nameof(DebugWindowComponent.About),
+        nameof(DebugWindowComponent.CharacterPreview),
+        nameof(DebugWindowComponent.StatusMonitor),
+    ];
 
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
 
@@ -141,6 +148,29 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private static StatusMonitorWindow CreateStatusMonitorWindow(object? context)
+    {
+        var window = new StatusMonitorWindow();
+
+        // If context is IMachine, create a stats provider for it
+        if (context is IMachine machine)
+        {
+            var statsProvider = new MachineStatsProvider(machine);
+
+            // Look for device extensions to register
+            var clockDevice = machine.GetComponent<IClockDevice>();
+            if (clockDevice != null)
+            {
+                var pocketWatchExtension = new PocketWatchStatusExtension(clockDevice);
+                statsProvider.RegisterExtension(pocketWatchExtension);
+            }
+
+            window.SetStatsProvider(statsProvider);
+        }
+
+        return window;
+    }
+
     /// <summary>
     /// Creates a window of the specified type.
     /// </summary>
@@ -156,6 +186,7 @@ public class DebugWindowManager : IDebugWindowManager
         {
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
+            "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             _ => null,
         };
     }

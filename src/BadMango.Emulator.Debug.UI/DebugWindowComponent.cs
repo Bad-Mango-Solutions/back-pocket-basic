@@ -47,4 +47,13 @@ public enum DebugWindowComponent
     /// A character ROM preview window displaying the character set bitmap grid.
     /// </summary>
     CharacterPreview,
+
+    /// <summary>
+    /// A status monitor window displaying active machine metrics and state.
+    /// </summary>
+    /// <remarks>
+    /// The status monitor shows CPU registers, machine state, performance metrics,
+    /// annunciator visualization, and extensible device status components.
+    /// </remarks>
+    StatusMonitor,
 }

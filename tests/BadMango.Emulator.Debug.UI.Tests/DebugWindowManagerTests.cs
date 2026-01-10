@@ -31,7 +31,12 @@ public class DebugWindowManagerTests
 
         var types = manager.GetAvailableWindowTypes().ToList();
 
-        Assert.That(types, Does.Contain("About"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(types, Does.Contain("About"));
+            Assert.That(types, Does.Contain("CharacterPreview"));
+            Assert.That(types, Does.Contain("StatusMonitor"));
+        });
     }
 
     /// <summary>
