@@ -77,8 +77,16 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No machine attached to debug context.");
         }
 
-        // Start boot asynchronously (fire and forget - the machine runs in background)
-        _ = debugContext.Machine.BootAsync();
+        // Start boot asynchronously with error handling
+        _ = debugContext.Machine.BootAsync().ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted && task.Exception != null)
+                {
+                    debugContext.Error.WriteLine($"Boot error: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
+                }
+            },
+            TaskScheduler.Default);
 
         return CommandResult.Ok("Machine booted and running. Use 'pause' to suspend execution.");
     }

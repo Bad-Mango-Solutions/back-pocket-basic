@@ -83,8 +83,16 @@ public sealed class ResumeCommand : CommandHandlerBase, ICommandHelp
                 "Use 'boot' to start or 'run' for single-threaded execution.");
         }
 
-        // Resume asynchronously (fire and forget - the machine runs in background)
-        _ = debugContext.Machine.ResumeAsync();
+        // Resume asynchronously with error handling
+        _ = debugContext.Machine.ResumeAsync().ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted && task.Exception != null)
+                {
+                    debugContext.Error.WriteLine($"Resume error: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
+                }
+            },
+            TaskScheduler.Default);
 
         return CommandResult.Ok($"Resumed execution from PC=${debugContext.Cpu?.GetPC():X4}.");
     }
