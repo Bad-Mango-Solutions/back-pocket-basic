@@ -11,6 +11,8 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Interfaces;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using Commands.DeviceCommands;
+
 /// <summary>
 /// Autofac module for registering debug console services.
 /// </summary>
@@ -143,13 +145,22 @@ public class DebugConsoleModule : Module
 
         // Register about command (uses optional IDebugWindowManager for UI popups)
         builder.Register(ctx =>
-        {
-            // Try to resolve IDebugWindowManager if registered (e.g., when UI is available)
-            var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
-            return new AboutCommand(windowManager);
-        })
-        .As<ICommandHandler>()
-        .SingleInstance();
+            {
+                // Try to resolve IDebugWindowManager if registered (e.g., when UI is available)
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                return new AboutCommand(windowManager);
+            })
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.Register(ctx =>
+            {
+                // Try to resolve IDebugWindowManager if registered (e.g., when UI is available)
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                return new CharacterMapCommand(windowManager);
+            })
+            .As<ICommandHandler>()
+            .SingleInstance();
 
         // Register device-specific debug commands (auto-discovered)
         builder.RegisterModule<DeviceDebugCommandsModule>();

@@ -2,12 +2,10 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Debug.Infrastructure.Commands;
+namespace BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 
-using System.Globalization;
-
-using BadMango.Emulator.Devices;
-using BadMango.Emulator.Devices.Interfaces;
+using Devices;
+using Devices.Interfaces;
 
 /// <summary>
 /// Manages character ROM data for the video device.
@@ -28,6 +26,7 @@ using BadMango.Emulator.Devices.Interfaces;
 /// <item><description><c>status</c> - Show current character ROM status</description></item>
 /// </list>
 /// </remarks>
+[DeviceDebugCommand]
 public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 {
     private readonly IDebugWindowManager? windowManager;
