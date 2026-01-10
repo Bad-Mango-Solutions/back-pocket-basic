@@ -138,7 +138,7 @@ public static class BootRom
         // JMP back to WAI (infinite loop)
         cachedRom[offset++] = JmpAbsInstruction;
         cachedRom[offset++] = (byte)(waiLoopAddress & 0xFF);        // Low byte
-        cachedRom[offset++] = (byte)((waiLoopAddress >> 8) & 0xFF); // High byte
+        cachedRom[offset] = (byte)((waiLoopAddress >> 8) & 0xFF);   // High byte
 
         // Write interrupt handler at $F810 (simple RTI)
         int interruptOffset = InterruptHandlerAddress - LoadAddress;
