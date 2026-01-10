@@ -51,10 +51,21 @@ using Interfaces;
 [DeviceType("video")]
 public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 {
+    /// <summary>
+    /// Character ROM size: 4KB for two complete character sets.
+    /// </summary>
+    public const int CharacterRomSize = 4096;
+
+    /// <summary>
+    /// Size of each character set within the ROM.
+    /// </summary>
+    public const int CharacterSetSize = 2048;
+
     private const byte StatusBitSet = 0x80;
     private const byte StatusBitClear = 0x00;
 
     private readonly bool[] annunciators = new bool[4];
+    private PhysicalMemory? characterRom;
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -102,6 +113,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public IReadOnlyList<bool> Annunciators => annunciators;
+
+    /// <inheritdoc />
+    public bool IsCharacterRomLoaded => characterRom != null;
 
     /// <summary>
     /// Gets or sets a value indicating whether vertical blanking is in progress.
@@ -219,6 +233,59 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    public void LoadCharacterRom(byte[] romData)
+    {
+        ArgumentNullException.ThrowIfNull(romData);
+
+        if (romData.Length != CharacterRomSize)
+        {
+            throw new ArgumentException(
+                $"Character ROM must be exactly {CharacterRomSize} bytes, " +
+                $"but got {romData.Length} bytes.",
+                nameof(romData));
+        }
+
+        characterRom = new PhysicalMemory(romData, "CharacterROM");
+    }
+
+    /// <inheritdoc />
+    public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
+    {
+        if (characterRom == null)
+        {
+            return 0x00; // No ROM loaded - return blank
+        }
+
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(scanline, 7);
+
+        int offset = GetCharacterRomOffset(charCode, useAltCharSet) + scanline;
+        return characterRom.AsReadOnlySpan()[offset];
+    }
+
+    /// <inheritdoc />
+    public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
+    {
+        if (characterRom == null)
+        {
+            return Memory<byte>.Empty;
+        }
+
+        int offset = GetCharacterRomOffset(charCode, useAltCharSet);
+        return characterRom.Slice((uint)offset, 8);
+    }
+
+    /// <inheritdoc />
+    public Memory<byte> GetCharacterRomData()
+    {
+        if (characterRom == null)
+        {
+            return Memory<byte>.Empty;
+        }
+
+        return characterRom.Slice(0, CharacterRomSize);
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
         return
@@ -284,6 +351,18 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
             hiresMode = enabled;
             OnModeChanged();
         }
+    }
+
+    /// <summary>
+    /// Calculates the ROM offset for a character's bitmap.
+    /// </summary>
+    /// <param name="charCode">The 8-bit character code.</param>
+    /// <param name="useAltCharSet">True to use alternate character set.</param>
+    /// <returns>Offset into the 4KB character ROM.</returns>
+    private static int GetCharacterRomOffset(byte charCode, bool useAltCharSet)
+    {
+        int baseOffset = useAltCharSet ? CharacterSetSize : 0;
+        return baseOffset + (charCode * 8);
     }
 
     private byte SetGraphicsRead(byte offset, in BusAccess context)

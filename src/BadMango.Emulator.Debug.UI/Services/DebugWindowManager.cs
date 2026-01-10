@@ -11,6 +11,7 @@ using Avalonia.Threading;
 
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI.Views;
+using BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Manages debug popup windows for the console debugger REPL.
@@ -37,7 +38,7 @@ using BadMango.Emulator.Debug.UI.Views;
 /// </seealso>
 public class DebugWindowManager : IDebugWindowManager
 {
-    private static readonly string[] AvailableTypes = [nameof(DebugWindowComponent.About)];
+    private static readonly string[] AvailableTypes = [nameof(DebugWindowComponent.About), nameof(DebugWindowComponent.CharacterPreview)];
 
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
 
@@ -45,7 +46,13 @@ public class DebugWindowManager : IDebugWindowManager
     public bool IsAvaloniaRunning => AvaloniaBootstrapper.IsRunning;
 
     /// <inheritdoc />
-    public async Task<bool> ShowWindowAsync(string windowType)
+    public Task<bool> ShowWindowAsync(string windowType)
+    {
+        return this.ShowWindowAsync(windowType, null);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ShowWindowAsync(string windowType, object? context)
     {
         // Ensure Avalonia is initialized
         AvaloniaBootstrapper.EnsureInitialized();
@@ -70,7 +77,7 @@ public class DebugWindowManager : IDebugWindowManager
         }
 
         // Create the window on the UI thread
-        var window = await Dispatcher.UIThread.InvokeAsync(() => this.CreateWindow(windowType));
+        var window = await Dispatcher.UIThread.InvokeAsync(() => this.CreateWindow(windowType, context));
         if (window is null)
         {
             return false;
@@ -121,19 +128,34 @@ public class DebugWindowManager : IDebugWindowManager
         }
     }
 
+    private static CharacterPreviewWindow CreateCharacterPreviewWindow(object? context)
+    {
+        var window = new CharacterPreviewWindow();
+
+        // If context is ICharacterRomProvider (e.g., IVideoDevice), set it on the window
+        if (context is ICharacterRomProvider provider)
+        {
+            window.SetCharacterRomProvider(provider);
+        }
+
+        return window;
+    }
+
     /// <summary>
     /// Creates a window of the specified type.
     /// </summary>
     /// <param name="windowType">The type of window to create.</param>
+    /// <param name="context">Optional context data to pass to the window.</param>
     /// <returns>The created window, or null if the type is not supported.</returns>
     /// <remarks>
     /// This method must be called on the Avalonia UI thread.
     /// </remarks>
-    private Window? CreateWindow(string windowType)
+    private Window? CreateWindow(string windowType, object? context)
     {
         return windowType.ToUpperInvariant() switch
         {
             "ABOUT" => new AboutWindow(),
+            "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             _ => null,
         };
     }

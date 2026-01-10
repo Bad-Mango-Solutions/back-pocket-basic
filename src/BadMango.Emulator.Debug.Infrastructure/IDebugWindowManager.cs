@@ -59,6 +59,31 @@ public interface IDebugWindowManager
     Task<bool> ShowWindowAsync(string windowType);
 
     /// <summary>
+    /// Shows a debug popup window of the specified type with context data.
+    /// </summary>
+    /// <param name="windowType">The type of window to show.</param>
+    /// <param name="context">
+    /// Optional context data to pass to the window. The window type determines
+    /// what data types are accepted and how they are used.
+    /// </param>
+    /// <returns>
+    /// A task that completes when the window has been shown.
+    /// Returns <c>true</c> if the window was successfully shown;
+    /// <c>false</c> if the operation failed (e.g., Avalonia not running).
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// If a window of the specified type is already open, it will be
+    /// brought to the front and updated with the new context data.
+    /// </para>
+    /// <para>
+    /// The implementation must ensure thread safety and dispatch UI
+    /// operations to the Avalonia UI thread.
+    /// </para>
+    /// </remarks>
+    Task<bool> ShowWindowAsync(string windowType, object? context);
+
+    /// <summary>
     /// Closes a debug popup window of the specified type.
     /// </summary>
     /// <param name="windowType">The type of window to close.</param>

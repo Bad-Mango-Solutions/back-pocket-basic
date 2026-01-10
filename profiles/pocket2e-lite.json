@@ -26,6 +26,13 @@
                 "size": "0x2800",
                 "required": true,
                 "on_verification_fail": "fallback"
+            },
+            {
+                "name": "character-rom",
+                "source": "embedded://BadMango.Emulator.Devices/BadMango.Emulator.Devices.Resources.pocket2-charset.rom",
+                "size": "0x1000",
+                "required": true,
+                "on_verification_fail": "stop"
             }
         ],
         "physical": [
@@ -85,7 +92,14 @@
     "devices": {
         "motherboard": [
             { "type": "keyboard", "name": "Keyboard", "enabled": true },
-            { "type": "video", "name": "Video Device", "enabled": true },
+            {
+                "type": "video",
+                "name": "Video Device",
+                "enabled": true,
+                "config": {
+                    "character-rom": "character-rom"
+                }
+            },
             {
                 "type": "speaker",
                 "name": "Speaker",

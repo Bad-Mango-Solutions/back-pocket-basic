@@ -42,4 +42,10 @@
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\pocket2-charset.rom">
+      <LogicalName>BadMango.Emulator.Devices.Resources.pocket2-charset.rom</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

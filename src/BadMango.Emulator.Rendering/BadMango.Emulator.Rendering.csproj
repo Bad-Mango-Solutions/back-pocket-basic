@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>BadMango.Emulator.Debug.UI</RootNamespace>
+    <RootNamespace>BadMango.Emulator.Rendering</RootNamespace>
     <NeutralLanguage>en</NeutralLanguage>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,30 +12,19 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Debug UI</Product>
-    <Description>Avalonia-based popup window infrastructure for the console debugger. Provides About window and extensible window management for debug workflows.</Description>
+    <Product>BackPocketBASIC - Rendering Infrastructure</Product>
+    <Description>Shared rendering infrastructure for pixel buffer management, character rendering, and bitmap operations. Provides efficient zero-copy patterns for emulator display rendering using Memory&lt;T&gt; and WriteableBitmap.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>emulator;debugger;avalonia;ui;popup;console;repl</PackageTags>
+    <PackageTags>emulator;rendering;bitmap;pixel;framebuffer;apple2;6502</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Avalonia UI Framework -->
+    <!-- Avalonia for WriteableBitmap support -->
     <PackageReference Include="Avalonia" Version="11.2.7" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.7" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.7" />
-
-    <!-- Dependency Injection with Autofac -->
-    <PackageReference Include="Autofac" Version="8.3.0" />
 
     <!-- Analyzers -->
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101">
@@ -50,11 +39,12 @@
 
   <ItemGroup>
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
-    <AvaloniaResource Include="..\..\back-pocket-logo.png" Link="back-pocket-logo.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="BadMango.Emulator.Debug.UI.Tests" />
+    <InternalsVisibleTo Include="BadMango.Emulator.Rendering.Tests" />
+    <InternalsVisibleTo Include="BadMango.Emulator.Debug.UI" />
+    <InternalsVisibleTo Include="BadMango.Emulator.UI" />
   </ItemGroup>
 
 </Project>

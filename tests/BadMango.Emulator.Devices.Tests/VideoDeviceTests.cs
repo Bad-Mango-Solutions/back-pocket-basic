@@ -473,6 +473,235 @@ public class VideoDeviceTests
         });
     }
 
+    /// <summary>
+    /// Verifies that IsCharacterRomLoaded is false when no ROM is loaded.
+    /// </summary>
+    [Test]
+    public void IsCharacterRomLoaded_WhenNoRomLoaded_ReturnsFalse()
+    {
+        Assert.That(device.IsCharacterRomLoaded, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that LoadCharacterRom accepts valid 4KB ROM data.
+    /// </summary>
+    [Test]
+    public void LoadCharacterRom_ValidData_SetsRomLoaded()
+    {
+        var romData = new byte[VideoDevice.CharacterRomSize];
+
+        device.LoadCharacterRom(romData);
+
+        Assert.That(device.IsCharacterRomLoaded, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that LoadCharacterRom throws for invalid size.
+    /// </summary>
+    [Test]
+    public void LoadCharacterRom_InvalidSize_ThrowsArgumentException()
+    {
+        var romData = new byte[1024]; // Wrong size
+
+        Assert.Throws<ArgumentException>(() => device.LoadCharacterRom(romData));
+    }
+
+    /// <summary>
+    /// Verifies that LoadCharacterRom throws for zero-length data.
+    /// </summary>
+    [Test]
+    public void LoadCharacterRom_EmptyData_ThrowsArgumentException()
+    {
+        var romData = Array.Empty<byte>();
+
+        Assert.Throws<ArgumentException>(() => device.LoadCharacterRom(romData));
+    }
+
+    /// <summary>
+    /// Verifies that LoadCharacterRom throws for null data.
+    /// </summary>
+    [Test]
+    public void LoadCharacterRom_NullData_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => device.LoadCharacterRom(null!));
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterScanline returns correct data from primary set.
+    /// </summary>
+    [Test]
+    public void GetCharacterScanline_PrimarySet_ReturnsCorrectData()
+    {
+        var romData = new byte[VideoDevice.CharacterRomSize];
+
+        // Set up test pattern at character 'A' (0xC1), scanline 0
+        int offset = 0xC1 * 8;
+        romData[offset] = 0x18; // Expected pattern
+
+        device.LoadCharacterRom(romData);
+
+        byte result = device.GetCharacterScanline(0xC1, 0, useAltCharSet: false);
+
+        Assert.That(result, Is.EqualTo(0x18));
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterScanline uses the alternate character set.
+    /// </summary>
+    [Test]
+    public void GetCharacterScanline_AlternateSet_UsesSecondHalf()
+    {
+        var romData = new byte[VideoDevice.CharacterRomSize];
+
+        // Set different patterns in primary and alternate sets
+        int primaryOffset = 0x40 * 8;
+        int altOffset = VideoDevice.CharacterSetSize + (0x40 * 8);
+        romData[primaryOffset] = 0xAA;
+        romData[altOffset] = 0x55;
+
+        device.LoadCharacterRom(romData);
+
+        byte primary = device.GetCharacterScanline(0x40, 0, useAltCharSet: false);
+        byte alternate = device.GetCharacterScanline(0x40, 0, useAltCharSet: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(primary, Is.EqualTo(0xAA));
+            Assert.That(alternate, Is.EqualTo(0x55));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterBitmap returns all 8 scanlines.
+    /// </summary>
+    [Test]
+    public void GetCharacterBitmap_ReturnsAll8Scanlines()
+    {
+        var romData = new byte[VideoDevice.CharacterRomSize];
+
+        // Fill character 0x00 with sequential values
+        for (int i = 0; i < 8; i++)
+        {
+            romData[i] = (byte)i;
+        }
+
+        device.LoadCharacterRom(romData);
+
+        var bitmap = device.GetCharacterBitmap(0x00, useAltCharSet: false);
+
+        // Memory<T> can be used with Assert.Multiple via Span property
+        Assert.That(bitmap.Length, Is.EqualTo(8));
+        Assert.That(bitmap.Span[0], Is.EqualTo(0));
+        Assert.That(bitmap.Span[7], Is.EqualTo(7));
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterScanline returns zero when no ROM is loaded.
+    /// </summary>
+    [Test]
+    public void GetCharacterScanline_NoRomLoaded_ReturnsZero()
+    {
+        byte result = device.GetCharacterScanline(0xC1, 0, useAltCharSet: false);
+
+        Assert.That(result, Is.EqualTo(0x00));
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterBitmap returns empty memory when no ROM is loaded.
+    /// </summary>
+    [Test]
+    public void GetCharacterBitmap_NoRomLoaded_ReturnsEmptyMemory()
+    {
+        var result = device.GetCharacterBitmap(0xC1, useAltCharSet: false);
+
+        Assert.That(result.IsEmpty, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that GetCharacterScanline throws for invalid scanline.
+    /// </summary>
+    [Test]
+    public void GetCharacterScanline_InvalidScanline_ThrowsArgumentOutOfRangeException()
+    {
+        var romData = new byte[VideoDevice.CharacterRomSize];
+        device.LoadCharacterRom(romData);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => device.GetCharacterScanline(0x00, 8, useAltCharSet: false));
+    }
+
+    /// <summary>
+    /// Verifies that VideoDevice implements ICharacterRomProvider.
+    /// </summary>
+    [Test]
+    public void VideoDevice_ImplementsICharacterRomProvider()
+    {
+        Assert.That(device, Is.InstanceOf<Interfaces.ICharacterRomProvider>());
+    }
+
+    /// <summary>
+    /// Verifies that CharacterRomSize constant is 4096 bytes.
+    /// </summary>
+    [Test]
+    public void CharacterRomSize_Is4096Bytes()
+    {
+        Assert.That(VideoDevice.CharacterRomSize, Is.EqualTo(4096));
+    }
+
+    /// <summary>
+    /// Verifies that CharacterSetSize constant is 2048 bytes.
+    /// </summary>
+    [Test]
+    public void CharacterSetSize_Is2048Bytes()
+    {
+        Assert.That(VideoDevice.CharacterSetSize, Is.EqualTo(2048));
+    }
+
+    /// <summary>
+    /// Verifies that DefaultCharacterRom can load the embedded ROM data.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_GetRomData_Returns4KBData()
+    {
+        var romData = DefaultCharacterRom.GetRomData();
+
+        Assert.That(romData.Length, Is.EqualTo(4096));
+    }
+
+    /// <summary>
+    /// Verifies that DefaultCharacterRom can be loaded into a VideoDevice.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_LoadIntoVideoDevice_LoadsSuccessfully()
+    {
+        DefaultCharacterRom.LoadIntoVideoDevice(device);
+
+        Assert.That(device.IsCharacterRomLoaded, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that DefaultCharacterRom contains non-zero character data.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_ContainsNonZeroData()
+    {
+        var romData = DefaultCharacterRom.GetRomData();
+
+        // Check that at least some character data is non-zero
+        // Character 'A' (0x41) should have visible pixels
+        int offsetA = 0x41 * 8;
+        bool hasNonZero = false;
+        for (int i = 0; i < 8; i++)
+        {
+            if (romData[offsetA + i] != 0)
+            {
+                hasNonZero = true;
+                break;
+            }
+        }
+
+        Assert.That(hasNonZero, Is.True, "Character 'A' should have non-zero pixel data");
+    }
+
     private static BusAccess CreateTestContext()
     {
         return new(
