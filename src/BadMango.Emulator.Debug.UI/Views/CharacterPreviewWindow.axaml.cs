@@ -31,7 +31,8 @@ using BadMango.Emulator.Devices.Interfaces;
 /// </para>
 /// <para>
 /// Uses a <see cref="WriteableBitmap"/> for efficient rendering instead of creating
-/// individual Rectangle controls for each pixel.
+/// individual Rectangle controls for each pixel. The pixel buffer is wrapped in
+/// <see cref="Memory{T}"/> for safe and efficient memory slicing.
 /// </para>
 /// </remarks>
 public partial class CharacterPreviewWindow : Window
@@ -54,6 +55,7 @@ public partial class CharacterPreviewWindow : Window
     private byte[]? characterRomData;
     private int currentSetOffset = PrimarySetOffset;
     private WriteableBitmap? characterBitmap;
+    private Memory<uint> pixelBuffer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterPreviewWindow"/> class.
@@ -136,7 +138,7 @@ public partial class CharacterPreviewWindow : Window
         }
     }
 
-    private static void DrawCellBackground(uint[] pixels, int stride, int cellX, int cellY)
+    private static void DrawCellBackground(Span<uint> pixels, int stride, int cellX, int cellY)
     {
         int cellDrawWidth = CellWidth - CellSpacing;
         int cellDrawHeight = CellHeight - CellSpacing;
@@ -208,14 +210,17 @@ public partial class CharacterPreviewWindow : Window
                 new Vector(96, 96),
                 Avalonia.Platform.PixelFormat.Bgra8888,
                 AlphaFormat.Premul);
+
+            // Allocate pixel buffer wrapped in Memory<T> for safe memory slicing
+            this.pixelBuffer = new uint[totalWidth * totalHeight];
         }
 
-        // Create pixel buffer for safe rendering
+        // Get span for efficient pixel access
         int stride = totalWidth;
-        var pixels = new uint[totalWidth * totalHeight];
+        var pixels = this.pixelBuffer.Span;
 
         // Fill with background color
-        Array.Fill(pixels, BackgroundColor);
+        pixels.Fill(BackgroundColor);
 
         // Render each character
         for (int charIndex = 0; charIndex < 256; charIndex++)
@@ -236,7 +241,7 @@ public partial class CharacterPreviewWindow : Window
         // Copy pixel data to WriteableBitmap
         using (var framebuffer = this.characterBitmap.Lock())
         {
-            var byteSpan = MemoryMarshal.AsBytes(pixels.AsSpan());
+            var byteSpan = MemoryMarshal.AsBytes(pixels);
             Marshal.Copy(byteSpan.ToArray(), 0, framebuffer.Address, byteSpan.Length);
         }
 
@@ -277,7 +282,7 @@ public partial class CharacterPreviewWindow : Window
         }
     }
 
-    private void RenderCharacterToBitmap(uint[] pixels, int stride, int charCode, int cellX, int cellY)
+    private void RenderCharacterToBitmap(Span<uint> pixels, int stride, int charCode, int cellX, int cellY)
     {
         if (this.characterRomData == null)
         {
