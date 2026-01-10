@@ -14,11 +14,11 @@
     "memory": {
         "rom-images": [
             {
-                "name": "monitor",
-                "source": "library://roms/monitor.rom",
+                "name": "boot-rom",
+                "source": "embedded://BadMango.Emulator.Devices/BadMango.Emulator.Devices.Resources.boot.rom",
                 "size": "0x0800",
                 "required": true,
-                "on_verification_fail": "fallback"
+                "on_verification_fail": "stop"
             },
             {
                 "name": "basic",
@@ -53,8 +53,8 @@
                     },
                     {
                         "type": "rom-image",
-                        "name": "monitor",
-                        "rom-image": "monitor",
+                        "name": "boot-rom",
+                        "rom-image": "boot-rom",
                         "offset": "0x2800"
                     }
                 ]

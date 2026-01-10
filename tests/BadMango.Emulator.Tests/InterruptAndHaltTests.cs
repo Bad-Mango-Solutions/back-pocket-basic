@@ -229,6 +229,74 @@ public class InterruptAndHaltTests : CpuTestBase
         Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed while halted");
     }
 
+    /// <summary>
+    /// Verifies that IsWaitingForInterrupt returns true when in WAI state.
+    /// </summary>
+    [Test]
+    public void WAI_SetsIsWaitingForInterrupt()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xCB); // WAI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step();
+
+        // Assert
+        Assert.That(Cpu.IsWaitingForInterrupt, Is.True, "IsWaitingForInterrupt should be true after WAI");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.Wai), "Halt reason should be WAI");
+    }
+
+    /// <summary>
+    /// Verifies that IsWaitingForInterrupt returns false when not in WAI state.
+    /// </summary>
+    [Test]
+    public void IsWaitingForInterrupt_FalseWhenNotInWaiState()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
+
+        // Assert initial state
+        Assert.That(Cpu.IsWaitingForInterrupt, Is.False, "IsWaitingForInterrupt should be false initially");
+
+        // Act
+        Cpu.Step();
+
+        // Assert after NOP
+        Assert.That(Cpu.IsWaitingForInterrupt, Is.False, "IsWaitingForInterrupt should still be false after NOP");
+    }
+
+    /// <summary>
+    /// Verifies that IsWaitingForInterrupt becomes false when interrupt wakes CPU from WAI.
+    /// </summary>
+    [Test]
+    public void WAI_IsWaitingForInterruptBecomeFalseOnInterrupt()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xCB);       // WAI
+        Write(0x2000, 0x40);       // RTI at IRQ handler
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // Execute CLI
+        Cpu.Step(); // Execute WAI - CPU waits
+
+        Assert.That(Cpu.IsWaitingForInterrupt, Is.True, "CPU should be waiting for interrupt");
+
+        Cpu.SignalIRQ(); // Signal IRQ
+        Cpu.Step(); // Process interrupt
+
+        // Assert
+        Assert.That(Cpu.IsWaitingForInterrupt, Is.False, "IsWaitingForInterrupt should be false after interrupt");
+    }
+
     #endregion
 
     #region STP Tests

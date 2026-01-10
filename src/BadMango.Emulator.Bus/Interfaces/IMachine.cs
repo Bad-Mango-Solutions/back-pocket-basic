@@ -121,4 +121,85 @@ public interface IMachine : IEventContext
     /// </para>
     /// </remarks>
     CpuStepResult Step();
+
+    /// <summary>
+    /// Starts continuous execution asynchronously with periodic yields.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel execution.</param>
+    /// <returns>A task that completes when execution stops.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method is similar to <see cref="Run"/> but uses an async/cooperative
+    /// execution model that yields periodically, allowing the caller to remain
+    /// responsive to commands while the machine is running.
+    /// </para>
+    /// <para>
+    /// The machine transitions to <see cref="MachineState.Running"/> at start and
+    /// to <see cref="MachineState.Stopped"/> when execution ends (via cancellation,
+    /// halt instruction, or breakpoint).
+    /// </para>
+    /// </remarks>
+    Task RunAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Pauses execution without fully stopping.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Transitions the machine from <see cref="MachineState.Running"/> to
+    /// <see cref="MachineState.Paused"/>. The CPU and scheduler state are
+    /// preserved, allowing execution to be resumed with <see cref="ResumeAsync"/>.
+    /// </para>
+    /// <para>
+    /// If the machine is not running, this method has no effect.
+    /// </para>
+    /// </remarks>
+    void Pause();
+
+    /// <summary>
+    /// Resumes execution from a paused state.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel execution.</param>
+    /// <returns>A task that completes when execution stops.</returns>
+    /// <remarks>
+    /// <para>
+    /// Transitions the machine from <see cref="MachineState.Paused"/> to
+    /// <see cref="MachineState.Running"/> and resumes execution from where
+    /// it was paused.
+    /// </para>
+    /// <para>
+    /// If the machine is not paused, this method has no effect.
+    /// </para>
+    /// </remarks>
+    Task ResumeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Boots the machine by performing a reset and starting execution.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel execution.</param>
+    /// <returns>A task that completes when execution stops.</returns>
+    /// <remarks>
+    /// <para>
+    /// This is a convenience method that combines <see cref="Reset"/> and
+    /// <see cref="RunAsync"/>. It resets the machine to its initial state
+    /// and immediately starts execution.
+    /// </para>
+    /// </remarks>
+    Task BootAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Halts the machine completely, equivalent to the STP instruction effect.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Forces the CPU into a halted state (similar to executing STP).
+    /// The machine transitions to <see cref="MachineState.Stopped"/> and
+    /// can only be restarted via <see cref="Reset"/>.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="Stop"/> which simply pauses execution, <see cref="Halt"/>
+    /// represents a hard stop that requires a reset to recover from.
+    /// </para>
+    /// </remarks>
+    void Halt();
 }

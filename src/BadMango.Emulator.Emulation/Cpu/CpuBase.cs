@@ -126,6 +126,13 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
+    public bool IsWaitingForInterrupt
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => haltReason == HaltState.Wai;
+    }
+
+    /// <inheritdoc/>
     public bool IsDebuggerAttached
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

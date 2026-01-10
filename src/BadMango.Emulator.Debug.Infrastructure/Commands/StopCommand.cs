@@ -23,7 +23,7 @@ public sealed class StopCommand : CommandHandlerBase, ICommandHelp
     }
 
     /// <inheritdoc/>
-    public override IReadOnlyList<string> Aliases { get; } = ["halt", "break"];
+    public override IReadOnlyList<string> Aliases { get; } = ["break"];
 
     /// <inheritdoc/>
     public override string Usage => "stop";
@@ -44,7 +44,6 @@ public sealed class StopCommand : CommandHandlerBase, ICommandHelp
     public IReadOnlyList<string> Examples { get; } =
     [
         "stop                    Request the CPU to stop",
-        "halt                    Alias for stop",
         "break                   Alias for stop",
     ];
 

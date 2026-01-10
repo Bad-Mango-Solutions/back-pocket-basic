@@ -74,6 +74,22 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<BootCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<PauseCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<ResumeCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<HaltCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<PcCommand>()
             .As<ICommandHandler>()
             .SingleInstance();
