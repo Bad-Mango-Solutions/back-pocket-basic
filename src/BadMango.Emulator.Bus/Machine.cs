@@ -135,9 +135,27 @@ public sealed class Machine : IMachine
         while (state == MachineState.Running && !Cpu.IsStopRequested)
         {
             var result = Cpu.Step();
-            Scheduler.Advance(result.CyclesConsumed);
 
-            // Check for halt conditions
+            // Handle WAI state specially - use scheduler to advance time efficiently
+            if (result.State == CpuRunState.WaitingForInterrupt)
+            {
+                // When CPU is waiting for interrupt, jump to next scheduled event
+                // This allows devices (video refresh, timers, etc.) to fire and potentially
+                // trigger interrupts that will wake the CPU from WAI state
+                if (!Scheduler.JumpToNextEventAndDispatch())
+                {
+                    // No events pending - need to wait for external interrupt
+                    // In a real emulator, this would yield to the OS or event loop
+                    // For now, just continue the loop (checking for stop requests)
+                    continue;
+                }
+
+                // After dispatching event, loop will call Step() again
+                // If an interrupt was signaled, Step() will process it and clear WAI state
+                continue;
+            }
+
+            // Check for halt conditions (STP instruction or true halt)
             if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
             {
                 break;

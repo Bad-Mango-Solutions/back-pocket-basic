@@ -273,6 +273,48 @@ public class MachineTests
         mockCpu.Verify(c => c.Step(), Times.Exactly(3));
     }
 
+    /// <summary>
+    /// Verifies that Run handles WaitingForInterrupt state by using scheduler.
+    /// </summary>
+    [Test]
+    public void Run_WhenCpuWaitingForInterrupt_UsesSchedulerToAdvanceTime()
+    {
+        var mockCpu = CreateMockCpu();
+        var scheduler = new Scheduler();
+        var bus = new MainBus(16);
+        var signals = new SignalBus();
+        var devices = new DeviceRegistry();
+
+        var machine = new Machine(mockCpu.Object, bus, scheduler, signals, devices);
+        scheduler.SetEventContext(machine);
+
+        bool eventFired = false;
+
+        // Schedule an event for cycle 100
+        scheduler.ScheduleAt((BadMango.Emulator.Core.Cycle)100UL, ScheduledEventKind.DeviceTimer, 0, _ =>
+        {
+            eventFired = true;
+
+            // After event fires, make CPU stop waiting
+            mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Stopped, 1));
+        });
+
+        // Make CPU return WaitingForInterrupt first, then Stopped after event fires
+        mockCpu.SetupSequence(c => c.Step())
+            .Returns(new CpuStepResult(CpuRunState.WaitingForInterrupt, 0))
+            .Returns(new CpuStepResult(CpuRunState.Stopped, 1));
+
+        // Act
+        machine.Run();
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventFired, Is.True, "Scheduled event should have fired");
+            Assert.That(scheduler.Now.Value, Is.GreaterThanOrEqualTo(100), "Scheduler should have advanced to event time");
+        });
+    }
+
     private static Machine CreateTestMachine(Mock<ICpu>? mockCpu = null)
     {
         mockCpu ??= CreateMockCpu();
