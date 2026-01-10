@@ -43,8 +43,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\apple2-charset.rom">
-      <LogicalName>BadMango.Emulator.Devices.Resources.apple2-charset.rom</LogicalName>
+    <EmbeddedResource Include="Resources\pocket2-charset.rom">
+      <LogicalName>BadMango.Emulator.Devices.Resources.pocket2-charset.rom</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 

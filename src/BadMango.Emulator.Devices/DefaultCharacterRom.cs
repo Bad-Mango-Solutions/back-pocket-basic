@@ -7,24 +7,30 @@ namespace BadMango.Emulator.Devices;
 using System.Reflection;
 
 /// <summary>
-/// Provides access to the default Apple II character ROM embedded in the assembly.
+/// Provides access to the default Pocket2e character ROM embedded in the assembly.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The default character ROM is a 4KB binary containing the standard Apple IIe
-/// character set with both primary and alternate (MouseText) character sets.
+/// The default character ROM is a 4KB binary containing the Pocket2e character set
+/// with proper inverse characters, uppercase, lowercase, and symbols.
 /// </para>
 /// <para>
 /// The ROM is organized as:
 /// </para>
 /// <list type="bullet">
-/// <item><description>$0000-$07FF: Primary character set (256 × 8 bytes)</description></item>
-/// <item><description>$0800-$0FFF: Alternate character set with MouseText (256 × 8 bytes)</description></item>
+/// <item><description>$00-$3F: Inverse characters (bit-flipped @, A-Z, symbols)</description></item>
+/// <item><description>$40-$7F: Flashing characters (@, A-Z, symbols)</description></item>
+/// <item><description>$80-$BF: Normal characters (@, A-Z, symbols)</description></item>
+/// <item><description>$C0-$FF: Lowercase characters (a-z, extra symbols)</description></item>
 /// </list>
+/// <para>
+/// The iconic inverse @ character at $00 displays as white-on-black, famously
+/// causing screens full of inverse at-signs when memory was zeroed.
+/// </para>
 /// </remarks>
 public static class DefaultCharacterRom
 {
-    private const string ResourceName = "BadMango.Emulator.Devices.Resources.apple2-charset.rom";
+    private const string ResourceName = "BadMango.Emulator.Devices.Resources.pocket2-charset.rom";
     private const int ExpectedSize = 4096;
 
     private static byte[]? cachedRom;
