@@ -4,17 +4,14 @@
 
 namespace BadMango.Emulator.Debug.UI.Views;
 
-using System.Buffers;
-
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 
-using BadMango.Emulator.Devices;
-using BadMango.Emulator.Devices.Interfaces;
+using Devices;
+using Devices.Interfaces;
+
+using Rendering;
 
 /// <summary>
 /// Character preview window displaying the Apple II character set as a visual grid.
@@ -30,50 +27,37 @@ using BadMango.Emulator.Devices.Interfaces;
 /// bitmap patterns for each character code from 0x00 to 0xFF.
 /// </para>
 /// <para>
-/// Uses a <see cref="WriteableBitmap"/> for efficient rendering instead of creating
-/// individual Rectangle controls for each pixel. The pixel buffer is managed using
-/// <see cref="Memory{T}"/> via <see cref="IMemoryOwner{T}"/> from <see cref="MemoryPool{T}"/>
-/// for efficient pooled memory allocation. The underlying array is accessed via
-/// <see cref="System.Runtime.InteropServices.MemoryMarshal.TryGetArray{T}"/> for safe
-/// interop with <see cref="System.Runtime.InteropServices.Marshal.Copy(byte[], int, IntPtr, int)"/>.
+/// Uses the shared <see cref="PixelBuffer"/> and <see cref="CharacterRenderer"/>
+/// infrastructure for efficient rendering.
 /// </para>
 /// </remarks>
 public partial class CharacterPreviewWindow : Window
 {
-    private const int CharWidth = 7;
-    private const int CharHeight = 8;
     private const int Scale = 2;
     private const int GridSize = 16;
     private const int CellSpacing = 4;
-    private const int CellWidth = (CharWidth * Scale) + CellSpacing;
-    private const int CellHeight = (CharHeight * Scale) + CellSpacing;
+    private const int CellWidth = (CharacterRenderer.CharacterWidth * Scale) + CellSpacing;
+    private const int CellHeight = (CharacterRenderer.CharacterHeight * Scale) + CellSpacing;
     private const int PrimarySetOffset = 0x0000;
     private const int SecondarySetOffset = 0x0800;
-
-    // Apple II green phosphor color (BGRA format for Bgra8888)
-    private const uint ForegroundColor = 0xFF33FF33;
-    private const uint BackgroundColor = 0xFF1A1A1A;
-    private const uint CellBackgroundColor = 0xFF222222;
 
     private byte[]? characterRomData;
     private ICharacterRomProvider? characterRomProvider;
     private int currentSetOffset = PrimarySetOffset;
-    private WriteableBitmap? characterBitmap;
-    private IMemoryOwner<byte>? pixelBufferOwner;
-    private Memory<byte> pixelBuffer;
+    private PixelBuffer? pixelBuffer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterPreviewWindow"/> class.
     /// </summary>
     public CharacterPreviewWindow()
     {
-        this.InitializeComponent();
+        InitializeComponent();
 
         // Allow closing with Escape key
-        this.KeyDown += this.OnKeyDown;
+        KeyDown += OnKeyDown;
 
         // Load and render when window opens
-        this.Opened += this.OnWindowOpened;
+        Opened += OnWindowOpened;
     }
 
     /// <summary>
@@ -82,8 +66,8 @@ public partial class CharacterPreviewWindow : Window
     /// <param name="romData">The 4KB character ROM data.</param>
     public void SetCharacterRomData(byte[] romData)
     {
-        this.characterRomData = romData;
-        this.RenderCharacters();
+        characterRomData = romData;
+        RenderCharacters();
     }
 
     /// <summary>
@@ -92,7 +76,7 @@ public partial class CharacterPreviewWindow : Window
     /// <param name="provider">The character ROM provider (typically the video device).</param>
     public void SetCharacterRomProvider(ICharacterRomProvider provider)
     {
-        this.characterRomProvider = provider;
+        characterRomProvider = provider;
     }
 
     /// <inheritdoc/>
@@ -100,96 +84,22 @@ public partial class CharacterPreviewWindow : Window
     {
         base.OnClosed(e);
 
-        // Clean up Memory<T> buffer
-        this.pixelBufferOwner?.Dispose();
-        this.pixelBufferOwner = null;
-        this.pixelBuffer = default;
-    }
-
-    private static string GetCharacterDisplay(int charCode)
-    {
-        // Map character codes to their display representation:
-        // $00-$3F: Inverse characters (show uppercase equivalent)
-        // $40-$7F: Flashing characters
-        // $80-$BF: Normal uppercase
-        // $C0-$FF: Lowercase
-        if (charCode < 0x20)
-        {
-            // Control characters / inverse - show the character they represent
-            char c = (char)(charCode + 0x40); // @ A B C ... Z [ \ ] ^ _
-            return $"'{c}' Inverse";
-        }
-        else if (charCode < 0x40)
-        {
-            // Inverse punctuation/numbers
-            char c = (char)charCode; // space ! " # ... / 0-9 : ; < = > ?
-            return $"'{c}' Inverse";
-        }
-        else if (charCode < 0x60)
-        {
-            // Normal/flashing @ A-Z [ \ ] ^ _
-            char c = (char)charCode;
-            return $"'{c}' Flashing";
-        }
-        else if (charCode < 0x80)
-        {
-            // Lowercase a-z and symbols (flashing zone)
-            char c = (char)(charCode - 0x40);
-            return $"'{c}' Flashing";
-        }
-        else if (charCode < 0xA0)
-        {
-            // Normal inverse representation area
-            char c = (char)(charCode - 0x40);
-            return $"Control-'{c}'";
-        }
-        else if (charCode < 0xC0)
-        {
-            // Normal punctuation/numbers
-            char c = (char)(charCode - 0x80);
-            return $"'{c}'";
-        }
-        else if (charCode < 0xE0)
-        {
-            // Normal @ A-Z [ \ ] ^ _
-            char c = (char)(charCode - 0x80);
-            return $"'{c}'";
-        }
-        else
-        {
-            // Lowercase a-z and symbols
-            char c = (char)(charCode - 0x80);
-            return $"'{c}'";
-        }
-    }
-
-    private static void DrawCellBackground(Span<uint> pixels, int stride, int cellX, int cellY)
-    {
-        int cellDrawWidth = CellWidth - CellSpacing;
-        int cellDrawHeight = CellHeight - CellSpacing;
-
-        for (int y = 0; y < cellDrawHeight; y++)
-        {
-            for (int x = 0; x < cellDrawWidth; x++)
-            {
-                int px = cellX + x;
-                int py = cellY + y;
-                pixels[(py * stride) + px] = CellBackgroundColor;
-            }
-        }
+        // Clean up pixel buffer
+        pixelBuffer?.Dispose();
+        pixelBuffer = null;
     }
 
     private void OnWindowOpened(object? sender, EventArgs e)
     {
         // Try to get ROM data from the provider first (e.g., video device from machine)
-        if (this.characterRomProvider != null && this.characterRomProvider.IsCharacterRomLoaded)
+        if (characterRomProvider is { IsCharacterRomLoaded: true })
         {
-            Memory<byte> romMemory = this.characterRomProvider.GetCharacterRomData();
+            Memory<byte> romMemory = characterRomProvider.GetCharacterRomData();
             if (!romMemory.IsEmpty)
             {
-                this.characterRomData = romMemory.ToArray();
-                this.UpdateCharsetInfoText(fromProvider: true);
-                this.RenderCharacters();
+                characterRomData = romMemory.ToArray();
+                UpdateCharsetInfoText(fromProvider: true);
+                RenderCharacters();
                 return;
             }
         }
@@ -197,77 +107,63 @@ public partial class CharacterPreviewWindow : Window
         // Fall back to default character ROM if no provider or provider has no ROM
         if (DefaultCharacterRom.TryGetRomData(out var romData) && romData != null)
         {
-            this.characterRomData = romData;
-            this.UpdateCharsetInfoText(fromProvider: false);
-            this.RenderCharacters();
+            characterRomData = romData;
+            UpdateCharsetInfoText(fromProvider: false);
+            RenderCharacters();
         }
         else
         {
-            this.CharsetInfoText.Text = "No character ROM available";
+            CharsetInfoText.Text = "No character ROM available";
         }
     }
 
     private void OnCharacterSetChanged(object? sender, RoutedEventArgs e)
     {
-        this.currentSetOffset = this.PrimarySetRadio.IsChecked == true
+        currentSetOffset = PrimarySetRadio.IsChecked == true
             ? PrimarySetOffset
             : SecondarySetOffset;
 
-        bool fromProvider = this.characterRomProvider != null && this.characterRomProvider.IsCharacterRomLoaded;
-        this.UpdateCharsetInfoText(fromProvider);
-        this.RenderCharacters();
+        bool fromProvider = characterRomProvider != null && characterRomProvider.IsCharacterRomLoaded;
+        UpdateCharsetInfoText(fromProvider);
+        RenderCharacters();
     }
 
     private void UpdateCharsetInfoText(bool fromProvider = false)
     {
-        string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
+        string setName = currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
         string source = fromProvider ? "Machine ROM" : "Default ROM";
-        this.CharsetInfoText.Text = $"{setName} Character Set ({source})";
+        CharsetInfoText.Text = $"{setName} Character Set ({source})";
     }
 
     private void RenderCharacters()
     {
-        if (this.characterRomData == null)
+        if (characterRomData == null)
         {
             return;
         }
 
-        this.CharacterCanvas.Children.Clear();
+        CharacterCanvas.Children.Clear();
 
         // Calculate total bitmap size
-        int totalWidth = GridSize * CellWidth;
-        int totalHeight = GridSize * CellHeight;
-        this.CharacterCanvas.Width = totalWidth;
-        this.CharacterCanvas.Height = totalHeight;
+        const int totalWidth = GridSize * CellWidth;
+        const int totalHeight = GridSize * CellHeight;
+        CharacterCanvas.Width = totalWidth;
+        CharacterCanvas.Height = totalHeight;
 
-        // Calculate buffer size in bytes (BGRA = 4 bytes per pixel)
-        int pixelCount = totalWidth * totalHeight;
-        int byteSize = pixelCount * sizeof(uint);
-
-        // Create or reuse WriteableBitmap for efficient rendering
-        if (this.characterBitmap == null ||
-            this.characterBitmap.PixelSize.Width != totalWidth ||
-            this.characterBitmap.PixelSize.Height != totalHeight)
+        // Create or reuse PixelBuffer
+        if (pixelBuffer == null ||
+            pixelBuffer.Width != totalWidth ||
+            pixelBuffer.Height != totalHeight)
         {
-            this.characterBitmap = new WriteableBitmap(
-                new PixelSize(totalWidth, totalHeight),
-                new Vector(96, 96),
-                Avalonia.Platform.PixelFormat.Bgra8888,
-                AlphaFormat.Premul);
-
-            // Use MemoryPool<byte> for efficient buffer allocation with Memory<T>
-            this.pixelBufferOwner?.Dispose();
-            this.pixelBufferOwner = MemoryPool<byte>.Shared.Rent(byteSize);
-            this.pixelBuffer = this.pixelBufferOwner.Memory.Slice(0, byteSize);
+            pixelBuffer?.Dispose();
+            pixelBuffer = new PixelBuffer(totalWidth, totalHeight);
         }
 
-        // Cast byte buffer to uint span for efficient pixel manipulation
-        int stride = totalWidth;
-        var pixels = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(
-            this.pixelBuffer.Span);
-
         // Fill with background color
-        pixels.Fill(BackgroundColor);
+        pixelBuffer.Fill(DisplayColors.DarkGray);
+
+        // Get pixel span for rendering
+        var pixels = pixelBuffer.GetPixels();
 
         // Render each character
         for (int charIndex = 0; charIndex < 256; charIndex++)
@@ -279,42 +175,45 @@ public partial class CharacterPreviewWindow : Window
             int cellY = gridRow * CellHeight;
 
             // Draw cell background
-            DrawCellBackground(pixels, stride, cellX + 2, cellY + 2);
+            ScaledPixelWriter.FillRectangle(
+                pixels,
+                totalWidth,
+                cellX + 2,
+                cellY + 2,
+                CellWidth - CellSpacing,
+                CellHeight - CellSpacing,
+                DisplayColors.CellBackground);
 
             // Render the character bitmap
-            this.RenderCharacterToBitmap(pixels, stride, charIndex, cellX + 4, cellY + 4);
+            CharacterRenderer.RenderCharacterScaled(
+                pixels,
+                totalWidth,
+                characterRomData,
+                charIndex,
+                currentSetOffset,
+                cellX + 4,
+                cellY + 4,
+                DisplayColors.GreenPhosphor,
+                Scale);
         }
 
-        // Copy pixel data to WriteableBitmap using Memory<T> with Marshal.Copy (safe, no unsafe code)
-        using (var framebuffer = this.characterBitmap.Lock())
-        {
-            // Get the underlying array from Memory<T> for safe interop with Marshal.Copy
-            if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray(
-                this.pixelBuffer,
-                out ArraySegment<byte> segment))
-            {
-                System.Runtime.InteropServices.Marshal.Copy(
-                    segment.Array!,
-                    segment.Offset,
-                    framebuffer.Address,
-                    segment.Count);
-            }
-        }
+        // Commit pixel buffer to bitmap
+        pixelBuffer.Commit();
 
         // Add the bitmap as an Image control
         var image = new Image
         {
-            Source = this.characterBitmap,
+            Source = pixelBuffer.Bitmap,
             Width = totalWidth,
             Height = totalHeight,
         };
 
         // Set up pointer tracking for tooltips
-        image.PointerMoved += this.OnImagePointerMoved;
+        image.PointerMoved += OnImagePointerMoved;
 
         Canvas.SetLeft(image, 0);
         Canvas.SetTop(image, 0);
-        this.CharacterCanvas.Children.Add(image);
+        CharacterCanvas.Children.Add(image);
     }
 
     private void OnImagePointerMoved(object? sender, PointerEventArgs e)
@@ -331,67 +230,23 @@ public partial class CharacterPreviewWindow : Window
         if (gridCol >= 0 && gridCol < GridSize && gridRow >= 0 && gridRow < GridSize)
         {
             int charIndex = (gridRow * GridSize) + gridCol;
-            string charDisplay = GetCharacterDisplay(charIndex);
-            string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
+            string charDisplay = CharacterRenderer.GetCharacterDisplayString(charIndex);
+            string setName = currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
             string tooltipText = $"${charIndex:X2} ({charIndex}, {charDisplay}) [{setName}]";
             ToolTip.SetTip(image, tooltipText);
         }
     }
 
-    private void RenderCharacterToBitmap(Span<uint> pixels, int stride, int charCode, int cellX, int cellY)
-    {
-        if (this.characterRomData == null)
-        {
-            return;
-        }
-
-        // Calculate ROM offset for this character using the current set offset
-        // with bounds checking to prevent buffer overruns
-        int romOffset = this.currentSetOffset + (charCode * 8);
-        if (romOffset < 0 || romOffset + CharHeight > this.characterRomData.Length)
-        {
-            return; // Invalid offset - skip this character
-        }
-
-        // Render each scanline of the character
-        for (int scanline = 0; scanline < CharHeight; scanline++)
-        {
-            byte scanlineData = this.characterRomData[romOffset + scanline];
-
-            // Render each pixel in the scanline (7 bits)
-            for (int pixel = 0; pixel < CharWidth; pixel++)
-            {
-                // Bit 6 is leftmost, bit 0 is rightmost
-                bool isSet = (scanlineData & (1 << (6 - pixel))) != 0;
-
-                if (isSet)
-                {
-                    // Draw scaled pixel
-                    for (int sy = 0; sy < Scale; sy++)
-                    {
-                        for (int sx = 0; sx < Scale; sx++)
-                        {
-                            int px = cellX + (pixel * Scale) + sx;
-                            int py = cellY + (scanline * Scale) + sy;
-                            pixels[(py * stride) + px] = ForegroundColor;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private void OnCloseClick(object? sender, RoutedEventArgs e)
     {
-        this.Close();
+        Close();
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
-        {
-            this.Close();
-            e.Handled = true;
-        }
+        if (e.Key != Key.Escape) { return; }
+
+        Close();
+        e.Handled = true;
     }
 }

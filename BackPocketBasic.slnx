@@ -117,6 +117,7 @@
     <Project Path="src/BadMango.Emulator.Debug.Infrastructure/BadMango.Emulator.Debug.Infrastructure.csproj" />
     <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
     <Project Path="src/BadMango.Emulator.Infrastructure/BadMango.Emulator.Infrastructure.csproj" />
+    <Project Path="src/BadMango.Emulator.Rendering/BadMango.Emulator.Rendering.csproj" />
     <Project Path="src/BadMango.Emulator.UI.Abstractions/BadMango.Emulator.UI.Abstractions.csproj" />
   </Folder>
   <Folder Name="/src/emulator/ui/">
