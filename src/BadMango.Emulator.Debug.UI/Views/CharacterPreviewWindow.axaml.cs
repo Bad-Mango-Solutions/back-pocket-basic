@@ -4,7 +4,7 @@
 
 namespace BadMango.Emulator.Debug.UI.Views;
 
-using System.Runtime.InteropServices;
+using System.Buffers;
 
 using Avalonia;
 using Avalonia.Controls;
@@ -31,8 +31,11 @@ using BadMango.Emulator.Devices.Interfaces;
 /// </para>
 /// <para>
 /// Uses a <see cref="WriteableBitmap"/> for efficient rendering instead of creating
-/// individual Rectangle controls for each pixel. The pixel buffer is wrapped in
-/// <see cref="Memory{T}"/> for safe and efficient memory slicing.
+/// individual Rectangle controls for each pixel. The pixel buffer is managed using
+/// <see cref="Memory{T}"/> via <see cref="IMemoryOwner{T}"/> from <see cref="MemoryPool{T}"/>
+/// for efficient pooled memory allocation. The underlying array is accessed via
+/// <see cref="System.Runtime.InteropServices.MemoryMarshal.TryGetArray{T}"/> for safe
+/// interop with <see cref="System.Runtime.InteropServices.Marshal.Copy(byte[], int, IntPtr, int)"/>.
 /// </para>
 /// </remarks>
 public partial class CharacterPreviewWindow : Window
@@ -55,7 +58,8 @@ public partial class CharacterPreviewWindow : Window
     private byte[]? characterRomData;
     private int currentSetOffset = PrimarySetOffset;
     private WriteableBitmap? characterBitmap;
-    private Memory<uint> pixelBuffer;
+    private IMemoryOwner<byte>? pixelBufferOwner;
+    private Memory<byte> pixelBuffer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterPreviewWindow"/> class.
@@ -79,6 +83,17 @@ public partial class CharacterPreviewWindow : Window
     {
         this.characterRomData = romData;
         this.RenderCharacters();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+
+        // Clean up Memory<T> buffer
+        this.pixelBufferOwner?.Dispose();
+        this.pixelBufferOwner = null;
+        this.pixelBuffer = default;
     }
 
     private static string GetCharacterDisplay(int charCode)
@@ -200,6 +215,10 @@ public partial class CharacterPreviewWindow : Window
         this.CharacterCanvas.Width = totalWidth;
         this.CharacterCanvas.Height = totalHeight;
 
+        // Calculate buffer size in bytes (BGRA = 4 bytes per pixel)
+        int pixelCount = totalWidth * totalHeight;
+        int byteSize = pixelCount * sizeof(uint);
+
         // Create or reuse WriteableBitmap for efficient rendering
         if (this.characterBitmap == null ||
             this.characterBitmap.PixelSize.Width != totalWidth ||
@@ -211,13 +230,16 @@ public partial class CharacterPreviewWindow : Window
                 Avalonia.Platform.PixelFormat.Bgra8888,
                 AlphaFormat.Premul);
 
-            // Allocate pixel buffer wrapped in Memory<T> for safe memory slicing
-            this.pixelBuffer = new uint[totalWidth * totalHeight];
+            // Use MemoryPool<byte> for efficient buffer allocation with Memory<T>
+            this.pixelBufferOwner?.Dispose();
+            this.pixelBufferOwner = MemoryPool<byte>.Shared.Rent(byteSize);
+            this.pixelBuffer = this.pixelBufferOwner.Memory.Slice(0, byteSize);
         }
 
-        // Get span for efficient pixel access
+        // Cast byte buffer to uint span for efficient pixel manipulation
         int stride = totalWidth;
-        var pixels = this.pixelBuffer.Span;
+        var pixels = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(
+            this.pixelBuffer.Span);
 
         // Fill with background color
         pixels.Fill(BackgroundColor);
@@ -238,11 +260,20 @@ public partial class CharacterPreviewWindow : Window
             this.RenderCharacterToBitmap(pixels, stride, charIndex, cellX + 4, cellY + 4);
         }
 
-        // Copy pixel data to WriteableBitmap
+        // Copy pixel data to WriteableBitmap using Memory<T> with Marshal.Copy (safe, no unsafe code)
         using (var framebuffer = this.characterBitmap.Lock())
         {
-            var byteSpan = MemoryMarshal.AsBytes(pixels);
-            Marshal.Copy(byteSpan.ToArray(), 0, framebuffer.Address, byteSpan.Length);
+            // Get the underlying array from Memory<T> for safe interop with Marshal.Copy
+            if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray(
+                this.pixelBuffer,
+                out ArraySegment<byte> segment))
+            {
+                System.Runtime.InteropServices.Marshal.Copy(
+                    segment.Array!,
+                    segment.Offset,
+                    framebuffer.Address,
+                    segment.Count);
+            }
         }
 
         // Add the bitmap as an Image control
