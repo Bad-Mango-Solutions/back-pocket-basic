@@ -647,6 +647,52 @@ public class VideoDeviceTests
         Assert.That(VideoDevice.CharacterSetSize, Is.EqualTo(2048));
     }
 
+    /// <summary>
+    /// Verifies that DefaultCharacterRom can load the embedded ROM data.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_GetRomData_Returns4KBData()
+    {
+        var romData = DefaultCharacterRom.GetRomData();
+
+        Assert.That(romData.Length, Is.EqualTo(4096));
+    }
+
+    /// <summary>
+    /// Verifies that DefaultCharacterRom can be loaded into a VideoDevice.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_LoadIntoVideoDevice_LoadsSuccessfully()
+    {
+        DefaultCharacterRom.LoadIntoVideoDevice(device);
+
+        Assert.That(device.IsCharacterRomLoaded, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that DefaultCharacterRom contains non-zero character data.
+    /// </summary>
+    [Test]
+    public void DefaultCharacterRom_ContainsNonZeroData()
+    {
+        var romData = DefaultCharacterRom.GetRomData();
+
+        // Check that at least some character data is non-zero
+        // Character 'A' (0x41) should have visible pixels
+        int offsetA = 0x41 * 8;
+        bool hasNonZero = false;
+        for (int i = 0; i < 8; i++)
+        {
+            if (romData[offsetA + i] != 0)
+            {
+                hasNonZero = true;
+                break;
+            }
+        }
+
+        Assert.That(hasNonZero, Is.True, "Character 'A' should have non-zero pixel data");
+    }
+
     private static BusAccess CreateTestContext()
     {
         return new(
