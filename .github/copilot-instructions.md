@@ -20,7 +20,9 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **Adhere to SOLID principles.** Design classes and modules following SOLID principles to ensure a clean and maintainable codebase.
 - **Code formatting.** Maintain consistent code formatting as per the project's style guidelines to enhance readability and collaboration.
 - **Important:** SA1518 must not be suppressed. Always fix the underlying issue rather than suppressing this warning. **There must not be any newlines at the end of a .cs file; it must *always* end with `}`, `]` (in AssemblyInfo.cs), or `;` (in GlobalUsings.cs).**
+  - Grammatical Note: In the warning text, "File may not end with a newline character", "may not" means "must not". It is a prohibition, not a permission.
 - **Important:** SA1600 and related XML doc warnings must not be suppressed. Always provide XML documentation for all public members and types to ensure clarity and maintainability.
+- **Important:** Just because the above warnings must not be suppressed does not mean that *any* warning can be suppressed. Use judgment and strive to write clean, warning-free code.
 
 ### Coding Best Practices
 - **Consistent naming conventions.** Use clear and consistent naming for variables, methods, classes, and other identifiers to enhance code readability.
