@@ -518,6 +518,15 @@ public class VideoDeviceTests
     }
 
     /// <summary>
+    /// Verifies that LoadCharacterRom throws for null data.
+    /// </summary>
+    [Test]
+    public void LoadCharacterRom_NullData_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => device.LoadCharacterRom(null!));
+    }
+
+    /// <summary>
     /// Verifies that GetCharacterScanline returns correct data from primary set.
     /// </summary>
     [Test]

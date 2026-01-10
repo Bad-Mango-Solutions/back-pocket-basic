@@ -4,12 +4,14 @@
 
 namespace BadMango.Emulator.Debug.UI.Views;
 
+using System.Runtime.InteropServices;
+
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
@@ -27,6 +29,10 @@ using BadMango.Emulator.Devices.Interfaces;
 /// The window loads the default character ROM when opened and displays the
 /// bitmap patterns for each character code from 0x00 to 0xFF.
 /// </para>
+/// <para>
+/// Uses a <see cref="WriteableBitmap"/> for efficient rendering instead of creating
+/// individual Rectangle controls for each pixel.
+/// </para>
 /// </remarks>
 public partial class CharacterPreviewWindow : Window
 {
@@ -40,8 +46,14 @@ public partial class CharacterPreviewWindow : Window
     private const int PrimarySetOffset = 0x0000;
     private const int SecondarySetOffset = 0x0800;
 
+    // Apple II green phosphor color (BGRA format for Bgra8888)
+    private const uint ForegroundColor = 0xFF33FF33;
+    private const uint BackgroundColor = 0xFF1A1A1A;
+    private const uint CellBackgroundColor = 0xFF222222;
+
     private byte[]? characterRomData;
     private int currentSetOffset = PrimarySetOffset;
+    private WriteableBitmap? characterBitmap;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterPreviewWindow"/> class.
@@ -124,6 +136,22 @@ public partial class CharacterPreviewWindow : Window
         }
     }
 
+    private static void DrawCellBackground(uint[] pixels, int stride, int cellX, int cellY)
+    {
+        int cellDrawWidth = CellWidth - CellSpacing;
+        int cellDrawHeight = CellHeight - CellSpacing;
+
+        for (int y = 0; y < cellDrawHeight; y++)
+        {
+            for (int x = 0; x < cellDrawWidth; x++)
+            {
+                int px = cellX + x;
+                int py = cellY + y;
+                pixels[(py * stride) + px] = CellBackgroundColor;
+            }
+        }
+    }
+
     private void OnWindowOpened(object? sender, EventArgs e)
     {
         // Try to load default character ROM
@@ -141,14 +169,9 @@ public partial class CharacterPreviewWindow : Window
 
     private void OnCharacterSetChanged(object? sender, RoutedEventArgs e)
     {
-        if (this.PrimarySetRadio.IsChecked == true)
-        {
-            this.currentSetOffset = PrimarySetOffset;
-        }
-        else
-        {
-            this.currentSetOffset = SecondarySetOffset;
-        }
+        this.currentSetOffset = this.PrimarySetRadio.IsChecked == true
+            ? PrimarySetOffset
+            : SecondarySetOffset;
 
         this.UpdateCharsetInfoText();
         this.RenderCharacters();
@@ -169,15 +192,32 @@ public partial class CharacterPreviewWindow : Window
 
         this.CharacterCanvas.Children.Clear();
 
-        // Set canvas size to fit all cells
+        // Calculate total bitmap size
         int totalWidth = GridSize * CellWidth;
         int totalHeight = GridSize * CellHeight;
         this.CharacterCanvas.Width = totalWidth;
         this.CharacterCanvas.Height = totalHeight;
 
-        var foregroundBrush = new SolidColorBrush(Color.FromRgb(0x33, 0xFF, 0x33)); // Apple II green
-        var cellBackgroundBrush = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22)); // Slightly lighter background
+        // Create or reuse WriteableBitmap for efficient rendering
+        if (this.characterBitmap == null ||
+            this.characterBitmap.PixelSize.Width != totalWidth ||
+            this.characterBitmap.PixelSize.Height != totalHeight)
+        {
+            this.characterBitmap = new WriteableBitmap(
+                new PixelSize(totalWidth, totalHeight),
+                new Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888,
+                AlphaFormat.Premul);
+        }
 
+        // Create pixel buffer for safe rendering
+        int stride = totalWidth;
+        var pixels = new uint[totalWidth * totalHeight];
+
+        // Fill with background color
+        Array.Fill(pixels, BackgroundColor);
+
+        // Render each character
         for (int charIndex = 0; charIndex < 256; charIndex++)
         {
             int gridRow = charIndex / GridSize;
@@ -186,30 +226,58 @@ public partial class CharacterPreviewWindow : Window
             int cellX = gridCol * CellWidth;
             int cellY = gridRow * CellHeight;
 
-            // Build tooltip text for this character
+            // Draw cell background
+            DrawCellBackground(pixels, stride, cellX + 2, cellY + 2);
+
+            // Render the character bitmap
+            this.RenderCharacterToBitmap(pixels, stride, charIndex, cellX + 4, cellY + 4);
+        }
+
+        // Copy pixel data to WriteableBitmap
+        using (var framebuffer = this.characterBitmap.Lock())
+        {
+            var byteSpan = MemoryMarshal.AsBytes(pixels.AsSpan());
+            Marshal.Copy(byteSpan.ToArray(), 0, framebuffer.Address, byteSpan.Length);
+        }
+
+        // Add the bitmap as an Image control
+        var image = new Image
+        {
+            Source = this.characterBitmap,
+            Width = totalWidth,
+            Height = totalHeight,
+        };
+
+        // Set up pointer tracking for tooltips
+        image.PointerMoved += this.OnImagePointerMoved;
+
+        Canvas.SetLeft(image, 0);
+        Canvas.SetTop(image, 0);
+        this.CharacterCanvas.Children.Add(image);
+    }
+
+    private void OnImagePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (sender is not Image image)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(image);
+        int gridCol = (int)(position.X / CellWidth);
+        int gridRow = (int)(position.Y / CellHeight);
+
+        if (gridCol >= 0 && gridCol < GridSize && gridRow >= 0 && gridRow < GridSize)
+        {
+            int charIndex = (gridRow * GridSize) + gridCol;
             string charDisplay = GetCharacterDisplay(charIndex);
             string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
             string tooltipText = $"${charIndex:X2} ({charIndex}, {charDisplay}) [{setName}]";
-
-            // Draw cell background with tooltip
-            var cellBackground = new Rectangle
-            {
-                Width = CellWidth - CellSpacing,
-                Height = CellHeight - CellSpacing,
-                Fill = cellBackgroundBrush,
-            };
-            ToolTip.SetTip(cellBackground, tooltipText);
-
-            Canvas.SetLeft(cellBackground, cellX + 2);
-            Canvas.SetTop(cellBackground, cellY + 2);
-            this.CharacterCanvas.Children.Add(cellBackground);
-
-            // Render the character bitmap
-            this.RenderCharacter(charIndex, cellX + 4, cellY + 4, foregroundBrush, tooltipText);
+            ToolTip.SetTip(image, tooltipText);
         }
     }
 
-    private void RenderCharacter(int charCode, int cellX, int cellY, IBrush foregroundBrush, string tooltipText)
+    private void RenderCharacterToBitmap(uint[] pixels, int stride, int charCode, int cellX, int cellY)
     {
         if (this.characterRomData == null)
         {
@@ -217,7 +285,12 @@ public partial class CharacterPreviewWindow : Window
         }
 
         // Calculate ROM offset for this character using the current set offset
+        // with bounds checking to prevent buffer overruns
         int romOffset = this.currentSetOffset + (charCode * 8);
+        if (romOffset < 0 || romOffset + CharHeight > this.characterRomData.Length)
+        {
+            return; // Invalid offset - skip this character
+        }
 
         // Render each scanline of the character
         for (int scanline = 0; scanline < CharHeight; scanline++)
@@ -232,17 +305,16 @@ public partial class CharacterPreviewWindow : Window
 
                 if (isSet)
                 {
-                    var rect = new Rectangle
+                    // Draw scaled pixel
+                    for (int sy = 0; sy < Scale; sy++)
                     {
-                        Width = Scale,
-                        Height = Scale,
-                        Fill = foregroundBrush,
-                    };
-                    ToolTip.SetTip(rect, tooltipText);
-
-                    Canvas.SetLeft(rect, cellX + (pixel * Scale));
-                    Canvas.SetTop(rect, cellY + (scanline * Scale));
-                    this.CharacterCanvas.Children.Add(rect);
+                        for (int sx = 0; sx < Scale; sx++)
+                        {
+                            int px = cellX + (pixel * Scale) + sx;
+                            int py = cellY + (scanline * Scale) + sy;
+                            pixels[(py * stride) + px] = ForegroundColor;
+                        }
+                    }
                 }
             }
         }

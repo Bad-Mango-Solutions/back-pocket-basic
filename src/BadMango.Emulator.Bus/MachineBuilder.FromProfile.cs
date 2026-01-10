@@ -211,28 +211,13 @@ public sealed partial class MachineBuilder
 
     private static Assembly? FindAssembly(string assemblyName)
     {
-        // First, check already-loaded assemblies
-        foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            if (string.Equals(loaded.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase))
-            {
-                return loaded;
-            }
-        }
-
-        // Try to load the assembly by name
-        try
-        {
-            return Assembly.Load(assemblyName);
-        }
-        catch (FileNotFoundException)
-        {
-            return null;
-        }
-        catch (FileLoadException)
-        {
-            return null;
-        }
+        // Security: Only search among already-loaded assemblies to prevent
+        // arbitrary assembly loading from user-controlled profile configuration.
+        // This ensures that only assemblies that are part of the running application
+        // can be used for embedded resource loading.
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
     }
 
     private static byte[] LoadRomData(RomImageInfo romInfo)
@@ -361,7 +346,14 @@ public sealed partial class MachineBuilder
                     BindingFlags.Public | BindingFlags.Instance,
                     [typeof(byte[])]);
 
-                loadMethod?.Invoke(device, [romData]);
+                if (loadMethod is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Device type '{device.GetType().FullName}' does not implement the required " +
+                        "'LoadCharacterRom(byte[])' method, but a character ROM '{romName}' was configured.");
+                }
+
+                loadMethod.Invoke(device, [romData]);
             }
         }
     }
