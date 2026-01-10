@@ -315,6 +315,138 @@ public class MachineTests
         });
     }
 
+    /// <summary>
+    /// Verifies that Pause transitions state to Paused when Running.
+    /// </summary>
+    [Test]
+    public void Pause_WhenRunning_SetsStateToPaused()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+
+        // Setup the mock to simulate being in a run loop that checks IsStopRequested
+        bool stopRequested = false;
+        mockCpu.Setup(c => c.IsStopRequested).Returns(() => stopRequested);
+        mockCpu.Setup(c => c.RequestStop()).Callback(() => stopRequested = true);
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+            stopRequested
+                ? new CpuStepResult(CpuRunState.Stopped, 1)
+                : new CpuStepResult(CpuRunState.Running, 1));
+
+        // Start running synchronously - this will block until stopped
+        var runTask = Task.Run(() => machine.Run());
+
+        // Give it time to start
+        Thread.Sleep(50);
+
+        // Verify it's running
+        Assert.That(machine.State, Is.EqualTo(MachineState.Running));
+
+        // Pause
+        machine.Pause();
+
+        // Wait for task to complete
+        runTask.Wait(1000);
+
+        // Should have been paused
+        Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+    }
+
+    /// <summary>
+    /// Verifies that Pause when not running has no effect.
+    /// </summary>
+    [Test]
+    public void Pause_WhenNotRunning_HasNoEffect()
+    {
+        var machine = CreateTestMachine();
+
+        // Initially stopped
+        Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
+
+        // Pause should have no effect
+        machine.Pause();
+
+        Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
+    }
+
+    /// <summary>
+    /// Verifies that Halt transitions to Stopped and sets HaltReason.
+    /// </summary>
+    [Test]
+    public void Halt_TransitionsToStoppedAndSetsHaltReason()
+    {
+        var mockCpu = CreateMockCpu();
+        HaltState capturedHaltReason = HaltState.None;
+        mockCpu.SetupSet(c => c.HaltReason = It.IsAny<HaltState>())
+            .Callback<HaltState>(hr => capturedHaltReason = hr);
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // Act
+        machine.Halt();
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
+            Assert.That(capturedHaltReason, Is.EqualTo(HaltState.Stp));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that BootAsync calls Reset then RunAsync.
+    /// </summary>
+    [Test]
+    public async Task BootAsync_CallsResetThenRun()
+    {
+        var mockCpu = CreateMockCpu();
+        bool resetCalled = false;
+        mockCpu.Setup(c => c.Reset()).Callback(() => resetCalled = true);
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Stopped, 1));
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // Act
+        await machine.BootAsync();
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(resetCalled, Is.True, "Reset should be called");
+            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped), "Should be stopped after boot completes");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RunAsync can be cancelled.
+    /// </summary>
+    [Test]
+    public async Task RunAsync_CanBeCancelled()
+    {
+        var mockCpu = CreateMockCpu();
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 1));
+
+        var machine = CreateTestMachine(mockCpu);
+
+        using var cts = new CancellationTokenSource();
+
+        // Start running
+        var runTask = machine.RunAsync(cts.Token);
+
+        // Wait briefly to ensure it's running
+        await Task.Delay(10);
+        Assert.That(machine.State, Is.EqualTo(MachineState.Running));
+
+        // Cancel
+        cts.Cancel();
+
+        // Wait for task to complete
+        await runTask;
+
+        // Should be paused after cancellation
+        Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+    }
+
     private static Machine CreateTestMachine(Mock<ICpu>? mockCpu = null)
     {
         mockCpu ??= CreateMockCpu();
