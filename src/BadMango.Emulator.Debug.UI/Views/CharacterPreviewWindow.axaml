@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="650"
+        x:Class="BadMango.Emulator.Debug.UI.Views.CharacterPreviewWindow"
+        Title="Character ROM Preview"
+        Width="580"
+        Height="650"
+        MinWidth="480"
+        MinHeight="550"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Apple II Character Set Preview"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10" />
+
+        <!-- Character Set Info -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+            <TextBlock x:Name="CharsetInfoText"
+                       Text="Primary Character Set"
+                       FontSize="12"
+                       Foreground="Gray" />
+        </StackPanel>
+
+        <!-- Character Grid Canvas -->
+        <Border Grid.Row="2" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                Background="#1A1A1A"
+                Margin="0,0,0,10">
+            <Canvas x:Name="CharacterCanvas"
+                    Width="544"
+                    Height="544"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Close Button -->
+        <Button Grid.Row="3"
+                Content="Close"
+                HorizontalAlignment="Center"
+                Padding="30,8"
+                Click="OnCloseClick" />
+    </Grid>
+</Window>

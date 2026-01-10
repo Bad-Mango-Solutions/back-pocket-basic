@@ -37,7 +37,7 @@ using BadMango.Emulator.Debug.UI.Views;
 /// </seealso>
 public class DebugWindowManager : IDebugWindowManager
 {
-    private static readonly string[] AvailableTypes = [nameof(DebugWindowComponent.About)];
+    private static readonly string[] AvailableTypes = [nameof(DebugWindowComponent.About), "CharacterPreview"];
 
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
 
@@ -134,6 +134,7 @@ public class DebugWindowManager : IDebugWindowManager
         return windowType.ToUpperInvariant() switch
         {
             "ABOUT" => new AboutWindow(),
+            "CHARACTERPREVIEW" => new CharacterPreviewWindow(),
             _ => null,
         };
     }
