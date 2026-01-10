@@ -11,15 +11,16 @@ using System.Text.Json.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// ROM images define external binary files that contain firmware, operating system code,
-/// or other read-only data. They are loaded into physical memory blocks at specified
-/// offsets during machine initialization.
+/// ROM images define external binary files or embedded resources that contain firmware,
+/// operating system code, or other read-only data. They are loaded into physical memory
+/// blocks at specified offsets during machine initialization.
 /// </para>
 /// <para>
 /// ROM sources support multiple path schemes:
 /// <list type="bullet">
 /// <item><description>"library://path" - Relative to the library root (~/.backpocket)</description></item>
 /// <item><description>"app://path" - Relative to the application directory</description></item>
+/// <item><description>"embedded://AssemblyName/Resource.Name" - Embedded resource in an assembly</description></item>
 /// <item><description>Absolute path - Used as-is</description></item>
 /// <item><description>Relative path - Relative to the profile file location</description></item>
 /// </list>
@@ -38,15 +39,16 @@ public sealed class RomImageProfile
     public required string Name { get; set; }
 
     /// <summary>
-    /// Gets or sets the source file path.
+    /// Gets or sets the source file path or embedded resource URI.
     /// </summary>
     /// <remarks>
     /// The path can use various schemes:
     /// <list type="bullet">
-    /// <item><description>"library://roms/monitor.rom"</description></item>
-    /// <item><description>"app://roms/basic.bin"</description></item>
-    /// <item><description>"/absolute/path/to/rom.bin"</description></item>
-    /// <item><description>"relative/path/rom.bin"</description></item>
+    /// <item><description>"library://roms/monitor.rom" - File in user's library</description></item>
+    /// <item><description>"app://roms/basic.bin" - File relative to application</description></item>
+    /// <item><description>"embedded://BadMango.Emulator.Devices/BadMango.Emulator.Devices.Resources.charset.rom" - Embedded resource</description></item>
+    /// <item><description>"/absolute/path/to/rom.bin" - Absolute file path</description></item>
+    /// <item><description>"relative/path/rom.bin" - Relative to profile location</description></item>
     /// </list>
     /// </remarks>
     [JsonPropertyName("source")]

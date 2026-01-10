@@ -203,4 +203,178 @@ public class ProfilePathResolverTests
         Assert.That(success, Is.False);
         Assert.That(result, Is.Null);
     }
+
+    /// <summary>
+    /// Verifies that IsEmbeddedResource returns true for embedded:// paths.
+    /// </summary>
+    [Test]
+    public void IsEmbeddedResource_EmbeddedPath_ReturnsTrue()
+    {
+        bool result = ProfilePathResolver.IsEmbeddedResource("embedded://Assembly/Resource.Name");
+        Assert.That(result, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that IsEmbeddedResource returns true for embedded:// paths with different casing.
+    /// </summary>
+    [Test]
+    public void IsEmbeddedResource_EmbeddedPathUpperCase_ReturnsTrue()
+    {
+        bool result = ProfilePathResolver.IsEmbeddedResource("EMBEDDED://Assembly/Resource.Name");
+        Assert.That(result, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that IsEmbeddedResource returns false for non-embedded paths.
+    /// </summary>
+    [Test]
+    public void IsEmbeddedResource_NonEmbeddedPath_ReturnsFalse()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(ProfilePathResolver.IsEmbeddedResource("library://path"), Is.False);
+            Assert.That(ProfilePathResolver.IsEmbeddedResource("app://path"), Is.False);
+            Assert.That(ProfilePathResolver.IsEmbeddedResource("/absolute/path"), Is.False);
+            Assert.That(ProfilePathResolver.IsEmbeddedResource("relative/path"), Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that IsEmbeddedResource returns false for null or empty paths.
+    /// </summary>
+    [Test]
+    public void IsEmbeddedResource_NullOrEmpty_ReturnsFalse()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(ProfilePathResolver.IsEmbeddedResource(null!), Is.False);
+            Assert.That(ProfilePathResolver.IsEmbeddedResource(string.Empty), Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryParseEmbeddedResource correctly parses valid embedded paths.
+    /// </summary>
+    [Test]
+    public void TryParseEmbeddedResource_ValidPath_ReturnsTrueAndParsedComponents()
+    {
+        bool success = ProfilePathResolver.TryParseEmbeddedResource(
+            "embedded://BadMango.Emulator.Devices/BadMango.Emulator.Devices.Resources.test.rom",
+            out string? assemblyName,
+            out string? resourceName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.True);
+            Assert.That(assemblyName, Is.EqualTo("BadMango.Emulator.Devices"));
+            Assert.That(resourceName, Is.EqualTo("BadMango.Emulator.Devices.Resources.test.rom"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryParseEmbeddedResource returns false for non-embedded paths.
+    /// </summary>
+    [Test]
+    public void TryParseEmbeddedResource_NonEmbeddedPath_ReturnsFalse()
+    {
+        bool success = ProfilePathResolver.TryParseEmbeddedResource(
+            "library://roms/test.rom",
+            out string? assemblyName,
+            out string? resourceName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.False);
+            Assert.That(assemblyName, Is.Null);
+            Assert.That(resourceName, Is.Null);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryParseEmbeddedResource returns false for paths missing the separator.
+    /// </summary>
+    [Test]
+    public void TryParseEmbeddedResource_MissingSeparator_ReturnsFalse()
+    {
+        bool success = ProfilePathResolver.TryParseEmbeddedResource(
+            "embedded://AssemblyNameOnly",
+            out string? assemblyName,
+            out string? resourceName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.False);
+            Assert.That(assemblyName, Is.Null);
+            Assert.That(resourceName, Is.Null);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryParseEmbeddedResource returns false for paths with empty assembly name.
+    /// </summary>
+    [Test]
+    public void TryParseEmbeddedResource_EmptyAssemblyName_ReturnsFalse()
+    {
+        bool success = ProfilePathResolver.TryParseEmbeddedResource(
+            "embedded:///ResourceName",
+            out string? assemblyName,
+            out string? resourceName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.False);
+            Assert.That(assemblyName, Is.Null);
+            Assert.That(resourceName, Is.Null);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TryParseEmbeddedResource returns false for paths with empty resource name.
+    /// </summary>
+    [Test]
+    public void TryParseEmbeddedResource_EmptyResourceName_ReturnsFalse()
+    {
+        bool success = ProfilePathResolver.TryParseEmbeddedResource(
+            "embedded://AssemblyName/",
+            out string? assemblyName,
+            out string? resourceName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.False);
+            Assert.That(assemblyName, Is.Null);
+            Assert.That(resourceName, Is.Null);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that Resolve throws for embedded:// paths.
+    /// </summary>
+    [Test]
+    public void Resolve_EmbeddedPath_ThrowsInvalidOperationException()
+    {
+        var resolver = new ProfilePathResolver(null);
+
+        Assert.That(
+            () => resolver.Resolve("embedded://Assembly/Resource.Name"),
+            Throws.TypeOf<InvalidOperationException>()
+                .With.Message.Contains("embedded resources must be loaded directly"));
+    }
+
+    /// <summary>
+    /// Verifies that TryResolve returns false for embedded:// paths.
+    /// </summary>
+    [Test]
+    public void TryResolve_EmbeddedPath_ReturnsFalse()
+    {
+        var resolver = new ProfilePathResolver(null);
+
+        bool success = resolver.TryResolve("embedded://Assembly/Resource.Name", out var result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(success, Is.False);
+            Assert.That(result, Is.Null);
+        });
+    }
 }

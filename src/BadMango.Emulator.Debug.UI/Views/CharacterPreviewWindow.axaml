@@ -5,10 +5,10 @@
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="900"
         x:Class="BadMango.Emulator.Debug.UI.Views.CharacterPreviewWindow"
         Title="Character ROM Preview"
-        Width="1100"
-        Height="900"
+        Width="900"
+        Height="500"
         MinWidth="900"
-        MinHeight="750"
+        MinHeight="500"
         CanResize="True"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True">
@@ -29,12 +29,24 @@
                    HorizontalAlignment="Center"
                    Margin="0,0,0,10" />
 
-        <!-- Character Set Info -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+        <!-- Character Set Info and Selector -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Spacing="20">
             <TextBlock x:Name="CharsetInfoText"
                        Text="Primary Character Set"
                        FontSize="12"
-                       Foreground="Gray" />
+                       Foreground="Gray"
+                       VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <RadioButton x:Name="PrimarySetRadio"
+                             Content="Primary Set (0x0000-0x07FF)"
+                             GroupName="CharacterSet"
+                             IsChecked="True"
+                             Checked="OnCharacterSetChanged" />
+                <RadioButton x:Name="SecondarySetRadio"
+                             Content="Secondary Set (0x0800-0x0FFF)"
+                             GroupName="CharacterSet"
+                             Checked="OnCharacterSetChanged" />
+            </StackPanel>
         </StackPanel>
 
         <!-- Character Grid - Scrollable -->

@@ -120,11 +120,11 @@ public sealed partial class MachineBuilder
         return this;
     }
 
-    private static Dictionary<string, (string ResolvedPath, uint Size)> BuildRomImageLookup(
+    private static Dictionary<string, RomImageInfo> BuildRomImageLookup(
         MemoryProfileSection memoryConfig,
         ProfilePathResolver pathResolver)
     {
-        var lookup = new Dictionary<string, (string ResolvedPath, uint Size)>(StringComparer.OrdinalIgnoreCase);
+        var lookup = new Dictionary<string, RomImageInfo>(StringComparer.OrdinalIgnoreCase);
 
         if (memoryConfig.RomImages is null)
         {
@@ -143,28 +143,134 @@ public sealed partial class MachineBuilder
                 throw new InvalidOperationException($"Duplicate ROM image name: '{romImage.Name}'.");
             }
 
-            string resolvedPath = pathResolver.Resolve(romImage.Source);
             uint size = HexParser.ParseUInt32(romImage.Size);
 
-            // Validate that the ROM file exists
-            if (!File.Exists(resolvedPath))
+            // Check if this is an embedded resource
+            if (ProfilePathResolver.IsEmbeddedResource(romImage.Source))
             {
-                throw new FileNotFoundException(
-                    $"ROM image '{romImage.Name}' not found at '{resolvedPath}'. " +
-                    $"Source path: '{romImage.Source}'.",
-                    resolvedPath);
-            }
+                if (!ProfilePathResolver.TryParseEmbeddedResource(
+                    romImage.Source,
+                    out string? assemblyName,
+                    out string? resourceName))
+                {
+                    throw new InvalidOperationException(
+                        $"Invalid embedded resource path '{romImage.Source}' for ROM image '{romImage.Name}'. " +
+                        $"Expected format: embedded://AssemblyName/Resource.Name");
+                }
 
-            lookup[romImage.Name] = (resolvedPath, size);
+                // Validate that the assembly and resource exist
+                Assembly? assembly = FindAssembly(assemblyName!);
+                if (assembly is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Assembly '{assemblyName}' not found for embedded ROM image '{romImage.Name}'.");
+                }
+
+                using var stream = assembly.GetManifestResourceStream(resourceName!);
+                if (stream is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Embedded resource '{resourceName}' not found in assembly '{assemblyName}' " +
+                        $"for ROM image '{romImage.Name}'.");
+                }
+
+                lookup[romImage.Name] = new RomImageInfo(
+                    Source: romImage.Source,
+                    Size: size,
+                    IsEmbedded: true,
+                    AssemblyName: assemblyName,
+                    ResourceName: resourceName,
+                    ResolvedPath: null);
+            }
+            else
+            {
+                // File-based ROM
+                string resolvedPath = pathResolver.Resolve(romImage.Source);
+
+                // Validate that the ROM file exists
+                if (!File.Exists(resolvedPath))
+                {
+                    throw new FileNotFoundException(
+                        $"ROM image '{romImage.Name}' not found at '{resolvedPath}'. " +
+                        $"Source path: '{romImage.Source}'.",
+                        resolvedPath);
+                }
+
+                lookup[romImage.Name] = new RomImageInfo(
+                    Source: romImage.Source,
+                    Size: size,
+                    IsEmbedded: false,
+                    AssemblyName: null,
+                    ResourceName: null,
+                    ResolvedPath: resolvedPath);
+            }
         }
 
         return lookup;
     }
 
+    private static Assembly? FindAssembly(string assemblyName)
+    {
+        // First, check already-loaded assemblies
+        foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (string.Equals(loaded.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase))
+            {
+                return loaded;
+            }
+        }
+
+        // Try to load the assembly by name
+        try
+        {
+            return Assembly.Load(assemblyName);
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+        catch (FileLoadException)
+        {
+            return null;
+        }
+    }
+
+    private static byte[] LoadRomData(RomImageInfo romInfo)
+    {
+        if (romInfo.IsEmbedded)
+        {
+            Assembly? assembly = FindAssembly(romInfo.AssemblyName!);
+            if (assembly is null)
+            {
+                throw new InvalidOperationException(
+                    $"Assembly '{romInfo.AssemblyName}' not found for embedded ROM.");
+            }
+
+            using var stream = assembly.GetManifestResourceStream(romInfo.ResourceName!)
+                ?? throw new InvalidOperationException(
+                    $"Embedded resource '{romInfo.ResourceName}' not found in assembly '{romInfo.AssemblyName}'.");
+
+            byte[] data = new byte[stream.Length];
+            int bytesRead = stream.Read(data, 0, data.Length);
+            if (bytesRead != data.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to read complete embedded resource '{romInfo.ResourceName}'. " +
+                    $"Read {bytesRead} of {data.Length} bytes.");
+            }
+
+            return data;
+        }
+        else
+        {
+            return File.ReadAllBytes(romInfo.ResolvedPath!);
+        }
+    }
+
     private static void LoadSourceIntoPhysicalMemory(
         PhysicalMemory physical,
         PhysicalMemorySourceProfile source,
-        Dictionary<string, (string ResolvedPath, uint Size)> romImages)
+        Dictionary<string, RomImageInfo> romImages)
     {
         if (!string.Equals(source.Type, "rom-image", StringComparison.OrdinalIgnoreCase))
         {
@@ -194,14 +300,14 @@ public sealed partial class MachineBuilder
                 $"would exceed physical memory '{physical.Name}' (size 0x{physical.Size:X}).");
         }
 
-        // Load the ROM data (file existence already validated in BuildRomImageLookup)
-        byte[] romData = File.ReadAllBytes(romInfo.ResolvedPath);
+        // Load the ROM data
+        byte[] romData = LoadRomData(romInfo);
 
         // Validate size
         if (romData.Length < romInfo.Size)
         {
             throw new InvalidOperationException(
-                $"ROM file '{romInfo.ResolvedPath}' is too small ({romData.Length} bytes). " +
+                $"ROM '{romInfo.Source}' is too small ({romData.Length} bytes). " +
                 $"Expected {romInfo.Size} bytes for ROM image '{source.RomImage}'.");
         }
 
@@ -224,7 +330,7 @@ public sealed partial class MachineBuilder
     private static void LoadDeviceRoms(
         IMotherboardDevice device,
         MotherboardDeviceEntry deviceEntry,
-        Dictionary<string, (string ResolvedPath, uint Size)> romImages)
+        Dictionary<string, RomImageInfo> romImages)
     {
         // Check for character ROM configuration on video devices
         // Use reflection to avoid circular dependency with Devices project
@@ -234,7 +340,7 @@ public sealed partial class MachineBuilder
             string? romName = charRomProp.GetString();
             if (!string.IsNullOrEmpty(romName) && romImages.TryGetValue(romName, out var romInfo))
             {
-                byte[] romData = File.ReadAllBytes(romInfo.ResolvedPath);
+                byte[] romData = LoadRomData(romInfo);
 
                 // Validate and potentially truncate the ROM data
                 if (romData.Length > romInfo.Size)
@@ -244,7 +350,7 @@ public sealed partial class MachineBuilder
                 else if (romData.Length < romInfo.Size)
                 {
                     throw new InvalidOperationException(
-                        $"Character ROM file '{romInfo.ResolvedPath}' is too small ({romData.Length} bytes). " +
+                        $"Character ROM '{romInfo.Source}' is too small ({romData.Length} bytes). " +
                         $"Expected {romInfo.Size} bytes for ROM image '{romName}'.");
                 }
 
@@ -262,7 +368,7 @@ public sealed partial class MachineBuilder
 
     private void CreatePhysicalMemory(
         PhysicalMemoryProfile physicalProfile,
-        Dictionary<string, (string ResolvedPath, uint Size)> romImages,
+        Dictionary<string, RomImageInfo> romImages,
         ProfilePathResolver pathResolver)
     {
         if (string.IsNullOrEmpty(physicalProfile.Name))
@@ -495,7 +601,7 @@ public sealed partial class MachineBuilder
 
     private void ConfigureMotherboardDevice(
         MotherboardDeviceEntry deviceEntry,
-        Dictionary<string, (string ResolvedPath, uint Size)> romImages,
+        Dictionary<string, RomImageInfo> romImages,
         ProfilePathResolver pathResolver)
     {
         // Skip disabled devices
@@ -576,4 +682,21 @@ public sealed partial class MachineBuilder
     /// <param name="Slot">The slot number (1-7).</param>
     /// <param name="Card">The slot card to install.</param>
     private sealed record PendingSlotCardFromProfile(int Slot, ISlotCard Card) : IPendingSlotCard;
+
+    /// <summary>
+    /// Information about a ROM image, supporting both file-based and embedded resources.
+    /// </summary>
+    /// <param name="Source">The original source path from the profile.</param>
+    /// <param name="Size">The expected size of the ROM in bytes.</param>
+    /// <param name="IsEmbedded">Whether this is an embedded resource.</param>
+    /// <param name="AssemblyName">The assembly name for embedded resources.</param>
+    /// <param name="ResourceName">The resource name for embedded resources.</param>
+    /// <param name="ResolvedPath">The resolved file path for file-based ROMs.</param>
+    private sealed record RomImageInfo(
+        string Source,
+        uint Size,
+        bool IsEmbedded,
+        string? AssemblyName,
+        string? ResourceName,
+        string? ResolvedPath);
 }

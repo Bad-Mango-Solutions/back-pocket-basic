@@ -20,8 +20,8 @@ using BadMango.Emulator.Devices.Interfaces;
 /// <remarks>
 /// <para>
 /// This window renders all 256 characters from the character ROM in a 16x16 grid.
-/// Each character is displayed at 2x scale with labels showing hex, decimal, and
-/// character representations.
+/// Each character is displayed at 2x scale with tooltips showing hex, decimal, and
+/// character representations when hovering over a cell.
 /// </para>
 /// <para>
 /// The window loads the default character ROM when opened and displays the
@@ -34,12 +34,14 @@ public partial class CharacterPreviewWindow : Window
     private const int CharHeight = 8;
     private const int Scale = 2;
     private const int GridSize = 16;
-    private const int CellSpacing = 8;
-    private const int LabelHeight = 28;
+    private const int CellSpacing = 4;
     private const int CellWidth = (CharWidth * Scale) + CellSpacing;
-    private const int CellHeight = (CharHeight * Scale) + LabelHeight + CellSpacing;
+    private const int CellHeight = (CharHeight * Scale) + CellSpacing;
+    private const int PrimarySetOffset = 0x0000;
+    private const int SecondarySetOffset = 0x0800;
 
     private byte[]? characterRomData;
+    private int currentSetOffset = PrimarySetOffset;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterPreviewWindow"/> class.
@@ -76,36 +78,36 @@ public partial class CharacterPreviewWindow : Window
         {
             // Control characters / inverse - show the character they represent
             char c = (char)(charCode + 0x40); // @ A B C ... Z [ \ ] ^ _
-            return $"'{c}'";
+            return $"'{c}' Inverse";
         }
         else if (charCode < 0x40)
         {
             // Inverse punctuation/numbers
-            char c = (char)(charCode + 0x20); // space ! " # ... / 0-9 : ; < = > ?
-            return $"'{c}'";
+            char c = (char)charCode; // space ! " # ... / 0-9 : ; < = > ?
+            return $"'{c}' Inverse";
         }
         else if (charCode < 0x60)
         {
             // Normal/flashing @ A-Z [ \ ] ^ _
             char c = (char)charCode;
-            return $"'{c}'";
+            return $"'{c}' Flashing";
         }
         else if (charCode < 0x80)
         {
             // Lowercase a-z and symbols (flashing zone)
-            char c = (char)charCode;
-            return $"'{c}'";
+            char c = (char)(charCode - 0x40);
+            return $"'{c}' Flashing";
         }
         else if (charCode < 0xA0)
         {
             // Normal inverse representation area
             char c = (char)(charCode - 0x40);
-            return $"'{c}'";
+            return $"Control-'{c}'";
         }
         else if (charCode < 0xC0)
         {
             // Normal punctuation/numbers
-            char c = (char)(charCode - 0x60);
+            char c = (char)(charCode - 0x80);
             return $"'{c}'";
         }
         else if (charCode < 0xE0)
@@ -128,13 +130,34 @@ public partial class CharacterPreviewWindow : Window
         if (DefaultCharacterRom.TryGetRomData(out var romData) && romData != null)
         {
             this.characterRomData = romData;
-            this.CharsetInfoText.Text = "Primary Character Set (Default ROM)";
+            this.UpdateCharsetInfoText();
             this.RenderCharacters();
         }
         else
         {
             this.CharsetInfoText.Text = "No character ROM available";
         }
+    }
+
+    private void OnCharacterSetChanged(object? sender, RoutedEventArgs e)
+    {
+        if (this.PrimarySetRadio.IsChecked == true)
+        {
+            this.currentSetOffset = PrimarySetOffset;
+        }
+        else
+        {
+            this.currentSetOffset = SecondarySetOffset;
+        }
+
+        this.UpdateCharsetInfoText();
+        this.RenderCharacters();
+    }
+
+    private void UpdateCharsetInfoText()
+    {
+        string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
+        this.CharsetInfoText.Text = $"{setName} Character Set (Default ROM)";
     }
 
     private void RenderCharacters()
@@ -153,7 +176,6 @@ public partial class CharacterPreviewWindow : Window
         this.CharacterCanvas.Height = totalHeight;
 
         var foregroundBrush = new SolidColorBrush(Color.FromRgb(0x33, 0xFF, 0x33)); // Apple II green
-        var labelBrush = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)); // Gray for labels
         var cellBackgroundBrush = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22)); // Slightly lighter background
 
         for (int charIndex = 0; charIndex < 256; charIndex++)
@@ -164,34 +186,38 @@ public partial class CharacterPreviewWindow : Window
             int cellX = gridCol * CellWidth;
             int cellY = gridRow * CellHeight;
 
-            // Draw cell background
+            // Build tooltip text for this character
+            string charDisplay = GetCharacterDisplay(charIndex);
+            string setName = this.currentSetOffset == PrimarySetOffset ? "Primary" : "Secondary";
+            string tooltipText = $"${charIndex:X2} ({charIndex}, {charDisplay}) [{setName}]";
+
+            // Draw cell background with tooltip
             var cellBackground = new Rectangle
             {
-                Width = CellWidth - 4,
-                Height = CellHeight - 4,
+                Width = CellWidth - CellSpacing,
+                Height = CellHeight - CellSpacing,
                 Fill = cellBackgroundBrush,
             };
+            ToolTip.SetTip(cellBackground, tooltipText);
+
             Canvas.SetLeft(cellBackground, cellX + 2);
             Canvas.SetTop(cellBackground, cellY + 2);
             this.CharacterCanvas.Children.Add(cellBackground);
 
             // Render the character bitmap
-            this.RenderCharacter(charIndex, cellX + 4, cellY + 4, foregroundBrush);
-
-            // Add label below the character
-            this.AddCharacterLabel(charIndex, cellX, cellY + (CharHeight * Scale) + 6, labelBrush);
+            this.RenderCharacter(charIndex, cellX + 4, cellY + 4, foregroundBrush, tooltipText);
         }
     }
 
-    private void RenderCharacter(int charCode, int cellX, int cellY, IBrush foregroundBrush)
+    private void RenderCharacter(int charCode, int cellX, int cellY, IBrush foregroundBrush, string tooltipText)
     {
         if (this.characterRomData == null)
         {
             return;
         }
 
-        // Calculate ROM offset for this character (primary set only for now)
-        int romOffset = charCode * 8;
+        // Calculate ROM offset for this character using the current set offset
+        int romOffset = this.currentSetOffset + (charCode * 8);
 
         // Render each scanline of the character
         for (int scanline = 0; scanline < CharHeight; scanline++)
@@ -212,6 +238,7 @@ public partial class CharacterPreviewWindow : Window
                         Height = Scale,
                         Fill = foregroundBrush,
                     };
+                    ToolTip.SetTip(rect, tooltipText);
 
                     Canvas.SetLeft(rect, cellX + (pixel * Scale));
                     Canvas.SetTop(rect, cellY + (scanline * Scale));
@@ -219,25 +246,6 @@ public partial class CharacterPreviewWindow : Window
                 }
             }
         }
-    }
-
-    private void AddCharacterLabel(int charCode, int cellX, int cellY, IBrush labelBrush)
-    {
-        // Format: $XX (DDD, 'C') or $XX (DDD) for non-printable
-        string charDisplay = GetCharacterDisplay(charCode);
-        string labelText = $"${charCode:X2} ({charCode}, {charDisplay})";
-
-        var label = new TextBlock
-        {
-            Text = labelText,
-            FontSize = 8,
-            Foreground = labelBrush,
-            FontFamily = new FontFamily("Consolas, Courier New, monospace"),
-        };
-
-        Canvas.SetLeft(label, cellX);
-        Canvas.SetTop(label, cellY);
-        this.CharacterCanvas.Children.Add(label);
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e)
