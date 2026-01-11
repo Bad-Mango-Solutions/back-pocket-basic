@@ -146,6 +146,12 @@ public partial class StatusMonitorWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         updateTimer.Stop();
+
+        // Dispose the stats provider to unsubscribe from machine events
+        if (statsProvider is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 
     private void OnTimerTick(object? sender, EventArgs e)
@@ -199,16 +205,11 @@ public partial class StatusMonitorWindow : Window
 
         // WAI duration
         var waiDuration = statsProvider.WaiDuration;
-        if (waiDuration > TimeSpan.Zero)
-        {
-            WaiDurationText.Text = waiDuration.TotalSeconds >= 1
+        WaiDurationText.Text = waiDuration > TimeSpan.Zero
+            ? (waiDuration.TotalSeconds >= 1
                 ? $"{waiDuration.TotalSeconds:F1}s"
-                : $"{waiDuration.TotalMilliseconds:F0}ms";
-        }
-        else
-        {
-            WaiDurationText.Text = "--";
-        }
+                : $"{waiDuration.TotalMilliseconds:F0}ms")
+            : "--";
     }
 
     private void UpdateCpuRegisters()
@@ -365,8 +366,7 @@ public partial class StatusMonitorWindow : Window
         // Add each extension's control
         foreach (var ext in extensions)
         {
-            var control = ext.CreateControl();
-            ExtensionsPanel.Children.Add(control);
+            ExtensionsPanel.Children.Add(ext.CreateControl());
         }
 
         extensionsInitialized = true;

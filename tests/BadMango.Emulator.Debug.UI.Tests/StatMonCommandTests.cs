@@ -38,24 +38,18 @@ public class StatMonCommandTests
     [Test]
     public void Execute_WithoutWindowManager_ReturnsError()
     {
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
         var command = new StatMonCommand();
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
-        try
-        {
-            var result = command.Execute(context, []);
+        var result = command.Execute(context, []);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.False);
-                Assert.That(result.Message, Does.Contain("window manager"));
-            });
-        }
-        finally
+        Assert.Multiple(() =>
         {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("window manager"));
+        });
     }
 
     /// <summary>
@@ -68,25 +62,19 @@ public class StatMonCommandTests
         windowManager.Setup(w => w.IsAvaloniaRunning).Returns(true);
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).ReturnsAsync(true);
 
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
         var command = new StatMonCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
-        try
-        {
-            var result = command.Execute(context, []);
+        var result = command.Execute(context, []);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.True);
-                Assert.That(result.Message, Does.Contain("Opening"));
-                windowManager.Verify(w => w.ShowWindowAsync("StatusMonitor", It.IsAny<object?>()), Times.Once);
-            });
-        }
-        finally
+        Assert.Multiple(() =>
         {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Contain("Opening"));
+            windowManager.Verify(w => w.ShowWindowAsync("StatusMonitor", It.IsAny<object?>()), Times.Once);
+        });
     }
 
     /// <summary>
@@ -139,30 +127,22 @@ public class StatMonCommandTests
         // Return a task that never completes to verify we don't await it
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).Returns(tcs.Task);
 
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
         var command = new StatMonCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
 
-        try
-        {
-            // Execute should return immediately without blocking
-            var result = command.Execute(context, []);
+        // Execute should return immediately without blocking
+        var result = command.Execute(context, []);
 
-            Assert.That(result.Success, Is.True);
+        Assert.That(result.Success, Is.True);
 
-            // Complete the task to clean up
-            tcs.SetResult(true);
-        }
-        finally
-        {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+        // Complete the task to clean up
+        tcs.SetResult(true);
     }
 
-    private static ICommandContext CreateTestContext(out StringWriter outputWriter, out StringWriter errorWriter)
+    private static ICommandContext CreateTestContext(StringWriter outputWriter, StringWriter errorWriter)
     {
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
         var mockDispatcher = new Mock<ICommandDispatcher>();
         var mockContext = new Mock<ICommandContext>();
         mockContext.Setup(c => c.Output).Returns(outputWriter);

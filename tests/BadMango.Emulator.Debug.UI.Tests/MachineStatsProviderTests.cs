@@ -304,6 +304,34 @@ public class MachineStatsProviderTests
         Assert.That(provider.NextEventCycles, Is.Null);
     }
 
+    /// <summary>
+    /// Verifies that Dispose does not throw.
+    /// </summary>
+    [Test]
+    public void Dispose_DoesNotThrow()
+    {
+        var machine = CreateMockMachine();
+        var provider = new MachineStatsProvider(machine.Object);
+
+        Assert.DoesNotThrow(() => provider.Dispose());
+    }
+
+    /// <summary>
+    /// Verifies that Dispose can be called multiple times without error.
+    /// </summary>
+    [Test]
+    public void Dispose_CalledMultipleTimes_DoesNotThrow()
+    {
+        var machine = CreateMockMachine();
+        var provider = new MachineStatsProvider(machine.Object);
+
+        Assert.DoesNotThrow(() =>
+        {
+            provider.Dispose();
+            provider.Dispose();
+        });
+    }
+
     private static Mock<IMachine> CreateMockMachine(
         MachineState state = MachineState.Stopped,
         bool isWai = false,

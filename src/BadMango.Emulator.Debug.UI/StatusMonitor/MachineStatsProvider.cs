@@ -24,8 +24,12 @@ using BadMango.Emulator.Devices.Interfaces;
 /// The provider should be sampled periodically (e.g., 60Hz) to maintain accurate
 /// rolling statistics for display in the status monitor window.
 /// </para>
+/// <para>
+/// This class implements <see cref="IDisposable"/> to properly unsubscribe from
+/// machine state change events when no longer needed.
+/// </para>
 /// </remarks>
-public sealed class MachineStatsProvider : IMachineStatsProvider
+public sealed class MachineStatsProvider : IMachineStatsProvider, IDisposable
 {
     /// <summary>
     /// Target clock speed for Apple IIe (1.0227 MHz).
@@ -56,6 +60,7 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
     private double actualMHz;
     private double cpuUtilization;
     private DateTime? waiStartTime;
+    private bool disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MachineStatsProvider"/> class.
@@ -241,6 +246,18 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
         ArgumentNullException.ThrowIfNull(extension);
         extensions.Add(extension);
         extensions.Sort((a, b) => a.Order.CompareTo(b.Order));
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        machine.StateChanged -= OnMachineStateChanged;
+        disposed = true;
     }
 
     private void OnMachineStateChanged(MachineState newState)
