@@ -47,7 +47,7 @@ public static class DisplayColors
     /// <summary>
     /// Amber phosphor foreground color (P3 phosphor).
     /// </summary>
-    public const uint AmberPhosphor = 0xFF00BFFF;
+    public const uint AmberPhosphor = 0xFFFFBF00;
 
     /// <summary>
     /// White phosphor foreground color (P4 phosphor).
@@ -77,12 +77,12 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 1: Magenta (Deep Red).
     /// </summary>
-    public const uint LoResMagenta = 0xFF6A0090;
+    public const uint LoResMagenta = 0xFFDD0033;
 
     /// <summary>
     /// Lo-Res color 2: Dark Blue.
     /// </summary>
-    public const uint LoResDarkBlue = 0xFF9D0040;
+    public const uint LoResDarkBlue = 0xFF000099;
 
     /// <summary>
     /// Lo-Res color 3: Purple (Violet).
@@ -102,22 +102,22 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 6: Medium Blue.
     /// </summary>
-    public const uint LoResMediumBlue = 0xFFFF2800;
+    public const uint LoResMediumBlue = 0xFF0028FF;
 
     /// <summary>
     /// Lo-Res color 7: Light Blue.
     /// </summary>
-    public const uint LoResLightBlue = 0xFFFFAA80;
+    public const uint LoResLightBlue = 0xFF80AAFF;
 
     /// <summary>
     /// Lo-Res color 8: Brown.
     /// </summary>
-    public const uint LoResBrown = 0xFF005580;
+    public const uint LoResBrown = 0xFF805500;
 
     /// <summary>
     /// Lo-Res color 9: Orange.
     /// </summary>
-    public const uint LoResOrange = 0xFF0080FF;
+    public const uint LoResOrange = 0xFFFF8000;
 
     /// <summary>
     /// Lo-Res color 10: Gray 2 (Light Gray).
@@ -127,22 +127,22 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 11: Pink.
     /// </summary>
-    public const uint LoResPink = 0xFFAAA0FF;
+    public const uint LoResPink = 0xFFFFA0AA;
 
     /// <summary>
     /// Lo-Res color 12: Light Green (Green).
     /// </summary>
-    public const uint LoResLightGreen = 0xFF14E000;
+    public const uint LoResLightGreen = 0xFF00E014;
 
     /// <summary>
     /// Lo-Res color 13: Yellow.
     /// </summary>
-    public const uint LoResYellow = 0xFF55FFFF;
+    public const uint LoResYellow = 0xFFFFFF55;
 
     /// <summary>
     /// Lo-Res color 14: Aqua (Cyan).
     /// </summary>
-    public const uint LoResAqua = 0xFFFFE040;
+    public const uint LoResAqua = 0xFF40E0FF;
 
     /// <summary>
     /// Lo-Res color 15: White.
