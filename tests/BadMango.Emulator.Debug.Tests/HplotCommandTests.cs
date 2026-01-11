@@ -302,14 +302,7 @@ public class HplotCommandTests
 
     private static byte SetHiResBit(byte current, int bit, bool set)
     {
-        if (set)
-        {
-            return (byte)(current | (1 << bit));
-        }
-        else
-        {
-            return (byte)(current & ~(1 << bit));
-        }
+        return (byte)(set ? current | (1 << bit) : current & ~(1 << bit));
     }
 
     private static List<Point> DrawLine(int x0, int y0, int x1, int y1)

@@ -207,17 +207,9 @@ public sealed class PlotCommand : CommandHandlerBase, ICommandHelp
         byte current = bus.Read8(readAccess);
 
         // Modify appropriate nibble
-        byte newValue;
-        if (isTopBlock)
-        {
-            // Top block is low nibble
-            newValue = (byte)((current & 0xF0) | (color & 0x0F));
-        }
-        else
-        {
-            // Bottom block is high nibble
-            newValue = (byte)((current & 0x0F) | ((color & 0x0F) << 4));
-        }
+        byte newValue = isTopBlock
+            ? (byte)((current & 0xF0) | (color & 0x0F)) // Top block is low nibble
+            : (byte)((current & 0x0F) | ((color & 0x0F) << 4)); // Bottom block is high nibble
 
         // Write new value
         var writeAccess = new BusAccess(

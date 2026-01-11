@@ -132,21 +132,15 @@ public sealed class HplotCommand : CommandHandlerBase, ICommandHelp
             }
 
             // Check for color after TO x2 y2
-            if (args.Length > toIndex + 3)
+            if (args.Length > toIndex + 3 && !int.TryParse(args[toIndex + 3], out color))
             {
-                if (!int.TryParse(args[toIndex + 3], out color))
-                {
-                    return CommandResult.Error($"Invalid color: {args[toIndex + 3]}");
-                }
+                return CommandResult.Error($"Invalid color: {args[toIndex + 3]}");
             }
         }
-        else if (args.Length > 2)
+        else if (args.Length > 2 && !int.TryParse(args[2], out color))
         {
             // Point mode with color: x y color
-            if (!int.TryParse(args[2], out color))
-            {
-                return CommandResult.Error($"Invalid color: {args[2]}");
-            }
+            return CommandResult.Error($"Invalid color: {args[2]}");
         }
 
         // Validate coordinates
@@ -218,15 +212,9 @@ public sealed class HplotCommand : CommandHandlerBase, ICommandHelp
         byte current = bus.Read8(readAccess);
 
         // Modify the appropriate bit
-        byte newValue;
-        if (set)
-        {
-            newValue = (byte)(current | (1 << bitPosition));
-        }
-        else
-        {
-            newValue = (byte)(current & ~(1 << bitPosition));
-        }
+        byte newValue = set
+            ? (byte)(current | (1 << bitPosition))
+            : (byte)(current & ~(1 << bitPosition));
 
         // Write new value
         var writeAccess = new BusAccess(
