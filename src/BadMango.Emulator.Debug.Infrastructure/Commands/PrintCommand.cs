@@ -208,7 +208,7 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
                         // Hex escape \xNN - need i + 4 total chars (\xNN)
                         if (i + 4 <= input.Length)
                         {
-                            string hex = input.Substring(i + 2, 2);
+                            var hex = input.AsSpan(i + 2, 2);
                             if (byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte value))
                             {
                                 sb.Append((char)value);

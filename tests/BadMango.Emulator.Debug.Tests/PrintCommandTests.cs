@@ -192,7 +192,7 @@ public class PrintCommandEscapeSequenceTests
                     case 'x':
                         if (i + 4 <= input.Length)
                         {
-                            string hex = input.Substring(i + 2, 2);
+                            var hex = input.AsSpan(i + 2, 2);
                             if (byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte value))
                             {
                                 sb.Append((char)value);
