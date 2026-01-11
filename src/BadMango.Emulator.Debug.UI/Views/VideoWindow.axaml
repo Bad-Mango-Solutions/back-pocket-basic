@@ -14,7 +14,7 @@
     <Grid>
         <!-- Video display area -->
         <Image x:Name="VideoImage"
-               Stretch="None"
+               Stretch="Uniform"
                RenderOptions.BitmapInterpolationMode="None"
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
