@@ -8,7 +8,7 @@ namespace BadMango.Emulator.Debug.Tests;
 /// Unit tests for lo-res graphics address calculation and color handling.
 /// </summary>
 [TestFixture]
-public class LoResAddressTests
+public class PlotCommandTests
 {
     private const ushort TextPage1Base = 0x0400;
     private const int LoResWidth = 40;
@@ -59,9 +59,12 @@ public class LoResAddressTests
     /// <summary>
     /// Verifies color nibble placement for top block.
     /// </summary>
-    [TestCase(0x00, 5, 0x05)] // Set color 5 in empty byte
-    [TestCase(0xF0, 5, 0xF5)] // Preserve high nibble
-    [TestCase(0x0F, 5, 0x05)] // Replace existing color
+    /// <param name="current">The current byte value.</param>
+    /// <param name="color">The color to set.</param>
+    /// <param name="expected">The expected result.</param>
+    [TestCase(0x00, 5, 0x05)]
+    [TestCase(0xF0, 5, 0xF5)]
+    [TestCase(0x0F, 5, 0x05)]
     public void SetTopColor_SetsLowNibble(byte current, int color, byte expected)
     {
         byte result = SetTopColor(current, color);
@@ -71,9 +74,12 @@ public class LoResAddressTests
     /// <summary>
     /// Verifies color nibble placement for bottom block.
     /// </summary>
-    [TestCase(0x00, 5, 0x50)] // Set color 5 in empty byte
-    [TestCase(0x0F, 5, 0x5F)] // Preserve low nibble
-    [TestCase(0xF0, 5, 0x50)] // Replace existing color
+    /// <param name="current">The current byte value.</param>
+    /// <param name="color">The color to set.</param>
+    /// <param name="expected">The expected result.</param>
+    [TestCase(0x00, 5, 0x50)]
+    [TestCase(0x0F, 5, 0x5F)]
+    [TestCase(0xF0, 5, 0x50)]
     public void SetBottomColor_SetsHighNibble(byte current, int color, byte expected)
     {
         byte result = SetBottomColor(current, color);
@@ -96,7 +102,105 @@ public class LoResAddressTests
         }
     }
 
-    private static (ushort address, bool isTopBlock) LoResCoordToAddress(int x, int y)
+    /// <summary>
+    /// Verifies horizontal line produces correct points.
+    /// </summary>
+    [Test]
+    public void DrawLine_Horizontal_ProducesCorrectPoints()
+    {
+        var points = DrawLine(0, 0, 5, 0);
+
+        Assert.That(points.Count, Is.EqualTo(6)); // 0 to 5 inclusive
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+        Assert.That(points, Does.Contain(new Point(5, 0)));
+        Assert.That(points.All(p => p.Y == 0), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies vertical line produces correct points.
+    /// </summary>
+    [Test]
+    public void DrawLine_Vertical_ProducesCorrectPoints()
+    {
+        var points = DrawLine(0, 0, 0, 5);
+
+        Assert.That(points.Count, Is.EqualTo(6));
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+        Assert.That(points, Does.Contain(new Point(0, 5)));
+        Assert.That(points.All(p => p.X == 0), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies diagonal line produces correct points.
+    /// </summary>
+    [Test]
+    public void DrawLine_Diagonal_ProducesCorrectPoints()
+    {
+        var points = DrawLine(0, 0, 5, 5);
+
+        Assert.That(points.Count, Is.EqualTo(6));
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+        Assert.That(points, Does.Contain(new Point(5, 5)));
+    }
+
+    /// <summary>
+    /// Verifies single point line.
+    /// </summary>
+    [Test]
+    public void DrawLine_SinglePoint_ProducesOnePoint()
+    {
+        var points = DrawLine(5, 5, 5, 5);
+
+        Assert.That(points.Count, Is.EqualTo(1));
+        Assert.That(points[0], Is.EqualTo(new Point(5, 5)));
+    }
+
+    /// <summary>
+    /// Verifies reverse direction line covers same start and end points.
+    /// </summary>
+    [Test]
+    public void DrawLine_ReverseDirection_CoversSameEndpoints()
+    {
+        var forward = DrawLine(0, 0, 10, 5);
+        var reverse = DrawLine(10, 5, 0, 0);
+
+        // Both should include the start and end points
+        Assert.That(forward, Does.Contain(new Point(0, 0)));
+        Assert.That(forward, Does.Contain(new Point(10, 5)));
+        Assert.That(reverse, Does.Contain(new Point(0, 0)));
+        Assert.That(reverse, Does.Contain(new Point(10, 5)));
+
+        // Should have similar count (Bresenham may vary slightly)
+        Assert.That(Math.Abs(forward.Count - reverse.Count), Is.LessThanOrEqualTo(1));
+    }
+
+    /// <summary>
+    /// Verifies steep line (dy > dx) works correctly.
+    /// </summary>
+    [Test]
+    public void DrawLine_Steep_ProducesCorrectPoints()
+    {
+        var points = DrawLine(0, 0, 2, 10);
+
+        Assert.That(points.Count, Is.EqualTo(11)); // More Y steps than X
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+        Assert.That(points, Does.Contain(new Point(2, 10)));
+    }
+
+    /// <summary>
+    /// Verifies negative direction lines work.
+    /// </summary>
+    [Test]
+    public void DrawLine_NegativeDirection_ProducesCorrectPoints()
+    {
+        var points = DrawLine(5, 5, 0, 0);
+
+        Assert.That(points.Count, Is.EqualTo(6));
+        Assert.That(points, Does.Contain(new Point(5, 5)));
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+    }
+
+    private static (ushort Address, bool IsTopBlock) LoResCoordToAddress(int x, int y)
     {
         int textRow = y / 2;
         bool isTop = (y % 2) == 0;
@@ -117,115 +221,10 @@ public class LoResAddressTests
     {
         return (byte)((current & 0x0F) | ((color & 0x0F) << 4));
     }
-}
 
-/// <summary>
-/// Unit tests for Bresenham line drawing algorithm.
-/// </summary>
-[TestFixture]
-public class BresenhamLineTests
-{
-    /// <summary>
-    /// Verifies horizontal line produces correct points.
-    /// </summary>
-    [Test]
-    public void DrawLine_Horizontal_ProducesCorrectPoints()
+    private static List<Point> DrawLine(int x0, int y0, int x1, int y1)
     {
-        var points = DrawLine(0, 0, 5, 0);
-
-        Assert.That(points.Count, Is.EqualTo(6)); // 0 to 5 inclusive
-        Assert.That(points, Does.Contain((0, 0)));
-        Assert.That(points, Does.Contain((5, 0)));
-        Assert.That(points.All(p => p.y == 0), Is.True);
-    }
-
-    /// <summary>
-    /// Verifies vertical line produces correct points.
-    /// </summary>
-    [Test]
-    public void DrawLine_Vertical_ProducesCorrectPoints()
-    {
-        var points = DrawLine(0, 0, 0, 5);
-
-        Assert.That(points.Count, Is.EqualTo(6));
-        Assert.That(points, Does.Contain((0, 0)));
-        Assert.That(points, Does.Contain((0, 5)));
-        Assert.That(points.All(p => p.x == 0), Is.True);
-    }
-
-    /// <summary>
-    /// Verifies diagonal line produces correct points.
-    /// </summary>
-    [Test]
-    public void DrawLine_Diagonal_ProducesCorrectPoints()
-    {
-        var points = DrawLine(0, 0, 5, 5);
-
-        Assert.That(points.Count, Is.EqualTo(6));
-        Assert.That(points, Does.Contain((0, 0)));
-        Assert.That(points, Does.Contain((5, 5)));
-    }
-
-    /// <summary>
-    /// Verifies single point line.
-    /// </summary>
-    [Test]
-    public void DrawLine_SinglePoint_ProducesOnePoint()
-    {
-        var points = DrawLine(5, 5, 5, 5);
-
-        Assert.That(points.Count, Is.EqualTo(1));
-        Assert.That(points[0], Is.EqualTo((5, 5)));
-    }
-
-    /// <summary>
-    /// Verifies reverse direction line covers same start and end points.
-    /// </summary>
-    [Test]
-    public void DrawLine_ReverseDirection_CoversSameEndpoints()
-    {
-        var forward = DrawLine(0, 0, 10, 5);
-        var reverse = DrawLine(10, 5, 0, 0);
-
-        // Both should include the start and end points
-        Assert.That(forward, Does.Contain((0, 0)));
-        Assert.That(forward, Does.Contain((10, 5)));
-        Assert.That(reverse, Does.Contain((0, 0)));
-        Assert.That(reverse, Does.Contain((10, 5)));
-
-        // Should have similar count (Bresenham may vary slightly)
-        Assert.That(Math.Abs(forward.Count - reverse.Count), Is.LessThanOrEqualTo(1));
-    }
-
-    /// <summary>
-    /// Verifies steep line (dy > dx) works correctly.
-    /// </summary>
-    [Test]
-    public void DrawLine_Steep_ProducesCorrectPoints()
-    {
-        var points = DrawLine(0, 0, 2, 10);
-
-        Assert.That(points.Count, Is.EqualTo(11)); // More Y steps than X
-        Assert.That(points, Does.Contain((0, 0)));
-        Assert.That(points, Does.Contain((2, 10)));
-    }
-
-    /// <summary>
-    /// Verifies negative direction lines work.
-    /// </summary>
-    [Test]
-    public void DrawLine_NegativeDirection_ProducesCorrectPoints()
-    {
-        var points = DrawLine(5, 5, 0, 0);
-
-        Assert.That(points.Count, Is.EqualTo(6));
-        Assert.That(points, Does.Contain((5, 5)));
-        Assert.That(points, Does.Contain((0, 0)));
-    }
-
-    private static List<(int x, int y)> DrawLine(int x0, int y0, int x1, int y1)
-    {
-        var points = new List<(int x, int y)>();
+        var points = new List<Point>();
 
         int dx = Math.Abs(x1 - x0);
         int sx = x0 < x1 ? 1 : -1;
@@ -235,7 +234,7 @@ public class BresenhamLineTests
 
         while (true)
         {
-            points.Add((x0, y0));
+            points.Add(new Point(x0, y0));
 
             if (x0 == x1 && y0 == y1)
             {
@@ -258,4 +257,6 @@ public class BresenhamLineTests
 
         return points;
     }
+
+    private record struct Point(int X, int Y);
 }

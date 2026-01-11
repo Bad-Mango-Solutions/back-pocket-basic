@@ -150,6 +150,11 @@ public static class DisplayColors
     public const uint LoResWhite = 0xFFFFFFFF;
 
     /// <summary>
+    /// Maximum brightness level for lo-res color scaling.
+    /// </summary>
+    private const float MaxBrightnessLevel = 15.0f;
+
+    /// <summary>
     /// Gets the foreground color for the specified color mode.
     /// </summary>
     /// <param name="mode">The display color mode.</param>
@@ -271,11 +276,6 @@ public static class DisplayColors
             _ => 0,
         };
     }
-
-    /// <summary>
-    /// Maximum brightness level for lo-res color scaling.
-    /// </summary>
-    private const float MaxBrightnessLevel = 15.0f;
 
     /// <summary>
     /// Scales a phosphor color by the given brightness level.

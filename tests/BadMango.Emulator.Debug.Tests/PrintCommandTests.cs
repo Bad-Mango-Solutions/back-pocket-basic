@@ -10,8 +10,10 @@ using System.Text;
 /// Unit tests for the PrintCommand escape sequence processing.
 /// </summary>
 [TestFixture]
-public class PrintCommandEscapeSequenceTests
+public class PrintCommandTests
 {
+    private const ushort TextPage1Base = 0x0400;
+
     /// <summary>
     /// Verifies newline escape sequence is processed correctly.
     /// </summary>
@@ -65,6 +67,8 @@ public class PrintCommandEscapeSequenceTests
     /// <summary>
     /// Verifies hex escape sequence is processed correctly.
     /// </summary>
+    /// <param name="input">The input string with hex escape.</param>
+    /// <param name="expected">The expected output string.</param>
     [TestCase("\\x41", "A")]
     [TestCase("\\x61", "a")]
     [TestCase("\\x30", "0")]
@@ -156,80 +160,11 @@ public class PrintCommandEscapeSequenceTests
         Assert.That(result, Is.EqualTo("Test\\"));
     }
 
-    // Helper method that mirrors PrintCommand.ProcessEscapeSequences
-    private static string ProcessEscapeSequences(string input)
-    {
-        var sb = new StringBuilder(input.Length);
-        int i = 0;
-
-        while (i < input.Length)
-        {
-            if (input[i] == '\\' && i + 1 < input.Length)
-            {
-                char next = input[i + 1];
-                switch (next)
-                {
-                    case 'n':
-                        sb.Append('\n');
-                        i += 2;
-                        break;
-                    case 'r':
-                        sb.Append('\r');
-                        i += 2;
-                        break;
-                    case 't':
-                        sb.Append('\t');
-                        i += 2;
-                        break;
-                    case '\\':
-                        sb.Append('\\');
-                        i += 2;
-                        break;
-                    case '"':
-                        sb.Append('"');
-                        i += 2;
-                        break;
-                    case 'x':
-                        if (i + 4 <= input.Length)
-                        {
-                            var hex = input.AsSpan(i + 2, 2);
-                            if (byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte value))
-                            {
-                                sb.Append((char)value);
-                                i += 4;
-                                break;
-                            }
-                        }
-
-                        sb.Append(input[i]);
-                        i++;
-                        break;
-                    default:
-                        sb.Append(input[i]);
-                        i++;
-                        break;
-                }
-            }
-            else
-            {
-                sb.Append(input[i]);
-                i++;
-            }
-        }
-
-        return sb.ToString();
-    }
-}
-
-/// <summary>
-/// Unit tests for ASCII to screen code conversion.
-/// </summary>
-[TestFixture]
-public class AsciiToScreenCodeTests
-{
     /// <summary>
     /// Verifies uppercase letters convert correctly.
     /// </summary>
+    /// <param name="ascii">The ASCII character to convert.</param>
+    /// <param name="expected">The expected screen code.</param>
     [TestCase('A', 0xC1)]
     [TestCase('Z', 0xDA)]
     public void AsciiToScreenCode_UppercaseLetters_ConvertsCorrectly(char ascii, byte expected)
@@ -241,6 +176,8 @@ public class AsciiToScreenCodeTests
     /// <summary>
     /// Verifies lowercase letters convert correctly.
     /// </summary>
+    /// <param name="ascii">The ASCII character to convert.</param>
+    /// <param name="expected">The expected screen code.</param>
     [TestCase('a', 0xE1)]
     [TestCase('z', 0xFA)]
     public void AsciiToScreenCode_LowercaseLetters_ConvertsCorrectly(char ascii, byte expected)
@@ -252,6 +189,8 @@ public class AsciiToScreenCodeTests
     /// <summary>
     /// Verifies numbers convert correctly.
     /// </summary>
+    /// <param name="ascii">The ASCII character to convert.</param>
+    /// <param name="expected">The expected screen code.</param>
     [TestCase('0', 0xB0)]
     [TestCase('9', 0xB9)]
     public void AsciiToScreenCode_Numbers_ConvertsCorrectly(char ascii, byte expected)
@@ -273,6 +212,8 @@ public class AsciiToScreenCodeTests
     /// <summary>
     /// Verifies punctuation converts correctly.
     /// </summary>
+    /// <param name="ascii">The ASCII character to convert.</param>
+    /// <param name="expected">The expected screen code.</param>
     [TestCase('!', 0xA1)]
     [TestCase('@', 0xC0)]
     [TestCase('#', 0xA3)]
@@ -281,43 +222,6 @@ public class AsciiToScreenCodeTests
         byte result = AsciiToScreenCode(ascii);
         Assert.That(result, Is.EqualTo(expected));
     }
-
-    // Helper method that mirrors PrintCommand.AsciiToScreenCode
-    private static byte AsciiToScreenCode(char c)
-    {
-        int ascii = c;
-
-        if (ascii >= 0x41 && ascii <= 0x5A)
-        {
-            return (byte)(ascii + 0x80);
-        }
-
-        if (ascii >= 0x61 && ascii <= 0x7A)
-        {
-            return (byte)(ascii + 0x80);
-        }
-
-        if (ascii >= 0x20 && ascii <= 0x3F)
-        {
-            return (byte)(ascii + 0x80);
-        }
-
-        if (ascii >= 0x5B && ascii <= 0x7F)
-        {
-            return (byte)(ascii + 0x80);
-        }
-
-        return (byte)(ascii | 0x80);
-    }
-}
-
-/// <summary>
-/// Unit tests for text row address calculation.
-/// </summary>
-[TestFixture]
-public class TextRowAddressTests
-{
-    private const ushort TextPage1Base = 0x0400;
 
     /// <summary>
     /// Verifies row 0 address is correct.
@@ -384,6 +288,96 @@ public class TextRowAddressTests
 
         // Should have exactly 24 * 40 = 960 unique addresses
         Assert.That(usedAddresses.Count, Is.EqualTo(960));
+    }
+
+    private static string ProcessEscapeSequences(string input)
+    {
+        var sb = new StringBuilder(input.Length);
+        int i = 0;
+
+        while (i < input.Length)
+        {
+            if (input[i] == '\\' && i + 1 < input.Length)
+            {
+                char next = input[i + 1];
+                switch (next)
+                {
+                    case 'n':
+                        sb.Append('\n');
+                        i += 2;
+                        break;
+                    case 'r':
+                        sb.Append('\r');
+                        i += 2;
+                        break;
+                    case 't':
+                        sb.Append('\t');
+                        i += 2;
+                        break;
+                    case '\\':
+                        sb.Append('\\');
+                        i += 2;
+                        break;
+                    case '"':
+                        sb.Append('"');
+                        i += 2;
+                        break;
+                    case 'x':
+                        if (i + 4 <= input.Length)
+                        {
+                            var hex = input.AsSpan(i + 2, 2);
+                            if (byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte value))
+                            {
+                                sb.Append((char)value);
+                                i += 4;
+                                break;
+                            }
+                        }
+
+                        sb.Append(input[i]);
+                        i++;
+                        break;
+                    default:
+                        sb.Append(input[i]);
+                        i++;
+                        break;
+                }
+            }
+            else
+            {
+                sb.Append(input[i]);
+                i++;
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static byte AsciiToScreenCode(char c)
+    {
+        int ascii = c;
+
+        if (ascii >= 0x41 && ascii <= 0x5A)
+        {
+            return (byte)(ascii + 0x80);
+        }
+
+        if (ascii >= 0x61 && ascii <= 0x7A)
+        {
+            return (byte)(ascii + 0x80);
+        }
+
+        if (ascii >= 0x20 && ascii <= 0x3F)
+        {
+            return (byte)(ascii + 0x80);
+        }
+
+        if (ascii >= 0x5B && ascii <= 0x7F)
+        {
+            return (byte)(ascii + 0x80);
+        }
+
+        return (byte)(ascii | 0x80);
     }
 
     private static ushort ComputeTextRowAddress(int row)

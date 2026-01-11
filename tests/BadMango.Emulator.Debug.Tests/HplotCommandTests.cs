@@ -8,7 +8,7 @@ namespace BadMango.Emulator.Debug.Tests;
 /// Unit tests for hi-res graphics address calculation.
 /// </summary>
 [TestFixture]
-public class HiResAddressTests
+public class HplotCommandTests
 {
     private const ushort HiResPage1Base = 0x2000;
     private const int HiResWidth = 280;
@@ -31,6 +31,7 @@ public class HiResAddressTests
     public void HiResRowAddress_Row1_IsCorrect()
     {
         ushort address = ComputeHiResRowAddress(1);
+
         // Row 1 should be at $2400 (scanline 1 of first group)
         Assert.That(address, Is.EqualTo(0x2400));
     }
@@ -42,6 +43,7 @@ public class HiResAddressTests
     public void HiResRowAddress_Row8_IsCorrect()
     {
         ushort address = ComputeHiResRowAddress(8);
+
         // Row 8 should be at $2080 (first row of second subgroup)
         Assert.That(address, Is.EqualTo(0x2080));
     }
@@ -53,6 +55,7 @@ public class HiResAddressTests
     public void HiResRowAddress_Row64_IsCorrect()
     {
         ushort address = ComputeHiResRowAddress(64);
+
         // Row 64 should be at $2028 (first row of second group)
         Assert.That(address, Is.EqualTo(0x2028));
     }
@@ -97,11 +100,14 @@ public class HiResAddressTests
     /// <summary>
     /// Verifies X coordinate to byte/bit conversion.
     /// </summary>
-    [TestCase(0, 0, 0)]   // First pixel of first byte
-    [TestCase(6, 0, 6)]   // Last pixel of first byte
-    [TestCase(7, 1, 0)]   // First pixel of second byte
-    [TestCase(13, 1, 6)]  // Last pixel of second byte
-    [TestCase(279, 39, 6)] // Last pixel of screen
+    /// <param name="x">The X coordinate.</param>
+    /// <param name="expectedByte">The expected byte offset.</param>
+    /// <param name="expectedBit">The expected bit position.</param>
+    [TestCase(0, 0, 0)]
+    [TestCase(6, 0, 6)]
+    [TestCase(7, 1, 0)]
+    [TestCase(13, 1, 6)]
+    [TestCase(279, 39, 6)]
     public void HiResPixelPosition_ConvertsCorrectly(int x, int expectedByte, int expectedBit)
     {
         var (byteOffset, bitPosition) = HiResPixelToByteAndBit(x);
@@ -112,10 +118,14 @@ public class HiResAddressTests
     /// <summary>
     /// Verifies setting individual bits in hi-res byte.
     /// </summary>
-    [TestCase(0x00, 0, true, 0x01)]  // Set bit 0
-    [TestCase(0x00, 6, true, 0x40)]  // Set bit 6
-    [TestCase(0xFF, 0, false, 0xFE)] // Clear bit 0
-    [TestCase(0xFF, 6, false, 0xBF)] // Clear bit 6
+    /// <param name="current">The current byte value.</param>
+    /// <param name="bit">The bit position to set.</param>
+    /// <param name="set">Whether to set or clear the bit.</param>
+    /// <param name="expected">The expected result byte.</param>
+    [TestCase(0x00, 0, true, 0x01)]
+    [TestCase(0x00, 6, true, 0x40)]
+    [TestCase(0xFF, 0, false, 0xFE)]
+    [TestCase(0xFF, 6, false, 0xBF)]
     public void SetHiResBit_WorksCorrectly(byte current, int bit, bool set, byte expected)
     {
         byte result = SetHiResBit(current, bit, set);
@@ -155,40 +165,6 @@ public class HiResAddressTests
         Assert.That(allClear, Is.EqualTo(0x00));
     }
 
-    private static ushort ComputeHiResRowAddress(int row)
-    {
-        int group = row / 64;
-        int subRow = (row % 64) / 8;
-        int scanLine = row % 8;
-        return (ushort)(HiResPage1Base + (scanLine * 1024) + (subRow * 128) + (group * 40));
-    }
-
-    private static (int byteOffset, int bitPosition) HiResPixelToByteAndBit(int x)
-    {
-        int byteOffset = x / 7;
-        int bitPosition = x % 7;
-        return (byteOffset, bitPosition);
-    }
-
-    private static byte SetHiResBit(byte current, int bit, bool set)
-    {
-        if (set)
-        {
-            return (byte)(current | (1 << bit));
-        }
-        else
-        {
-            return (byte)(current & ~(1 << bit));
-        }
-    }
-}
-
-/// <summary>
-/// Unit tests for HPLOT command syntax parsing.
-/// </summary>
-[TestFixture]
-public class HplotSyntaxTests
-{
     /// <summary>
     /// Verifies TO keyword detection.
     /// </summary>
@@ -203,6 +179,7 @@ public class HplotSyntaxTests
     /// <summary>
     /// Verifies TO keyword is case-insensitive.
     /// </summary>
+    /// <param name="toKeyword">The TO keyword variant to test.</param>
     [TestCase("TO")]
     [TestCase("to")]
     [TestCase("To")]
@@ -250,14 +227,7 @@ public class HplotSyntaxTests
         Assert.That(lineOnly.Length, Is.EqualTo(5));
         Assert.That(lineWithColor.Length, Is.EqualTo(6));
     }
-}
 
-/// <summary>
-/// Unit tests for hi-res line drawing.
-/// </summary>
-[TestFixture]
-public class HiResLineTests
-{
     /// <summary>
     /// Verifies horizontal line covers all expected X coordinates.
     /// </summary>
@@ -270,10 +240,10 @@ public class HiResLineTests
         Assert.That(points.Count, Is.EqualTo(280));
 
         // All Y coordinates should be 100
-        Assert.That(points.All(p => p.y == 100), Is.True);
+        Assert.That(points.All(p => p.Y == 100), Is.True);
 
         // All X coordinates from 0 to 279 should be present
-        var xCoords = points.Select(p => p.x).OrderBy(x => x).ToList();
+        var xCoords = points.Select(p => p.X).OrderBy(x => x).ToList();
         Assert.That(xCoords.First(), Is.EqualTo(0));
         Assert.That(xCoords.Last(), Is.EqualTo(279));
     }
@@ -290,10 +260,10 @@ public class HiResLineTests
         Assert.That(points.Count, Is.EqualTo(192));
 
         // All X coordinates should be 140
-        Assert.That(points.All(p => p.x == 140), Is.True);
+        Assert.That(points.All(p => p.X == 140), Is.True);
 
         // All Y coordinates from 0 to 191 should be present
-        var yCoords = points.Select(p => p.y).OrderBy(y => y).ToList();
+        var yCoords = points.Select(p => p.Y).OrderBy(y => y).ToList();
         Assert.That(yCoords.First(), Is.EqualTo(0));
         Assert.That(yCoords.Last(), Is.EqualTo(191));
     }
@@ -307,17 +277,44 @@ public class HiResLineTests
         var points = DrawLine(0, 0, 279, 191);
 
         // Should include start and end points
-        Assert.That(points, Does.Contain((0, 0)));
-        Assert.That(points, Does.Contain((279, 191)));
+        Assert.That(points, Does.Contain(new Point(0, 0)));
+        Assert.That(points, Does.Contain(new Point(279, 191)));
 
         // All points should be within bounds
-        Assert.That(points.All(p => p.x >= 0 && p.x < 280), Is.True);
-        Assert.That(points.All(p => p.y >= 0 && p.y < 192), Is.True);
+        Assert.That(points.All(p => p.X >= 0 && p.X < 280), Is.True);
+        Assert.That(points.All(p => p.Y >= 0 && p.Y < 192), Is.True);
     }
 
-    private static List<(int x, int y)> DrawLine(int x0, int y0, int x1, int y1)
+    private static ushort ComputeHiResRowAddress(int row)
     {
-        var points = new List<(int x, int y)>();
+        int group = row / 64;
+        int subRow = (row % 64) / 8;
+        int scanLine = row % 8;
+        return (ushort)(HiResPage1Base + (scanLine * 1024) + (subRow * 128) + (group * 40));
+    }
+
+    private static (int ByteOffset, int BitPosition) HiResPixelToByteAndBit(int x)
+    {
+        int byteOffset = x / 7;
+        int bitPosition = x % 7;
+        return (byteOffset, bitPosition);
+    }
+
+    private static byte SetHiResBit(byte current, int bit, bool set)
+    {
+        if (set)
+        {
+            return (byte)(current | (1 << bit));
+        }
+        else
+        {
+            return (byte)(current & ~(1 << bit));
+        }
+    }
+
+    private static List<Point> DrawLine(int x0, int y0, int x1, int y1)
+    {
+        var points = new List<Point>();
 
         int dx = Math.Abs(x1 - x0);
         int sx = x0 < x1 ? 1 : -1;
@@ -327,7 +324,7 @@ public class HiResLineTests
 
         while (true)
         {
-            points.Add((x0, y0));
+            points.Add(new Point(x0, y0));
 
             if (x0 == x1 && y0 == y1)
             {
@@ -350,4 +347,6 @@ public class HiResLineTests
 
         return points;
     }
+
+    private record struct Point(int X, int Y);
 }

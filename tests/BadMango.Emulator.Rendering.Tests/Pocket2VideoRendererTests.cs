@@ -414,6 +414,7 @@ public class Pocket2VideoRendererTests
     /// <summary>
     /// Verifies all 16 lo-res colors render correctly.
     /// </summary>
+    /// <param name="color">The color index to test (0-15).</param>
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
@@ -575,6 +576,7 @@ public class Pocket2VideoRendererTests
     /// <summary>
     /// Verifies hi-res individual bit positions render correctly.
     /// </summary>
+    /// <param name="bit">The bit position to test (0-6).</param>
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
@@ -1026,7 +1028,8 @@ public class Pocket2VideoRendererTests
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        for (int i = 0; i < 60; i++) // Simulate 1 second at 60 fps
+        // Simulate 1 second at 60 fps
+        for (int i = 0; i < 60; i++)
         {
             renderer.RenderFrame(
                 pixelBuffer,

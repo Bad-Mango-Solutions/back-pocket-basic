@@ -15,6 +15,28 @@ using BadMango.Emulator.Rendering;
 [TestFixture]
 public class VideoWindowTests
 {
+    private Pocket2VideoRenderer? renderer;
+    private PixelBuffer? pixelBuffer;
+
+    /// <summary>
+    /// Sets up the test fixture.
+    /// </summary>
+    [SetUp]
+    public void SetUp()
+    {
+        renderer = new Pocket2VideoRenderer();
+    }
+
+    /// <summary>
+    /// Tears down the test fixture.
+    /// </summary>
+    [TearDown]
+    public void TearDown()
+    {
+        pixelBuffer?.Dispose();
+        pixelBuffer = null;
+    }
+
     /// <summary>
     /// Verifies VideoWindow can be instantiated in headless mode.
     /// </summary>
@@ -49,6 +71,7 @@ public class VideoWindowTests
     /// <summary>
     /// Verifies Scale property accepts valid values.
     /// </summary>
+    /// <param name="scale">The scale value to test.</param>
     [AvaloniaTest]
     [TestCase(1)]
     [TestCase(2)]
@@ -95,35 +118,6 @@ public class VideoWindowTests
         var window = new VideoWindow();
         Assert.DoesNotThrow(() => window.DetachMachine());
     }
-}
-
-/// <summary>
-/// Integration tests for video rendering pipeline with headless Avalonia.
-/// </summary>
-[TestFixture]
-public class VideoRenderingIntegrationTests
-{
-    private Pocket2VideoRenderer renderer = null!;
-    private PixelBuffer? pixelBuffer;
-
-    /// <summary>
-    /// Sets up the test fixture.
-    /// </summary>
-    [SetUp]
-    public void SetUp()
-    {
-        renderer = new Pocket2VideoRenderer();
-    }
-
-    /// <summary>
-    /// Tears down the test fixture.
-    /// </summary>
-    [TearDown]
-    public void TearDown()
-    {
-        pixelBuffer?.Dispose();
-        pixelBuffer = null;
-    }
 
     /// <summary>
     /// Verifies PixelBuffer can be created in headless mode.
@@ -131,7 +125,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void PixelBuffer_CanBeCreated()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
         Assert.That(pixelBuffer, Is.Not.Null);
         Assert.That(pixelBuffer.Width, Is.EqualTo(renderer.CanonicalWidth));
         Assert.That(pixelBuffer.Height, Is.EqualTo(renderer.CanonicalHeight));
@@ -143,7 +137,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void Renderer_WithPixelBuffer_WorksCorrectly()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
         var pixels = pixelBuffer.GetPixels();
 
         renderer.RenderFrame(
@@ -165,7 +159,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void PixelBuffer_DimensionsMatchRenderer()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
         Assert.That(pixelBuffer.Width, Is.EqualTo(renderer.CanonicalWidth));
         Assert.That(pixelBuffer.Height, Is.EqualTo(renderer.CanonicalHeight));
     }
@@ -176,7 +170,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void MultipleRenderCommitCycles_WorkCorrectly()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
 
         for (int i = 0; i < 10; i++)
         {
@@ -203,7 +197,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void ClearAndFill_WithPixelBuffer_WorkCorrectly()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
         var pixels = pixelBuffer.GetPixels();
 
         // Clear using renderer
@@ -223,7 +217,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void ModeSwitch_DoesNotCorruptBuffer()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
 
         var modes = new[]
         {
@@ -261,7 +255,7 @@ public class VideoRenderingIntegrationTests
     [AvaloniaTest]
     public void PixelBuffer_BitmapIsAccessible()
     {
-        pixelBuffer = new PixelBuffer(renderer.CanonicalWidth, renderer.CanonicalHeight);
+        pixelBuffer = new PixelBuffer(renderer!.CanonicalWidth, renderer.CanonicalHeight);
         var bitmap = pixelBuffer.Bitmap;
 
         Assert.That(bitmap, Is.Not.Null);
@@ -298,17 +292,12 @@ public class VideoRenderingIntegrationTests
         Assert.Throws<ArgumentOutOfRangeException>(() => pixelBuffer.SetPixel(50, -1, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => pixelBuffer.SetPixel(50, 100, 0));
     }
-}
 
-/// <summary>
-/// Tests for keyboard mapping functionality.
-/// </summary>
-[TestFixture]
-public class KeyboardMappingTests
-{
     /// <summary>
     /// Verifies control key combinations produce correct codes.
     /// </summary>
+    /// <param name="letter">The letter key pressed with Control.</param>
+    /// <param name="expectedCode">The expected control code.</param>
     [TestCase('A', 0x01)]
     [TestCase('B', 0x02)]
     [TestCase('C', 0x03)]
@@ -323,6 +312,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies arrow key codes are correct.
     /// </summary>
+    /// <param name="direction">The direction of the arrow key.</param>
+    /// <param name="expectedCode">The expected key code.</param>
     [TestCase("Left", 0x08)]
     [TestCase("Right", 0x15)]
     [TestCase("Up", 0x0B)]
@@ -344,6 +335,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies special key codes are correct.
     /// </summary>
+    /// <param name="key">The name of the special key.</param>
+    /// <param name="expectedCode">The expected key code.</param>
     [TestCase("Return", 0x0D)]
     [TestCase("Backspace", 0x08)]
     [TestCase("Tab", 0x09)]
@@ -367,6 +360,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies uppercase letters produce correct codes.
     /// </summary>
+    /// <param name="letter">The uppercase letter.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
     [TestCase('A', 0x41)]
     [TestCase('Z', 0x5A)]
     public void UppercaseLetters_ProduceCorrectCodes(char letter, byte expectedCode)
@@ -377,6 +372,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies lowercase letters produce correct codes.
     /// </summary>
+    /// <param name="letter">The lowercase letter.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
     [TestCase('a', 0x61)]
     [TestCase('z', 0x7A)]
     public void LowercaseLetters_ProduceCorrectCodes(char letter, byte expectedCode)
@@ -387,6 +384,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies number keys produce correct codes.
     /// </summary>
+    /// <param name="number">The number character.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
     [TestCase('0', 0x30)]
     [TestCase('9', 0x39)]
     public void NumberKeys_ProduceCorrectCodes(char number, byte expectedCode)
@@ -397,6 +396,8 @@ public class KeyboardMappingTests
     /// <summary>
     /// Verifies shifted number keys produce correct symbol codes.
     /// </summary>
+    /// <param name="number">The number key position (0-9).</param>
+    /// <param name="expectedSymbol">The expected shifted symbol.</param>
     [TestCase(1, '!')]
     [TestCase(2, '@')]
     [TestCase(3, '#')]
