@@ -126,6 +126,7 @@
     },
 
     "boot": {
-        "autoStart": false
+        "autoStart": false,
+        "autoVideoWindowOpen": true
     }
 }

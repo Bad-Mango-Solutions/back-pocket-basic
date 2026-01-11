@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BadMango.Emulator.Debug.UI.Views.VideoWindow"
+        Title="Video Display"
+        Width="1140"
+        Height="808"
+        MinWidth="570"
+        MinHeight="404"
+        Background="Black"
+        Focusable="True"
+        KeyboardNavigation.TabNavigation="None"
+        CanResize="True">
+    
+    <Grid>
+        <!-- Video display area -->
+        <Image x:Name="VideoImage"
+               Stretch="Uniform"
+               RenderOptions.BitmapInterpolationMode="None"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+        
+        <!-- FPS overlay (top-left corner) -->
+        <TextBlock x:Name="FpsDisplay"
+                   IsVisible="False"
+                   Text="60 FPS"
+                   Foreground="Lime"
+                   Background="#80000000"
+                   Padding="4"
+                   FontFamily="Consolas, Courier New"
+                   FontSize="12"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Top"
+                   Margin="8" />
+    </Grid>
+</Window>

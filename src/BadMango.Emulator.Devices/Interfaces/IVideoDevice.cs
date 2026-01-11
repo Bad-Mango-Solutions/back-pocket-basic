@@ -54,6 +54,15 @@ public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
     event Action<VideoMode>? ModeChanged;
 
     /// <summary>
+    /// Event raised when vertical blanking begins, signaling the video window to refresh.
+    /// </summary>
+    /// <remarks>
+    /// This event fires at approximately 60 Hz (every 17,030 cycles at 1.023 MHz).
+    /// Video renderers should subscribe to this event to trigger frame redraws.
+    /// </remarks>
+    event Action? VBlankOccurred;
+
+    /// <summary>
     /// Gets the current video mode.
     /// </summary>
     /// <value>The currently active video display mode.</value>
@@ -151,4 +160,38 @@ public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
     /// </para>
     /// </remarks>
     void LoadCharacterRom(byte[] romData);
+
+    /// <summary>
+    /// Sets the hi-res mode state.
+    /// </summary>
+    /// <param name="enabled">Whether hi-res mode is enabled.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called by the <c>AuxiliaryMemoryController</c> when the
+    /// $C056 (LORES) or $C057 (HIRES) soft switches are triggered.
+    /// </para>
+    /// <para>
+    /// The hi-res switch affects both memory banking (handled by <c>AuxiliaryMemoryController</c>)
+    /// and video display mode (handled by this device). This method synchronizes
+    /// the video state with the memory controller's state.
+    /// </para>
+    /// </remarks>
+    void SetHiRes(bool enabled);
+
+    /// <summary>
+    /// Sets the page 2 selection state.
+    /// </summary>
+    /// <param name="selected">Whether page 2 is selected.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called by the <c>AuxiliaryMemoryController</c> when the
+    /// $C054 (PAGE1) or $C055 (PAGE2) soft switches are triggered.
+    /// </para>
+    /// <para>
+    /// The page switch affects both memory banking (handled by <c>AuxiliaryMemoryController</c>)
+    /// and which video page is displayed (handled by this device). This method synchronizes
+    /// the video state with the memory controller's state.
+    /// </para>
+    /// </remarks>
+    void SetPage2(bool selected);
 }

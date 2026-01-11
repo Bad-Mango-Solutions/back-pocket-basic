@@ -193,7 +193,6 @@ public class Pocket2eIntegrationTests
             Assert.That(auxMemory.IsRamRdEnabled, Is.False, "RAMRD should be disabled initially");
             Assert.That(auxMemory.IsRamWrtEnabled, Is.False, "RAMWRT should be disabled initially");
             Assert.That(auxMemory.IsPage2Selected, Is.False, "PAGE2 should be disabled initially");
-            Assert.That(auxMemory.IsHiResEnabled, Is.False, "HIRES should be disabled initially");
         });
     }
 

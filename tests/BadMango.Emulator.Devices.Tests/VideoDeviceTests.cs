@@ -219,6 +219,79 @@ public class VideoDeviceTests
     }
 
     /// <summary>
+    /// Verifies that reading $C054 clears page 2 (selects page 1).
+    /// </summary>
+    [Test]
+    public void ReadC054_ClearsPage2()
+    {
+        var context = CreateTestContext();
+
+        // First set page 2
+        _ = dispatcher.Read(0x55, in context);
+        Assert.That(device.IsPage2, Is.True);
+
+        // Then clear it by reading $C054
+        _ = dispatcher.Read(0x54, in context);
+        Assert.That(device.IsPage2, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that reading $C055 sets page 2.
+    /// </summary>
+    [Test]
+    public void ReadC055_SetsPage2()
+    {
+        var context = CreateTestContext();
+
+        _ = dispatcher.Read(0x55, in context);
+
+        Assert.That(device.IsPage2, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that reading $C056 clears hi-res mode (selects lo-res).
+    /// </summary>
+    [Test]
+    public void ReadC056_ClearsHiRes()
+    {
+        var context = CreateTestContext();
+
+        // First set hi-res
+        _ = dispatcher.Read(0x57, in context);
+        Assert.That(device.IsHiRes, Is.True);
+
+        // Then clear it by reading $C056
+        _ = dispatcher.Read(0x56, in context);
+        Assert.That(device.IsHiRes, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that reading $C057 sets hi-res mode.
+    /// </summary>
+    [Test]
+    public void ReadC057_SetsHiRes()
+    {
+        var context = CreateTestContext();
+
+        _ = dispatcher.Read(0x57, in context);
+
+        Assert.That(device.IsHiRes, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that writing $C057 also sets hi-res mode.
+    /// </summary>
+    [Test]
+    public void WriteC057_AlsoSetsHiRes()
+    {
+        var context = CreateTestContext();
+
+        dispatcher.Write(0x57, 0x00, in context);
+
+        Assert.That(device.IsHiRes, Is.True);
+    }
+
+    /// <summary>
     /// Verifies that Initialize does not throw.
     /// </summary>
     [Test]
@@ -384,9 +457,8 @@ public class VideoDeviceTests
         byte page1 = dispatcher.Read(0x1C, in context);
         Assert.That(page1 & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear for page 1");
 
-        // Note: SetPage2 is internal, set directly for testing
-        device.GetType().GetMethod("SetPage2", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.Invoke(device, [true]);
+        // SetPage2 is now public via IVideoDevice interface
+        device.SetPage2(true);
 
         byte page2 = dispatcher.Read(0x1C, in context);
         Assert.That(page2 & 0x80, Is.EqualTo(0x80), "Bit 7 should be set for page 2");
@@ -404,9 +476,8 @@ public class VideoDeviceTests
         byte lores = dispatcher.Read(0x1D, in context);
         Assert.That(lores & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear in lo-res mode");
 
-        // Note: SetHiRes is internal, set directly for testing
-        device.GetType().GetMethod("SetHiRes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.Invoke(device, [true]);
+        // SetHiRes is now public via IVideoDevice interface
+        device.SetHiRes(true);
 
         byte hires = dispatcher.Read(0x1D, in context);
         Assert.That(hires & 0x80, Is.EqualTo(0x80), "Bit 7 should be set in hi-res mode");

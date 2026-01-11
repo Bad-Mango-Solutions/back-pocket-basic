@@ -61,11 +61,28 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// </summary>
     public const int CharacterSetSize = 2048;
 
+    /// <summary>
+    /// Cycles per video frame for NTSC timing (~60 Hz).
+    /// </summary>
+    /// <remarks>
+    /// At 1.023 MHz CPU clock, 17,030 cycles yields approximately 60.05 frames per second,
+    /// which matches the NTSC vertical refresh rate of 262 lines × 65 cycles/line.
+    /// </remarks>
+    public const ulong CyclesPerFrame = 17030;
+
+    /// <summary>
+    /// Duration of vertical blanking in cycles (approximately 70 lines × 65 cycles = 4550 cycles).
+    /// </summary>
+    public const ulong VBlankDurationCycles = 4550;
+
     private const byte StatusBitSet = 0x80;
     private const byte StatusBitClear = 0x00;
 
     private readonly bool[] annunciators = new bool[4];
     private PhysicalMemory? characterRom;
+    private IScheduler? scheduler;
+    private EventHandle vblankEventHandle;
+    private EventHandle vblankEndEventHandle;
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -77,6 +94,11 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public event Action<VideoMode>? ModeChanged;
+
+    /// <summary>
+    /// Event raised when vertical blanking begins, signaling the video window to refresh.
+    /// </summary>
+    public event Action? VBlankOccurred;
 
     /// <inheritdoc />
     public string Name => "Video Device";
@@ -136,7 +158,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public void Initialize(IEventContext context)
     {
-        // Video mode controller doesn't need scheduler access
+        ArgumentNullException.ThrowIfNull(context);
+
+        scheduler = context.Scheduler;
+        ScheduleNextVBlank();
     }
 
     /// <inheritdoc />
@@ -158,11 +183,15 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         dispatcher.Register(0x51, SetTextRead, SetTextWrite);           // TXTSET
         dispatcher.Register(0x52, ClearMixedRead, ClearMixedWrite);     // MIXCLR
         dispatcher.Register(0x53, SetMixedRead, SetMixedWrite);         // MIXSET
+        dispatcher.Register(0x54, ClearPage2Read, ClearPage2Write);     // PAGE1
+        dispatcher.Register(0x55, SetPage2Read, SetPage2Write);         // PAGE2
+        dispatcher.Register(0x56, ClearHiResRead, ClearHiResWrite);     // LORES
+        dispatcher.Register(0x57, SetHiResRead, SetHiResWrite);         // HIRES
 
-        // $C054-$C057 (PAGE2/HIRES switches) are handled by AuxiliaryMemoryController
-        // because they affect both video display and memory banking. The
-        // AuxiliaryMemoryController calls SetPage2() and SetHiRes() on this controller
-        // to keep video state synchronized. See Phase 1.4 AuxiliaryMemoryController.
+        // Note: When AuxiliaryMemoryController is present, it will re-register
+        // handlers for $C054-$C057 to coordinate memory banking. Those handlers
+        // should call SetPage2() and SetHiRes() on this controller to keep
+        // video state synchronized.
 
         // Annunciators ($C058-$C05F)
         for (byte i = 0; i < 8; i++)
@@ -180,6 +209,13 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public void Reset()
     {
+        // Cancel any pending VBlank events
+        if (scheduler != null)
+        {
+            scheduler.Cancel(vblankEventHandle);
+            scheduler.Cancel(vblankEndEventHandle);
+        }
+
         textMode = true;
         mixedMode = false;
         page2 = false;
@@ -189,6 +225,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         altCharSet = false;
         verticalBlanking = false;
         Array.Clear(annunciators);
+
+        // Reschedule VBlank events
+        ScheduleNextVBlank();
 
         OnModeChanged();
     }
@@ -327,11 +366,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         ];
     }
 
-    /// <summary>
-    /// Sets the page 2 selection state (called by AuxiliaryMemoryController).
-    /// </summary>
-    /// <param name="selected">Whether page 2 is selected.</param>
-    internal void SetPage2(bool selected)
+    /// <inheritdoc />
+    public void SetPage2(bool selected)
     {
         if (page2 != selected)
         {
@@ -340,11 +376,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
     }
 
-    /// <summary>
-    /// Sets the hi-res mode state (called by AuxiliaryMemoryController).
-    /// </summary>
-    /// <param name="enabled">Whether hi-res mode is enabled.</param>
-    internal void SetHiRes(bool enabled)
+    /// <inheritdoc />
+    public void SetHiRes(bool enabled)
     {
         if (hiresMode != enabled)
         {
@@ -434,6 +467,78 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         if (!context.IsSideEffectFree)
         {
             SetMixedModeInternal(true);
+        }
+    }
+
+    private byte ClearPage2Read(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(false);
+        }
+
+        return 0xFF;
+    }
+
+    private void ClearPage2Write(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(false);
+        }
+    }
+
+    private byte SetPage2Read(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(true);
+        }
+
+        return 0xFF;
+    }
+
+    private void SetPage2Write(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(true);
+        }
+    }
+
+    private byte ClearHiResRead(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(false);
+        }
+
+        return 0xFF;
+    }
+
+    private void ClearHiResWrite(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(false);
+        }
+    }
+
+    private byte SetHiResRead(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(true);
+        }
+
+        return 0xFF;
+    }
+
+    private void SetHiResWrite(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(true);
         }
     }
 
@@ -564,5 +669,61 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
 
         return mixedMode ? VideoMode.LoResMixed : VideoMode.LoRes;
+    }
+
+    /// <summary>
+    /// Schedules the next VBlank event.
+    /// </summary>
+    private void ScheduleNextVBlank()
+    {
+        if (scheduler == null)
+        {
+            return;
+        }
+
+        // Schedule the start of VBlank
+        vblankEventHandle = scheduler.ScheduleAfter(
+            new Core.Cycle(CyclesPerFrame - VBlankDurationCycles),
+            ScheduledEventKind.VideoBlank,
+            priority: 0,
+            OnVBlankStart,
+            tag: this);
+    }
+
+    /// <summary>
+    /// Called when vertical blanking starts.
+    /// </summary>
+    /// <param name="context">The event context.</param>
+    private void OnVBlankStart(IEventContext context)
+    {
+        // Assert vertical blanking status
+        verticalBlanking = true;
+
+        // Notify listeners (video window should refresh)
+        VBlankOccurred?.Invoke();
+
+        // Schedule the end of VBlank
+        if (scheduler != null)
+        {
+            vblankEndEventHandle = scheduler.ScheduleAfter(
+                new Core.Cycle(VBlankDurationCycles),
+                ScheduledEventKind.VideoBlank,
+                priority: 0,
+                OnVBlankEnd,
+                tag: this);
+        }
+    }
+
+    /// <summary>
+    /// Called when vertical blanking ends.
+    /// </summary>
+    /// <param name="context">The event context.</param>
+    private void OnVBlankEnd(IEventContext context)
+    {
+        // Clear vertical blanking status
+        verticalBlanking = false;
+
+        // Schedule the next VBlank
+        ScheduleNextVBlank();
     }
 }
