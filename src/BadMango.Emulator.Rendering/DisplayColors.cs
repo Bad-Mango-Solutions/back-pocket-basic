@@ -52,12 +52,12 @@ public static class DisplayColors
     /// <summary>
     /// White phosphor foreground color (P4 phosphor).
     /// </summary>
-    public const uint WhitePhosphor = 0xFFFCFCFC;
+    public const uint WhitePhosphor = 0xFFF0F0F0;
 
     /// <summary>
     /// Standard black background color.
     /// </summary>
-    public const uint Black = 0xFF080808;
+    public const uint Black = 0xFF101010;
 
     /// <summary>
     /// Dark gray background color for UI elements.
@@ -72,7 +72,7 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 0: Black.
     /// </summary>
-    public const uint LoResBlack = 0xFF080808;
+    public const uint LoResBlack = 0xFF101010;
 
     /// <summary>
     /// Lo-Res color 1: Magenta (Deep Red).
@@ -147,7 +147,7 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 15: White.
     /// </summary>
-    public const uint LoResWhite = 0xFFFCFCFC;
+    public const uint LoResWhite = 0xFFF0F0F0;
 
     /// <summary>
     /// Maximum brightness level for lo-res color scaling.

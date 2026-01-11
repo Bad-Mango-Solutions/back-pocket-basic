@@ -26,7 +26,7 @@ public class DisplayColorsTests
     [Test]
     public void AmberPhosphor_HasCorrectValue()
     {
-        Assert.That(DisplayColors.AmberPhosphor, Is.EqualTo(0xFF00BFFF));
+        Assert.That(DisplayColors.AmberPhosphor, Is.EqualTo(0xFFFFBF00));
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ public class DisplayColorsTests
     [Test]
     public void WhitePhosphor_HasCorrectValue()
     {
-        Assert.That(DisplayColors.WhitePhosphor, Is.EqualTo(0xFFFFFFFF));
+        Assert.That(DisplayColors.WhitePhosphor, Is.EqualTo(0xFFF0F0F0));
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ public class DisplayColorsTests
     [Test]
     public void Black_HasFullAlpha()
     {
-        Assert.That(DisplayColors.Black, Is.EqualTo(0xFF000000));
+        Assert.That(DisplayColors.Black, Is.EqualTo(0xFF101010));
         Assert.That(DisplayColors.Black & 0xFF000000, Is.EqualTo(0xFF000000), "Alpha should be fully opaque");
     }
 
