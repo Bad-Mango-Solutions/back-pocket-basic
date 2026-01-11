@@ -68,8 +68,8 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
-        new("row", null, "int", "Row number (0-23)", "0"),
-        new("col", null, "int", "Column number (0-39)", "0"),
+        new("row", null, "int", "Row number (0-23)", null),
+        new("col", null, "int", "Column number (0-39)", null),
         new("text", null, "string", "Text to display (in quotes)", null),
     ];
 
@@ -205,8 +205,8 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
                         i += 2;
                         break;
                     case 'x':
-                        // Hex escape \xNN
-                        if (i + 3 < input.Length)
+                        // Hex escape \xNN - need i + 4 total chars (\xNN)
+                        if (i + 4 <= input.Length)
                         {
                             string hex = input.Substring(i + 2, 2);
                             if (byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte value))
