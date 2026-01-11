@@ -42,6 +42,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BadMango.Emulator.Devices\BadMango.Emulator.Devices.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="BadMango.Emulator.Rendering.Tests" />
     <InternalsVisibleTo Include="BadMango.Emulator.Debug.UI" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI" />

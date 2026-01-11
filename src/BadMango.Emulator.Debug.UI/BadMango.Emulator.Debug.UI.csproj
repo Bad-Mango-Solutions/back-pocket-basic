@@ -9,6 +9,7 @@
     <Features>IOperation;flow-analysis</Features>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
@@ -23,6 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BadMango.Emulator.Bus\BadMango.Emulator.Bus.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.TextEditor\BadMango.Emulator.TextEditor.csproj" />
