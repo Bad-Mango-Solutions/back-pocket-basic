@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Reflection;
 
+using BadMango.Emulator.Devices;
+
 /// <summary>
 /// Opens an About window displaying version and copyright information.
 /// </summary>
@@ -19,6 +21,7 @@ using System.Reflection;
 /// the command displays version information directly in the console.
 /// </para>
 /// </remarks>
+[DeviceDebugCommand]
 public sealed class AboutCommand : CommandHandlerBase, ICommandHelp
 {
     private readonly IDebugWindowManager? windowManager;
@@ -87,7 +90,7 @@ public sealed class AboutCommand : CommandHandlerBase, ICommandHelp
             .InformationalVersion ?? version;
 
         context.Output.WriteLine();
-        context.Output.WriteLine("═══════════════════════════════════════════════════════════════════════");
+        context.Output.WriteLine("-----------------------------------------------------------------------");
         context.Output.WriteLine("  BackPocket BASIC - Emulator Debug Console");
         context.Output.WriteLine($"  Version: {informationalVersion}");
         context.Output.WriteLine();
@@ -98,7 +101,7 @@ public sealed class AboutCommand : CommandHandlerBase, ICommandHelp
         context.Output.WriteLine("  Licensed under the MIT License.");
         context.Output.WriteLine();
         context.Output.WriteLine("  https://github.com/Bad-Mango-Solutions/back-pocket-basic");
-        context.Output.WriteLine("═══════════════════════════════════════════════════════════════════════");
+        context.Output.WriteLine("-----------------------------------------------------------------------");
         context.Output.WriteLine();
 
         return CommandResult.Ok();

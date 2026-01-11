@@ -1,0 +1,237 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="700"
+        x:Class="BadMango.Emulator.Debug.UI.Views.StatusMonitorWindow"
+        Title="Status Monitor"
+        Width="600"
+        Height="700"
+        MinWidth="500"
+        MinHeight="500"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Machine Status Monitor"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,15" />
+
+        <!-- Machine State Section -->
+        <Border Grid.Row="1" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Machine State" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="State:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="MachineStateText" Text="Stopped" FontWeight="Bold" Foreground="Orange" Margin="0,0,20,4" />
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="WAI:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="3" x:Name="WaiStateText" Text="No" Margin="0,0,0,4" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="WAI Duration:" Foreground="Gray" Margin="0,0,10,0" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="WaiDurationText" Text="0s" Margin="0,0,20,0" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- CPU Registers Section -->
+        <Border Grid.Row="2" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="CPU Registers" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="70" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Row 1: A, X, Y -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="A:" Foreground="Gray" Margin="0,0,5,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="RegAText" Text="$00" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,15,4" />
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="X:" Foreground="Gray" Margin="0,0,5,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="3" x:Name="RegXText" Text="$00" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,15,4" />
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Y:" Foreground="Gray" Margin="0,0,5,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="5" x:Name="RegYText" Text="$00" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,0,4" />
+                    
+                    <!-- Row 2: SP, PC -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="SP:" Foreground="Gray" Margin="0,0,5,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="RegSPText" Text="$FF" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,15,4" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="PC:" Foreground="Gray" Margin="0,0,5,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="3" x:Name="RegPCText" Text="$0000" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,15,4" />
+                    
+                    <!-- Row 3: Flags -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="P:" Foreground="Gray" Margin="0,0,5,0" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" x:Name="RegPText" Text="NV-BDIZC" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Performance Metrics Section -->
+        <Border Grid.Row="3" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Performance Metrics" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Cycles:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="CyclesText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,20,4" />
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="MHz (Actual):" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="3" x:Name="ActualMHzText" Text="0.000" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,0,4" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="IPS:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="IpsText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,20,4" />
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="MHz (Target):" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="3" x:Name="TargetMHzText" Text="1.023" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,0,4" />
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Avg CPI:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="CpiText" Text="0.0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,20,4" />
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="CPU Load:" Foreground="Gray" Margin="0,0,10,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="3" x:Name="CpuLoadText" Text="0%" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,0,4" />
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Scheduler:" Foreground="Gray" Margin="0,0,10,0" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="SchedulerText" Text="0 events" FontFamily="Cascadia Code, Consolas, Courier New, monospace" Margin="0,0,20,0" />
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="2" Text="Next Event:" Foreground="Gray" Margin="0,0,10,0" />
+                    <TextBlock Grid.Row="3" Grid.Column="3" x:Name="NextEventText" Text="--" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Annunciators Section -->
+        <Border Grid.Row="4" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Annunciators" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="80" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Annunciator Labels -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="AN0" HorizontalAlignment="Center" Foreground="Gray" Margin="0,0,0,5" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="AN1" HorizontalAlignment="Center" Foreground="Gray" Margin="0,0,0,5" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="AN2" HorizontalAlignment="Center" Foreground="Gray" Margin="0,0,0,5" />
+                    <TextBlock Grid.Row="0" Grid.Column="3" Text="AN3" HorizontalAlignment="Center" Foreground="Gray" Margin="0,0,0,5" />
+                    
+                    <!-- Annunciator Canvas (for scrolling history) -->
+                    <Border Grid.Row="1" Grid.Column="0" Background="#222222" CornerRadius="3" Margin="2">
+                        <Canvas x:Name="Ann0Canvas" />
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="1" Background="#222222" CornerRadius="3" Margin="2">
+                        <Canvas x:Name="Ann1Canvas" />
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="2" Background="#222222" CornerRadius="3" Margin="2">
+                        <Canvas x:Name="Ann2Canvas" />
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="3" Background="#222222" CornerRadius="3" Margin="2">
+                        <Canvas x:Name="Ann3Canvas" />
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Extensions Section -->
+        <Border Grid.Row="5" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ExtensionsPanel">
+                    <TextBlock Text="Device Extensions" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                    <TextBlock x:Name="NoExtensionsText" Text="No device extensions registered" Foreground="DarkGray" FontStyle="Italic" FontSize="11" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Close Button -->
+        <Button Grid.Row="6"
+                Content="Close"
+                HorizontalAlignment="Center"
+                Padding="30,8"
+                Click="OnCloseClick" />
+    </Grid>
+</Window>

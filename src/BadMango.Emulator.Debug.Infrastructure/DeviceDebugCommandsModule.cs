@@ -22,6 +22,14 @@ using AutofacModule = Autofac.Module;
 /// that implement <see cref="ICommandHandler"/> and registers them with the container.
 /// </para>
 /// <para>
+/// Commands can have either:
+/// <list type="bullet">
+/// <item><description>A parameterless constructor (simple registration)</description></item>
+/// <item><description>A constructor taking an optional <see cref="IDebugWindowManager"/> parameter
+/// (registered with window manager injection)</description></item>
+/// </list>
+/// </para>
+/// <para>
 /// Device debug commands provide device-specific debugging functionality, such as
 /// interpreting memory as device-specific data structures. They are automatically
 /// added to the debug console when this module is loaded.
@@ -41,9 +49,18 @@ public class DeviceDebugCommandsModule : AutofacModule
 
         foreach (var commandType in commandTypes)
         {
-            builder.RegisterType(commandType)
-                .As<ICommandHandler>()
-                .SingleInstance();
+            if (HasWindowManagerConstructor(commandType))
+            {
+                // Register with window manager injection using a lambda
+                RegisterWithWindowManager(builder, commandType);
+            }
+            else
+            {
+                // Simple registration for parameterless constructor
+                builder.RegisterType(commandType)
+                    .As<ICommandHandler>()
+                    .SingleInstance();
+            }
         }
     }
 
@@ -72,12 +89,54 @@ public class DeviceDebugCommandsModule : AutofacModule
             return false;
         }
 
-        // Must have a parameterless constructor
-        if (type.GetConstructor(Type.EmptyTypes) is null)
-        {
-            return false;
-        }
+        // Must have either a parameterless constructor or one taking IDebugWindowManager
+        bool hasParameterless = type.GetConstructor(Type.EmptyTypes) is not null;
+        bool hasWindowManager = HasWindowManagerConstructor(type);
 
-        return true;
+        return hasParameterless || hasWindowManager;
+    }
+
+    /// <summary>
+    /// Determines if a type has a constructor that takes an <see cref="IDebugWindowManager"/> parameter.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>
+    /// <see langword="true"/> if the type has a constructor with a single
+    /// <see cref="IDebugWindowManager"/> parameter; otherwise, <see langword="false"/>.
+    /// </returns>
+    private static bool HasWindowManagerConstructor(Type type)
+    {
+        return type.GetConstructors()
+            .Any(ctor =>
+            {
+                var parameters = ctor.GetParameters();
+                return parameters.Length == 1 &&
+                       parameters[0].ParameterType == typeof(IDebugWindowManager);
+            });
+    }
+
+    /// <summary>
+    /// Registers a command type that requires <see cref="IDebugWindowManager"/> injection.
+    /// </summary>
+    /// <param name="builder">The container builder.</param>
+    /// <param name="commandType">The command type to register.</param>
+    private static void RegisterWithWindowManager(ContainerBuilder builder, Type commandType)
+    {
+        // Use reflection to create a lambda registration that resolves IDebugWindowManager optionally
+        builder.Register(ctx =>
+        {
+            var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+            var constructor = commandType.GetConstructors()
+                .First(ctor =>
+                {
+                    var parameters = ctor.GetParameters();
+                    return parameters.Length == 1 &&
+                           parameters[0].ParameterType == typeof(IDebugWindowManager);
+                });
+
+            return (ICommandHandler)constructor.Invoke([windowManager]);
+        })
+        .As<ICommandHandler>()
+        .SingleInstance();
     }
 }
