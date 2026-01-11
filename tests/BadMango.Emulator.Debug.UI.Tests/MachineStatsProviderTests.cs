@@ -54,16 +54,42 @@ public class MachineStatsProviderTests
     }
 
     /// <summary>
-    /// Verifies that IsWaitingForInterrupt returns CPU WAI state.
+    /// Verifies that IsWaitingForInterrupt returns CPU WAI state when machine is running.
     /// </summary>
     [Test]
-    public void IsWaitingForInterrupt_ReturnsCpuWaiState()
+    public void IsWaitingForInterrupt_WhenRunningAndInWai_ReturnsTrue()
     {
-        var machine = CreateMockMachine(isWai: true);
+        var machine = CreateMockMachine(state: MachineState.Running, isWai: true);
 
         var provider = new MachineStatsProvider(machine.Object);
 
         Assert.That(provider.IsWaitingForInterrupt, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that IsWaitingForInterrupt returns false when machine is stopped even if CPU is in WAI.
+    /// </summary>
+    [Test]
+    public void IsWaitingForInterrupt_WhenStoppedAndInWai_ReturnsFalse()
+    {
+        var machine = CreateMockMachine(state: MachineState.Stopped, isWai: true);
+
+        var provider = new MachineStatsProvider(machine.Object);
+
+        Assert.That(provider.IsWaitingForInterrupt, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that IsWaitingForInterrupt returns false when machine is paused even if CPU is in WAI.
+    /// </summary>
+    [Test]
+    public void IsWaitingForInterrupt_WhenPausedAndInWai_ReturnsFalse()
+    {
+        var machine = CreateMockMachine(state: MachineState.Paused, isWai: true);
+
+        var provider = new MachineStatsProvider(machine.Object);
+
+        Assert.That(provider.IsWaitingForInterrupt, Is.False);
     }
 
     /// <summary>

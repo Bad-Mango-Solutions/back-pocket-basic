@@ -84,7 +84,8 @@ public sealed class MachineStatsProvider : IMachineStatsProvider
     public MachineState State => machine.State;
 
     /// <inheritdoc/>
-    public bool IsWaitingForInterrupt => machine.Cpu.IsWaitingForInterrupt;
+    public bool IsWaitingForInterrupt =>
+        machine.State == MachineState.Running && machine.Cpu.IsWaitingForInterrupt;
 
     /// <inheritdoc/>
     public TimeSpan WaiDuration
