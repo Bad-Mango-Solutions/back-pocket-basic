@@ -51,6 +51,8 @@
                        FontSize="14"
                        ShowLineNumbers="True"
                        WordWrap="False"
+                       IsReadOnly="False"
+                       Focusable="True"
                        VerticalScrollBarVisibility="Auto"
                        HorizontalScrollBarVisibility="Auto" />
 
