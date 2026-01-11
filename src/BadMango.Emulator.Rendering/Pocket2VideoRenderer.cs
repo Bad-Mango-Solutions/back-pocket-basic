@@ -267,6 +267,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
 
             if (shouldInvert)
             {
+                // Invert only the 7 pixel bits (bit 7 is unused in character ROM)
                 scanlineData = (byte)(~scanlineData & 0x7F);
             }
 

@@ -66,6 +66,7 @@ public partial class VideoWindow : Window
 
     private int scale = 2;
     private bool showFps;
+    private DisplayColorMode colorMode = DisplayColorMode.Green;
     private int frameCount;
     private int flashFrameCounter;
     private bool flashState;
@@ -113,6 +114,7 @@ public partial class VideoWindow : Window
 
             scale = value;
             UpdateWindowSize();
+            ForceRedraw();
         }
     }
 
@@ -126,6 +128,20 @@ public partial class VideoWindow : Window
         {
             showFps = value;
             FpsDisplay.IsVisible = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the display color mode.
+    /// </summary>
+    /// <value>The color mode (Green, Amber, White, or Color). Default is Green.</value>
+    public DisplayColorMode ColorMode
+    {
+        get => colorMode;
+        set
+        {
+            colorMode = value;
+            ForceRedraw();
         }
     }
 
@@ -363,7 +379,7 @@ public partial class VideoWindow : Window
         // Determine current video mode
         VideoMode mode = videoDevice.CurrentMode;
 
-        // Render frame using the Pocket2VideoRenderer
+        // Render frame using the Pocket2VideoRenderer with current color mode
         renderer.RenderFrame(
             pixels,
             mode,
@@ -371,7 +387,8 @@ public partial class VideoWindow : Window
             characterRom.Span,
             videoDevice.IsAltCharSet,
             videoDevice.IsPage2,
-            flashState);
+            flashState,
+            colorMode);
 
         // Commit pixel buffer to bitmap
         pixelBuffer.Commit();

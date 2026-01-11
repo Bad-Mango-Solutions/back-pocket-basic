@@ -273,6 +273,11 @@ public static class DisplayColors
     }
 
     /// <summary>
+    /// Maximum brightness level for lo-res color scaling.
+    /// </summary>
+    private const float MaxBrightnessLevel = 15.0f;
+
+    /// <summary>
     /// Scales a phosphor color by the given brightness level.
     /// </summary>
     /// <param name="baseColor">The base phosphor color in BGRA format.</param>
@@ -286,7 +291,7 @@ public static class DisplayColors
         byte r = (byte)(baseColor & 0xFF);
 
         // Scale by brightness (0-15 maps to 0-255)
-        float scale = brightness / 15.0f;
+        float scale = brightness / MaxBrightnessLevel;
         b = (byte)(b * scale);
         g = (byte)(g * scale);
         r = (byte)(r * scale);
