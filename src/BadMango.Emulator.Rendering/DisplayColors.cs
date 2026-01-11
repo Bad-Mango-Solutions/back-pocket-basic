@@ -5,6 +5,32 @@
 namespace BadMango.Emulator.Rendering;
 
 /// <summary>
+/// Specifies the color mode for the video display.
+/// </summary>
+public enum DisplayColorMode
+{
+    /// <summary>
+    /// Classic green phosphor (P1 phosphor) - monochrome green on black.
+    /// </summary>
+    Green,
+
+    /// <summary>
+    /// Amber phosphor (P3 phosphor) - monochrome amber on black.
+    /// </summary>
+    Amber,
+
+    /// <summary>
+    /// White phosphor (P4 phosphor) - monochrome white on black.
+    /// </summary>
+    White,
+
+    /// <summary>
+    /// Full color mode - uses the standard 16-color palette for lo-res and hi-res graphics.
+    /// </summary>
+    Color,
+}
+
+/// <summary>
 /// Provides standard display colors in BGRA format for use with pixel buffers.
 /// </summary>
 /// <remarks>
@@ -124,6 +150,34 @@ public static class DisplayColors
     public const uint LoResWhite = 0xFFFFFFFF;
 
     /// <summary>
+    /// Gets the foreground color for the specified color mode.
+    /// </summary>
+    /// <param name="mode">The display color mode.</param>
+    /// <returns>The foreground color in BGRA format.</returns>
+    public static uint GetForegroundColor(DisplayColorMode mode)
+    {
+        return mode switch
+        {
+            DisplayColorMode.Green => GreenPhosphor,
+            DisplayColorMode.Amber => AmberPhosphor,
+            DisplayColorMode.White => WhitePhosphor,
+            DisplayColorMode.Color => WhitePhosphor, // Color mode uses white for text
+            _ => GreenPhosphor,
+        };
+    }
+
+    /// <summary>
+    /// Gets the background color for the specified color mode.
+    /// </summary>
+    /// <param name="mode">The display color mode.</param>
+    /// <returns>The background color in BGRA format.</returns>
+    public static uint GetBackgroundColor(DisplayColorMode mode)
+    {
+        // All modes use black background
+        return Black;
+    }
+
+    /// <summary>
     /// Gets the Lo-Res color for the specified color index.
     /// </summary>
     /// <param name="colorIndex">The color index (0-15).</param>
@@ -150,5 +204,93 @@ public static class DisplayColors
             15 => LoResWhite,
             _ => LoResBlack,
         };
+    }
+
+    /// <summary>
+    /// Gets the Lo-Res color for the specified color index and color mode.
+    /// </summary>
+    /// <param name="colorIndex">The color index (0-15).</param>
+    /// <param name="mode">The display color mode.</param>
+    /// <returns>The BGRA color value.</returns>
+    /// <remarks>
+    /// <para>
+    /// In color mode, returns the standard 16-color palette.
+    /// </para>
+    /// <para>
+    /// In monochrome modes (green, amber, white), returns tints/shades of the
+    /// base phosphor color based on the approximate brightness of each lo-res color.
+    /// </para>
+    /// </remarks>
+    public static uint GetLoResColor(int colorIndex, DisplayColorMode mode)
+    {
+        if (mode == DisplayColorMode.Color)
+        {
+            return GetLoResColor(colorIndex);
+        }
+
+        // Monochrome modes: use tints/shades based on color brightness
+        // Brightness levels (0-15) approximate the perceived brightness of each lo-res color
+        int index = colorIndex & 0x0F;
+        int brightness = GetLoResColorBrightness(index);
+
+        if (brightness == 0)
+        {
+            return Black;
+        }
+
+        return ScalePhosphorColor(GetForegroundColor(mode), brightness);
+    }
+
+    /// <summary>
+    /// Gets the approximate brightness level (0-15) for a lo-res color index.
+    /// </summary>
+    /// <param name="colorIndex">The color index (0-15).</param>
+    /// <returns>Brightness level from 0 (black) to 15 (white).</returns>
+    private static int GetLoResColorBrightness(int colorIndex)
+    {
+        // Approximate brightness values for each lo-res color
+        // Based on perceived luminance of the standard Apple II palette
+        return colorIndex switch
+        {
+            0 => 0,   // Black
+            1 => 4,   // Magenta (dark)
+            2 => 3,   // Dark Blue
+            3 => 6,   // Purple
+            4 => 3,   // Dark Green
+            5 => 8,   // Gray 1
+            6 => 5,   // Medium Blue
+            7 => 9,   // Light Blue
+            8 => 4,   // Brown
+            9 => 8,   // Orange
+            10 => 8,  // Gray 2
+            11 => 10, // Pink
+            12 => 8,  // Light Green
+            13 => 12, // Yellow
+            14 => 11, // Aqua
+            15 => 15, // White
+            _ => 0,
+        };
+    }
+
+    /// <summary>
+    /// Scales a phosphor color by the given brightness level.
+    /// </summary>
+    /// <param name="baseColor">The base phosphor color in BGRA format.</param>
+    /// <param name="brightness">Brightness level from 0 to 15.</param>
+    /// <returns>The scaled color in BGRA format.</returns>
+    private static uint ScalePhosphorColor(uint baseColor, int brightness)
+    {
+        // Extract BGRA components (format is 0xAABBGGRR)
+        byte b = (byte)((baseColor >> 16) & 0xFF);
+        byte g = (byte)((baseColor >> 8) & 0xFF);
+        byte r = (byte)(baseColor & 0xFF);
+
+        // Scale by brightness (0-15 maps to 0-255)
+        float scale = brightness / 15.0f;
+        b = (byte)(b * scale);
+        g = (byte)(g * scale);
+        r = (byte)(r * scale);
+
+        return 0xFF000000 | ((uint)b << 16) | ((uint)g << 8) | r;
     }
 }

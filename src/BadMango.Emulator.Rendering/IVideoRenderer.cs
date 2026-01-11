@@ -62,6 +62,9 @@ public interface IVideoRenderer
     /// <see langword="true"/> if flash characters should currently be inverted;
     /// otherwise, <see langword="false"/>. Toggle this at ~1.9 Hz (every 16 frames at 60 Hz).
     /// </param>
+    /// <param name="colorMode">
+    /// The display color mode (green, amber, white, or color). Defaults to green phosphor for classic monochrome display.
+    /// </param>
     void RenderFrame(
         Span<uint> pixels,
         VideoMode mode,
@@ -69,7 +72,8 @@ public interface IVideoRenderer
         ReadOnlySpan<byte> characterRomData,
         bool useAltCharSet,
         bool isPage2,
-        bool flashState);
+        bool flashState,
+        DisplayColorMode colorMode = DisplayColorMode.Green);
 
     /// <summary>
     /// Clears the pixel buffer to black.

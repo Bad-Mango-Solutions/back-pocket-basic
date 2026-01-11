@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Devices;
+using BadMango.Emulator.Rendering;
 
 /// <summary>
 /// Command to manage the video display window.
@@ -22,6 +23,7 @@ using BadMango.Emulator.Devices;
 /// <item><description>open - Opens the video display window</description></item>
 /// <item><description>close - Closes the video display window</description></item>
 /// <item><description>scale &lt;n&gt; - Sets the display scale (1-4)</description></item>
+/// <item><description>color &lt;mode&gt; - Sets the color mode (green, amber, white, color)</description></item>
 /// <item><description>fps [on|off] - Toggles FPS display overlay</description></item>
 /// <item><description>refresh - Forces a display refresh</description></item>
 /// </list>
@@ -44,7 +46,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
     }
 
     /// <inheritdoc/>
-    public string Synopsis => "video [open|close|scale <n>|fps [on|off]|refresh]";
+    public string Synopsis => "video [open|close|scale <n>|color <mode>|fps [on|off]|refresh]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
@@ -52,11 +54,12 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         "The window shows the current display mode (text, lo-res, or hi-res) " +
         "and accepts keyboard input that is forwarded to the emulated system.\n\n" +
         "Subcommands:\n" +
-        "  open    - Open the video display window\n" +
-        "  close   - Close the video display window\n" +
-        "  scale n - Set display scale (1=native, 2=2×, 3=3×, 4=4×)\n" +
-        "  fps     - Toggle FPS display, or 'fps on'/'fps off'\n" +
-        "  refresh - Force an immediate display refresh";
+        "  open     - Open the video display window\n" +
+        "  close    - Close the video display window\n" +
+        "  scale n  - Set display scale (1=native, 2=2×, 3=3×, 4=4×)\n" +
+        "  color m  - Set color mode: green, amber, white, or color\n" +
+        "  fps      - Toggle FPS display, or 'fps on'/'fps off'\n" +
+        "  refresh  - Force an immediate display refresh";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -64,6 +67,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         new("open", null, "subcommand", "Open the video display window", null),
         new("close", null, "subcommand", "Close the video display window", null),
         new("scale <n>", null, "subcommand", "Set display scale factor (1-4)", null),
+        new("color <mode>", null, "subcommand", "Set color mode: green, amber, white, or color", null),
         new("fps [on|off]", null, "subcommand", "Toggle or set FPS display overlay", null),
         new("refresh", null, "subcommand", "Force an immediate display refresh", null),
     ];
@@ -75,6 +79,10 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         "video close             Close the video display window",
         "video scale 2           Set display scale to 2× (default)",
         "video scale 1           Set display to native resolution",
+        "video color green       Set classic green phosphor display",
+        "video color amber       Set amber phosphor display",
+        "video color white       Set white phosphor display",
+        "video color color       Set full color mode for graphics",
         "video fps               Toggle FPS display",
         "video fps on            Enable FPS display",
         "video refresh           Force display refresh",
@@ -104,6 +112,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             "open" => OpenWindow(context),
             "close" => CloseWindow(context),
             "scale" => SetScale(context, subArgs),
+            "color" => SetColorMode(context, subArgs),
             "fps" => ToggleFps(context, subArgs),
             "refresh" => RefreshDisplay(context),
             _ => CommandResult.Error($"Unknown subcommand: {subcommand}. Use 'help video' for usage."),
@@ -185,6 +194,36 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
         // Pass scale as context to the window
         _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { Scale = scale });
         return CommandResult.Ok($"Setting video scale to {scale}×...");
+    }
+
+    private CommandResult SetColorMode(ICommandContext context, string[] args)
+    {
+        if (args.Length == 0)
+        {
+            return CommandResult.Error("Usage: video color <green|amber|white|color>");
+        }
+
+        DisplayColorMode? mode = args[0].ToLowerInvariant() switch
+        {
+            "green" => DisplayColorMode.Green,
+            "amber" => DisplayColorMode.Amber,
+            "white" => DisplayColorMode.White,
+            "color" => DisplayColorMode.Color,
+            _ => null,
+        };
+
+        if (mode is null)
+        {
+            return CommandResult.Error("Color mode must be: green, amber, white, or color.");
+        }
+
+        if (windowManager is null)
+        {
+            return CommandResult.Error("Video window not available in headless mode.");
+        }
+
+        _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { ColorMode = mode });
+        return CommandResult.Ok($"Setting color mode to {args[0]}...");
     }
 
     private CommandResult ToggleFps(ICommandContext context, string[] args)

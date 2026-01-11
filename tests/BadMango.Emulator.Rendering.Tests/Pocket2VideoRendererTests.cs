@@ -213,10 +213,39 @@ public class Pocket2VideoRendererTests
 
     /// <summary>
     /// Verifies inverse characters render correctly (character codes $00-$3F).
+    /// The ROM contains pre-inverted bitmaps for inverse characters.
     /// </summary>
     [Test]
     public void RenderFrame_Text40_InverseCharacters_RenderDifferently()
     {
+        // Create a character ROM with proper inverse character data
+        // The ROM stores pre-inverted bitmaps for $00-$3F
+        var charRom = new byte[4096];
+
+        // Set up normal 'A' at $C1 (ROM offset 0xC1 * 8 = 1544)
+        // Standard 'A' pattern
+        int normalOffset = 0xC1 * 8;
+        charRom[normalOffset + 0] = 0x18; // ..##....
+        charRom[normalOffset + 1] = 0x24; // .#..#...
+        charRom[normalOffset + 2] = 0x42; // #....#..
+        charRom[normalOffset + 3] = 0x42; // #....#..
+        charRom[normalOffset + 4] = 0x7E; // ######..
+        charRom[normalOffset + 5] = 0x42; // #....#..
+        charRom[normalOffset + 6] = 0x42; // #....#..
+        charRom[normalOffset + 7] = 0x00; // ........
+
+        // Set up inverse 'A' at $01 (ROM offset 0x01 * 8 = 8)
+        // Pre-inverted bitmap (bits flipped from normal)
+        int inverseOffset = 0x01 * 8;
+        charRom[inverseOffset + 0] = 0x67; // inverted 0x18
+        charRom[inverseOffset + 1] = 0x5B; // inverted 0x24
+        charRom[inverseOffset + 2] = 0x3D; // inverted 0x42
+        charRom[inverseOffset + 3] = 0x3D; // inverted 0x42
+        charRom[inverseOffset + 4] = 0x01; // inverted 0x7E
+        charRom[inverseOffset + 5] = 0x3D; // inverted 0x42
+        charRom[inverseOffset + 6] = 0x3D; // inverted 0x42
+        charRom[inverseOffset + 7] = 0x7F; // inverted 0x00
+
         renderer.Clear(pixelBuffer);
         var buffer1 = new uint[pixelBuffer.Length];
 
@@ -225,7 +254,7 @@ public class Pocket2VideoRendererTests
             pixelBuffer,
             VideoMode.Text40,
             addr => 0xC1, // Normal 'A'
-            new byte[4096],
+            charRom,
             useAltCharSet: false,
             isPage2: false,
             flashState: false);
@@ -238,7 +267,7 @@ public class Pocket2VideoRendererTests
             pixelBuffer,
             VideoMode.Text40,
             addr => 0x01, // Inverse 'A'
-            new byte[4096],
+            charRom,
             useAltCharSet: false,
             isPage2: false,
             flashState: false);
@@ -361,7 +390,7 @@ public class Pocket2VideoRendererTests
     #region Lo-Res Mode Tests
 
     /// <summary>
-    /// Verifies LoRes mode renders colored blocks.
+    /// Verifies LoRes mode renders colored blocks in color mode.
     /// </summary>
     [Test]
     public void RenderFrame_LoResMode_RendersColoredBlocks()
@@ -375,7 +404,8 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false);
+            flashState: false,
+            DisplayColorMode.Color);
 
         uint topColor = DisplayColors.GetLoResColor(2);
         Assert.That(pixelBuffer[0], Is.EqualTo(topColor));
@@ -413,7 +443,8 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false);
+            flashState: false,
+            DisplayColorMode.Color);
 
         uint expectedColor = DisplayColors.GetLoResColor(color);
         Assert.That(pixelBuffer[0], Is.EqualTo(expectedColor));
@@ -439,7 +470,8 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false);
+            flashState: false,
+            DisplayColorMode.Color);
 
         uint color1 = DisplayColors.GetLoResColor(1);
         uint color0 = DisplayColors.GetLoResColor(0);
@@ -470,7 +502,8 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false);
+            flashState: false,
+            DisplayColorMode.Color);
 
         uint topColor = DisplayColors.GetLoResColor(1);
         uint bottomColor = DisplayColors.GetLoResColor(2);

@@ -61,11 +61,28 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// </summary>
     public const int CharacterSetSize = 2048;
 
+    /// <summary>
+    /// Cycles per video frame for NTSC timing (~60 Hz).
+    /// </summary>
+    /// <remarks>
+    /// At 1.023 MHz CPU clock, 17,030 cycles yields approximately 60.05 frames per second,
+    /// which matches the NTSC vertical refresh rate of 262 lines × 65 cycles/line.
+    /// </remarks>
+    public const ulong CyclesPerFrame = 17030;
+
+    /// <summary>
+    /// Duration of vertical blanking in cycles (approximately 70 lines × 65 cycles = 4550 cycles).
+    /// </summary>
+    public const ulong VBlankDurationCycles = 4550;
+
     private const byte StatusBitSet = 0x80;
     private const byte StatusBitClear = 0x00;
 
     private readonly bool[] annunciators = new bool[4];
     private PhysicalMemory? characterRom;
+    private IScheduler? scheduler;
+    private EventHandle vblankEventHandle;
+    private EventHandle vblankEndEventHandle;
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -77,6 +94,11 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public event Action<VideoMode>? ModeChanged;
+
+    /// <summary>
+    /// Event raised when vertical blanking begins, signaling the video window to refresh.
+    /// </summary>
+    public event Action? VBlankOccurred;
 
     /// <inheritdoc />
     public string Name => "Video Device";
@@ -136,7 +158,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public void Initialize(IEventContext context)
     {
-        // Video mode controller doesn't need scheduler access
+        ArgumentNullException.ThrowIfNull(context);
+
+        scheduler = context.Scheduler;
+        ScheduleNextVBlank();
     }
 
     /// <inheritdoc />
@@ -180,6 +205,13 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public void Reset()
     {
+        // Cancel any pending VBlank events
+        if (scheduler != null)
+        {
+            scheduler.Cancel(vblankEventHandle);
+            scheduler.Cancel(vblankEndEventHandle);
+        }
+
         textMode = true;
         mixedMode = false;
         page2 = false;
@@ -189,6 +221,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         altCharSet = false;
         verticalBlanking = false;
         Array.Clear(annunciators);
+
+        // Reschedule VBlank events
+        ScheduleNextVBlank();
 
         OnModeChanged();
     }
@@ -564,5 +599,61 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
 
         return mixedMode ? VideoMode.LoResMixed : VideoMode.LoRes;
+    }
+
+    /// <summary>
+    /// Schedules the next VBlank event.
+    /// </summary>
+    private void ScheduleNextVBlank()
+    {
+        if (scheduler == null)
+        {
+            return;
+        }
+
+        // Schedule the start of VBlank
+        vblankEventHandle = scheduler.ScheduleAfter(
+            new Core.Cycle(CyclesPerFrame - VBlankDurationCycles),
+            ScheduledEventKind.VideoBlank,
+            priority: 0,
+            OnVBlankStart,
+            tag: this);
+    }
+
+    /// <summary>
+    /// Called when vertical blanking starts.
+    /// </summary>
+    /// <param name="context">The event context.</param>
+    private void OnVBlankStart(IEventContext context)
+    {
+        // Assert vertical blanking status
+        verticalBlanking = true;
+
+        // Notify listeners (video window should refresh)
+        VBlankOccurred?.Invoke();
+
+        // Schedule the end of VBlank
+        if (scheduler != null)
+        {
+            vblankEndEventHandle = scheduler.ScheduleAfter(
+                new Core.Cycle(VBlankDurationCycles),
+                ScheduledEventKind.VideoBlank,
+                priority: 0,
+                OnVBlankEnd,
+                tag: this);
+        }
+    }
+
+    /// <summary>
+    /// Called when vertical blanking ends.
+    /// </summary>
+    /// <param name="context">The event context.</param>
+    private void OnVBlankEnd(IEventContext context)
+    {
+        // Clear vertical blanking status
+        verticalBlanking = false;
+
+        // Schedule the next VBlank
+        ScheduleNextVBlank();
     }
 }

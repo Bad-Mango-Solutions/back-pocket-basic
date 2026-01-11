@@ -37,4 +37,21 @@ public sealed class BootProfile
     /// </remarks>
     [JsonPropertyName("startupSlot")]
     public int? StartupSlot { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to automatically open the video window on boot.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When <see langword="true"/>, the video display window is opened automatically
+    /// when the machine boots. This provides an immediate visual display of the
+    /// emulated system.
+    /// </para>
+    /// <para>
+    /// Defaults to <see langword="false"/>. The video window can always be opened
+    /// manually using the <c>video open</c> REPL command.
+    /// </para>
+    /// </remarks>
+    [JsonPropertyName("autoVideoWindowOpen")]
+    public bool AutoVideoWindowOpen { get; set; }
 }

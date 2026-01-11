@@ -54,6 +54,15 @@ public interface IVideoDevice : IMotherboardDevice, ICharacterRomProvider
     event Action<VideoMode>? ModeChanged;
 
     /// <summary>
+    /// Event raised when vertical blanking begins, signaling the video window to refresh.
+    /// </summary>
+    /// <remarks>
+    /// This event fires at approximately 60 Hz (every 17,030 cycles at 1.023 MHz).
+    /// Video renderers should subscribe to this event to trigger frame redraws.
+    /// </remarks>
+    event Action? VBlankOccurred;
+
+    /// <summary>
     /// Gets the current video mode.
     /// </summary>
     /// <value>The currently active video display mode.</value>

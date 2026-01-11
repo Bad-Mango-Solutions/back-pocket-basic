@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Rendering;
+
 /// <summary>
 /// Context data for video window operations.
 /// </summary>
@@ -28,4 +30,9 @@ public sealed class VideoWindowContext
     /// Gets or sets a value indicating whether to force a display refresh.
     /// </summary>
     public bool ForceRefresh { get; set; }
+
+    /// <summary>
+    /// Gets or sets the display color mode.
+    /// </summary>
+    public DisplayColorMode? ColorMode { get; set; }
 }

@@ -103,37 +103,38 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         ReadOnlySpan<byte> characterRomData,
         bool useAltCharSet,
         bool isPage2,
-        bool flashState)
+        bool flashState,
+        DisplayColorMode colorMode = DisplayColorMode.Green)
     {
         ArgumentNullException.ThrowIfNull(readMemory);
 
         switch (mode)
         {
             case VideoMode.Text40:
-                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState);
+                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
                 break;
 
             case VideoMode.LoRes:
-                RenderLoRes(pixels, readMemory, isPage2, mixedMode: false);
+                RenderLoRes(pixels, readMemory, isPage2, mixedMode: false, colorMode);
                 break;
 
             case VideoMode.LoResMixed:
-                RenderLoRes(pixels, readMemory, isPage2, mixedMode: true);
-                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState);
+                RenderLoRes(pixels, readMemory, isPage2, mixedMode: true, colorMode);
+                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
                 break;
 
             case VideoMode.HiRes:
-                RenderHiRes(pixels, readMemory, isPage2, mixedMode: false);
+                RenderHiRes(pixels, readMemory, isPage2, mixedMode: false, colorMode);
                 break;
 
             case VideoMode.HiResMixed:
-                RenderHiRes(pixels, readMemory, isPage2, mixedMode: true);
-                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState);
+                RenderHiRes(pixels, readMemory, isPage2, mixedMode: true, colorMode);
+                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
                 break;
 
             default:
                 // For unsupported modes, render as text40
-                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState);
+                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
                 break;
         }
     }
@@ -188,10 +189,9 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         ReadOnlySpan<byte> characterRomData,
         bool useAltCharSet,
         bool isPage2,
-        bool flashState)
+        bool flashState,
+        DisplayColorMode colorMode)
     {
-        ushort pageBase = isPage2 ? TextPage2Base : TextPage1Base;
-
         for (int row = 0; row < TextRows; row++)
         {
             ushort rowAddr = (ushort)(TextRowAddresses[row] + (isPage2 ? 0x0400 : 0));
@@ -199,7 +199,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
             for (int col = 0; col < Text40Columns; col++)
             {
                 byte charCode = readMemory((ushort)(rowAddr + col));
-                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState);
+                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, colorMode);
             }
         }
     }
@@ -207,6 +207,21 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// <summary>
     /// Renders a single character in 40-column mode with 2× scaling.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Character display modes based on character code:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>$00-$3F: Inverse - ROM contains pre-inverted bitmap, display as-is</description></item>
+    /// <item><description>$40-$7F: Flashing - alternates between normal and inverted based on flash state</description></item>
+    /// <item><description>$80-$FF: Normal - display bitmap as-is (includes lowercase at $E0-$FF)</description></item>
+    /// </list>
+    /// <para>
+    /// The character ROM contains 256 entries where each character code maps directly
+    /// to its ROM offset (charCode * 8). Inverse characters ($00-$3F) are pre-inverted
+    /// in the ROM, so no additional inversion is needed.
+    /// </para>
+    /// </remarks>
     private void RenderCharacter40(
         Span<uint> pixels,
         ReadOnlySpan<byte> characterRomData,
@@ -214,52 +229,52 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         int row,
         int col,
         bool useAltCharSet,
-        bool flashState)
+        bool flashState,
+        DisplayColorMode colorMode)
     {
         // Determine display style based on character code
-        bool isInverse = charCode < 0x40;
+        // $00-$3F: Inverse (pre-inverted in ROM)
+        // $40-$7F: Flashing (alternates based on flash state)
+        // $80-$FF: Normal (includes lowercase at $E0-$FF)
         bool isFlashing = charCode >= 0x40 && charCode < 0x80;
 
-        // Map character code to ROM offset
-        int romCharCode = charCode & 0x3F;
-        if (charCode >= 0x80)
-        {
-            romCharCode = charCode & 0x7F;
-        }
-
-        // Choose character set
-        int romOffset = 0;
-        if (useAltCharSet && charCode >= 0x40 && charCode < 0x80)
-        {
-            romOffset = 2048; // Alternate character set offset
-        }
+        // ROM offset: charCode maps directly to ROM (charCode * 8)
+        // For alternate character set (MouseText), use second half of ROM
+        int romOffset = useAltCharSet ? 2048 : 0;
 
         // Calculate pixel position (2× scaling: 14×16 pixels per character)
         int pixelX = col * CharWidth * 2;
         int pixelY = row * CharHeight * 2;
 
-        // Determine if character should be inverted
-        bool shouldInvert = isInverse || (isFlashing && flashState);
+        // For flashing characters, invert when flash state is ON
+        // Inverse characters are pre-inverted in ROM, so no inversion needed
+        // Normal characters display as-is
+        bool shouldInvert = isFlashing && flashState;
+
+        // Get foreground color based on color mode
+        uint foregroundColor = DisplayColors.GetForegroundColor(colorMode);
+        uint backgroundColor = DisplayColors.GetBackgroundColor(colorMode);
 
         // Render each scanline
         for (int scanline = 0; scanline < CharHeight; scanline++)
         {
             byte scanlineData = 0;
-            if (!characterRomData.IsEmpty && romOffset + (romCharCode * 8) + scanline < characterRomData.Length)
+            int romIndex = romOffset + (charCode * 8) + scanline;
+            if (!characterRomData.IsEmpty && romIndex < characterRomData.Length)
             {
-                scanlineData = characterRomData[romOffset + (romCharCode * 8) + scanline];
+                scanlineData = characterRomData[romIndex];
             }
 
             if (shouldInvert)
             {
-                scanlineData = (byte)~scanlineData;
+                scanlineData = (byte)(~scanlineData & 0x7F);
             }
 
             // Render 7 pixels per scanline with 2× horizontal scaling
             for (int pixel = 0; pixel < CharWidth; pixel++)
             {
                 bool isSet = (scanlineData & (1 << (6 - pixel))) != 0;
-                uint color = isSet ? DisplayColors.GreenPhosphor : DisplayColors.Black;
+                uint color = isSet ? foregroundColor : backgroundColor;
 
                 // Write 2×2 block for each source pixel
                 int x = pixelX + (pixel * 2);
@@ -277,7 +292,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         Span<uint> pixels,
         Func<ushort, byte> readMemory,
         bool isPage2,
-        bool mixedMode)
+        bool mixedMode,
+        DisplayColorMode colorMode)
     {
         int maxTextRows = mixedMode ? 20 : TextRows;
         int maxLoResRows = maxTextRows * 2; // 2 lo-res rows per text row
@@ -303,12 +319,12 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
                 int bottomY = ((textRow * 2) + 1) * blockHeight;
 
                 // Render top block
-                FillBlock(pixels, pixelX, topY, blockWidth, blockHeight, DisplayColors.GetLoResColor(topColor));
+                FillBlock(pixels, pixelX, topY, blockWidth, blockHeight, DisplayColors.GetLoResColor(topColor, colorMode));
 
                 // Render bottom block (if not cut off by mixed mode)
                 if ((textRow * 2) + 1 < maxLoResRows)
                 {
-                    FillBlock(pixels, pixelX, bottomY, blockWidth, blockHeight, DisplayColors.GetLoResColor(bottomColor));
+                    FillBlock(pixels, pixelX, bottomY, blockWidth, blockHeight, DisplayColors.GetLoResColor(bottomColor, colorMode));
                 }
             }
         }
@@ -321,10 +337,14 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         Span<uint> pixels,
         Func<ushort, byte> readMemory,
         bool isPage2,
-        bool mixedMode)
+        bool mixedMode,
+        DisplayColorMode colorMode)
     {
         int maxScanlines = mixedMode ? 160 : HiResScanlines;
-        ushort pageBase = isPage2 ? HiResPage2Base : HiResPage1Base;
+
+        // Get foreground color based on color mode
+        uint foregroundColor = DisplayColors.GetForegroundColor(colorMode);
+        uint backgroundColor = DisplayColors.GetBackgroundColor(colorMode);
 
         for (int scanline = 0; scanline < maxScanlines; scanline++)
         {
@@ -340,7 +360,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
                 for (int bit = 0; bit < 7; bit++)
                 {
                     bool isSet = (data & (1 << bit)) != 0;
-                    uint color = isSet ? DisplayColors.GreenPhosphor : DisplayColors.Black;
+                    uint color = isSet ? foregroundColor : backgroundColor;
 
                     // Write 2×2 block for each source pixel
                     int x = pixelX + (bit * 2);
@@ -359,7 +379,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         ReadOnlySpan<byte> characterRomData,
         bool useAltCharSet,
         bool isPage2,
-        bool flashState)
+        bool flashState,
+        DisplayColorMode colorMode)
     {
         // Mixed mode: text rows 20-23 (bottom 4 lines)
         for (int row = 20; row < TextRows; row++)
@@ -369,7 +390,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
             for (int col = 0; col < Text40Columns; col++)
             {
                 byte charCode = readMemory((ushort)(rowAddr + col));
-                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState);
+                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, colorMode);
             }
         }
     }
