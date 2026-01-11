@@ -62,7 +62,10 @@ public static class FilePathResolver
         if (path.StartsWith(LibraryScheme, StringComparison.OrdinalIgnoreCase))
         {
             string relativePath = path[LibraryScheme.Length..];
-            return Path.Combine(GetLibraryRoot(), relativePath);
+
+            // Split the relative path and combine with platform-specific separators
+            string[] segments = relativePath.Split('/');
+            return Path.Combine([GetLibraryRoot(), .. segments]);
         }
 
         return path;
