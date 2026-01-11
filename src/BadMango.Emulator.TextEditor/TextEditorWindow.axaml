@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="BadMango.Emulator.TextEditor.TextEditorWindow"
+        Title="Text Editor"
+        Width="800"
+        Height="600"
+        MinWidth="400"
+        MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New" Click="OnNewClick" InputGesture="Ctrl+N" />
+                <MenuItem Header="_Open..." Click="OnOpenClick" InputGesture="Ctrl+O" />
+                <Separator />
+                <MenuItem Header="_Save" Click="OnSaveClick" InputGesture="Ctrl+S" />
+                <MenuItem Header="Save _As..." Click="OnSaveAsClick" InputGesture="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="_Close" Click="OnCloseClick" InputGesture="Ctrl+W" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem x:Name="UndoMenuItem" Header="_Undo" Click="OnUndoClick" InputGesture="Ctrl+Z" />
+                <MenuItem x:Name="RedoMenuItem" Header="_Redo" Click="OnRedoClick" InputGesture="Ctrl+Y" />
+                <Separator />
+                <MenuItem Header="Cu_t" Click="OnCutClick" InputGesture="Ctrl+X" />
+                <MenuItem Header="_Copy" Click="OnCopyClick" InputGesture="Ctrl+C" />
+                <MenuItem Header="_Paste" Click="OnPasteClick" InputGesture="Ctrl+V" />
+                <Separator />
+                <MenuItem Header="Select _All" Click="OnSelectAllClick" InputGesture="Ctrl+A" />
+                <Separator />
+                <MenuItem Header="_Find/Replace..." Click="OnFindReplaceClick" InputGesture="Ctrl+F" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem x:Name="SyntaxMenuItem" Header="_Syntax Highlighting">
+                    <!-- Items populated dynamically -->
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <!-- Text Editor -->
+        <ae:TextEditor x:Name="Editor"
+                       Grid.Row="1"
+                       FontFamily="Cascadia Mono, Consolas, Courier New, Monospace"
+                       FontSize="14"
+                       ShowLineNumbers="True"
+                       WordWrap="False"
+                       IsReadOnly="False"
+                       Focusable="True"
+                       VerticalScrollBarVisibility="Auto"
+                       HorizontalScrollBarVisibility="Auto" />
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}" Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                <TextBlock x:Name="FilePathText" Text="Untitled" VerticalAlignment="Center" />
+                <TextBlock x:Name="ModifiedIndicator" Text="" Margin="10,0,0,0" Grid.Column="1" VerticalAlignment="Center" />
+                <TextBlock x:Name="SyntaxText" Text="Plain Text" Margin="20,0,0,0" Grid.Column="2" VerticalAlignment="Center" />
+                <TextBlock x:Name="CursorPositionText" Text="Ln 1, Col 1" Margin="20,0,0,0" Grid.Column="3" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

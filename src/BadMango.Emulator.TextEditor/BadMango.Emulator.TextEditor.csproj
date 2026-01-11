@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>BadMango.Emulator.Debug.UI</RootNamespace>
+    <RootNamespace>BadMango.Emulator.TextEditor</RootNamespace>
     <NeutralLanguage>en</NeutralLanguage>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,21 +12,15 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Debug UI</Product>
-    <Description>Avalonia-based popup window infrastructure for the console debugger. Provides About window and extensible window management for debug workflows.</Description>
+    <Product>BackPocketBASIC - Text Editor</Product>
+    <Description>Avalonia-based text editor with syntax highlighting support for assembly language and other file types. Designed for reuse in debugger and future UI applications.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>emulator;debugger;avalonia;ui;popup;console;repl</PackageTags>
+    <PackageTags>emulator;editor;avalonia;text;syntax;highlighting;assembly;source</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
-    <ProjectReference Include="..\BadMango.Emulator.TextEditor\BadMango.Emulator.TextEditor.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
     <!-- Avalonia UI Framework -->
@@ -34,6 +28,10 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.7" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.7" />
+
+    <!-- AvaloniaEdit for text editing with syntax highlighting -->
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.2.0" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="11.2.0" />
 
     <!-- Dependency Injection with Autofac -->
     <PackageReference Include="Autofac" Version="8.3.0" />
@@ -51,11 +49,10 @@
 
   <ItemGroup>
     <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
-    <AvaloniaResource Include="..\..\back-pocket-logo.png" Link="back-pocket-logo.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="BadMango.Emulator.Debug.UI.Tests" />
+    <InternalsVisibleTo Include="BadMango.Emulator.TextEditor.Tests" />
   </ItemGroup>
 
 </Project>
