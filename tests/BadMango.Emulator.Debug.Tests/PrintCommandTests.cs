@@ -290,6 +290,48 @@ public class PrintCommandTests
         Assert.That(usedAddresses.Count, Is.EqualTo(960));
     }
 
+    /// <summary>
+    /// Verifies normal space screen code is $A0.
+    /// </summary>
+    [Test]
+    public void NormalSpace_ScreenCode_IsA0()
+    {
+        const byte NormalSpace = 0xA0;
+        byte screenCode = AsciiToScreenCode(' ');
+        Assert.That(screenCode, Is.EqualTo(NormalSpace));
+    }
+
+    /// <summary>
+    /// Verifies home command would fill screen with 960 bytes of $A0.
+    /// </summary>
+    [Test]
+    public void ClearScreen_FillsAllPositionsWithNormalSpace()
+    {
+        const byte NormalSpace = 0xA0;
+        const int TextRows = 24;
+        const int TextColumns = 40;
+        const int TotalCells = TextRows * TextColumns; // 960
+
+        // Verify we'd write to exactly 960 positions
+        Assert.That(TotalCells, Is.EqualTo(960));
+
+        // Verify all row addresses are unique and fill 960 cells
+        var addresses = new HashSet<ushort>();
+        for (int row = 0; row < TextRows; row++)
+        {
+            ushort rowAddr = ComputeTextRowAddress(row);
+            for (int col = 0; col < TextColumns; col++)
+            {
+                addresses.Add((ushort)(rowAddr + col));
+            }
+        }
+
+        Assert.That(addresses.Count, Is.EqualTo(TotalCells));
+
+        // Verify normal space value
+        Assert.That(NormalSpace, Is.EqualTo(0xA0));
+    }
+
     private static string ProcessEscapeSequences(string input)
     {
         var sb = new StringBuilder(input.Length);

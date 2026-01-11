@@ -50,13 +50,14 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
     }
 
     /// <inheritdoc/>
-    public string Synopsis => "print [<row> <col>] \"<text>\"";
+    public string Synopsis => "print [home | <row> <col> \"<text>\"]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Writes text directly to the emulated video memory at a specified row and column. " +
         "If row and column are omitted, text is written at the current cursor position. " +
         "The text is converted to screen codes and written to the text page buffer.\n\n" +
+        "Use 'print home' to clear the screen (fill with spaces).\n\n" +
         "Supported escape sequences:\n" +
         "  \\n  - Line feed (0x0A)\n" +
         "  \\r  - Carriage return (0x0D)\n" +
@@ -68,6 +69,7 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
+        new("home", null, "flag", "Clear the text screen (fill with spaces)", null),
         new("row", null, "int", "Row number (0-23)", null),
         new("col", null, "int", "Column number (0-39)", null),
         new("text", null, "string", "Text to display (in quotes)", null),
@@ -76,6 +78,7 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
+        "print home                        Clear the screen",
         "print 0 0 \"HELLO WORLD\"         Write at top-left",
         "print 10 15 \"CENTERED\"          Write at row 10, column 15",
         "print \"TEXT\"                    Write at current cursor position",
@@ -104,15 +107,22 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No machine attached to debug context.");
         }
 
+        if (args.Length == 0)
+        {
+            return CommandResult.Error("Usage: print [home | <row> <col> \"<text>\"]");
+        }
+
+        // Check for "home" command to clear screen
+        if (args.Length == 1 && args[0].Equals("home", StringComparison.OrdinalIgnoreCase))
+        {
+            ClearScreen(debugContext);
+            return CommandResult.Ok("Screen cleared.");
+        }
+
         // Parse arguments: either "text" or <row> <col> "text"
         int row = 0;
         int col = 0;
         string text;
-
-        if (args.Length == 0)
-        {
-            return CommandResult.Error("Usage: print [<row> <col>] \"<text>\"");
-        }
 
         // Check if first arg is a number (row,col mode) or a string (text only mode)
         if (args.Length >= 3 && int.TryParse(args[0], out int parsedRow))
@@ -157,6 +167,35 @@ public sealed partial class PrintCommand : CommandHandlerBase, ICommandHelp
         int written = WriteToScreen(debugContext, processed, row, col);
 
         return CommandResult.Ok($"Wrote {written} characters at row {row}, column {col}.");
+    }
+
+    private static void ClearScreen(IDebugContext debugContext)
+    {
+        var bus = debugContext.Machine!.Bus;
+        const byte NormalSpace = 0xA0; // Normal space character
+
+        // Fill all text page 1 screen positions with normal space
+        for (int row = 0; row < TextRows; row++)
+        {
+            ushort rowAddress = TextRowAddresses[row];
+            for (int col = 0; col < TextColumns; col++)
+            {
+                ushort address = (ushort)(rowAddress + col);
+
+                var access = new BusAccess(
+                    Address: address,
+                    Value: NormalSpace,
+                    WidthBits: 8,
+                    Mode: BusAccessMode.Atomic,
+                    EmulationFlag: true,
+                    Intent: AccessIntent.DebugWrite,
+                    SourceId: 0,
+                    Cycle: 0,
+                    Flags: AccessFlags.NoSideEffects);
+
+                bus.Write8(in access, NormalSpace);
+            }
+        }
     }
 
     private static ushort[] ComputeTextRowAddresses()
