@@ -47,7 +47,7 @@ public static class DisplayColors
     /// <summary>
     /// Amber phosphor foreground color (P3 phosphor).
     /// </summary>
-    public const uint AmberPhosphor = 0xFFFFBF00;
+    public const uint AmberPhosphor = 0xFF00BFFF;
 
     /// <summary>
     /// White phosphor foreground color (P4 phosphor).
@@ -72,7 +72,7 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 0: Black.
     /// </summary>
-    public const uint LoResBlack = 0xFF000000;
+    public const uint LoResBlack = 0xFF080808;
 
     /// <summary>
     /// Lo-Res color 1: Magenta (Deep Red).
