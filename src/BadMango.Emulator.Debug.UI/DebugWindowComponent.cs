@@ -28,13 +28,11 @@ public enum DebugWindowComponent
     /// <summary>
     /// A video display window for viewing emulator graphics output.
     /// </summary>
-    /// <remarks>Reserved for future implementation.</remarks>
-    VideoDisplay,
+    Video,
 
     /// <summary>
     /// A text editor window for editing source code or memory.
     /// </summary>
-    /// <remarks>Reserved for future implementation.</remarks>
     TextEditor,
 
     /// <summary>

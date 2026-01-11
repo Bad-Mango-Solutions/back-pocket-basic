@@ -136,8 +136,15 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Ok();
         }
 
+        // Get machine from debug context to pass to video window
+        object? machineContext = null;
+        if (context is IDebugContext debugContext)
+        {
+            machineContext = debugContext.Machine;
+        }
+
         // Fire and forget - don't block the REPL
-        _ = windowManager.ShowWindowAsync("Video");
+        _ = windowManager.ShowWindowAsync("Video", machineContext);
         return CommandResult.Ok("Opening video window...");
     }
 

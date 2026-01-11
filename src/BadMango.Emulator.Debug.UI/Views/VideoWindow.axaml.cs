@@ -5,13 +5,9 @@
 namespace BadMango.Emulator.Debug.UI.Views;
 
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Threading;
 
 using BadMango.Emulator.Bus;
@@ -58,8 +54,7 @@ public partial class VideoWindow : Window
     private const int FlashToggleFrames = 16;
 
     private readonly IVideoRenderer renderer;
-    private readonly uint[] pixelBuffer;
-    private readonly WriteableBitmap frameBitmap;
+    private readonly PixelBuffer pixelBuffer;
     private readonly DispatcherTimer refreshTimer;
     private readonly Stopwatch fpsStopwatch;
 
@@ -84,17 +79,11 @@ public partial class VideoWindow : Window
         InitializeComponent();
 
         renderer = new Pocket2VideoRenderer();
-        pixelBuffer = new uint[CanonicalWidth * CanonicalHeight];
-        frameBitmap = new WriteableBitmap(
-            new PixelSize(CanonicalWidth, CanonicalHeight),
-            new Vector(96, 96),
-            PixelFormat.Bgra8888,
-            AlphaFormat.Opaque);
-
+        pixelBuffer = new PixelBuffer(CanonicalWidth, CanonicalHeight);
         fpsStopwatch = new Stopwatch();
 
-        // Set initial bitmap
-        VideoImage.Source = frameBitmap;
+        // Set initial bitmap from PixelBuffer
+        VideoImage.Source = pixelBuffer.Bitmap;
 
         // Initialize refresh timer at ~60 Hz
         refreshTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -331,6 +320,7 @@ public partial class VideoWindow : Window
     {
         refreshTimer.Stop();
         fpsStopwatch.Stop();
+        pixelBuffer.Dispose();
     }
 
     private void OnRefreshTimer(object? sender, EventArgs e)
@@ -359,20 +349,23 @@ public partial class VideoWindow : Window
 
     private void RenderFrame()
     {
+        var pixels = pixelBuffer.GetPixels();
+
         if (memoryBus is null || videoDevice is null)
         {
             // No machine attached - render blank screen
-            renderer.Clear(pixelBuffer);
-            CommitFrameBuffer();
+            renderer.Clear(pixels);
+            pixelBuffer.Commit();
+            VideoImage.InvalidateVisual();
             return;
         }
 
         // Determine current video mode
         VideoMode mode = videoDevice.CurrentMode;
 
-        // Render frame
+        // Render frame using the Pocket2VideoRenderer
         renderer.RenderFrame(
-            pixelBuffer,
+            pixels,
             mode,
             ReadMemoryByte,
             characterRom.Span,
@@ -380,7 +373,9 @@ public partial class VideoWindow : Window
             videoDevice.IsPage2,
             flashState);
 
-        CommitFrameBuffer();
+        // Commit pixel buffer to bitmap
+        pixelBuffer.Commit();
+        VideoImage.InvalidateVisual();
     }
 
     private byte ReadMemoryByte(ushort address)
@@ -403,21 +398,6 @@ public partial class VideoWindow : Window
             Flags: AccessFlags.NoSideEffects);
 
         return memoryBus.Read8(access);
-    }
-
-    private void CommitFrameBuffer()
-    {
-        using var frameBuffer = frameBitmap.Lock();
-        unsafe
-        {
-            fixed (uint* src = pixelBuffer)
-            {
-                var span = new ReadOnlySpan<byte>(src, pixelBuffer.Length * sizeof(uint));
-                span.CopyTo(new Span<byte>((void*)frameBuffer.Address, span.Length));
-            }
-        }
-
-        VideoImage.InvalidateVisual();
     }
 
     private void UpdateWindowSize()

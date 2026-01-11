@@ -47,6 +47,7 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.CharacterPreview),
         nameof(DebugWindowComponent.StatusMonitor),
         nameof(DebugWindowComponent.TextEditor),
+        nameof(DebugWindowComponent.Video),
     ];
 
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
@@ -197,6 +198,19 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private static VideoWindow CreateVideoWindow(object? context)
+    {
+        var window = new VideoWindow();
+
+        // If context is IMachine, attach it to the window
+        if (context is IMachine machine)
+        {
+            window.AttachMachine(machine);
+        }
+
+        return window;
+    }
+
     /// <summary>
     /// Shows a new text editor window, allowing multiple instances.
     /// </summary>
@@ -238,6 +252,7 @@ public class DebugWindowManager : IDebugWindowManager
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             "TEXTEDITOR" => CreateTextEditorWindow(context),
+            "VIDEO" => CreateVideoWindow(context),
             _ => null,
         };
     }
