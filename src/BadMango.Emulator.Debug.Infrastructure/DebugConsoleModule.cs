@@ -159,26 +159,17 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
-        // Register about command (uses optional IDebugWindowManager for UI popups)
         builder.Register(ctx =>
             {
-                // Try to resolve IDebugWindowManager if registered (e.g., when UI is available)
                 var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
-                return new AboutCommand(windowManager);
-            })
-            .As<ICommandHandler>()
-            .SingleInstance();
-
-        builder.Register(ctx =>
-            {
-                // Try to resolve IDebugWindowManager if registered (e.g., when UI is available)
-                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
-                return new CharacterMapCommand(windowManager);
+                var debugContext = ctx.ResolveOptional<IDebugContext>();
+                return new StatMonCommand(windowManager, debugContext);
             })
             .As<ICommandHandler>()
             .SingleInstance();
 
         // Register device-specific debug commands (auto-discovered)
+        // This includes commands with IDebugWindowManager dependencies (AboutCommand, CharacterMapCommand, etc.)
         builder.RegisterModule<DeviceDebugCommandsModule>();
 
         builder.RegisterType<MachineProfileLoader>()
