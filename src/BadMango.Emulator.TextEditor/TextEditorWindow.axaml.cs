@@ -33,6 +33,7 @@ public partial class TextEditorWindow : Window
 {
     private readonly RegistryOptions registryOptions;
     private TextMate.Installation? textMateInstallation;
+    private AvaloniaEdit.Search.SearchPanel? searchPanel;
     private string? currentFilePath;
     private SyntaxLanguage currentLanguage = SyntaxLanguage.PlainText;
     private bool isModified;
@@ -107,14 +108,20 @@ public partial class TextEditorWindow : Window
 
     private void SetupSyntaxMenu()
     {
-        foreach (var language in SyntaxHighlightingManager.GetSupportedLanguages())
-        {
-            var menuItem = new MenuItem
+        var menuItems = SyntaxHighlightingManager.GetSupportedLanguages()
+            .Select(language =>
             {
-                Header = SyntaxHighlightingManager.GetDisplayName(language),
-                Tag = language,
-            };
-            menuItem.Click += this.OnSyntaxMenuItemClick;
+                var menuItem = new MenuItem
+                {
+                    Header = SyntaxHighlightingManager.GetDisplayName(language),
+                    Tag = language,
+                };
+                menuItem.Click += this.OnSyntaxMenuItemClick;
+                return menuItem;
+            });
+
+        foreach (var menuItem in menuItems)
+        {
             this.SyntaxMenuItem.Items.Add(menuItem);
         }
     }
@@ -413,9 +420,9 @@ public partial class TextEditorWindow : Window
 
     private void OnFindReplaceClick(object? sender, RoutedEventArgs e)
     {
-        // AvaloniaEdit has built-in search panel support
-        var searchPanel = AvaloniaEdit.Search.SearchPanel.Install(this.Editor);
-        searchPanel.Open();
+        // Install search panel once and reuse it
+        this.searchPanel ??= AvaloniaEdit.Search.SearchPanel.Install(this.Editor);
+        this.searchPanel.Open();
     }
 
     private async void OnWindowClosing(object? sender, CancelEventArgs e)

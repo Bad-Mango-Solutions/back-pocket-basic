@@ -168,4 +168,43 @@ public class FilePathResolverTests
 
         Assert.That(result, Does.Contain(".backpocket"));
     }
+
+    /// <summary>
+    /// Verifies that ToLibraryPath returns library:// for exact library root path.
+    /// </summary>
+    [Test]
+    public void ToLibraryPath_ExactLibraryRoot_ReturnsLibraryScheme()
+    {
+        var libraryRoot = FilePathResolver.GetLibraryRoot();
+
+        var result = FilePathResolver.ToLibraryPath(libraryRoot);
+
+        Assert.That(result, Is.EqualTo("library://"));
+    }
+
+    /// <summary>
+    /// Verifies that ResolvePath handles paths with consecutive slashes.
+    /// </summary>
+    [Test]
+    public void ResolvePath_ConsecutiveSlashes_HandlesCorrectly()
+    {
+        var result = FilePathResolver.ResolvePath("library://roms//test.bin");
+
+        var expected = Path.Combine(FilePathResolver.GetLibraryRoot(), "roms", "test.bin");
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Verifies that ToLibraryPath does not convert paths that just start with library root text but are not in library root.
+    /// </summary>
+    [Test]
+    public void ToLibraryPath_PathStartsWithLibraryRootButNotInIt_ReturnsAbsolutePath()
+    {
+        var libraryRoot = FilePathResolver.GetLibraryRoot();
+        var notInLibraryPath = libraryRoot + "_extra" + Path.DirectorySeparatorChar + "test.txt";
+
+        var result = FilePathResolver.ToLibraryPath(notInLibraryPath);
+
+        Assert.That(result, Is.EqualTo(notInLibraryPath));
+    }
 }

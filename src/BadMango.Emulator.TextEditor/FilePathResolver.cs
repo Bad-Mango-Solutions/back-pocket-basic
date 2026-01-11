@@ -64,7 +64,7 @@ public static class FilePathResolver
             string relativePath = path[LibraryScheme.Length..];
 
             // Split the relative path and combine with platform-specific separators
-            string[] segments = relativePath.Split('/');
+            string[] segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
             return Path.Combine([GetLibraryRoot(), .. segments]);
         }
 
@@ -84,7 +84,19 @@ public static class FilePathResolver
         ArgumentException.ThrowIfNullOrWhiteSpace(absolutePath);
 
         string libraryRoot = GetLibraryRoot();
-        if (absolutePath.StartsWith(libraryRoot, StringComparison.OrdinalIgnoreCase))
+
+        // Check if absolutePath exactly equals libraryRoot
+        if (absolutePath.Length == libraryRoot.Length &&
+            absolutePath.Equals(libraryRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return LibraryScheme;
+        }
+
+        // Check if absolutePath is within libraryRoot
+        if (absolutePath.Length > libraryRoot.Length &&
+            absolutePath.StartsWith(libraryRoot, StringComparison.OrdinalIgnoreCase) &&
+            (absolutePath[libraryRoot.Length] == Path.DirectorySeparatorChar ||
+             absolutePath[libraryRoot.Length] == Path.AltDirectorySeparatorChar))
         {
             string relativePath = absolutePath[(libraryRoot.Length + 1)..];
             return LibraryScheme + relativePath;

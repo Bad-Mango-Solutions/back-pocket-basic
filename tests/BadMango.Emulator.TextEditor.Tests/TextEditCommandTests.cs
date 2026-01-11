@@ -57,22 +57,17 @@ public class TextEditCommandTests
     public void Execute_WithoutWindowManager_ReturnsFail()
     {
         var command = new TextEditCommand();
-        var context = CreateTestContext(out var outputWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
 
-        try
-        {
-            var result = command.Execute(context, []);
+        var result = command.Execute(context, []);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.False);
-                Assert.That(outputWriter.ToString(), Does.Contain("requires Avalonia UI"));
-            });
-        }
-        finally
+        Assert.Multiple(() =>
         {
-            outputWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.False);
+            Assert.That(outputWriter.ToString(), Does.Contain("requires Avalonia UI"));
+        });
     }
 
     /// <summary>
@@ -85,23 +80,18 @@ public class TextEditCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).ReturnsAsync(true);
 
         var command = new TextEditCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
 
-        try
-        {
-            var result = command.Execute(context, []);
+        var result = command.Execute(context, []);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.True);
-                Assert.That(result.Message, Does.Contain("Opening"));
-                windowManager.Verify(w => w.ShowWindowAsync("TextEditor", null), Times.Once);
-            });
-        }
-        finally
+        Assert.Multiple(() =>
         {
-            outputWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Contain("Opening"));
+            windowManager.Verify(w => w.ShowWindowAsync("TextEditor", null), Times.Once);
+        });
     }
 
     /// <summary>
@@ -114,18 +104,13 @@ public class TextEditCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).ReturnsAsync(true);
 
         var command = new TextEditCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
 
-        try
-        {
-            var result = command.Execute(context, ["test.s"]);
+        command.Execute(context, ["test.s"]);
 
-            windowManager.Verify(w => w.ShowWindowAsync("TextEditor", "test.s"), Times.Once);
-        }
-        finally
-        {
-            outputWriter.Dispose();
-        }
+        windowManager.Verify(w => w.ShowWindowAsync("TextEditor", "test.s"), Times.Once);
     }
 
     /// <summary>
@@ -186,31 +171,25 @@ public class TextEditCommandTests
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object?>())).Returns(tcs.Task);
 
         var command = new TextEditCommand(windowManager.Object);
-        var context = CreateTestContext(out var outputWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
 
-        try
-        {
-            // Execute should return immediately without blocking
-            var result = command.Execute(context, []);
+        // Execute should return immediately without blocking
+        var result = command.Execute(context, []);
 
-            Assert.That(result.Success, Is.True);
+        Assert.That(result.Success, Is.True);
 
-            // Complete the task to clean up
-            tcs.SetResult(true);
-        }
-        finally
-        {
-            outputWriter.Dispose();
-        }
+        // Complete the task to clean up
+        tcs.SetResult(true);
     }
 
-    private static ICommandContext CreateTestContext(out StringWriter outputWriter)
+    private static ICommandContext CreateTestContext(StringWriter outputWriter, StringWriter errorWriter)
     {
-        outputWriter = new StringWriter();
         var mockDispatcher = new Mock<ICommandDispatcher>();
         var mockContext = new Mock<ICommandContext>();
         mockContext.Setup(c => c.Output).Returns(outputWriter);
-        mockContext.Setup(c => c.Error).Returns(new StringWriter());
+        mockContext.Setup(c => c.Error).Returns(errorWriter);
         mockContext.Setup(c => c.Dispatcher).Returns(mockDispatcher.Object);
         return mockContext.Object;
     }
