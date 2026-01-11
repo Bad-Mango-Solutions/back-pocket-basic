@@ -47,17 +47,17 @@ public static class DisplayColors
     /// <summary>
     /// Amber phosphor foreground color (P3 phosphor).
     /// </summary>
-    public const uint AmberPhosphor = 0xFF00BFFF;
+    public const uint AmberPhosphor = 0xFFFFBF00;
 
     /// <summary>
     /// White phosphor foreground color (P4 phosphor).
     /// </summary>
-    public const uint WhitePhosphor = 0xFFFFFFFF;
+    public const uint WhitePhosphor = 0xFFFCFCFC;
 
     /// <summary>
     /// Standard black background color.
     /// </summary>
-    public const uint Black = 0xFF000000;
+    public const uint Black = 0xFF080808;
 
     /// <summary>
     /// Dark gray background color for UI elements.
@@ -147,7 +147,7 @@ public static class DisplayColors
     /// <summary>
     /// Lo-Res color 15: White.
     /// </summary>
-    public const uint LoResWhite = 0xFFFFFFFF;
+    public const uint LoResWhite = 0xFFFCFCFC;
 
     /// <summary>
     /// Maximum brightness level for lo-res color scaling.
