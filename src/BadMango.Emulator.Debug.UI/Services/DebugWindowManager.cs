@@ -14,6 +14,7 @@ using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI.StatusMonitor;
 using BadMango.Emulator.Debug.UI.Views;
 using BadMango.Emulator.Devices.Interfaces;
+using BadMango.Emulator.TextEditor;
 
 /// <summary>
 /// Manages debug popup windows for the console debugger REPL.
@@ -45,9 +46,11 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.About),
         nameof(DebugWindowComponent.CharacterPreview),
         nameof(DebugWindowComponent.StatusMonitor),
+        nameof(DebugWindowComponent.TextEditor),
     ];
 
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
+    private int textEditorCounter;
 
     /// <inheritdoc />
     public bool IsAvaloniaRunning => AvaloniaBootstrapper.IsRunning;
@@ -67,6 +70,12 @@ public class DebugWindowManager : IDebugWindowManager
         if (!this.IsAvaloniaRunning)
         {
             return false;
+        }
+
+        // TextEditor windows support multiple instances
+        if (windowType.Equals("TextEditor", StringComparison.OrdinalIgnoreCase))
+        {
+            return await this.ShowTextEditorWindowAsync(context);
         }
 
         // If window is already open, bring it to front
@@ -171,6 +180,47 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private static TextEditorWindow CreateTextEditorWindow(object? context)
+    {
+        var window = new TextEditorWindow();
+
+        // If context is a file path string, open the file
+        if (context is string filePath && !string.IsNullOrWhiteSpace(filePath))
+        {
+            // Schedule the file open to happen after the window is shown
+            _ = Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                await window.OpenFileAsync(filePath);
+            });
+        }
+
+        return window;
+    }
+
+    /// <summary>
+    /// Shows a new text editor window, allowing multiple instances.
+    /// </summary>
+    /// <param name="context">Optional file path to open.</param>
+    /// <returns>True if the window was shown; otherwise, false.</returns>
+    private async Task<bool> ShowTextEditorWindowAsync(object? context)
+    {
+        var windowId = $"TextEditor_{Interlocked.Increment(ref this.textEditorCounter)}";
+
+        var window = await Dispatcher.UIThread.InvokeAsync(() => CreateTextEditorWindow(context));
+        if (window is null)
+        {
+            return false;
+        }
+
+        // Track the window and handle its closing
+        this.openWindows[windowId] = window;
+        window.Closed += (_, _) => this.openWindows.TryRemove(windowId, out _);
+
+        // Show the window
+        await Dispatcher.UIThread.InvokeAsync(() => window.Show());
+        return true;
+    }
+
     /// <summary>
     /// Creates a window of the specified type.
     /// </summary>
@@ -187,6 +237,7 @@ public class DebugWindowManager : IDebugWindowManager
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
+            "TEXTEDITOR" => CreateTextEditorWindow(context),
             _ => null,
         };
     }
