@@ -183,11 +183,15 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         dispatcher.Register(0x51, SetTextRead, SetTextWrite);           // TXTSET
         dispatcher.Register(0x52, ClearMixedRead, ClearMixedWrite);     // MIXCLR
         dispatcher.Register(0x53, SetMixedRead, SetMixedWrite);         // MIXSET
+        dispatcher.Register(0x54, ClearPage2Read, ClearPage2Write);     // PAGE1
+        dispatcher.Register(0x55, SetPage2Read, SetPage2Write);         // PAGE2
+        dispatcher.Register(0x56, ClearHiResRead, ClearHiResWrite);     // LORES
+        dispatcher.Register(0x57, SetHiResRead, SetHiResWrite);         // HIRES
 
-        // $C054-$C057 (PAGE2/HIRES switches) are handled by AuxiliaryMemoryController
-        // because they affect both video display and memory banking. The
-        // AuxiliaryMemoryController calls SetPage2() and SetHiRes() on this controller
-        // to keep video state synchronized. See Phase 1.4 AuxiliaryMemoryController.
+        // Note: When AuxiliaryMemoryController is present, it will re-register
+        // handlers for $C054-$C057 to coordinate memory banking. Those handlers
+        // should call SetPage2() and SetHiRes() on this controller to keep
+        // video state synchronized.
 
         // Annunciators ($C058-$C05F)
         for (byte i = 0; i < 8; i++)
@@ -362,11 +366,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         ];
     }
 
-    /// <summary>
-    /// Sets the page 2 selection state (called by AuxiliaryMemoryController).
-    /// </summary>
-    /// <param name="selected">Whether page 2 is selected.</param>
-    internal void SetPage2(bool selected)
+    /// <inheritdoc />
+    public void SetPage2(bool selected)
     {
         if (page2 != selected)
         {
@@ -375,11 +376,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
     }
 
-    /// <summary>
-    /// Sets the hi-res mode state (called by AuxiliaryMemoryController).
-    /// </summary>
-    /// <param name="enabled">Whether hi-res mode is enabled.</param>
-    internal void SetHiRes(bool enabled)
+    /// <inheritdoc />
+    public void SetHiRes(bool enabled)
     {
         if (hiresMode != enabled)
         {
@@ -469,6 +467,78 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         if (!context.IsSideEffectFree)
         {
             SetMixedModeInternal(true);
+        }
+    }
+
+    private byte ClearPage2Read(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(false);
+        }
+
+        return 0xFF;
+    }
+
+    private void ClearPage2Write(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(false);
+        }
+    }
+
+    private byte SetPage2Read(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(true);
+        }
+
+        return 0xFF;
+    }
+
+    private void SetPage2Write(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetPage2(true);
+        }
+    }
+
+    private byte ClearHiResRead(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(false);
+        }
+
+        return 0xFF;
+    }
+
+    private void ClearHiResWrite(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(false);
+        }
+    }
+
+    private byte SetHiResRead(byte offset, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(true);
+        }
+
+        return 0xFF;
+    }
+
+    private void SetHiResWrite(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree)
+        {
+            SetHiRes(true);
         }
     }
 

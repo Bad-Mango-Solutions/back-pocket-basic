@@ -51,7 +51,6 @@ public class AuxiliaryMemoryControllerTests
             Assert.That(controller.IsRamWrtEnabled, Is.False, "RAMWRT should be disabled initially");
             Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled initially");
             Assert.That(controller.IsPage2Selected, Is.False, "PAGE2 should be disabled initially");
-            Assert.That(controller.IsHiResEnabled, Is.False, "HIRES should be disabled initially");
         });
     }
 
@@ -192,84 +191,6 @@ public class AuxiliaryMemoryControllerTests
         Assert.That(controller.IsPage2Selected, Is.False, "PAGE1 read should disable PAGE2");
     }
 
-    // ─── 80STORE + HIRES + PAGE2 Tests ($C056/$C057) ────────────────────────────
-
-    /// <summary>
-    /// Verifies that LORES ($C056) disables HIRES mode.
-    /// </summary>
-    [Test]
-    public void LoRes_DisablesHiResMode()
-    {
-        var (controller, _, dispatcher) = CreateInitializedController();
-
-        // Enable HIRES first
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
-        Assert.That(controller.IsHiResEnabled, Is.True);
-
-        // Now disable
-        SimulateWrite(dispatcher, 0x56, 0x00); // LORES
-        Assert.That(controller.IsHiResEnabled, Is.False);
-    }
-
-    /// <summary>
-    /// Verifies that HIRES ($C057) enables HIRES mode.
-    /// </summary>
-    [Test]
-    public void HiRes_EnablesHiResMode()
-    {
-        var (controller, _, dispatcher) = CreateInitializedController();
-
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
-
-        Assert.That(controller.IsHiResEnabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that hi-res page layers activate only when 80STORE + HIRES + PAGE2 are all enabled.
-    /// </summary>
-    [Test]
-    public void HiResPageLayers_ActivateOnlyWhen80StoreHiResAndPage2Enabled()
-    {
-        var (_, bus, dispatcher) = CreateInitializedController();
-
-        // Initially all off - hi-res layers should be inactive
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
-
-        // Enable only 80STORE + HIRES (no PAGE2) - should still be inactive
-        SimulateWrite(dispatcher, 0x01, 0x00); // 80STOREON
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
-
-        // Enable PAGE2 - now should be active
-        SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.True);
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.True);
-
-        // Disable HIRES - should be inactive
-        SimulateWrite(dispatcher, 0x56, 0x00); // LORES
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
-    }
-
-    /// <summary>
-    /// Verifies that HIRES/LORES reads also affect the switch state.
-    /// </summary>
-    [Test]
-    public void HiresSwitches_ReadAccessAlsoAffectsState()
-    {
-        var (controller, _, dispatcher) = CreateInitializedController();
-
-        // Read HIRES should enable it
-        SimulateRead(dispatcher, 0x57); // HIRES
-        Assert.That(controller.IsHiResEnabled, Is.True, "HIRES read should enable it");
-
-        // Read LORES should disable it
-        SimulateRead(dispatcher, 0x56); // LORES
-        Assert.That(controller.IsHiResEnabled, Is.False, "LORES read should disable HIRES");
-    }
-
     // ─── RAMRD/RAMWRT Tests ($C002-$C005) ───────────────────────────────────────
 
     /// <summary>
@@ -348,7 +269,6 @@ public class AuxiliaryMemoryControllerTests
         SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
         SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
         SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
 
         // Reset
         controller.Reset();
@@ -360,7 +280,6 @@ public class AuxiliaryMemoryControllerTests
             Assert.That(controller.IsRamWrtEnabled, Is.False, "RAMWRT should be disabled after reset");
             Assert.That(controller.IsAltZpEnabled, Is.False, "ALTZP should be disabled after reset");
             Assert.That(controller.IsPage2Selected, Is.False, "PAGE2 should be disabled after reset");
-            Assert.That(controller.IsHiResEnabled, Is.False, "HIRES should be disabled after reset");
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.False);
             Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.False);
         });
@@ -697,46 +616,6 @@ public class AuxiliaryMemoryControllerTests
     }
 
     /// <summary>
-    /// Verifies that hi-res layer activation respects the three-switch combination.
-    /// </summary>
-    [Test]
-    public void Permutation_HiResLayerActivation_RequiresAllThreeSwitches()
-    {
-        var (_, bus, dispatcher) = CreateInitializedController();
-
-        // Test all permutations of 80STORE, HIRES, PAGE2
-        // Layer should only activate when ALL THREE are enabled
-        var testCases = new[]
-        {
-            (store80: false, hires: false, page2: false, expected: false),
-            (store80: true,  hires: false, page2: false, expected: false),
-            (store80: false, hires: true,  page2: false, expected: false),
-            (store80: false, hires: false, page2: true,  expected: false),
-            (store80: true,  hires: true,  page2: false, expected: false),
-            (store80: true,  hires: false, page2: true,  expected: false),
-            (store80: false, hires: true,  page2: true,  expected: false),
-            (store80: true,  hires: true,  page2: true,  expected: true),
-        };
-
-        foreach (var (store80, hires, page2, expected) in testCases)
-        {
-            // Set the switches
-            SimulateWrite(dispatcher, (byte)(store80 ? 0x01 : 0x00), 0x00);
-            SimulateWrite(dispatcher, (byte)(hires ? 0x57 : 0x56), 0x00);
-            SimulateWrite(dispatcher, (byte)(page2 ? 0x55 : 0x54), 0x00);
-
-            Assert.That(
-                bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1),
-                Is.EqualTo(expected),
-                $"HiRes1 layer mismatch at 80STORE={store80}, HIRES={hires}, PAGE2={page2}");
-            Assert.That(
-                bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2),
-                Is.EqualTo(expected),
-                $"HiRes2 layer mismatch at 80STORE={store80}, HIRES={hires}, PAGE2={page2}");
-        }
-    }
-
-    /// <summary>
     /// Verifies correct memory access patterns with asymmetric RAMRD/RAMWRT settings.
     /// </summary>
     [Test]
@@ -817,17 +696,13 @@ public class AuxiliaryMemoryControllerTests
         SimulateWrite(dispatcher, 0x05, 0x00); // WRCARDRAM
         SimulateWrite(dispatcher, 0x09, 0x00); // SETALTZP
         SimulateWrite(dispatcher, 0x55, 0x00); // PAGE2
-        SimulateWrite(dispatcher, 0x57, 0x00); // HIRES
 
-        // Verify everything is enabled
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage1), Is.True);
-        Assert.That(bus.IsLayerActive(AuxiliaryMemoryController.LayerNameHiResPage2), Is.True);
+        // Verify switches are enabled
         Assert.That(controller.IsAltZpEnabled, Is.True);
         Assert.That(controller.Is80StoreEnabled, Is.True);
         Assert.That(controller.IsRamRdEnabled, Is.True);
         Assert.That(controller.IsRamWrtEnabled, Is.True);
         Assert.That(controller.IsPage2Selected, Is.True);
-        Assert.That(controller.IsHiResEnabled, Is.True);
 
         // Reset
         controller.Reset();
@@ -842,7 +717,6 @@ public class AuxiliaryMemoryControllerTests
             Assert.That(controller.IsRamRdEnabled, Is.False, "RAMRD should be disabled");
             Assert.That(controller.IsRamWrtEnabled, Is.False, "RAMWRT should be disabled");
             Assert.That(controller.IsPage2Selected, Is.False, "PAGE2 should be disabled");
-            Assert.That(controller.IsHiResEnabled, Is.False, "HIRES should be disabled");
         });
     }
 

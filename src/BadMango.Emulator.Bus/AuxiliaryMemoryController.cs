@@ -57,7 +57,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     private bool ramwrt;
     private bool altzp;
     private bool page2;
-    private bool hires;
 
     /// <inheritdoc />
     public string Name => "Auxiliary Memory Controller";
@@ -121,16 +120,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     /// </remarks>
     public bool IsPage2Selected => page2;
 
-    /// <summary>
-    /// Gets a value indicating whether HIRES mode is enabled.
-    /// </summary>
-    /// <value><see langword="true"/> if HIRES mode is enabled; otherwise, <see langword="false"/>.</value>
-    /// <remarks>
-    /// When both 80STORE and HIRES are enabled, PAGE2 controls switching for both
-    /// text pages and hi-res pages.
-    /// </remarks>
-    public bool IsHiResEnabled => hires;
-
     /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
@@ -141,7 +130,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
             new("RAMWRT", 0xC004, ramwrt, "Writes to auxiliary RAM ($0200-$BFFF)"),
             new("ALTZP", 0xC008, altzp, "Alternate zero page/stack enabled"),
             new("PAGE2", 0xC054, page2, "Page 2 selected for 80STORE"),
-            new("HIRES", 0xC056, hires, "Hi-res mode (extends 80STORE)"),
         ];
     }
 
@@ -160,7 +148,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
         ramwrt = false;
         altzp = false;
         page2 = false;
-        hires = false;
 
         ApplyState();
     }
@@ -182,7 +169,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     /// <item><description>$C004-$C005: RAMWRT off/on (main/auxiliary write)</description></item>
     /// <item><description>$C008-$C009: ALTZP off/on (standard/alternate zero page)</description></item>
     /// <item><description>$C054-$C055: PAGE2 off/on (page 1/page 2 selection)</description></item>
-    /// <item><description>$C056-$C057: HIRES off/on</description></item>
     /// </list>
     /// <para>
     /// Note: Some offsets overlap with keyboard ($C000) — write-only switches don't conflict
@@ -225,11 +211,8 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
         // $C055: PAGE2 / TXTPAGE2 - Both read and write
         dispatcher.Register(0x55, HandlePage2Read, HandlePage2Write);
 
-        // $C056: TXTCLR / LORES - Both read and write
-        dispatcher.Register(0x56, HandleLoResRead, HandleLoResWrite);
-
-        // $C057: TXTSET / HIRES - Both read and write
-        dispatcher.Register(0x57, HandleHiResRead, HandleHiResWrite);
+        // Note: $C056/$C057 (LORES/HIRES) are video mode switches handled by VideoDevice.
+        // They do NOT affect auxiliary memory banking directly.
     }
 
     /// <summary>
@@ -243,7 +226,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     /// <item><description>RAMWRT disabled (writing to main RAM)</description></item>
     /// <item><description>ALTZP disabled (main zero page/stack)</description></item>
     /// <item><description>PAGE2 disabled (page 1 selected)</description></item>
-    /// <item><description>HIRES disabled</description></item>
     /// </list>
     /// </remarks>
     public void Reset()
@@ -253,7 +235,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
         ramwrt = false;
         altzp = false;
         page2 = false;
-        hires = false;
 
         ApplyState();
     }
@@ -391,50 +372,6 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
         ApplyState();
     }
 
-    private byte HandleLoResRead(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            hires = false;
-            ApplyState();
-        }
-
-        return 0xFF; // Floating bus
-    }
-
-    private void HandleLoResWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (context.IsSideEffectFree)
-        {
-            return;
-        }
-
-        hires = false;
-        ApplyState();
-    }
-
-    private byte HandleHiResRead(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            hires = true;
-            ApplyState();
-        }
-
-        return 0xFF; // Floating bus
-    }
-
-    private void HandleHiResWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (context.IsSideEffectFree)
-        {
-            return;
-        }
-
-        hires = true;
-        ApplyState();
-    }
-
     // ─── State Management ───────────────────────────────────────────────
 
     /// <summary>
@@ -442,11 +379,10 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Layer activation rules for hi-res pages (which are page-aligned and use layers):
+    /// Note: Hi-res page banking via 80STORE requires coordination with VideoDevice
+    /// for HIRES state. This is not currently implemented as the AuxiliaryMemoryController
+    /// is not typically enabled in the default profile.
     /// </para>
-    /// <list type="bullet">
-    /// <item><description>Hi-res pages are controlled by 80STORE AND HIRES AND PAGE2</description></item>
-    /// </list>
     /// <para>
     /// Sub-page regions (zero page, stack, text page) are handled by
     /// <see cref="AuxiliaryMemoryPage0Target"/> which reads the controller state directly.
@@ -459,11 +395,11 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
             return;
         }
 
-        // Hi-res pages controlled by 80STORE + HIRES + PAGE2
-        // These are page-aligned (8KB each) so they use layers
-        bool auxHires = store80 && hires && page2;
-        SetLayerActive(LayerNameHiResPage1, auxHires);
-        SetLayerActive(LayerNameHiResPage2, auxHires);
+        // Hi-res page banking would require 80STORE + HIRES + PAGE2, but HIRES state
+        // is managed by VideoDevice. For now, hi-res page layers are not dynamically
+        // controlled by this controller.
+        // When proper 80STORE + HIRES banking is needed, coordinate with VideoDevice
+        // to get the HIRES state.
     }
 
     /// <summary>
