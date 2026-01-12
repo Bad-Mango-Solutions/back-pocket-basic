@@ -74,7 +74,12 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
-        builder.RegisterType<BootCommand>()
+        builder.Register(ctx =>
+            {
+                var profile = ctx.ResolveOptional<MachineProfile>();
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                return new BootCommand(profile, windowManager);
+            })
             .As<ICommandHandler>()
             .SingleInstance();
 

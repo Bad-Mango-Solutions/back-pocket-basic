@@ -25,6 +25,11 @@ public enum SyntaxLanguage
     Json,
 
     /// <summary>
+    /// YAML format.
+    /// </summary>
+    Yaml,
+
+    /// <summary>
     /// Assembly language source code.
     /// </summary>
     Assembly,
