@@ -18,11 +18,11 @@ using BadMango.Emulator.Core.Configuration;
 /// <para>
 /// After boot, use 'pause' to suspend execution, 'resume' to continue,
 /// or 'halt' to force a complete stop.
-/// </para>
-/// <para>
-/// If the machine profile has <c>autoVideoWindowOpen</c> set to <see langword="true"/>, /// the video window will be opened automatically when the machine boots.
-/// </para>
-/// </remarks>
+    /// </para>
+    /// <para>
+    /// If the machine profile has <c>autoVideoWindowOpen</c> set to <see langword="true"/>, the video window will be opened automatically when the machine boots.
+    /// </para>
+    /// </remarks>
 public sealed class BootCommand : CommandHandlerBase, ICommandHelp
 {
     private readonly MachineProfile? profile;
