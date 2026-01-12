@@ -274,11 +274,12 @@ public partial class TextEditorWindow : Window
             [
                 new FilePickerFileType("All Supported Files")
                 {
-                    Patterns = ["*.txt", "*.md", "*.json", "*.s", "*.asm", "*.h"],
+                    Patterns = ["*.txt", "*.md", "*.json", "*.yaml", "*.yml", "*.s", "*.asm", "*.h"],
                 },
                 new FilePickerFileType("Text Files") { Patterns = ["*.txt"] },
                 new FilePickerFileType("Markdown Files") { Patterns = ["*.md"] },
                 new FilePickerFileType("JSON Files") { Patterns = ["*.json"] },
+                new FilePickerFileType("YAML Files") { Patterns = ["*.yaml", "*.yml"] },
                 new FilePickerFileType("Assembly Files") { Patterns = ["*.s", "*.asm", "*.h"] },
                 new FilePickerFileType("All Files") { Patterns = ["*"] },
             ],
@@ -332,6 +333,7 @@ public partial class TextEditorWindow : Window
                 new FilePickerFileType("Text Files") { Patterns = ["*.txt"] },
                 new FilePickerFileType("Markdown Files") { Patterns = ["*.md"] },
                 new FilePickerFileType("JSON Files") { Patterns = ["*.json"] },
+                new FilePickerFileType("YAML Files") { Patterns = ["*.yaml", "*.yml"] },
                 new FilePickerFileType("Assembly Files") { Patterns = ["*.s", "*.asm", "*.h"] },
                 new FilePickerFileType("All Files") { Patterns = ["*"] },
             ],
