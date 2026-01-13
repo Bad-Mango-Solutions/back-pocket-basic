@@ -4,9 +4,9 @@
 
 | Field        | Value                                              |
 |--------------|----------------------------------------------------|
-| Version      | 1.0                                                |
-| Date         | 2026-01-09                                         |
-| Status       | Initial Draft                                      |
+| Version      | 1.2                                                |
+| Date         | 2026-01-13                                         |
+| Status       | Revised Draft                                      |
 | Applies To   | Pocket2e (Apple IIe), Pocket2c (Apple IIc)         |
 | Related Docs | Apple II Video Display Specification               |
 |              | Apple II 80-Column Card Specification              |
@@ -53,8 +53,10 @@ This specification defines:
 2. **Dual character set support**: The ROM holds two complete 2KB character sets
    to support the ALTCHAR switch.
 
-3. **Dual glyph RAM banks**: Two 4KB glyph RAM banks enable custom character overlays
-   controlled by soft switches (ALTGLYPH1, ALTGLYPH2).
+3. **Single glyph RAM**: One 4KB glyph RAM enables custom character overlays
+   controlled by soft switches (ALTGLYPH1, ALTGLYPH2). "Bank 1" refers to the
+   lower 2KB ($0000-$07FF) overlaying the primary character set, while "Bank 2"
+   refers to the upper 2KB ($0800-$0FFF) overlaying the alternate character set.
 
 4. **Per-bank flash control**: The NOFLASH1 and NOFLASH2 soft switches allow
    disabling flashing behavior on a per-bank basis. Bank 2 defaults to NOFLASH.
@@ -165,10 +167,11 @@ control, following the separation of concerns principle.
 
 Key features:
 - 4KB character ROM for primary and alternate character sets
-- Two 4KB glyph RAM banks for custom character overlays
+- 4KB glyph RAM for custom character overlays
 - Soft switch-controlled glyph bank selection
 - Per-bank flash control
 - Glyph RAM read/write access control
+- ALTCHAR switch ownership (moved from VideoDevice)
 
 ### 3.2 Device-Owned Memory
 
@@ -192,15 +195,15 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     public const int CharacterSetSize = 2048;
 
     /// <summary>
-    /// Size of each glyph RAM bank: 4KB.
+    /// Size of glyph RAM: 4KB.
     /// </summary>
-    public const int GlyphBankSize = 4096;
+    public const int GlyphRamSize = 4096;
 
-    private readonly PhysicalMemory glyphBank1;
-    private readonly PhysicalMemory glyphBank2;
+    private readonly PhysicalMemory glyphRam;
     private PhysicalMemory? characterRom;
 
     // Soft switch state
+    private bool altCharSet;
     private bool altGlyph1Enabled;
     private bool altGlyph2Enabled;
     private bool noFlash1Enabled;
@@ -220,6 +223,11 @@ The character device implements `ICharacterDevice` which extends `ICharacterRomP
 /// </summary>
 public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
 {
+    /// <summary>
+    /// Gets a value indicating whether the alternate character set is active.
+    /// </summary>
+    bool IsAltCharSet { get; }
+
     /// <summary>
     /// Gets a value indicating whether glyph bank 1 overlay is enabled.
     /// </summary>
@@ -276,10 +284,10 @@ public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
 }
 ```
 
-### 3.4 Glyph Bank Overlay Behavior
+### 3.4 Glyph RAM Overlay Behavior
 
 When `ALTGLYPH1` or `ALTGLYPH2` is enabled, character reads are redirected to the
-corresponding glyph RAM bank instead of the character ROM:
+glyph RAM instead of the character ROM for the corresponding bank:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -287,54 +295,77 @@ corresponding glyph RAM bank instead of the character ROM:
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │   ┌─────────────────────┐     ┌─────────────────────┐                  │
-│   │  Character ROM      │     │  Glyph Bank 1       │                  │
+│   │  Character ROM      │     │  Glyph RAM          │                  │
 │   │  (4KB, from profile)│     │  (4KB, internal)    │                  │
 │   │                     │     │                     │                  │
-│   │  $0000-$07FF: Pri   │     │  Overlays primary   │                  │
-│   │  $0800-$0FFF: Alt   │     │  when ALTGLYPH1 on  │                  │
+│   │  $0000-$07FF: Pri   │     │  $0000-$07FF: Bank1 │                  │
+│   │  $0800-$0FFF: Alt   │     │  $0800-$0FFF: Bank2 │                  │
 │   └─────────────────────┘     └─────────────────────┘                  │
 │                                                                         │
-│   ┌─────────────────────┐                                              │
-│   │  Glyph Bank 2       │                                              │
-│   │  (4KB, internal)    │                                              │
-│   │                     │                                              │
-│   │  Overlays alternate │                                              │
-│   │  when ALTGLYPH2 on  │                                              │
-│   └─────────────────────┘                                              │
+│   Bank 1 (lower 2KB): Overlays primary set when ALTGLYPH1 enabled      │
+│   Bank 2 (upper 2KB): Overlays alternate set when ALTGLYPH2 enabled    │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.5 Soft Switch Definitions
 
-The character device uses soft switches in the $C060-$C06B and $C024-$C029 ranges:
+The character device uses soft switches at the following addresses. Toggle switches
+are **write-only** and use the naming convention CLRxxx (clear/disable) and SETxxx
+(set/enable). Status switches use the RDxxx naming convention.
 
-| Address | Name           | Function                                       |
-|---------|----------------|------------------------------------------------|
-| $C060   | RDGLYPHOFF     | Disable glyph RAM reading                      |
-| $C061   | RDGLYPHON      | Enable glyph RAM reading                       |
-| $C062   | WRTGLYPHOFF    | Disable glyph RAM writing                      |
-| $C063   | WRTGLYPHON     | Enable glyph RAM writing                       |
-| $C064   | NOFLASH1OFF    | Enable flashing for bank 1                     |
-| $C065   | NOFLASH1ON     | Disable flashing for bank 1                    |
-| $C066   | NOFLASH2OFF    | Enable flashing for bank 2                     |
-| $C067   | NOFLASH2ON     | Disable flashing for bank 2                    |
-| $C068   | ALTGLYPH1OFF   | Disable glyph bank 1 overlay                   |
-| $C069   | ALTGLYPH1ON    | Enable glyph bank 1 overlay                    |
-| $C06A   | ALTGLYPH2OFF   | Disable glyph bank 2 overlay                   |
-| $C06B   | ALTGLYPH2ON    | Enable glyph bank 2 overlay                    |
-| $C024   | RDALTGLYPH1    | Read glyph bank 1 status (bit 7)               |
-| $C025   | RDALTGLYPH2    | Read glyph bank 2 status (bit 7)               |
-| $C026   | RDNOFLASH1     | Read no-flash bank 1 status (bit 7)            |
-| $C027   | RDNOFLASH2     | Read no-flash bank 2 status (bit 7)            |
-| $C028   | RDGLYPHRD      | Read glyph read status (bit 7)                 |
-| $C029   | RDGLYPHWR      | Read glyph write status (bit 7)                |
+#### ALTCHAR Switches (Relocated from VideoDevice)
+
+| Address | Name       | Access | Function                              |
+|---------|------------|--------|---------------------------------------|
+| $C00E   | CLRALTCHAR | Write  | Select primary character set          |
+| $C00F   | SETALTCHAR | Write  | Select alternate character set        |
+| $C01E   | RDALTCHAR  | Read   | Bit 7 = 1 if alternate set active     |
+
+#### Glyph RAM Read/Write Control ($C042-$C045)
+
+| Address | Name         | Access | Function                            |
+|---------|--------------|--------|-------------------------------------|
+| $C042   | CLRGLYPHRD   | Write  | Disable glyph RAM reading           |
+| $C043   | SETGLYPHRD   | Write  | Enable glyph RAM reading            |
+| $C044   | CLRGLYPHWRT  | Write  | Disable glyph RAM writing           |
+| $C045   | SETGLYPHWRT  | Write  | Enable glyph RAM writing            |
+
+#### Flash Control ($C046-$C049)
+
+| Address | Name         | Access | Function                            |
+|---------|--------------|--------|-------------------------------------|
+| $C046   | CLRNOFLASH1  | Write  | Enable flashing for bank 1          |
+| $C047   | SETNOFLASH1  | Write  | Disable flashing for bank 1         |
+| $C048   | CLRNOFLASH2  | Write  | Enable flashing for bank 2          |
+| $C049   | SETNOFLASH2  | Write  | Disable flashing for bank 2         |
+
+#### Glyph Bank Overlay Control ($C04A-$C04D)
+
+| Address | Name          | Access | Function                           |
+|---------|---------------|--------|------------------------------------|
+| $C04A   | CLRALTGLYPH1  | Write  | Disable glyph bank 1 overlay       |
+| $C04B   | SETALTGLYPH1  | Write  | Enable glyph bank 1 overlay        |
+| $C04C   | CLRALTGLYPH2  | Write  | Disable glyph bank 2 overlay       |
+| $C04D   | SETALTGLYPH2  | Write  | Enable glyph bank 2 overlay        |
+
+#### Status Reads ($C034-$C039)
+
+| Address | Name         | Access | Function                            |
+|---------|--------------|--------|-------------------------------------|
+| $C034   | RDGLYPHRD    | Read   | Bit 7 = glyph read status           |
+| $C035   | RDGLYPHWRT   | Read   | Bit 7 = glyph write status          |
+| $C036   | RDNOFLASH1   | Read   | Bit 7 = no-flash bank 1 status      |
+| $C037   | RDNOFLASH2   | Read   | Bit 7 = no-flash bank 2 status      |
+| $C038   | RDALTGLYPH1  | Read   | Bit 7 = glyph bank 1 overlay status |
+| $C039   | RDALTGLYPH2  | Read   | Bit 7 = glyph bank 2 overlay status |
 
 **Default State:**
 - All glyph overlays disabled
-- NoFlash1 disabled (flashing enabled)
+- NoFlash1 disabled (flashing enabled for bank 1)
 - NoFlash2 enabled (flashing disabled by default for bank 2)
 - Glyph read/write disabled
+- AltCharSet disabled (primary character set)
 
 ---
 
@@ -440,34 +471,41 @@ For systems using legacy VideoDevice character ROM:
 
 ### 6.1 Soft Switch Behavior
 
-The ALTCHAR soft switch at $C00E/$C00F selects the active character set:
+The ALTCHAR soft switch at $C00E/$C00F selects the active character set.
+As of this revision, ALTCHAR is owned by `CharacterDevice`, not `VideoDevice`.
 
-| Address | Name       | Action                              |
-|---------|------------|-------------------------------------|
-| $C00E   | ALTCHAROFF | Write: Select primary character set |
-| $C00F   | ALTCHARON  | Write: Select alternate character set |
-| $C01E   | RDALTCHAR  | Read: Bit 7 = 1 if alternate active |
+| Address | Name       | Access | Action                              |
+|---------|------------|--------|-------------------------------------|
+| $C00E   | CLRALTCHAR | Write  | Select primary character set        |
+| $C00F   | SETALTCHAR | Write  | Select alternate character set      |
+| $C01E   | RDALTCHAR  | Read   | Bit 7 = 1 if alternate active       |
 
-### 6.2 VideoDevice Implementation
+### 6.2 CharacterDevice Implementation
 
 ```csharp
-public sealed partial class VideoDevice
+public sealed partial class CharacterDevice
 {
     private bool altCharSet;
 
     /// <inheritdoc />
     public bool IsAltCharSet => altCharSet;
 
-    /// <summary>
-    /// Sets the alternate character set state.
-    /// </summary>
-    /// <param name="enabled">Whether alternate character set is enabled.</param>
-    public void SetAltCharSet(bool enabled)
+    // ALTCHAR switch handlers (write-only)
+    private void HandleClrAltChar(byte offset, byte value, in BusAccess context)
     {
-        if (altCharSet != enabled)
+        if (!context.IsSideEffectFree && altCharSet)
         {
-            altCharSet = enabled;
-            OnModeChanged();
+            altCharSet = false;
+            characterRomChangePending = true;
+        }
+    }
+
+    private void HandleSetAltChar(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree && !altCharSet)
+        {
+            altCharSet = true;
+            characterRomChangePending = true;
         }
     }
 }
@@ -531,13 +569,13 @@ private void RenderCharacter(
 
 ### 7.1 Concept
 
-The `CharacterDevice` provides custom character support through glyph RAM banks:
+The `CharacterDevice` provides custom character support through glyph RAM:
 
-1. **Glyph Bank 1**: 4KB RAM that can overlay the primary character set when
-   ALTGLYPH1 is enabled.
+1. **Glyph Bank 1**: Lower 2KB of glyph RAM ($0000-$07FF) that can overlay the
+   primary character set when ALTGLYPH1 is enabled.
 
-2. **Glyph Bank 2**: 4KB RAM that can overlay the alternate character set when
-   ALTGLYPH2 is enabled.
+2. **Glyph Bank 2**: Upper 2KB of glyph RAM ($0800-$0FFF) that can overlay the
+   alternate character set when ALTGLYPH2 is enabled.
 
 Programs can write custom character data to glyph RAM and enable the overlay
 to display custom fonts.
@@ -548,30 +586,30 @@ to display custom fonts.
 ;-----------------------------------------------------------------------
 ; LOADCHAR - Load custom character bitmap into CharacterDevice glyph RAM
 ;
-; Programs write directly to glyph RAM using WRTGLYPH switch, then
+; Programs write directly to glyph RAM using SETGLYPHWRT switch, then
 ; enable the glyph bank overlay to use custom characters.
 ;-----------------------------------------------------------------------
 
-WRTGLYPHON   = $C063    ; Enable glyph RAM writing
-WRTGLYPHOFF  = $C062    ; Disable glyph RAM writing
-ALTGLYPH1ON  = $C069    ; Enable glyph bank 1 overlay
-ALTGLYPH1OFF = $C068    ; Disable glyph bank 1 overlay
+SETGLYPHWRT  = $C045    ; Enable glyph RAM writing
+CLRGLYPHWRT  = $C044    ; Disable glyph RAM writing
+SETALTGLYPH1 = $C04B    ; Enable glyph bank 1 overlay
+CLRALTGLYPH1 = $C04A    ; Disable glyph bank 1 overlay
 
 CUSTOM_FONT  = $4000    ; Source address for custom font data
 
 LOADCHAR:
         ; Step 1: Enable glyph RAM writing
-        STA WRTGLYPHON
+        STA SETGLYPHWRT
 
         ; Step 2: Copy custom font to glyph RAM
         ; (Implementation depends on memory mapping)
         ; ...
 
         ; Step 3: Disable glyph RAM writing
-        STA WRTGLYPHOFF
+        STA CLRGLYPHWRT
 
         ; Step 4: Enable glyph bank 1 overlay for rendering
-        STA ALTGLYPH1ON
+        STA SETALTGLYPH1
 
         ; Done! Characters now render from glyph bank 1.
         RTS
@@ -586,12 +624,12 @@ Each glyph bank has independent flash control:
 
 ```assembly
 ; Disable flashing for bank 1
-NOFLASH1ON   = $C065
-        STA NOFLASH1ON  ; Characters $40-$7F no longer flash
+SETNOFLASH1  = $C047
+        STA SETNOFLASH1 ; Characters $40-$7F no longer flash
 
 ; Enable flashing for bank 2
-NOFLASH2OFF  = $C066
-        STA NOFLASH2OFF ; Characters $40-$7F now flash in alt mode
+CLRNOFLASH2  = $C048
+        STA CLRNOFLASH2 ; Characters $40-$7F now flash in alt mode
 ```
 
 ---
@@ -602,3 +640,4 @@ NOFLASH2OFF  = $C066
 |---------|------------|--------------|------------------------------------------------|
 | 1.0     | 2026-01-09 | Initial      | Initial draft with VideoDevice character ROM   |
 | 1.1     | 2026-01-13 | CharacterDevice | Added CharacterDevice with glyph RAM banks, per-bank flash control, and enhanced soft switches |
+| 1.2     | 2026-01-13 | Revision     | Major update: consolidated to single 4KB glyph RAM, moved ALTCHAR to CharacterDevice, renamed switches (CLR/SET naming), relocated addresses ($C042-$C04D for toggles, $C034-$C039 for status reads), made toggle switches write-only |
