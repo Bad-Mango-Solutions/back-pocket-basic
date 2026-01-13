@@ -32,6 +32,8 @@ public partial class GlyphEditorWindow : Window
     private GlyphEditorViewModel? viewModel;
     private bool isDrawing;
     private bool drawValue;
+    private bool isDraggingSelection;
+    private byte dragStartCharCode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GlyphEditorWindow"/> class.
@@ -167,7 +169,11 @@ public partial class GlyphEditorWindow : Window
         }
 
         int zoomLevel = viewModel.GridZoomLevel;
-        int cellSize = (CharacterRenderer.CharacterWidth + 2) * zoomLevel;
+
+        // At zoom level 1, each pixel is 2x2, so character width is 7*2=14
+        // Each higher zoom level adds 1 pixel per character pixel
+        int pixelScale = zoomLevel + 1;
+        int cellSize = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
         int totalSize = GridSize * cellSize;
 
         CharacterCanvas.Width = totalSize;
@@ -183,10 +189,20 @@ public partial class GlyphEditorWindow : Window
             int x = col * cellSize;
             int y = row * cellSize;
 
-            // Cell background
-            var bgColor = charIndex == viewModel.SelectedCharCode
-                ? new SolidColorBrush(Color.FromRgb(0, 80, 120))
-                : new SolidColorBrush(Color.FromRgb(40, 40, 40));
+            // Determine cell background based on selection state
+            IBrush bgColor;
+            if (charIndex == viewModel.SelectedCharCode)
+            {
+                bgColor = new SolidColorBrush(Color.FromRgb(0, 80, 120)); // Primary selection
+            }
+            else if (viewModel.IsCharacterSelected((byte)charIndex))
+            {
+                bgColor = new SolidColorBrush(Color.FromRgb(0, 60, 90)); // Multi-selection
+            }
+            else
+            {
+                bgColor = new SolidColorBrush(Color.FromRgb(40, 40, 40));
+            }
 
             var cellRect = new Rectangle
             {
@@ -216,12 +232,12 @@ public partial class GlyphEditorWindow : Window
                     {
                         var pixelRect = new Rectangle
                         {
-                            Width = zoomLevel,
-                            Height = zoomLevel,
+                            Width = pixelScale,
+                            Height = pixelScale,
                             Fill = new SolidColorBrush(Color.FromRgb(0, 255, 0)),
                         };
-                        Canvas.SetLeft(pixelRect, x + (pixel * zoomLevel) + 1);
-                        Canvas.SetTop(pixelRect, y + (scanline * zoomLevel) + 1);
+                        Canvas.SetLeft(pixelRect, x + (pixel * pixelScale) + 1);
+                        Canvas.SetTop(pixelRect, y + (scanline * pixelScale) + 1);
                         CharacterCanvas.Children.Add(pixelRect);
                     }
                 }
@@ -271,16 +287,72 @@ public partial class GlyphEditorWindow : Window
     {
         if (sender is Rectangle rect && rect.Tag is int charIndex && viewModel != null)
         {
-            var properties = e.GetCurrentPoint(rect).Properties;
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             {
+                // Shift+click: range selection from current to clicked
+                viewModel.ExtendSelectionTo((byte)charIndex);
+            }
+            else if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                // Ctrl+click: toggle selection
                 viewModel.ToggleSelection((byte)charIndex);
             }
             else
             {
+                // Plain click: start potential drag selection
+                isDraggingSelection = true;
+                dragStartCharCode = (byte)charIndex;
                 viewModel.SelectCharacter((byte)charIndex);
             }
+
+            RenderCharacterGrid();
+            e.Handled = true;
         }
+    }
+
+    private void OnCharacterCanvasPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!isDraggingSelection || viewModel?.CurrentFile == null)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(CharacterCanvas);
+        var charCode = GetCharacterCodeFromPosition(point.Position);
+        if (charCode.HasValue && charCode.Value != dragStartCharCode)
+        {
+            // Clear and select range
+            viewModel.SelectCharacter(dragStartCharCode);
+            viewModel.ExtendSelectionTo(charCode.Value);
+            RenderCharacterGrid();
+        }
+    }
+
+    private void OnCharacterCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        isDraggingSelection = false;
+    }
+
+    private byte? GetCharacterCodeFromPosition(Avalonia.Point position)
+    {
+        if (viewModel == null)
+        {
+            return null;
+        }
+
+        int zoomLevel = viewModel.GridZoomLevel;
+        int pixelScale = zoomLevel + 1;
+        int cellSize = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
+
+        int col = (int)(position.X / cellSize);
+        int row = (int)(position.Y / cellSize);
+
+        if (col < 0 || col >= GridSize || row < 0 || row >= GridSize)
+        {
+            return null;
+        }
+
+        return (byte)((row * GridSize) + col);
     }
 
     private void RenderBitmapEditor()

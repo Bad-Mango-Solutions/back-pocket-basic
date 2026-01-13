@@ -50,7 +50,7 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
     private bool isFlashOn;
 
     [ObservableProperty]
-    private int gridZoomLevel = 2;
+    private int gridZoomLevel = 1;
 
     [ObservableProperty]
     private string windowTitle = "Character Glyph Editor";
@@ -231,6 +231,33 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
     {
         selectedCharCodes.Clear();
         selectedCharCodes.Add(SelectedCharCode);
+        OnPropertyChanged(nameof(SelectionCount));
+    }
+
+    /// <summary>
+    /// Checks if a character is in the current selection.
+    /// </summary>
+    /// <param name="charCode">The character code to check.</param>
+    /// <returns>True if the character is selected.</returns>
+    public bool IsCharacterSelected(byte charCode)
+    {
+        return selectedCharCodes.Contains(charCode);
+    }
+
+    /// <summary>
+    /// Extends the selection from the current character to a target character (range selection).
+    /// </summary>
+    /// <param name="targetCharCode">The target character code.</param>
+    public void ExtendSelectionTo(byte targetCharCode)
+    {
+        int start = Math.Min(SelectedCharCode, targetCharCode);
+        int end = Math.Max(SelectedCharCode, targetCharCode);
+
+        for (int i = start; i <= end; i++)
+        {
+            selectedCharCodes.Add((byte)i);
+        }
+
         OnPropertyChanged(nameof(SelectionCount));
     }
 

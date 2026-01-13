@@ -142,7 +142,9 @@
                                   VerticalScrollBarVisibility="Auto">
                         <Canvas x:Name="CharacterCanvas"
                                 Width="400"
-                                Height="400" />
+                                Height="400"
+                                PointerMoved="OnCharacterCanvasPointerMoved"
+                                PointerReleased="OnCharacterCanvasPointerReleased" />
                     </ScrollViewer>
 
                     <!-- Zoom Controls -->
