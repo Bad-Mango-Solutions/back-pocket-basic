@@ -117,4 +117,20 @@ public static class DefaultCharacterRom
         ArgumentNullException.ThrowIfNull(videoDevice);
         videoDevice.LoadCharacterRom(GetRomData());
     }
+
+    /// <summary>
+    /// Loads the default character ROM into a character device.
+    /// </summary>
+    /// <param name="characterDevice">The character device to load the ROM into.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="characterDevice"/> is null.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the embedded resource cannot be found or is invalid.
+    /// </exception>
+    public static void LoadIntoCharacterDevice(Interfaces.ICharacterDevice characterDevice)
+    {
+        ArgumentNullException.ThrowIfNull(characterDevice);
+        characterDevice.LoadCharacterRom(GetRomData());
+    }
 }
