@@ -77,6 +77,28 @@ public class SyntaxHighlightingManagerTests
     }
 
     /// <summary>
+    /// Verifies that GetLanguageForFile returns Yaml for .yaml files.
+    /// </summary>
+    [Test]
+    public void GetLanguageForFile_YamlExtension_ReturnsYaml()
+    {
+        var result = SyntaxHighlightingManager.GetLanguageForFile("config.yaml");
+
+        Assert.That(result, Is.EqualTo(SyntaxLanguage.Yaml));
+    }
+
+    /// <summary>
+    /// Verifies that GetLanguageForFile returns Yaml for .yml files.
+    /// </summary>
+    [Test]
+    public void GetLanguageForFile_YmlExtension_ReturnsYaml()
+    {
+        var result = SyntaxHighlightingManager.GetLanguageForFile("config.yml");
+
+        Assert.That(result, Is.EqualTo(SyntaxLanguage.Yaml));
+    }
+
+    /// <summary>
     /// Verifies that GetLanguageForFile returns PlainText for unknown extensions.
     /// </summary>
     [Test]
@@ -142,6 +164,7 @@ public class SyntaxHighlightingManagerTests
         Assert.That(languages, Contains.Item(SyntaxLanguage.PlainText));
         Assert.That(languages, Contains.Item(SyntaxLanguage.Markdown));
         Assert.That(languages, Contains.Item(SyntaxLanguage.Json));
+        Assert.That(languages, Contains.Item(SyntaxLanguage.Yaml));
         Assert.That(languages, Contains.Item(SyntaxLanguage.Assembly));
     }
 
@@ -153,6 +176,7 @@ public class SyntaxHighlightingManagerTests
     [TestCase(SyntaxLanguage.PlainText, "Plain Text")]
     [TestCase(SyntaxLanguage.Markdown, "Markdown")]
     [TestCase(SyntaxLanguage.Json, "JSON")]
+    [TestCase(SyntaxLanguage.Yaml, "YAML")]
     [TestCase(SyntaxLanguage.Assembly, "Assembly")]
     public void GetDisplayName_ReturnsCorrectDisplayName(SyntaxLanguage language, string expected)
     {
@@ -195,6 +219,17 @@ public class SyntaxHighlightingManagerTests
     }
 
     /// <summary>
+    /// Verifies that GetTextMateScope returns valid scope for Yaml.
+    /// </summary>
+    [Test]
+    public void GetTextMateScope_Yaml_ReturnsValidScope()
+    {
+        var result = SyntaxHighlightingManager.GetTextMateScope(SyntaxLanguage.Yaml);
+
+        Assert.That(result, Is.EqualTo("source.yaml"));
+    }
+
+    /// <summary>
     /// Verifies that GetExtensionsForLanguage returns correct extensions for Assembly.
     /// </summary>
     [Test]
@@ -207,6 +242,21 @@ public class SyntaxHighlightingManagerTests
             Assert.That(extensions, Contains.Item(".s"));
             Assert.That(extensions, Contains.Item(".asm"));
             Assert.That(extensions, Contains.Item(".h"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetExtensionsForLanguage returns correct extensions for Yaml.
+    /// </summary>
+    [Test]
+    public void GetExtensionsForLanguage_Yaml_ReturnsMultipleExtensions()
+    {
+        var extensions = SyntaxHighlightingManager.GetExtensionsForLanguage(SyntaxLanguage.Yaml);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(extensions, Contains.Item(".yaml"));
+            Assert.That(extensions, Contains.Item(".yml"));
         });
     }
 }
