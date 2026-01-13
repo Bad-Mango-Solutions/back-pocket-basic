@@ -144,7 +144,8 @@ The alternate character set is identical to the primary set except:
 | Code Range  | Primary Set      | Alternate Set (IIe) |
 |-------------|------------------|---------------------|
 | $40-$5F     | Flashing @-_     | MouseText glyphs    |
-| $60-$7F     | Flashing space-? | MouseText glyphs    |
+| $60-$7F     | Flashing space-? | Inverse lowercase   |
+| $C0-$DF     | @-_              | MouseText glyphs    |
 
 ---
 
