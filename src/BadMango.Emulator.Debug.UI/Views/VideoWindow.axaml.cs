@@ -440,6 +440,11 @@ public partial class VideoWindow : Window
         // Get ALTCHAR state from CharacterDevice if available, otherwise assume false
         bool useAltCharSet = characterDevice?.IsAltCharSet ?? false;
 
+        // Get NOFLASH states from CharacterDevice if available
+        // Default: Bank 1 = flashing enabled (noFlash = false), Bank 2 = flashing disabled (noFlash = true)
+        bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
+        bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
+
         // Render frame using the Pocket2VideoRenderer with current color mode
         renderer.RenderFrame(
             pixels,
@@ -449,6 +454,8 @@ public partial class VideoWindow : Window
             useAltCharSet,
             videoDevice.IsPage2,
             flashState,
+            noFlash1,
+            noFlash2,
             colorMode);
 
         // Commit pixel buffer to bitmap

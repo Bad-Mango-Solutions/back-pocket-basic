@@ -147,7 +147,7 @@ public class VideoWindowTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false);
+            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
 
         // Should not throw when committing
         Assert.DoesNotThrow(() => pixelBuffer.Commit());
@@ -183,7 +183,9 @@ public class VideoWindowTests
                 new byte[4096],
                 useAltCharSet: false,
                 isPage2: false,
-                flashState: i % 2 == 0);
+                flashState: i % 2 == 0,
+                noFlash1Enabled: false,
+                noFlash2Enabled: true);
 
             pixelBuffer.Commit();
         }
@@ -239,7 +241,7 @@ public class VideoWindowTests
                 new byte[4096],
                 useAltCharSet: false,
                 isPage2: false,
-                flashState: false);
+                flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
 
             pixelBuffer.Commit();
         }
