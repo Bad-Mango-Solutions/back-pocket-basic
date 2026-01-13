@@ -18,6 +18,8 @@
 
 This specification defines the implementation of a character glyph file editor for the Back Pocket BASIC emulator toolchain. The editor enables users to create, modify, and test Apple II character glyph files (4KB, containing two 2KB character sets).
 
+(Note: Implementation examples in this file are suggestions only.)
+
 ### 1.1 Goals
 
 1. **Visual glyph editing**: Intuitive 7×8 pixel bitmap editor for individual characters
@@ -42,7 +44,7 @@ The editor will be implemented as part of the existing `charmap` CLI tool, addin
 
 ```
 src/
-├── BadMango.Tools. CharMap/
+├── BadMango.Tools.CharMap/
 │   ├── Commands/
 │   │   ├── EditCommand.cs           # New:  launches editor window
 │   │   └── ...  (existing commands)
@@ -74,34 +76,34 @@ src/
 │                         GlyphEditorWindow                               │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │                        Menu Bar                                   │   │
+│  │                        Menu Bar                                  │   │
 │  │  File | Edit | View | Tools | Emulator | Help                    │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  ○ Primary Set   ○ Alternate Set    Char:  $41 'A' [Normal]       │   │
+│  │  ○ Primary Set   ○ Alternate Set    Char:  $41 'A' [Normal]      │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────┬────────────────────────────────────┐   │
 │  │                             │                                    │   │
 │  │    CharacterGridControl     │      BitmapEditorControl           │   │
 │  │    (16×16 = 256 chars)      │      (7×8 pixel grid)              │   │
 │  │                             │                                    │   │
-│  │    ┌─┬─┬─┬─┬─┬─┬─┬─┐       │      ┌─────────────────┐   ┌���──┐   │   │
-│  │    │@│A│B│C│D│E│F│G│       │      │▪ ▪ █ █ ▪ ▪ ▪   │   │   │   │   │
-│  │    ├─┼─┼─┼─┼─┼─┼─┼─┤       │      │▪ █ ▪ ▪ █ ▪ ▪   │   │ A │   │   │
-│  │    │H│I│J│K│L│M│N│O│       │      │█ ▪ ▪ ▪ ▪ █ ▪   │   │   │   │   │
-│  │    ├─┼─┼─┼─┼─┼─┼─┼─┤       │      │█ █ █ █ █ █ ▪   │   └───┘   │   │
-│  │    │ ...  16 rows ...│       │      │█ ▪ ▪ ▪ ▪ █ ▪   │  Preview  │   │
-│  │    └─┴─┴─┴─┴─┴─┴─┴─┘       │      │█ ▪ ▪ ▪ ▪ █ ▪   │           │   │
-│  │                             │      │▪ ▪ ▪ ▪ ▪ ▪ ▪   │           │   │
-│  │    Zoom: [−][+]             │      │▪ ▪ ▪ ▪ ▪ ▪ ▪   │           │   │
-│  │    ☑ Show Grid              │      └─────────────────┘           │   │
+│  │    ┌─┬─┬─┬─┬─┬─┬─┬─┐        │      ┌─────────────────┐   ┌───┐   │   │
+│  │    │@│A│B│C│D│E│F│G│        │      │ ▪ ▪ █ █ ▪ ▪ ▪   │   │   │   │   │
+│  │    ├─┼─┼─┼─┼─┼─┼─┼─┤        │      │ ▪ █ ▪ ▪ █ ▪ ▪   │   │ A │   │   │
+│  │    │H│I│J│K│L│M│N│O│        │      │ █ ▪ ▪ ▪ ▪ █ ▪   │   │   │   │   │
+│  │    ├─┼─┼─┼─┼─┼─┼─┼─┤        │      │ █ █ █ █ █ █ ▪   │   └───┘   │   │
+│  │    │... 16 rows ...│        │      │ █ ▪ ▪ ▪ ▪ █ ▪   │  Preview  │   │
+│  │    └─┴─┴─┴─┴─┴─┴─┴─┘        │      │ █ ▪ ▪ ▪ ▪ █ ▪   │           │   │
+│  │                             │      │ ▪ ▪ ▪ ▪ ▪ ▪ ▪   │           │   │
+│  │    Zoom: [−][+]             │      │ ▪ ▪ ▪ ▪ ▪ ▪ ▪   │           │   │
+│  │    ☑ Show Grid             │      └─────────────────┘           │   │
 │  │                             │                                    │   │
 │  │                             │      ToolButtonPanel               │   │
 │  │                             │      [↑][↓][←][→] [Inv][Clr][Fill] │   │
-│  │                             │      [↺][↻] [⇅][⇄] [Line]          │   │
+│  │                             │      [↺][↻] [⇅][⇄] [Line]        │   │
 │  └─────────────────────────────┴────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  Status:  Ready | Modified | chars selected:  1                    │   │
+│  │  Status:  Ready | Modified | chars selected:  1                  │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1411,179 +1413,3 @@ public sealed partial class GlyphEditorViewModel :  ViewModelBase
     }
 }
 ```
-
----
-
-## 6. Views
-
-### 6.1 Main Window XAML
-
-````xml name=GlyphEditorWindow.axaml
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns: x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns: vm="using:BadMango.Tools.CharMap.Editor.ViewModels"
-        xmlns:views="using:BadMango.Tools.CharMap.Editor.Views"
-        x:Class="BadMango.Tools.CharMap.Editor.Views. GlyphEditorWindow"
-        x:DataType="vm: GlyphEditorViewModel"
-        Title="{Binding WindowTitle}"
-        Width="900" Height="700"
-        MinWidth="800" MinHeight="600">
-    
-    <Window.KeyBindings>
-        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewFileCommand}" />
-        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
-        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
-        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
-        <KeyBinding Gesture="Ctrl+C" Command="{Binding CopySelectedGlyphsCommand}" />
-        <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteGlyphsCommand}" />
-    </Window.KeyBindings>
-    
-    <DockPanel>
-        <!-- Menu Bar -->
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File">
-                <MenuItem Header="_New" Command="{Binding NewFileCommand}" InputGesture="Ctrl+N" />
-                <MenuItem Header="_Open..." Command="{Binding OpenFileCommand}" InputGesture="Ctrl+O" />
-                <Separator />
-                <MenuItem Header="_Save" Command="{Binding SaveFileCommand}" InputGesture="Ctrl+S" />
-                <MenuItem Header="Save _As..." Command="{Binding SaveFileAsCommand}" InputGesture="Ctrl+Shift+S" />
-                <Separator />
-                <MenuItem Header="_Import from ROM..." Command="{Binding ImportFromRomCommand}" />
-                <MenuItem Header="_Export Preview Image..." Command="{Binding ExportPreviewImageCommand}" />
-                <Separator />
-                <MenuItem Header="E_xit" Click="OnExitClick" />
-            </MenuItem>
-            <MenuItem Header="_Edit">
-                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z" />
-                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y" />
-                <Separator />
-                <MenuItem Header="_Copy" Command="{Binding CopySelectedGlyphsCommand}" InputGesture="Ctrl+C" />
-                <MenuItem Header="_Paste" Command="{Binding PasteGlyphsCommand}" InputGesture="Ctrl+V" />
-            </MenuItem>
-            <MenuItem Header="_View">
-                <MenuItem Header="_Show Grid">
-                    <MenuItem. Icon>
-                        <CheckBox IsChecked="{Binding ShowGrid}" />
-                    </MenuItem. Icon>
-                </MenuItem>
-                <MenuItem Header="_Flash Preview">
-                    <MenuItem. Icon>
-                        <CheckBox IsChecked="{Binding FlashPreviewEnabled}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <Separator />
-                <MenuItem Header="Zoom _In" Command="{Binding ZoomInCommand}" />
-                <MenuItem Header="Zoom _Out" Command="{Binding ZoomOutCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Tools">
-                <MenuItem Header="_Invert" Command="{Binding InvertGlyphCommand}" />
-                <MenuItem Header="_Clear" Command="{Binding ClearGlyphCommand}" />
-                <MenuItem Header="_Fill" Command="{Binding FillGlyphCommand}" />
-                <Separator />
-                <MenuItem Header="Flip _Horizontal" Command="{Binding FlipHorizontalCommand}" />
-                <MenuItem Header="Flip _Vertical" Command="{Binding FlipVerticalCommand}" />
-                <Separator />
-                <MenuItem Header="Shift _Up" Command="{Binding ShiftUpCommand}" />
-                <MenuItem Header="Shift _Down" Command="{Binding ShiftDownCommand}" />
-                <MenuItem Header="Shift _Left" Command="{Binding ShiftLeftCommand}" />
-                <MenuItem Header="Shift _Right" Command="{Binding ShiftRightCommand}" />
-                <Separator />
-                <MenuItem Header="Rotate _Clockwise" Command="{Binding RotateClockwiseCommand}" />
-                <MenuItem Header="Rotate C_ounter-Clockwise" Command="{Binding RotateCounterClockwiseCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Emulator">
-                <MenuItem Header="_Connect..." Command="{Binding ConnectToEmulatorCommand}" />
-                <Separator />
-                <MenuItem Header="_Hot Load to Emulator" Command="{Binding HotLoadToEmulatorCommand}" />
-                <Separator />
-                <MenuItem Header="Target:  _ROM" IsEnabled="{Binding IsEmulatorConnected}">
-                    <MenuItem.Icon>
-                        <RadioButton GroupName="HotLoadTarget" 
-                                     IsChecked="{Binding HotLoadTarget, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Rom}" />
-                    </MenuItem. Icon>
-                </MenuItem>
-                <MenuItem Header="Target:  Glyph RAM Bank _1" IsEnabled="{Binding IsEmulatorConnected}">
-                    <MenuItem.Icon>
-                        <RadioButton GroupName="HotLoadTarget"
-                                     IsChecked="{Binding HotLoadTarget, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=GlyphRamBank1}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem Header="Target: Glyph RAM Bank _2" IsEnabled="{Binding IsEmulatorConnected}">
-                    <MenuItem.Icon>
-                        <RadioButton GroupName="HotLoadTarget"
-                                     IsChecked="{Binding HotLoadTarget, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=GlyphRamBank2}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-            </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="_About..." />
-            </MenuItem>
-        </Menu>
-        
-        <!-- Character Set Selector -->
-        <Border DockPanel.Dock="Top" Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
-                    <RadioButton Content="Primary Set" 
-                                 IsChecked="{Binding ! UseAlternateSet}"
-                                 GroupName="CharacterSet" />
-                    <RadioButton Content="Alternate Set" 
-                                 IsChecked="{Binding UseAlternateSet}"
-                                 GroupName="CharacterSet" />
-                </StackPanel>
-                
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Character:" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding CharacterDisplay}" 
-                               FontFamily="Consolas,Menlo,monospace"
-                               VerticalAlignment="Center" />
-                    <Border Background="{Binding DisplayMode, Converter={StaticResource DisplayModeToColorConverter}}"
-                            CornerRadius="3" Padding="6,2">
-                        <TextBlock Text="{Binding DisplayMode}" FontSize="11" />
-                    </Border>
-                </StackPanel>
-            </Grid>
-        </Border>
-        
-        <!-- Status Bar -->
-        <Border DockPanel.Dock="Bottom" Padding="8,4" 
-                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding StatusText}" />
-                <StackPanel Grid. Column="1" Orientation="Horizontal" Spacing="8" Margin="16,0">
-                    <Ellipse Width="8" Height="8" 
-                             Fill="{Binding IsEmulatorConnected, Converter={StaticResource BoolToColorConverter}}" />
-                    <TextBlock Text="{Binding IsEmulatorConnected, Converter={StaticResource ConnectionStatusConverter}}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-        
-        <!-- Main Content -->
-        <Grid ColumnDefinitions="*,8,Auto">
-            <!-- Character Grid -->
-            <views:CharacterGridControl Grid.Column="0"
-                                        GlyphFile="{Binding CurrentFile}"
-                                        UseAlternateSet="{Binding UseAlternateSet}"
-                                        SelectedCharCode="{Binding SelectedCharCode, Mode=TwoWay}"
-                                        ShowGrid="{Binding ShowGrid}"
-                                        ZoomLevel="{Binding GridZoomLevel}"
-                                        FlashState="{Binding IsFlashOn}" />
-            
-            <GridSplitter Grid.Column="1" Width="8" />
-            
-            <!-- Bitmap Editor Panel -->
-            <Border Grid.Column="2" Width="320" Padding="8">
-                <DockPanel>
-                    <!-- Bitmap Editor -->
-                    <views:BitmapEditorControl DockPanel.Dock="Top"
-                                               Glyph="{Binding SelectedGlyph}"
-                                               ShowGrid="{Binding ShowGrid}"
-                                               FlashState="{Binding IsFlashOn}"
-                                               DisplayMode="{Binding DisplayMode}"
-                                               GlyphModified="OnGlyphModified" />
-                    
-                    <!-- Tool Buttons -->
-                    <views:ToolButtonPanel DockPanel. 
