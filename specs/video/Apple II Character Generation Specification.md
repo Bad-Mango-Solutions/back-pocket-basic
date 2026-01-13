@@ -422,7 +422,7 @@ Character ROM is defined in the machine profile's `rom-images` section:
 
 ### 5.2 Device Configuration
 
-For systems using CharacterDevice (recommended):
+For systems using CharacterDevice:
 
 ```json
 {
@@ -440,25 +440,6 @@ For systems using CharacterDevice (recommended):
         "type": "video",
         "name": "video-controller",
         "enabled": true
-      }
-    ]
-  }
-}
-```
-
-For systems using legacy VideoDevice character ROM:
-
-```json
-{
-  "devices": {
-    "motherboard": [
-      {
-        "type": "video",
-        "name": "video-controller",
-        "enabled": true,
-        "config": {
-          "character-rom": "character-rom"
-        }
       }
     ]
   }

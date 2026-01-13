@@ -95,6 +95,11 @@
             {
                 "type": "video",
                 "name": "Video Device",
+                "enabled": true
+            },
+            {
+                "type": "character",
+                "name": "Character Generator",
                 "enabled": true,
                 "config": {
                     "character-rom": "character-rom"
