@@ -51,13 +51,13 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
     public override string Usage => "charactermap <subcommand> [args]";
 
     /// <inheritdoc/>
-    public string Synopsis => "charactermap <load|preview|default|status> [args]";
+    public string Synopsis => "charactermap <load|preview|edit|default|status> [args]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Manages character ROM data for the character device. The character ROM contains " +
         "bitmap font data used for text mode rendering. Supports loading custom character " +
-        "sets from 4KB binary files and previewing the active character map.";
+        "sets from 4KB binary files, previewing the active character map, and editing glyphs.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -69,13 +69,14 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
         "charactermap default         Load the built-in default character ROM",
         "charactermap load font.rom   Load character data from font.rom",
         "charactermap preview         Preview the character set in console",
+        "charactermap edit            Open the glyph editor window",
         "charmap default              Short alias for loading default ROM",
     ];
 
     /// <inheritdoc/>
     public string? SideEffects =>
         "The 'load' and 'default' subcommands modify the character device's character ROM. " +
-        "The 'preview' subcommand may open a window if Avalonia UI is available.";
+        "The 'preview' and 'edit' subcommands may open a window if Avalonia UI is available.";
 
     /// <inheritdoc/>
     public IReadOnlyList<string> SeeAlso { get; } = ["load", "switches", "about"];
@@ -104,9 +105,10 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
             "default" => ExecuteLoadDefault(debugContext),
             "load" => ExecuteLoad(debugContext, subArgs),
             "preview" => ExecutePreview(debugContext),
+            "edit" => ExecuteEdit(debugContext),
             _ => CommandResult.Error(
                 $"Unknown subcommand: '{subcommand}'. " +
-                "Use 'status', 'default', 'load', or 'preview'."),
+                "Use 'status', 'default', 'load', 'preview', or 'edit'."),
         };
     }
 
@@ -274,5 +276,21 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
         // Fallback: display ASCII preview in console
         return DisplayConsolePreview(context, characterDevice);
+    }
+
+    private CommandResult ExecuteEdit(IDebugContext context)
+    {
+        var characterDevice = context.Machine?.GetComponent<ICharacterDevice>();
+
+        // If window manager is available, try to open glyph editor window
+        if (windowManager != null)
+        {
+            _ = windowManager.ShowWindowAsync("GlyphEditor", characterDevice);
+            return CommandResult.Ok("Opening glyph editor window...");
+        }
+
+        return CommandResult.Error(
+            "Glyph editor requires Avalonia UI. " +
+            "The glyph editor window is not available in console-only mode.");
     }
 }

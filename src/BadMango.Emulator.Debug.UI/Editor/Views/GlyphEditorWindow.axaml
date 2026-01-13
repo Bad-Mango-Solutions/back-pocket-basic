@@ -1,0 +1,270 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:BadMango.Emulator.Debug.UI.Editor.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+        x:Class="BadMango.Emulator.Debug.UI.Editor.Views.GlyphEditorWindow"
+        x:DataType="vm:GlyphEditorViewModel"
+        Title="{Binding WindowTitle}"
+        Width="1100"
+        Height="700"
+        MinWidth="900"
+        MinHeight="600"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Design.DataContext>
+        <vm:GlyphEditorViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New" Command="{Binding NewFileCommand}" InputGesture="Ctrl+N" />
+                <MenuItem Header="_Open..." Command="{Binding OpenFileCommand}" InputGesture="Ctrl+O" />
+                <Separator />
+                <MenuItem Header="_Save" Command="{Binding SaveFileCommand}" InputGesture="Ctrl+S" />
+                <MenuItem Header="Save _As..." Command="{Binding SaveFileAsCommand}" InputGesture="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="_Import from ROM..." Command="{Binding ImportFromRomCommand}" />
+                <MenuItem Header="_Export Preview Image..." Command="{Binding ExportPreviewImageCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit" Click="OnExitClick" InputGesture="Alt+F4" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z" />
+                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y" />
+                <Separator />
+                <MenuItem Header="_Copy" Command="{Binding CopySelectedGlyphsCommand}" InputGesture="Ctrl+C" />
+                <MenuItem Header="_Paste" Command="{Binding PasteGlyphsCommand}" InputGesture="Ctrl+V" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="Show _Grid">
+                    <MenuItem.Icon>
+                        <CheckBox IsChecked="{Binding ShowGrid}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Flash Preview">
+                    <MenuItem.Icon>
+                        <CheckBox IsChecked="{Binding FlashPreviewEnabled}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Zoom _In" Command="{Binding ZoomInCommand}" InputGesture="Ctrl+Plus" />
+                <MenuItem Header="Zoom _Out" Command="{Binding ZoomOutCommand}" InputGesture="Ctrl+Minus" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="Shift _Up" Command="{Binding ShiftUpCommand}" />
+                <MenuItem Header="Shift _Down" Command="{Binding ShiftDownCommand}" />
+                <MenuItem Header="Shift _Left" Command="{Binding ShiftLeftCommand}" />
+                <MenuItem Header="Shift _Right" Command="{Binding ShiftRightCommand}" />
+                <Separator />
+                <MenuItem Header="_Invert" Command="{Binding InvertGlyphCommand}" />
+                <MenuItem Header="_Clear" Command="{Binding ClearGlyphCommand}" />
+                <MenuItem Header="_Fill" Command="{Binding FillGlyphCommand}" />
+                <Separator />
+                <MenuItem Header="Flip _Horizontal" Command="{Binding FlipHorizontalCommand}" />
+                <MenuItem Header="Flip _Vertical" Command="{Binding FlipVerticalCommand}" />
+                <Separator />
+                <MenuItem Header="Rotate _Clockwise" Command="{Binding RotateClockwiseCommand}" />
+                <MenuItem Header="Rotate C_ounter-Clockwise" Command="{Binding RotateCounterClockwiseCommand}" />
+            </MenuItem>
+            <MenuItem Header="E_mulator">
+                <MenuItem Header="_Hot-Load to Emulator" Command="{Binding HotLoadToEmulatorCommand}" />
+                <Separator />
+                <MenuItem Header="Target: ROM">
+                    <MenuItem.Icon>
+                        <RadioButton GroupName="HotLoadTarget"
+                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=Rom}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Target: Glyph RAM Bank 1">
+                    <MenuItem.Icon>
+                        <RadioButton GroupName="HotLoadTarget"
+                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=GlyphRamBank1}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Target: Glyph RAM Bank 2">
+                    <MenuItem.Icon>
+                        <RadioButton GroupName="HotLoadTarget"
+                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=GlyphRamBank2}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About..." Click="OnAboutClick" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Character Set Selector and Info -->
+        <Border Grid.Row="1" Background="#2D2D2D" Padding="10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="20">
+                    <RadioButton Content="Primary Set"
+                                 GroupName="CharacterSet"
+                                 IsChecked="{Binding !UseAlternateSet}" />
+                    <RadioButton Content="Alternate Set"
+                                 GroupName="CharacterSet"
+                                 IsChecked="{Binding UseAlternateSet}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="15">
+                    <TextBlock Text="{Binding CharacterDisplay}"
+                               VerticalAlignment="Center"
+                               FontFamily="Consolas,Courier New,monospace"
+                               FontSize="14" />
+                    <Border Background="#444" CornerRadius="3" Padding="8,4">
+                        <TextBlock Text="{Binding DisplayMode}"
+                                   VerticalAlignment="Center"
+                                   FontSize="12" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" Margin="10">
+            <!-- Character Grid Panel -->
+            <Border Grid.Column="0"
+                    Background="#1A1A1A"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10"
+                    Margin="0,0,10,0">
+                <Grid RowDefinitions="*,Auto">
+                    <!-- Character Grid -->
+                    <ScrollViewer Grid.Row="0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <Canvas x:Name="CharacterCanvas"
+                                Width="400"
+                                Height="400" />
+                    </ScrollViewer>
+
+                    <!-- Zoom Controls -->
+                    <StackPanel Grid.Row="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0,10,0,0"
+                                Spacing="10">
+                        <Button Content="−"
+                                Command="{Binding ZoomOutCommand}"
+                                Width="30"
+                                HorizontalContentAlignment="Center" />
+                        <TextBlock Text="{Binding GridZoomLevel, StringFormat=Zoom: {0}x}"
+                                   VerticalAlignment="Center" />
+                        <Button Content="+"
+                                Command="{Binding ZoomInCommand}"
+                                Width="30"
+                                HorizontalContentAlignment="Center" />
+                        <CheckBox Content="Show Grid"
+                                  IsChecked="{Binding ShowGrid}"
+                                  VerticalAlignment="Center"
+                                  Margin="20,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Bitmap Editor Panel -->
+            <Border Grid.Column="1"
+                    Background="#1A1A1A"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="15">
+                <Grid RowDefinitions="*,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                        <!-- Pixel Editor Grid -->
+                        <Border Grid.Column="0"
+                                Background="#333"
+                                CornerRadius="4"
+                                Padding="10">
+                            <Canvas x:Name="BitmapEditorCanvas"
+                                    Width="280"
+                                    Height="320"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    PointerPressed="OnBitmapEditorPointerPressed"
+                                    PointerMoved="OnBitmapEditorPointerMoved"
+                                    PointerReleased="OnBitmapEditorPointerReleased" />
+                        </Border>
+
+                        <!-- Preview Panel -->
+                        <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="15">
+                            <TextBlock Text="Preview"
+                                       FontSize="12"
+                                       Foreground="Gray"
+                                       HorizontalAlignment="Center" />
+                            <Border Background="#000"
+                                    BorderBrush="#666"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="10"
+                                    HorizontalAlignment="Center">
+                                <Canvas x:Name="PreviewCanvas"
+                                        Width="56"
+                                        Height="64" />
+                            </Border>
+                            <CheckBox Content="Flash Preview"
+                                      IsChecked="{Binding FlashPreviewEnabled}"
+                                      HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Tool Buttons -->
+                    <Border Grid.Row="1"
+                            Background="#2D2D2D"
+                            CornerRadius="4"
+                            Padding="10"
+                            Margin="0,15,0,0">
+                        <StackPanel Spacing="10">
+                            <!-- Shift Buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
+                                <Button Content="↑" Command="{Binding ShiftUpCommand}" Width="40" ToolTip.Tip="Shift Up" />
+                                <Button Content="↓" Command="{Binding ShiftDownCommand}" Width="40" ToolTip.Tip="Shift Down" />
+                                <Button Content="←" Command="{Binding ShiftLeftCommand}" Width="40" ToolTip.Tip="Shift Left" />
+                                <Button Content="→" Command="{Binding ShiftRightCommand}" Width="40" ToolTip.Tip="Shift Right" />
+                                <Border Width="20" />
+                                <Button Content="Inv" Command="{Binding InvertGlyphCommand}" Width="50" ToolTip.Tip="Invert" />
+                                <Button Content="Clr" Command="{Binding ClearGlyphCommand}" Width="50" ToolTip.Tip="Clear" />
+                                <Button Content="Fill" Command="{Binding FillGlyphCommand}" Width="50" ToolTip.Tip="Fill" />
+                            </StackPanel>
+
+                            <!-- Transform Buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
+                                <Button Content="⇄" Command="{Binding FlipHorizontalCommand}" Width="40" ToolTip.Tip="Flip Horizontal" />
+                                <Button Content="⇅" Command="{Binding FlipVerticalCommand}" Width="40" ToolTip.Tip="Flip Vertical" />
+                                <Border Width="20" />
+                                <Button Content="↻" Command="{Binding RotateClockwiseCommand}" Width="40" ToolTip.Tip="Rotate Clockwise" />
+                                <Button Content="↺" Command="{Binding RotateCounterClockwiseCommand}" Width="40" ToolTip.Tip="Rotate Counter-Clockwise" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="#2D2D2D" Padding="10,5">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SelectionCount, StringFormat=Selected: {0}}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,20,0" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <Ellipse Width="8" Height="8"
+                             Fill="{Binding IsEmulatorConnected, Converter={x:Static vm:BoolToColorConverter.Instance}}" />
+                    <TextBlock Text="{Binding IsEmulatorConnected, Converter={x:Static vm:BoolToConnectionStatusConverter.Instance}}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
