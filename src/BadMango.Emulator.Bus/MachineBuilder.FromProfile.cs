@@ -317,9 +317,9 @@ public sealed partial class MachineBuilder
         MotherboardDeviceEntry deviceEntry,
         Dictionary<string, RomImageInfo> romImages)
     {
-        // Check for character ROM configuration on video devices
+        // Check for character ROM configuration on character devices
         // Use reflection to avoid circular dependency with Devices project
-        if (string.Equals(device.DeviceType, "Video", StringComparison.OrdinalIgnoreCase) &&
+        if (string.Equals(device.DeviceType, "Character", StringComparison.OrdinalIgnoreCase) &&
             deviceEntry.Config?.TryGetProperty("character-rom", out var charRomProp) == true)
         {
             string? romName = charRomProp.GetString();

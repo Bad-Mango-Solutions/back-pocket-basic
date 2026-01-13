@@ -8,7 +8,7 @@ using Devices;
 using Devices.Interfaces;
 
 /// <summary>
-/// Manages character ROM data for the video device.
+/// Manages character ROM data for the character device.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -55,7 +55,7 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
     /// <inheritdoc/>
     public string DetailedDescription =>
-        "Manages character ROM data for the video device. The character ROM contains " +
+        "Manages character ROM data for the character device. The character ROM contains " +
         "bitmap font data used for text mode rendering. Supports loading custom character " +
         "sets from 4KB binary files and previewing the active character map.";
 
@@ -74,7 +74,7 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
     /// <inheritdoc/>
     public string? SideEffects =>
-        "The 'load' and 'default' subcommands modify the video device's character ROM. " +
+        "The 'load' and 'default' subcommands modify the character device's character ROM. " +
         "The 'preview' subcommand may open a window if Avalonia UI is available.";
 
     /// <inheritdoc/>
@@ -112,22 +112,26 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult ExecuteStatus(IDebugContext context)
     {
-        var videoDevice = context.Machine?.GetComponent<IVideoDevice>();
+        var characterDevice = context.Machine?.GetComponent<ICharacterDevice>();
 
         context.Output.WriteLine();
         context.Output.WriteLine("Character ROM Status");
         context.Output.WriteLine("════════════════════");
 
-        if (videoDevice == null)
+        if (characterDevice == null)
         {
-            context.Output.WriteLine("  Video device: Not found");
+            context.Output.WriteLine("  Character device: Not found");
             context.Output.WriteLine();
             return CommandResult.Ok();
         }
 
-        context.Output.WriteLine($"  Video device: {videoDevice.Name}");
-        context.Output.WriteLine($"  Character ROM loaded: {(videoDevice.IsCharacterRomLoaded ? "Yes" : "No")}");
-        context.Output.WriteLine($"  Alternate charset active: {(videoDevice.IsAltCharSet ? "Yes" : "No")}");
+        context.Output.WriteLine($"  Character device: {characterDevice.Name}");
+        context.Output.WriteLine($"  Character ROM loaded: {(characterDevice.IsCharacterRomLoaded ? "Yes" : "No")}");
+        context.Output.WriteLine($"  Alternate charset active: {(characterDevice.IsAltCharSet ? "Yes" : "No")}");
+        context.Output.WriteLine($"  Glyph bank 1 overlay: {(characterDevice.IsAltGlyph1Enabled ? "Enabled" : "Disabled")}");
+        context.Output.WriteLine($"  Glyph bank 2 overlay: {(characterDevice.IsAltGlyph2Enabled ? "Enabled" : "Disabled")}");
+        context.Output.WriteLine($"  No-flash bank 1: {(characterDevice.IsNoFlash1Enabled ? "Enabled" : "Disabled")}");
+        context.Output.WriteLine($"  No-flash bank 2: {(characterDevice.IsNoFlash2Enabled ? "Enabled" : "Disabled")}");
         context.Output.WriteLine();
 
         return CommandResult.Ok();
@@ -135,16 +139,16 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult ExecuteLoadDefault(IDebugContext context)
     {
-        var videoDevice = context.Machine?.GetComponent<IVideoDevice>();
+        var characterDevice = context.Machine?.GetComponent<ICharacterDevice>();
 
-        if (videoDevice == null)
+        if (characterDevice == null)
         {
-            return CommandResult.Error("Video device not found in the machine.");
+            return CommandResult.Error("Character device not found in the machine.");
         }
 
         try
         {
-            DefaultCharacterRom.LoadIntoVideoDevice(videoDevice);
+            DefaultCharacterRom.LoadIntoCharacterDevice(characterDevice);
             context.Output.WriteLine("Loaded default character ROM (4096 bytes).");
             return CommandResult.Ok();
         }
@@ -163,11 +167,11 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
         string filename = args[0];
 
-        var videoDevice = context.Machine?.GetComponent<IVideoDevice>();
+        var characterDevice = context.Machine?.GetComponent<ICharacterDevice>();
 
-        if (videoDevice == null)
+        if (characterDevice == null)
         {
-            return CommandResult.Error("Video device not found in the machine.");
+            return CommandResult.Error("Character device not found in the machine.");
         }
 
         if (!File.Exists(filename))
@@ -179,14 +183,14 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
         {
             byte[] data = File.ReadAllBytes(filename);
 
-            if (data.Length != VideoDevice.CharacterRomSize)
+            if (data.Length != CharacterDevice.CharacterRomSize)
             {
                 return CommandResult.Error(
                     $"Invalid file size: {data.Length} bytes. " +
-                    $"Character ROM must be exactly {VideoDevice.CharacterRomSize} bytes (4KB).");
+                    $"Character ROM must be exactly {CharacterDevice.CharacterRomSize} bytes (4KB).");
             }
 
-            videoDevice.LoadCharacterRom(data);
+            characterDevice.LoadCharacterRom(data);
             context.Output.WriteLine($"Loaded character ROM from '{filename}' ({data.Length} bytes).");
             return CommandResult.Ok();
         }
@@ -204,14 +208,14 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
         }
     }
 
-    private static CommandResult DisplayConsolePreview(IDebugContext context, IVideoDevice videoDevice)
+    private static CommandResult DisplayConsolePreview(IDebugContext context, ICharacterDevice characterDevice)
     {
         context.Output.WriteLine();
         context.Output.WriteLine("Character Map Preview (hex codes shown)");
         context.Output.WriteLine("═══════════════════════════════════════");
         context.Output.WriteLine();
 
-        bool useAlt = videoDevice.IsAltCharSet;
+        bool useAlt = characterDevice.IsAltCharSet;
         context.Output.WriteLine($"Character set: {(useAlt ? "Alternate" : "Primary")}");
         context.Output.WriteLine();
 
@@ -228,7 +232,7 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
                 byte charCode = (byte)((row << 4) | col);
 
                 // Get first scanline to check if character has content
-                byte scanline = videoDevice.GetCharacterScanline(charCode, 3, useAlt);
+                byte scanline = characterDevice.GetCharacterScanline(charCode, 3, useAlt);
 
                 // Display a simple indicator of whether the character has content
                 char displayChar = scanline != 0 ? '█' : '·';
@@ -247,28 +251,28 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
 
     private CommandResult ExecutePreview(IDebugContext context)
     {
-        var videoDevice = context.Machine?.GetComponent<IVideoDevice>();
+        var characterDevice = context.Machine?.GetComponent<ICharacterDevice>();
 
-        if (videoDevice == null)
+        if (characterDevice == null)
         {
-            return CommandResult.Error("Video device not found in the machine.");
+            return CommandResult.Error("Character device not found in the machine.");
         }
 
-        if (!videoDevice.IsCharacterRomLoaded)
+        if (!characterDevice.IsCharacterRomLoaded)
         {
             context.Output.WriteLine("No character ROM loaded. Use 'charactermap default' to load the default ROM.");
             return CommandResult.Ok();
         }
 
         // If window manager is available, try to open preview window
-        // Pass the video device directly so the window can get its character ROM
+        // Pass the character device directly so the window can get its character ROM
         if (windowManager != null)
         {
-            _ = windowManager.ShowWindowAsync("CharacterPreview", videoDevice);
+            _ = windowManager.ShowWindowAsync("CharacterPreview", characterDevice);
             return CommandResult.Ok("Opening character preview window...");
         }
 
         // Fallback: display ASCII preview in console
-        return DisplayConsolePreview(context, videoDevice);
+        return DisplayConsolePreview(context, characterDevice);
     }
 }

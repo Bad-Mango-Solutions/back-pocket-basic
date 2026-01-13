@@ -62,6 +62,15 @@ public interface IVideoRenderer
     /// <see langword="true"/> if flash characters should currently be inverted;
     /// otherwise, <see langword="false"/>. Toggle this at ~1.9 Hz (every 16 frames at 60 Hz).
     /// </param>
+    /// <param name="noFlash1Enabled">
+    /// <see langword="true"/> if flashing is disabled for character bank 1 (primary set);
+    /// otherwise, <see langword="false"/>. When enabled, characters in the $40-$7F range
+    /// display normally without flashing.
+    /// </param>
+    /// <param name="noFlash2Enabled">
+    /// <see langword="true"/> if flashing is disabled for character bank 2 (alternate set);
+    /// otherwise, <see langword="false"/>. Defaults to enabled (no flashing) for bank 2.
+    /// </param>
     /// <param name="colorMode">
     /// The display color mode (green, amber, white, or color). Defaults to green phosphor for classic monochrome display.
     /// </param>
@@ -73,6 +82,8 @@ public interface IVideoRenderer
         bool useAltCharSet,
         bool isPage2,
         bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
         DisplayColorMode colorMode = DisplayColorMode.Green);
 
     /// <summary>

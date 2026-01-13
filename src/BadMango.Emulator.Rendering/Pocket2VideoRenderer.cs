@@ -104,6 +104,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         bool useAltCharSet,
         bool isPage2,
         bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
         DisplayColorMode colorMode = DisplayColorMode.Green)
     {
         ArgumentNullException.ThrowIfNull(readMemory);
@@ -111,7 +113,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         switch (mode)
         {
             case VideoMode.Text40:
-                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
+                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
                 break;
 
             case VideoMode.LoRes:
@@ -120,7 +122,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
 
             case VideoMode.LoResMixed:
                 RenderLoRes(pixels, readMemory, isPage2, mixedMode: true, colorMode);
-                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
+                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
                 break;
 
             case VideoMode.HiRes:
@@ -129,12 +131,12 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
 
             case VideoMode.HiResMixed:
                 RenderHiRes(pixels, readMemory, isPage2, mixedMode: true, colorMode);
-                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
+                RenderTextWindow(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
                 break;
 
             default:
                 // For unsupported modes, render as text40
-                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, colorMode);
+                RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
                 break;
         }
     }
@@ -190,6 +192,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         bool useAltCharSet,
         bool isPage2,
         bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
         DisplayColorMode colorMode)
     {
         for (int row = 0; row < TextRows; row++)
@@ -199,7 +203,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
             for (int col = 0; col < Text40Columns; col++)
             {
                 byte charCode = readMemory((ushort)(rowAddr + col));
-                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, colorMode);
+                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
             }
         }
     }
@@ -221,6 +225,10 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// to its ROM offset (charCode * 8). Inverse characters ($00-$3F) are pre-inverted
     /// in the ROM, so no additional inversion is needed.
     /// </para>
+    /// <para>
+    /// When NOFLASHx is enabled for the current bank, characters in the flashing range
+    /// ($40-$7F) display as normal characters without the flash effect.
+    /// </para>
     /// </remarks>
     private void RenderCharacter40(
         Span<uint> pixels,
@@ -230,6 +238,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         int col,
         bool useAltCharSet,
         bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
         DisplayColorMode colorMode)
     {
         // Determine display style based on character code
@@ -237,6 +247,14 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         // $40-$7F: Flashing (alternates based on flash state)
         // $80-$FF: Normal (includes lowercase at $E0-$FF)
         bool isFlashing = charCode >= 0x40 && charCode < 0x80;
+
+        // Check if flashing is disabled for the current bank
+        // Bank 1 = primary character set (lower half), Bank 2 = alternate (upper half)
+        bool noFlash = useAltCharSet ? noFlash2Enabled : noFlash1Enabled;
+        if (noFlash)
+        {
+            isFlashing = false;
+        }
 
         // ROM offset: charCode maps directly to ROM (charCode * 8)
         // For alternate character set (MouseText), use second half of ROM
@@ -381,6 +399,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         bool useAltCharSet,
         bool isPage2,
         bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
         DisplayColorMode colorMode)
     {
         // Mixed mode: text rows 20-23 (bottom 4 lines)
@@ -391,7 +411,7 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
             for (int col = 0; col < Text40Columns; col++)
             {
                 byte charCode = readMemory((ushort)(rowAddr + col));
-                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, colorMode);
+                RenderCharacter40(pixels, characterRomData, charCode, row, col, useAltCharSet, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
             }
         }
     }
