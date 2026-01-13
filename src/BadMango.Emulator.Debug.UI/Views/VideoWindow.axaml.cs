@@ -60,9 +60,11 @@ public partial class VideoWindow : Window
 
     private IMachine? machine;
     private IVideoDevice? videoDevice;
+    private ICharacterDevice? characterDevice;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
     private Memory<byte> characterRom;
+    private bool characterRomUpdatePending;
 
     private int scale = 2;
     private bool showFps;
@@ -151,8 +153,11 @@ public partial class VideoWindow : Window
     /// <param name="machine">The machine to attach to.</param>
     /// <remarks>
     /// <para>
-    /// Extracts the video device, keyboard device, and memory bus from the machine
-    /// for rendering and input handling.
+    /// Extracts the video device, character device, keyboard device, and memory bus
+    /// from the machine for rendering and input handling.
+    /// </para>
+    /// <para>
+    /// If no <see cref="ICharacterRomProvider"/> is found, falls back to the default ROM.
     /// </para>
     /// </remarks>
     public void AttachMachine(IMachine machine)
@@ -164,10 +169,25 @@ public partial class VideoWindow : Window
         this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
 
-        // Get character ROM data from video device
-        if (videoDevice is ICharacterRomProvider charProvider)
+        // Look for CharacterDevice (preferred) or any ICharacterRomProvider
+        this.characterDevice = machine.GetComponent<ICharacterDevice>();
+        ICharacterRomProvider? charProvider = characterDevice ?? machine.GetComponent<ICharacterRomProvider>();
+
+        // Get character ROM data from character provider, or use default ROM
+        if (charProvider != null && charProvider.IsCharacterRomLoaded)
         {
             characterRom = charProvider.GetCharacterRomData();
+        }
+        else
+        {
+            // Fall back to default ROM
+            characterRom = DefaultCharacterRom.GetRomData();
+        }
+
+        // Subscribe to CharacterRomChanged event if available
+        if (characterDevice != null)
+        {
+            characterDevice.CharacterRomChanged += OnCharacterRomChanged;
         }
     }
 
@@ -176,9 +196,16 @@ public partial class VideoWindow : Window
     /// </summary>
     public void DetachMachine()
     {
+        // Unsubscribe from events
+        if (characterDevice != null)
+        {
+            characterDevice.CharacterRomChanged -= OnCharacterRomChanged;
+        }
+
         machine = null;
         memoryBus = null;
         videoDevice = null;
+        characterDevice = null;
         keyboardDevice = null;
         characterRom = Memory<byte>.Empty;
     }
@@ -325,6 +352,19 @@ public partial class VideoWindow : Window
         };
     }
 
+    /// <summary>
+    /// Called when the character ROM configuration changes.
+    /// </summary>
+    /// <remarks>
+    /// This is called from the CharacterDevice at VBLANK to signal that the
+    /// character table has changed and should be reloaded.
+    /// </remarks>
+    private void OnCharacterRomChanged()
+    {
+        // Mark that we need to update the character ROM on the next render
+        characterRomUpdatePending = true;
+    }
+
     private void OnWindowOpened(object? sender, EventArgs e)
     {
         UpdateWindowSize();
@@ -349,6 +389,13 @@ public partial class VideoWindow : Window
             flashState = !flashState;
         }
 
+        // Process pending character ROM update (happens at VBLANK)
+        if (characterRomUpdatePending)
+        {
+            characterRomUpdatePending = false;
+            ReloadCharacterRom();
+        }
+
         // Render frame
         RenderFrame();
 
@@ -360,6 +407,17 @@ public partial class VideoWindow : Window
             FpsDisplay.Text = $"{lastFps:F1} FPS";
             frameCount = 0;
             fpsStopwatch.Restart();
+        }
+    }
+
+    /// <summary>
+    /// Reloads the character ROM data from the character device.
+    /// </summary>
+    private void ReloadCharacterRom()
+    {
+        if (characterDevice != null && characterDevice.IsCharacterRomLoaded)
+        {
+            characterRom = characterDevice.GetCharacterRomData();
         }
     }
 
@@ -379,13 +437,16 @@ public partial class VideoWindow : Window
         // Determine current video mode
         VideoMode mode = videoDevice.CurrentMode;
 
+        // Get ALTCHAR state from CharacterDevice if available, otherwise assume false
+        bool useAltCharSet = characterDevice?.IsAltCharSet ?? false;
+
         // Render frame using the Pocket2VideoRenderer with current color mode
         renderer.RenderFrame(
             pixels,
             mode,
             ReadMemoryByte,
             characterRom.Span,
-            videoDevice.IsAltCharSet,
+            useAltCharSet,
             videoDevice.IsPage2,
             flashState,
             colorMode);

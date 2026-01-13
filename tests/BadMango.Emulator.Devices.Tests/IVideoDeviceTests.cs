@@ -98,16 +98,7 @@ public class IVideoDeviceTests
         Assert.That(property.PropertyType, Is.EqualTo(typeof(bool)));
     }
 
-    /// <summary>
-    /// Verifies that IVideoDevice interface defines IsAltCharSet property.
-    /// </summary>
-    [Test]
-    public void Interface_HasIsAltCharSetProperty()
-    {
-        var property = typeof(IVideoDevice).GetProperty(nameof(IVideoDevice.IsAltCharSet));
-        Assert.That(property, Is.Not.Null);
-        Assert.That(property.PropertyType, Is.EqualTo(typeof(bool)));
-    }
+    // Note: IsAltCharSet has been moved to ICharacterDevice
 
     /// <summary>
     /// Verifies that IVideoDevice interface defines Annunciators property.

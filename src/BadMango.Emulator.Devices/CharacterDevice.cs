@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Devices;
 
+using System.Runtime.CompilerServices;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -23,31 +25,49 @@ using Interfaces;
 /// The device owns:
 /// <list type="bullet">
 /// <item><description>4KB character ROM for primary and alternate character sets</description></item>
-/// <item><description>Two 4KB glyph RAM banks for custom character overlays</description></item>
+/// <item><description>4KB glyph RAM for custom character overlays</description></item>
 /// </list>
 /// </para>
 /// <para>
-/// Soft switches control various aspects of character rendering:
+/// "Glyph Bank 1" and "Glyph Bank 2" refer to the lower ($0000-$07FF) and upper
+/// ($0800-$0FFF) halves of either ROM or RAM. The ALTCHAR switch determines which
+/// bank is used. ALTGLYPHx determines which ROM glyph bank to overlay with RAM.
+/// </para>
+/// <para>
+/// Toggle soft switches ($C042-$C04D) - write-only:
 /// </para>
 /// <list type="bullet">
-/// <item><description>$C068: ALTGLYPH1OFF - Disable glyph bank 1 overlay</description></item>
-/// <item><description>$C069: ALTGLYPH1ON - Enable glyph bank 1 overlay</description></item>
-/// <item><description>$C06A: ALTGLYPH2OFF - Disable glyph bank 2 overlay</description></item>
-/// <item><description>$C06B: ALTGLYPH2ON - Enable glyph bank 2 overlay</description></item>
-/// <item><description>$C024: RDALTGLYPH1 - Read glyph bank 1 status</description></item>
-/// <item><description>$C025: RDALTGLYPH2 - Read glyph bank 2 status</description></item>
-/// <item><description>$C064: NOFLASH1OFF - Enable flashing for bank 1</description></item>
-/// <item><description>$C065: NOFLASH1ON - Disable flashing for bank 1</description></item>
-/// <item><description>$C066: NOFLASH2OFF - Enable flashing for bank 2</description></item>
-/// <item><description>$C067: NOFLASH2ON - Disable flashing for bank 2</description></item>
-/// <item><description>$C026: RDNOFLASH1 - Read no-flash bank 1 status</description></item>
-/// <item><description>$C027: RDNOFLASH2 - Read no-flash bank 2 status</description></item>
-/// <item><description>$C060: RDGLYPHOFF - Disable glyph RAM reading</description></item>
-/// <item><description>$C061: RDGLYPHON - Enable glyph RAM reading</description></item>
-/// <item><description>$C062: WRTGLYPHOFF - Disable glyph RAM writing</description></item>
-/// <item><description>$C063: WRTGLYPHON - Enable glyph RAM writing</description></item>
-/// <item><description>$C028: RDGLYPHRD - Read glyph read status</description></item>
-/// <item><description>$C029: RDGLYPHWR - Read glyph write status</description></item>
+/// <item><description>$C042: CLRGLYPHRD - Disable glyph RAM reading</description></item>
+/// <item><description>$C043: SETGLYPHRD - Enable glyph RAM reading</description></item>
+/// <item><description>$C044: CLRGLYPHWRT - Disable glyph RAM writing</description></item>
+/// <item><description>$C045: SETGLYPHWRT - Enable glyph RAM writing</description></item>
+/// <item><description>$C046: CLRNOFLASH1 - Enable flashing for bank 1</description></item>
+/// <item><description>$C047: SETNOFLASH1 - Disable flashing for bank 1</description></item>
+/// <item><description>$C048: CLRNOFLASH2 - Enable flashing for bank 2</description></item>
+/// <item><description>$C049: SETNOFLASH2 - Disable flashing for bank 2</description></item>
+/// <item><description>$C04A: CLRALTGLYPH1 - Disable glyph bank 1 overlay</description></item>
+/// <item><description>$C04B: SETALTGLYPH1 - Enable glyph bank 1 overlay</description></item>
+/// <item><description>$C04C: CLRALTGLYPH2 - Disable glyph bank 2 overlay</description></item>
+/// <item><description>$C04D: SETALTGLYPH2 - Enable glyph bank 2 overlay</description></item>
+/// </list>
+/// <para>
+/// Status reads ($C034-$C039):
+/// </para>
+/// <list type="bullet">
+/// <item><description>$C034: RDGLYPHRD - Read glyph read status</description></item>
+/// <item><description>$C035: RDGLYPHWRT - Read glyph write status</description></item>
+/// <item><description>$C036: RDNOFLASH1 - Read no-flash bank 1 status</description></item>
+/// <item><description>$C037: RDNOFLASH2 - Read no-flash bank 2 status</description></item>
+/// <item><description>$C038: RDALTGLYPH1 - Read glyph bank 1 status</description></item>
+/// <item><description>$C039: RDALTGLYPH2 - Read glyph bank 2 status</description></item>
+/// </list>
+/// <para>
+/// The CharacterDevice also owns the ALTCHAR switch:
+/// </para>
+/// <list type="bullet">
+/// <item><description>$C00E: CLRALTCHAR - Select primary character set</description></item>
+/// <item><description>$C00F: SETALTCHAR - Select alternate character set</description></item>
+/// <item><description>$C01E: RDALTCHAR - Read alternate character set status</description></item>
 /// </list>
 /// </remarks>
 [DeviceType("character")]
@@ -64,34 +84,37 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     public const int CharacterSetSize = 2048;
 
     /// <summary>
-    /// Size of each glyph RAM bank: 4KB.
+    /// Size of the glyph RAM: 4KB (same as ROM).
     /// </summary>
-    public const int GlyphBankSize = 4096;
+    public const int GlyphRamSize = 4096;
 
     private const byte StatusBitSet = 0x80;
     private const byte StatusBitClear = 0x00;
 
-    private readonly PhysicalMemory glyphBank1;
-    private readonly PhysicalMemory glyphBank2;
+    private readonly PhysicalMemory glyphRam;
 
     private PhysicalMemory? characterRom;
 
+    private bool altCharSet;
     private bool altGlyph1Enabled;
     private bool altGlyph2Enabled;
     private bool noFlash1Enabled;
     private bool noFlash2Enabled = true; // Bank 2 defaults to NOFLASH
     private bool glyphReadEnabled;
     private bool glyphWriteEnabled;
+    private bool characterRomChangePending;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CharacterDevice"/> class.
     /// </summary>
     public CharacterDevice()
     {
-        // Create glyph RAM banks (4KB each)
-        glyphBank1 = new PhysicalMemory(GlyphBankSize, "GlyphBank1");
-        glyphBank2 = new PhysicalMemory(GlyphBankSize, "GlyphBank2");
+        // Create single glyph RAM (4KB)
+        glyphRam = new PhysicalMemory(GlyphRamSize, "GlyphRAM");
     }
+
+    /// <inheritdoc />
+    public event Action? CharacterRomChanged;
 
     /// <inheritdoc />
     public string Name => "Character Generator";
@@ -107,6 +130,9 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public bool IsCharacterRomLoaded => characterRom != null;
+
+    /// <inheritdoc />
+    public bool IsAltCharSet => altCharSet;
 
     /// <inheritdoc />
     public bool IsAltGlyph1Enabled => altGlyph1Enabled;
@@ -137,42 +163,45 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
 
-        // Glyph read/write control ($C060-$C063)
-        dispatcher.Register(0x60, HandleRdGlyphOff, HandleRdGlyphOffWrite);       // RDGLYPHOFF
-        dispatcher.Register(0x61, HandleRdGlyphOn, HandleRdGlyphOnWrite);         // RDGLYPHON
-        dispatcher.Register(0x62, HandleWrtGlyphOff, HandleWrtGlyphOffWrite);     // WRTGLYPHOFF
-        dispatcher.Register(0x63, HandleWrtGlyphOn, HandleWrtGlyphOnWrite);       // WRTGLYPHON
+        // ALTCHAR switch ($C00E-$C00F) - write-only toggles
+        dispatcher.RegisterWrite(0x0E, HandleClrAltChar);    // CLRALTCHAR
+        dispatcher.RegisterWrite(0x0F, HandleSetAltChar);    // SETALTCHAR
 
-        // Flash control ($C064-$C067)
-        dispatcher.Register(0x64, HandleNoFlash1Off, HandleNoFlash1OffWrite);     // NOFLASH1OFF
-        dispatcher.Register(0x65, HandleNoFlash1On, HandleNoFlash1OnWrite);       // NOFLASH1ON
-        dispatcher.Register(0x66, HandleNoFlash2Off, HandleNoFlash2OffWrite);     // NOFLASH2OFF
-        dispatcher.Register(0x67, HandleNoFlash2On, HandleNoFlash2OnWrite);       // NOFLASH2ON
+        // Toggle switches ($C042-$C04D) - write-only
+        dispatcher.RegisterWrite(0x42, HandleClrGlyphRd);    // CLRGLYPHRD
+        dispatcher.RegisterWrite(0x43, HandleSetGlyphRd);    // SETGLYPHRD
+        dispatcher.RegisterWrite(0x44, HandleClrGlyphWrt);   // CLRGLYPHWRT
+        dispatcher.RegisterWrite(0x45, HandleSetGlyphWrt);   // SETGLYPHWRT
+        dispatcher.RegisterWrite(0x46, HandleClrNoFlash1);   // CLRNOFLASH1
+        dispatcher.RegisterWrite(0x47, HandleSetNoFlash1);   // SETNOFLASH1
+        dispatcher.RegisterWrite(0x48, HandleClrNoFlash2);   // CLRNOFLASH2
+        dispatcher.RegisterWrite(0x49, HandleSetNoFlash2);   // SETNOFLASH2
+        dispatcher.RegisterWrite(0x4A, HandleClrAltGlyph1);  // CLRALTGLYPH1
+        dispatcher.RegisterWrite(0x4B, HandleSetAltGlyph1);  // SETALTGLYPH1
+        dispatcher.RegisterWrite(0x4C, HandleClrAltGlyph2);  // CLRALTGLYPH2
+        dispatcher.RegisterWrite(0x4D, HandleSetAltGlyph2);  // SETALTGLYPH2
 
-        // Glyph bank control ($C068-$C06B)
-        dispatcher.Register(0x68, HandleAltGlyph1Off, HandleAltGlyph1OffWrite);   // ALTGLYPH1OFF
-        dispatcher.Register(0x69, HandleAltGlyph1On, HandleAltGlyph1OnWrite);     // ALTGLYPH1ON
-        dispatcher.Register(0x6A, HandleAltGlyph2Off, HandleAltGlyph2OffWrite);   // ALTGLYPH2OFF
-        dispatcher.Register(0x6B, HandleAltGlyph2On, HandleAltGlyph2OnWrite);     // ALTGLYPH2ON
-
-        // Status reads ($C024-$C029)
-        dispatcher.RegisterRead(0x24, ReadAltGlyph1Status);   // RDALTGLYPH1
-        dispatcher.RegisterRead(0x25, ReadAltGlyph2Status);   // RDALTGLYPH2
-        dispatcher.RegisterRead(0x26, ReadNoFlash1Status);    // RDNOFLASH1
-        dispatcher.RegisterRead(0x27, ReadNoFlash2Status);    // RDNOFLASH2
-        dispatcher.RegisterRead(0x28, ReadGlyphRdStatus);     // RDGLYPHRD
-        dispatcher.RegisterRead(0x29, ReadGlyphWrStatus);     // RDGLYPHWR
+        // Status reads ($C01E for ALTCHAR, $C034-$C039 for others)
+        dispatcher.RegisterRead(0x1E, ReadAltCharStatus);    // RDALTCHAR
+        dispatcher.RegisterRead(0x34, ReadGlyphRdStatus);    // RDGLYPHRD
+        dispatcher.RegisterRead(0x35, ReadGlyphWrtStatus);   // RDGLYPHWRT
+        dispatcher.RegisterRead(0x36, ReadNoFlash1Status);   // RDNOFLASH1
+        dispatcher.RegisterRead(0x37, ReadNoFlash2Status);   // RDNOFLASH2
+        dispatcher.RegisterRead(0x38, ReadAltGlyph1Status);  // RDALTGLYPH1
+        dispatcher.RegisterRead(0x39, ReadAltGlyph2Status);  // RDALTGLYPH2
     }
 
     /// <inheritdoc />
     public void Reset()
     {
+        altCharSet = false;
         altGlyph1Enabled = false;
         altGlyph2Enabled = false;
         noFlash1Enabled = false;
         noFlash2Enabled = true; // Bank 2 defaults to NOFLASH
         glyphReadEnabled = false;
         glyphWriteEnabled = false;
+        characterRomChangePending = false;
     }
 
     /// <inheritdoc />
@@ -192,12 +221,13 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(scanline, 7);
 
         // Determine which source to use based on overlay state
-        var source = GetCharacterSource(charCode, useAltCharSet);
+        var source = GetCharacterSource(useAltCharSet);
 
         if (source == null)
         {
@@ -209,9 +239,10 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
     {
-        var source = GetCharacterSource(charCode, useAltCharSet);
+        var source = GetCharacterSource(useAltCharSet);
 
         if (source == null)
         {
@@ -234,6 +265,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte GetCharacterScanlineWithEffects(
         byte charCode,
         int scanline,
@@ -261,6 +293,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     }
 
     /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GetScanlineRow(
         ReadOnlySpan<byte> characterCodes,
         int scanline,
@@ -287,100 +320,79 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
+    /// <summary>
+    /// Called at VBLANK to process pending character ROM changes.
+    /// </summary>
+    /// <remarks>
+    /// Character table switches should only take effect at VBLANK to prevent
+    /// mid-frame rendering artifacts.
+    /// </remarks>
+    public void OnVBlank()
+    {
+        if (characterRomChangePending)
+        {
+            characterRomChangePending = false;
+            CharacterRomChanged?.Invoke();
+        }
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
 #pragma warning disable SA1515 // Single-line comment should be preceded by blank line
         return
         [
+            // ALTCHAR switch
+            new("CLRALTCHAR", 0xC00E, !altCharSet, "Primary character set"),
+            new("SETALTCHAR", 0xC00F, altCharSet, "Alternate character set"),
+            new("RDALTCHAR", 0xC01E, altCharSet, "Alternate character set status"),
+
             // Glyph read/write control
-            new("RDGLYPHOFF", 0xC060, !glyphReadEnabled, "Glyph RAM reading disabled"),
-            new("RDGLYPHON", 0xC061, glyphReadEnabled, "Glyph RAM reading enabled"),
-            new("WRTGLYPHOFF", 0xC062, !glyphWriteEnabled, "Glyph RAM writing disabled"),
-            new("WRTGLYPHON", 0xC063, glyphWriteEnabled, "Glyph RAM writing enabled"),
+            new("CLRGLYPHRD", 0xC042, !glyphReadEnabled, "Glyph RAM reading disabled"),
+            new("SETGLYPHRD", 0xC043, glyphReadEnabled, "Glyph RAM reading enabled"),
+            new("CLRGLYPHWRT", 0xC044, !glyphWriteEnabled, "Glyph RAM writing disabled"),
+            new("SETGLYPHWRT", 0xC045, glyphWriteEnabled, "Glyph RAM writing enabled"),
 
             // Flash control
-            new("NOFLASH1OFF", 0xC064, !noFlash1Enabled, "Flashing enabled for bank 1"),
-            new("NOFLASH1ON", 0xC065, noFlash1Enabled, "Flashing disabled for bank 1"),
-            new("NOFLASH2OFF", 0xC066, !noFlash2Enabled, "Flashing enabled for bank 2"),
-            new("NOFLASH2ON", 0xC067, noFlash2Enabled, "Flashing disabled for bank 2"),
+            new("CLRNOFLASH1", 0xC046, !noFlash1Enabled, "Flashing enabled for bank 1"),
+            new("SETNOFLASH1", 0xC047, noFlash1Enabled, "Flashing disabled for bank 1"),
+            new("CLRNOFLASH2", 0xC048, !noFlash2Enabled, "Flashing enabled for bank 2"),
+            new("SETNOFLASH2", 0xC049, noFlash2Enabled, "Flashing disabled for bank 2"),
 
             // Glyph bank control
-            new("ALTGLYPH1OFF", 0xC068, !altGlyph1Enabled, "Glyph bank 1 overlay disabled"),
-            new("ALTGLYPH1ON", 0xC069, altGlyph1Enabled, "Glyph bank 1 overlay enabled"),
-            new("ALTGLYPH2OFF", 0xC06A, !altGlyph2Enabled, "Glyph bank 2 overlay disabled"),
-            new("ALTGLYPH2ON", 0xC06B, altGlyph2Enabled, "Glyph bank 2 overlay enabled"),
+            new("CLRALTGLYPH1", 0xC04A, !altGlyph1Enabled, "Glyph bank 1 overlay disabled"),
+            new("SETALTGLYPH1", 0xC04B, altGlyph1Enabled, "Glyph bank 1 overlay enabled"),
+            new("CLRALTGLYPH2", 0xC04C, !altGlyph2Enabled, "Glyph bank 2 overlay disabled"),
+            new("SETALTGLYPH2", 0xC04D, altGlyph2Enabled, "Glyph bank 2 overlay enabled"),
 
             // Status reads
-            new("RDALTGLYPH1", 0xC024, altGlyph1Enabled, "Glyph bank 1 status"),
-            new("RDALTGLYPH2", 0xC025, altGlyph2Enabled, "Glyph bank 2 status"),
-            new("RDNOFLASH1", 0xC026, noFlash1Enabled, "No-flash bank 1 status"),
-            new("RDNOFLASH2", 0xC027, noFlash2Enabled, "No-flash bank 2 status"),
-            new("RDGLYPHRD", 0xC028, glyphReadEnabled, "Glyph read status"),
-            new("RDGLYPHWR", 0xC029, glyphWriteEnabled, "Glyph write status"),
+            new("RDGLYPHRD", 0xC034, glyphReadEnabled, "Glyph read status"),
+            new("RDGLYPHWRT", 0xC035, glyphWriteEnabled, "Glyph write status"),
+            new("RDNOFLASH1", 0xC036, noFlash1Enabled, "No-flash bank 1 status"),
+            new("RDNOFLASH2", 0xC037, noFlash2Enabled, "No-flash bank 2 status"),
+            new("RDALTGLYPH1", 0xC038, altGlyph1Enabled, "Glyph bank 1 status"),
+            new("RDALTGLYPH2", 0xC039, altGlyph2Enabled, "Glyph bank 2 status"),
         ];
 #pragma warning restore SA1515 // Single-line comment should be preceded by blank line
     }
 
     /// <summary>
-    /// Gets read-only access to glyph bank 1 RAM.
+    /// Gets read-only access to glyph RAM.
     /// </summary>
-    /// <returns>A read-only span of the glyph bank 1 data.</returns>
-    public ReadOnlySpan<byte> GetGlyphBank1Data()
+    /// <returns>A read-only span of the glyph RAM data.</returns>
+    public ReadOnlySpan<byte> GetGlyphRamData()
     {
-        return glyphBank1.AsReadOnlySpan();
+        return glyphRam.AsReadOnlySpan();
     }
 
     /// <summary>
-    /// Gets read-only access to glyph bank 2 RAM.
+    /// Writes data to glyph RAM at the specified offset.
     /// </summary>
-    /// <returns>A read-only span of the glyph bank 2 data.</returns>
-    public ReadOnlySpan<byte> GetGlyphBank2Data()
-    {
-        return glyphBank2.AsReadOnlySpan();
-    }
-
-    /// <summary>
-    /// Writes data to glyph bank 1 RAM at the specified offset.
-    /// </summary>
-    /// <param name="offset">The offset within glyph bank 1.</param>
+    /// <param name="offset">The offset within glyph RAM.</param>
     /// <param name="data">The data to write.</param>
-    public void WriteGlyphBank1(int offset, ReadOnlySpan<byte> data)
+    public void WriteGlyphRam(int offset, ReadOnlySpan<byte> data)
     {
-        data.CopyTo(glyphBank1.AsSpan().Slice(offset, data.Length));
-    }
-
-    /// <summary>
-    /// Writes data to glyph bank 2 RAM at the specified offset.
-    /// </summary>
-    /// <param name="offset">The offset within glyph bank 2.</param>
-    /// <param name="data">The data to write.</param>
-    public void WriteGlyphBank2(int offset, ReadOnlySpan<byte> data)
-    {
-        data.CopyTo(glyphBank2.AsSpan().Slice(offset, data.Length));
-    }
-
-    /// <summary>
-    /// Gets the character data source (ROM or RAM) based on overlay settings.
-    /// </summary>
-    /// <param name="charCode">The character code.</param>
-    /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
-    /// <returns>The physical memory containing the character data, or null if unavailable.</returns>
-    private PhysicalMemory? GetCharacterSource(byte charCode, bool useAltCharSet)
-    {
-        // Check if we should use glyph RAM overlay
-        if (useAltCharSet && altGlyph2Enabled)
-        {
-            return glyphBank2;
-        }
-
-        if (!useAltCharSet && altGlyph1Enabled)
-        {
-            return glyphBank1;
-        }
-
-        // Fall back to character ROM
-        return characterRom;
+        data.CopyTo(glyphRam.AsSpan().Slice(offset, data.Length));
     }
 
     /// <summary>
@@ -389,49 +401,67 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     /// <param name="charCode">The character code.</param>
     /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
     /// <returns>The byte offset to the character's first scanline.</returns>
-    private int GetCharacterOffset(byte charCode, bool useAltCharSet)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetCharacterOffset(byte charCode, bool useAltCharSet)
     {
-        // When using glyph RAM banks, the offset is always from the start of the bank
-        if ((useAltCharSet && altGlyph2Enabled) || (!useAltCharSet && altGlyph1Enabled))
-        {
-            return charCode * 8;
-        }
-
-        // For ROM, apply the character set offset
+        // Bank 1 = lower half ($0000-$07FF), Bank 2 = upper half ($0800-$0FFF)
         int baseOffset = useAltCharSet ? CharacterSetSize : 0;
         return baseOffset + (charCode * 8);
     }
 
-    // Soft switch handlers for glyph read/write control
-    private byte HandleRdGlyphOff(byte offset, in BusAccess context)
+    /// <summary>
+    /// Gets the character data source (ROM or RAM) based on overlay settings.
+    /// </summary>
+    /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
+    /// <returns>The physical memory containing the character data, or null if unavailable.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private PhysicalMemory? GetCharacterSource(bool useAltCharSet)
+    {
+        // Check if we should use glyph RAM overlay
+        // Bank 1 = lower half ($0000-$07FF), Bank 2 = upper half ($0800-$0FFF)
+        if (!useAltCharSet && altGlyph1Enabled)
+        {
+            return glyphRam;
+        }
+
+        if (useAltCharSet && altGlyph2Enabled)
+        {
+            return glyphRam;
+        }
+
+        // Fall back to character ROM
+        return characterRom;
+    }
+
+    // ALTCHAR switch handlers (write-only)
+    private void HandleClrAltChar(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree && altCharSet)
+        {
+            altCharSet = false;
+            characterRomChangePending = true;
+        }
+    }
+
+    private void HandleSetAltChar(byte offset, byte value, in BusAccess context)
+    {
+        if (!context.IsSideEffectFree && !altCharSet)
+        {
+            altCharSet = true;
+            characterRomChangePending = true;
+        }
+    }
+
+    // Soft switch handlers for glyph read/write control (write-only)
+    private void HandleClrGlyphRd(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
             glyphReadEnabled = false;
         }
-
-        return 0xFF;
     }
 
-    private void HandleRdGlyphOffWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            glyphReadEnabled = false;
-        }
-    }
-
-    private byte HandleRdGlyphOn(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            glyphReadEnabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleRdGlyphOnWrite(byte offset, byte value, in BusAccess context)
+    private void HandleSetGlyphRd(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -439,17 +469,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    private byte HandleWrtGlyphOff(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            glyphWriteEnabled = false;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleWrtGlyphOffWrite(byte offset, byte value, in BusAccess context)
+    private void HandleClrGlyphWrt(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -457,17 +477,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    private byte HandleWrtGlyphOn(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            glyphWriteEnabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleWrtGlyphOnWrite(byte offset, byte value, in BusAccess context)
+    private void HandleSetGlyphWrt(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -475,18 +485,8 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    // Soft switch handlers for flash control
-    private byte HandleNoFlash1Off(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            noFlash1Enabled = false;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleNoFlash1OffWrite(byte offset, byte value, in BusAccess context)
+    // Soft switch handlers for flash control (write-only)
+    private void HandleClrNoFlash1(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -494,17 +494,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    private byte HandleNoFlash1On(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            noFlash1Enabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleNoFlash1OnWrite(byte offset, byte value, in BusAccess context)
+    private void HandleSetNoFlash1(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -512,17 +502,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    private byte HandleNoFlash2Off(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            noFlash2Enabled = false;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleNoFlash2OffWrite(byte offset, byte value, in BusAccess context)
+    private void HandleClrNoFlash2(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -530,17 +510,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    private byte HandleNoFlash2On(byte offset, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            noFlash2Enabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleNoFlash2OnWrite(byte offset, byte value, in BusAccess context)
+    private void HandleSetNoFlash2(byte offset, byte value, in BusAccess context)
     {
         if (!context.IsSideEffectFree)
         {
@@ -548,88 +518,57 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         }
     }
 
-    // Soft switch handlers for glyph bank control
-    private byte HandleAltGlyph1Off(byte offset, in BusAccess context)
+    // Soft switch handlers for glyph bank control (write-only)
+    private void HandleClrAltGlyph1(byte offset, byte value, in BusAccess context)
     {
-        if (!context.IsSideEffectFree)
+        if (!context.IsSideEffectFree && altGlyph1Enabled)
         {
             altGlyph1Enabled = false;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleAltGlyph1OffWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            altGlyph1Enabled = false;
+            characterRomChangePending = true;
         }
     }
 
-    private byte HandleAltGlyph1On(byte offset, in BusAccess context)
+    private void HandleSetAltGlyph1(byte offset, byte value, in BusAccess context)
     {
-        if (!context.IsSideEffectFree)
+        if (!context.IsSideEffectFree && !altGlyph1Enabled)
         {
             altGlyph1Enabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleAltGlyph1OnWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            altGlyph1Enabled = true;
+            characterRomChangePending = true;
         }
     }
 
-    private byte HandleAltGlyph2Off(byte offset, in BusAccess context)
+    private void HandleClrAltGlyph2(byte offset, byte value, in BusAccess context)
     {
-        if (!context.IsSideEffectFree)
+        if (!context.IsSideEffectFree && altGlyph2Enabled)
         {
             altGlyph2Enabled = false;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleAltGlyph2OffWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            altGlyph2Enabled = false;
+            characterRomChangePending = true;
         }
     }
 
-    private byte HandleAltGlyph2On(byte offset, in BusAccess context)
+    private void HandleSetAltGlyph2(byte offset, byte value, in BusAccess context)
     {
-        if (!context.IsSideEffectFree)
+        if (!context.IsSideEffectFree && !altGlyph2Enabled)
         {
             altGlyph2Enabled = true;
-        }
-
-        return 0xFF;
-    }
-
-    private void HandleAltGlyph2OnWrite(byte offset, byte value, in BusAccess context)
-    {
-        if (!context.IsSideEffectFree)
-        {
-            altGlyph2Enabled = true;
+            characterRomChangePending = true;
         }
     }
 
     // Status read handlers
-    private byte ReadAltGlyph1Status(byte offset, in BusAccess context)
+    private byte ReadAltCharStatus(byte offset, in BusAccess context)
     {
-        return altGlyph1Enabled ? StatusBitSet : StatusBitClear;
+        return altCharSet ? StatusBitSet : StatusBitClear;
     }
 
-    private byte ReadAltGlyph2Status(byte offset, in BusAccess context)
+    private byte ReadGlyphRdStatus(byte offset, in BusAccess context)
     {
-        return altGlyph2Enabled ? StatusBitSet : StatusBitClear;
+        return glyphReadEnabled ? StatusBitSet : StatusBitClear;
+    }
+
+    private byte ReadGlyphWrtStatus(byte offset, in BusAccess context)
+    {
+        return glyphWriteEnabled ? StatusBitSet : StatusBitClear;
     }
 
     private byte ReadNoFlash1Status(byte offset, in BusAccess context)
@@ -642,13 +581,13 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         return noFlash2Enabled ? StatusBitSet : StatusBitClear;
     }
 
-    private byte ReadGlyphRdStatus(byte offset, in BusAccess context)
+    private byte ReadAltGlyph1Status(byte offset, in BusAccess context)
     {
-        return glyphReadEnabled ? StatusBitSet : StatusBitClear;
+        return altGlyph1Enabled ? StatusBitSet : StatusBitClear;
     }
 
-    private byte ReadGlyphWrStatus(byte offset, in BusAccess context)
+    private byte ReadAltGlyph2Status(byte offset, in BusAccess context)
     {
-        return glyphWriteEnabled ? StatusBitSet : StatusBitClear;
+        return altGlyph2Enabled ? StatusBitSet : StatusBitClear;
     }
 }

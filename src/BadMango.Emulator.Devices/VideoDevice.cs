@@ -11,7 +11,7 @@ using Interfaces;
 
 /// <summary>
 /// Video device handling video mode soft switches ($C050-$C057), annunciators ($C058-$C05F),
-/// and status reads ($C019-$C01F).
+/// and status reads ($C019-$C01D, $C01F).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,7 +30,7 @@ using Interfaces;
 /// <item><description>$C058-$C05F: Annunciator outputs (0-3 off/on)</description></item>
 /// </list>
 /// <para>
-/// Additionally, status read registers are provided at $C019-$C01F:
+/// Additionally, status read registers are provided at $C019-$C01D and $C01F:
 /// </para>
 /// <list type="bullet">
 /// <item><description>$C019: RDVBL - Vertical blanking status (bit 7 = 0 during VBL)</description></item>
@@ -38,9 +38,11 @@ using Interfaces;
 /// <item><description>$C01B: RDMIXED - Mixed mode status</description></item>
 /// <item><description>$C01C: RDPAGE2 - Page 2 status</description></item>
 /// <item><description>$C01D: RDHIRES - Hi-res mode status</description></item>
-/// <item><description>$C01E: RDALTCHAR - Alternate character set status</description></item>
 /// <item><description>$C01F: RD80COL - 80-column mode status</description></item>
 /// </list>
+/// <para>
+/// Note: ALTCHAR ($C00E/$C00F/$C01E) is handled by <see cref="CharacterDevice"/>.
+/// </para>
 /// <para>
 /// Note: $C054-$C057 (PAGE2/HIRES switches) are handled by AuxiliaryMemoryController
 /// because they affect both video display and memory banking. The
@@ -51,16 +53,6 @@ using Interfaces;
 [DeviceType("video")]
 public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 {
-    /// <summary>
-    /// Character ROM size: 4KB for two complete character sets.
-    /// </summary>
-    public const int CharacterRomSize = 4096;
-
-    /// <summary>
-    /// Size of each character set within the ROM.
-    /// </summary>
-    public const int CharacterSetSize = 2048;
-
     /// <summary>
     /// Cycles per video frame for NTSC timing (~60 Hz).
     /// </summary>
@@ -79,7 +71,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     private const byte StatusBitClear = 0x00;
 
     private readonly bool[] annunciators = new bool[4];
-    private PhysicalMemory? characterRom;
     private IScheduler? scheduler;
     private EventHandle vblankEventHandle;
     private EventHandle vblankEndEventHandle;
@@ -89,7 +80,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     private bool hiresMode;
     private bool col80Mode;
     private bool doubleHiResMode;
-    private bool altCharSet;
     private bool verticalBlanking;
 
     /// <inheritdoc />
@@ -130,15 +120,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public bool IsDoubleHiRes => doubleHiResMode;
 
-    /// <inheritdoc />
-    public bool IsAltCharSet => altCharSet;
-
-    /// <inheritdoc />
-    public IReadOnlyList<bool> Annunciators => annunciators;
-
-    /// <inheritdoc />
-    public bool IsCharacterRomLoaded => characterRom != null;
-
     /// <summary>
     /// Gets or sets a value indicating whether vertical blanking is in progress.
     /// </summary>
@@ -151,6 +132,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         get => verticalBlanking;
         set => verticalBlanking = value;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<bool> Annunciators => annunciators;
 
     /// <inheritdoc />
     public string ProviderName => "Video";
@@ -169,13 +153,14 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
 
-        // Status reads ($C019-$C01F) - read-only
+        // Status reads ($C019-$C01D, $C01F) - read-only
         dispatcher.RegisterRead(0x19, ReadVblStatus);       // RDVBL
         dispatcher.RegisterRead(0x1A, ReadTextStatus);      // RDTEXT
         dispatcher.RegisterRead(0x1B, ReadMixedStatus);     // RDMIXED
         dispatcher.RegisterRead(0x1C, ReadPage2Status);     // RDPAGE2
         dispatcher.RegisterRead(0x1D, ReadHiResStatus);     // RDHIRES
-        dispatcher.RegisterRead(0x1E, ReadAltCharStatus);   // RDALTCHAR
+
+        // Note: $C01E (RDALTCHAR) is handled by CharacterDevice
         dispatcher.RegisterRead(0x1F, Read80ColStatus);     // RD80COL
 
         // Video mode switches
@@ -222,7 +207,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         hiresMode = false;
         col80Mode = false;
         doubleHiResMode = false;
-        altCharSet = false;
         verticalBlanking = false;
         Array.Clear(annunciators);
 
@@ -258,85 +242,18 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
     }
 
-    /// <summary>
-    /// Sets the alternate character set state.
-    /// </summary>
-    /// <param name="enabled">Whether alternate character set is enabled.</param>
-    public void SetAltCharSet(bool enabled)
-    {
-        if (altCharSet != enabled)
-        {
-            altCharSet = enabled;
-            OnModeChanged();
-        }
-    }
-
-    /// <inheritdoc />
-    public void LoadCharacterRom(byte[] romData)
-    {
-        ArgumentNullException.ThrowIfNull(romData);
-
-        if (romData.Length != CharacterRomSize)
-        {
-            throw new ArgumentException(
-                $"Character ROM must be exactly {CharacterRomSize} bytes, " +
-                $"but got {romData.Length} bytes.",
-                nameof(romData));
-        }
-
-        characterRom = new PhysicalMemory(romData, "CharacterROM");
-    }
-
-    /// <inheritdoc />
-    public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
-    {
-        if (characterRom == null)
-        {
-            return 0x00; // No ROM loaded - return blank
-        }
-
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(scanline, 7);
-
-        int offset = GetCharacterRomOffset(charCode, useAltCharSet) + scanline;
-        return characterRom.AsReadOnlySpan()[offset];
-    }
-
-    /// <inheritdoc />
-    public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
-    {
-        if (characterRom == null)
-        {
-            return Memory<byte>.Empty;
-        }
-
-        int offset = GetCharacterRomOffset(charCode, useAltCharSet);
-        return characterRom.Slice((uint)offset, 8);
-    }
-
-    /// <inheritdoc />
-    public Memory<byte> GetCharacterRomData()
-    {
-        if (characterRom == null)
-        {
-            return Memory<byte>.Empty;
-        }
-
-        return characterRom.Slice(0, CharacterRomSize);
-    }
-
     /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
         return
         [
 
-            // Status reads ($C019-$C01F)
+            // Status reads ($C019-$C01D, $C01F)
             new("RDVBL", 0xC019, !verticalBlanking, "Vertical blanking (inverted: ON when NOT in VBL)"),
             new("RDTEXT", 0xC01A, textMode, "Text mode enabled"),
             new("RDMIXED", 0xC01B, mixedMode, "Mixed mode enabled"),
             new("RDPAGE2", 0xC01C, page2, "Page 2 selected"),
             new("RDHIRES", 0xC01D, hiresMode, "Hi-res mode enabled"),
-            new("RDALTCHAR", 0xC01E, altCharSet, "Alternate character set enabled"),
             new("RD80COL", 0xC01F, col80Mode, "80-column mode enabled"),
 
             // Mode switches ($C050-$C057)
@@ -361,7 +278,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 
             // Additional mode controls
             new("80COL", 0xC00D, col80Mode, "80-column display mode"),
-            new("ALTCHAR", 0xC00F, altCharSet, "Alternate character set"),
             new("DHIRES", 0xC05E, doubleHiResMode, "Double hi-res mode"),
         ];
     }
@@ -384,18 +300,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
             hiresMode = enabled;
             OnModeChanged();
         }
-    }
-
-    /// <summary>
-    /// Calculates the ROM offset for a character's bitmap.
-    /// </summary>
-    /// <param name="charCode">The 8-bit character code.</param>
-    /// <param name="useAltCharSet">True to use alternate character set.</param>
-    /// <returns>Offset into the 4KB character ROM.</returns>
-    private static int GetCharacterRomOffset(byte charCode, bool useAltCharSet)
-    {
-        int baseOffset = useAltCharSet ? CharacterSetSize : 0;
-        return baseOffset + (charCode * 8);
     }
 
     private byte SetGraphicsRead(byte offset, in BusAccess context)
@@ -604,14 +508,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     private byte ReadHiResStatus(byte offset, in BusAccess context)
     {
         return hiresMode ? StatusBitSet : StatusBitClear;
-    }
-
-    /// <summary>
-    /// Reads alternate character set status ($C01E).
-    /// </summary>
-    private byte ReadAltCharStatus(byte offset, in BusAccess context)
-    {
-        return altCharSet ? StatusBitSet : StatusBitClear;
     }
 
     /// <summary>

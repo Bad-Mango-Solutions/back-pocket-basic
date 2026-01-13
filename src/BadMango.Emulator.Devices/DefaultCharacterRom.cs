@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Devices;
 
-using System.Reflection;
-
 /// <summary>
 /// Provides access to the default Pocket2e character ROM embedded in the assembly.
 /// </summary>
@@ -100,22 +98,6 @@ public static class DefaultCharacterRom
             romData = null;
             return false;
         }
-    }
-
-    /// <summary>
-    /// Loads the default character ROM into a video device.
-    /// </summary>
-    /// <param name="videoDevice">The video device to load the ROM into.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="videoDevice"/> is null.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the embedded resource cannot be found or is invalid.
-    /// </exception>
-    public static void LoadIntoVideoDevice(Interfaces.IVideoDevice videoDevice)
-    {
-        ArgumentNullException.ThrowIfNull(videoDevice);
-        videoDevice.LoadCharacterRom(GetRomData());
     }
 
     /// <summary>

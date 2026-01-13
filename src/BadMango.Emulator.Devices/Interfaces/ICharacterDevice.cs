@@ -18,25 +18,50 @@ using BadMango.Emulator.Bus.Interfaces;
 /// The character device owns:
 /// <list type="bullet">
 /// <item><description>4KB character ROM with primary and alternate character sets</description></item>
-/// <item><description>Two 4KB glyph RAM banks for custom character overlays</description></item>
+/// <item><description>4KB glyph RAM for custom character overlays</description></item>
 /// </list>
+/// </para>
+/// <para>
+/// "Glyph Bank 1" and "Glyph Bank 2" refer to the lower ($0000-$07FF) and upper
+/// ($0800-$0FFF) halves of either ROM or RAM. The ALTCHAR switch determines which
+/// bank is used. ALTGLYPHx determines which ROM glyph bank to overlay with RAM.
 /// </para>
 /// <para>
 /// Soft switches control glyph bank selection and flash behavior:
 /// <list type="bullet">
+/// <item><description>ALTCHAR - Select primary or alternate character set</description></item>
 /// <item><description>ALTGLYPH1/ALTGLYPH2 - Enable glyph RAM bank overlays</description></item>
 /// <item><description>NOFLASH1/NOFLASH2 - Disable flashing for glyph banks</description></item>
-/// <item><description>RDGLYPH/WRTGLYPH - Control glyph RAM read/write access</description></item>
+/// <item><description>GLYPHRD/GLYPHWRT - Control glyph RAM read/write access</description></item>
 /// </list>
 /// </para>
 /// </remarks>
 public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
 {
     /// <summary>
+    /// Event raised when the character ROM configuration changes and should be reloaded.
+    /// </summary>
+    /// <remarks>
+    /// This event is fired at VBLANK when character table switches occur, allowing
+    /// the video window to safely reload its character ROM buffer without mid-frame
+    /// rendering artifacts.
+    /// </remarks>
+    event Action? CharacterRomChanged;
+
+    /// <summary>
+    /// Gets a value indicating whether the alternate character set is active.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> if alternate character set is selected via ALTCHAR;
+    /// otherwise, <see langword="false"/>.
+    /// </value>
+    bool IsAltCharSet { get; }
+
+    /// <summary>
     /// Gets a value indicating whether glyph bank 1 overlay is enabled.
     /// </summary>
     /// <value>
-    /// <see langword="true"/> if glyph bank 1 RAM overlays the primary character set;
+    /// <see langword="true"/> if glyph RAM overlays the primary character set (bank 1);
     /// otherwise, <see langword="false"/>.
     /// </value>
     bool IsAltGlyph1Enabled { get; }
@@ -45,7 +70,7 @@ public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
     /// Gets a value indicating whether glyph bank 2 overlay is enabled.
     /// </summary>
     /// <value>
-    /// <see langword="true"/> if glyph bank 2 RAM overlays the alternate character set;
+    /// <see langword="true"/> if glyph RAM overlays the alternate character set (bank 2);
     /// otherwise, <see langword="false"/>.
     /// </value>
     bool IsAltGlyph2Enabled { get; }
@@ -131,13 +156,13 @@ public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
     /// </param>
     /// <param name="outputBuffer">
     /// The buffer to receive scanline pixel data. Must be at least
-    /// <paramref name="characterCodes"/>.Length × 7 bytes.
+    /// <paramref name="characterCodes"/>.Length bytes.
     /// </param>
     /// <remarks>
     /// <para>
     /// This method generates pixel data for an entire row of characters at once,
     /// enabling efficient scanline-based rendering. Each character contributes
-    /// 7 pixels to the output.
+    /// one byte (7 pixels) to the output.
     /// </para>
     /// <para>
     /// The output buffer contains consecutive 7-bit pixel patterns, one byte per
@@ -172,4 +197,13 @@ public interface ICharacterDevice : IMotherboardDevice, ICharacterRomProvider
         int scanline,
         bool useAltCharSet,
         bool flashState);
+
+    /// <summary>
+    /// Called at VBLANK to process pending character ROM changes.
+    /// </summary>
+    /// <remarks>
+    /// Character table switches should only take effect at VBLANK to prevent
+    /// mid-frame rendering artifacts.
+    /// </remarks>
+    void OnVBlank();
 }
