@@ -84,19 +84,28 @@ public partial class GlyphEditorWindow : Window
     /// <returns>A new <see cref="GlyphEditorWindow"/>.</returns>
     public static GlyphEditorWindow Create(Devices.Interfaces.ICharacterDevice characterDevice)
     {
-        var window = Create();
+        // Create the window with a connected emulator connection
+        var window = new GlyphEditorWindow();
+        var emulatorConnection = new EmulatorConnectionService();
+        var fileService = new GlyphFileService(window);
+        var vm = new GlyphEditorViewModel(fileService, emulatorConnection);
 
-        if (window.viewModel != null && characterDevice is Devices.Interfaces.IGlyphHotLoader)
+        window.viewModel = vm;
+        window.DataContext = vm;
+        vm.PropertyChanged += window.OnViewModelPropertyChanged;
+        window.Opened += window.OnWindowOpened;
+        window.Closing += window.OnWindowClosing;
+
+        if (characterDevice is Devices.Interfaces.IGlyphHotLoader)
         {
-            var emulatorConnection = new EmulatorConnectionService();
             emulatorConnection.Connect(characterDevice);
 
-            // Load existing ROM data
+            // Load existing ROM data if available
             var romData = characterDevice.GetCharacterRomData();
             if (!romData.IsEmpty)
             {
                 var file = Models.GlyphFile.LoadFromBytes(romData.ToArray());
-                window.viewModel.CurrentFile = file;
+                vm.CurrentFile = file;
             }
         }
 
