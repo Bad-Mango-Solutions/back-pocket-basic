@@ -41,6 +41,6 @@ public sealed class EnumToBoolConverter : IValueConverter
             return Enum.Parse(targetType, parameterString);
         }
 
-        return GlyphLoadTarget.Rom;
+        return GlyphLoadTarget.GlyphRom;
     }
 }

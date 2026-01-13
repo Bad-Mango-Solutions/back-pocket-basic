@@ -12,7 +12,7 @@ public enum GlyphLoadTarget
     /// <summary>
     /// Load into character ROM (replaces base glyphs).
     /// </summary>
-    Rom,
+    GlyphRom,
 
     /// <summary>
     /// Load into glyph RAM (overlay for custom glyphs).

@@ -50,9 +50,6 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
     private bool isFlashOn;
 
     [ObservableProperty]
-    private int gridZoomLevel = 1;
-
-    [ObservableProperty]
     private string windowTitle = "Character Glyph Editor";
 
     [ObservableProperty]
@@ -62,7 +59,7 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
     private bool isEmulatorConnected;
 
     [ObservableProperty]
-    private GlyphLoadTarget hotLoadTarget = GlyphLoadTarget.Rom;
+    private GlyphLoadTarget hotLoadTarget = GlyphLoadTarget.GlyphRom;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GlyphEditorViewModel"/> class.
@@ -94,6 +91,11 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
             }
         };
     }
+
+    /// <summary>
+    /// Gets the fixed grid zoom level (3x for readable display).
+    /// </summary>
+    public int GridZoomLevel => 3;
 
     /// <summary>
     /// Gets the display mode for the selected character code.
@@ -557,6 +559,9 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
         UpdateSelectedGlyph();
         UpdateWindowTitle();
         StatusText = $"Pasted {pasteCount} character(s)";
+
+        // Notify that CurrentFile has changed to refresh the character grid
+        OnPropertyChanged(nameof(CurrentFile));
     }
 
     private bool CanPaste() => clipboard != null && clipboard.Count > 0;
@@ -883,30 +888,6 @@ public sealed partial class GlyphEditorViewModel : ViewModelBase
     }
 
     private bool CanHotLoad() => CurrentFile != null && IsEmulatorConnected;
-
-    /// <summary>
-    /// Increases the grid zoom level.
-    /// </summary>
-    [RelayCommand]
-    private void ZoomIn()
-    {
-        if (GridZoomLevel < 4)
-        {
-            GridZoomLevel++;
-        }
-    }
-
-    /// <summary>
-    /// Decreases the grid zoom level.
-    /// </summary>
-    [RelayCommand]
-    private void ZoomOut()
-    {
-        if (GridZoomLevel > 1)
-        {
-            GridZoomLevel--;
-        }
-    }
 
     partial void OnSelectedCharCodeChanged(byte value)
     {

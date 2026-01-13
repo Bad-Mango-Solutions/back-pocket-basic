@@ -28,6 +28,7 @@ public partial class GlyphEditorWindow : Window
     private const int BitmapGridWidth = 7;
     private const int BitmapGridHeight = 8;
     private const int PreviewScale = 8;
+    private const int Preview80Scale = 4; // Half-width for 80-column
 
     private GlyphEditorViewModel? viewModel;
     private bool isDrawing;
@@ -126,6 +127,7 @@ public partial class GlyphEditorWindow : Window
         RenderCharacterGrid();
         RenderBitmapEditor();
         RenderPreview();
+        RenderPreview80();
     }
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -139,11 +141,11 @@ public partial class GlyphEditorWindow : Window
         {
             case nameof(GlyphEditorViewModel.CurrentFile):
             case nameof(GlyphEditorViewModel.UseAlternateSet):
-            case nameof(GlyphEditorViewModel.GridZoomLevel):
             case nameof(GlyphEditorViewModel.ShowGrid):
                 RenderCharacterGrid();
                 RenderBitmapEditor();
                 RenderPreview();
+                RenderPreview80();
                 break;
 
             case nameof(GlyphEditorViewModel.SelectedCharCode):
@@ -151,10 +153,12 @@ public partial class GlyphEditorWindow : Window
                 RenderCharacterGrid();
                 RenderBitmapEditor();
                 RenderPreview();
+                RenderPreview80();
                 break;
 
             case nameof(GlyphEditorViewModel.IsFlashOn):
                 RenderPreview();
+                RenderPreview80();
                 break;
         }
     }
@@ -168,16 +172,17 @@ public partial class GlyphEditorWindow : Window
             return;
         }
 
-        int zoomLevel = viewModel.GridZoomLevel;
+        // Fixed zoom level 3x, with pixel scale of 4 (3+1)
+        int pixelScale = viewModel.GridZoomLevel + 1;
 
-        // At zoom level 1, each pixel is 2x2, so character width is 7*2=14
-        // Each higher zoom level adds 1 pixel per character pixel
-        int pixelScale = zoomLevel + 1;
-        int cellSize = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
-        int totalSize = GridSize * cellSize;
+        // Cell dimensions: 7 pixels wide × 8 pixels tall, plus 2px padding
+        int cellWidth = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
+        int cellHeight = (CharacterRenderer.CharacterHeight * pixelScale) + 2;
+        int totalWidth = GridSize * cellWidth;
+        int totalHeight = GridSize * cellHeight;
 
-        CharacterCanvas.Width = totalSize;
-        CharacterCanvas.Height = totalSize;
+        CharacterCanvas.Width = totalWidth;
+        CharacterCanvas.Height = totalHeight;
 
         var glyphData = viewModel.CurrentFile.ToByteArray();
         int romOffset = viewModel.UseAlternateSet ? Models.GlyphFile.CharacterSetSize : 0;
@@ -186,8 +191,8 @@ public partial class GlyphEditorWindow : Window
         {
             int row = charIndex / GridSize;
             int col = charIndex % GridSize;
-            int x = col * cellSize;
-            int y = row * cellSize;
+            int x = col * cellWidth;
+            int y = row * cellHeight;
 
             // Determine cell background based on selection state
             IBrush bgColor;
@@ -206,15 +211,15 @@ public partial class GlyphEditorWindow : Window
 
             var cellRect = new Rectangle
             {
-                Width = cellSize - 1,
-                Height = cellSize - 1,
+                Width = cellWidth - 1,
+                Height = cellHeight - 1,
                 Fill = bgColor,
             };
             Canvas.SetLeft(cellRect, x);
             Canvas.SetTop(cellRect, y);
             CharacterCanvas.Children.Add(cellRect);
 
-            // Render character pixels
+            // Render character pixels (no grid lines between individual pixels)
             for (int scanline = 0; scanline < 8; scanline++)
             {
                 int dataOffset = romOffset + (charIndex * 8) + scanline;
@@ -246,8 +251,8 @@ public partial class GlyphEditorWindow : Window
             // Click handler
             var hitRect = new Rectangle
             {
-                Width = cellSize,
-                Height = cellSize,
+                Width = cellWidth,
+                Height = cellHeight,
                 Fill = Brushes.Transparent,
                 Tag = charIndex,
             };
@@ -257,15 +262,15 @@ public partial class GlyphEditorWindow : Window
             CharacterCanvas.Children.Add(hitRect);
         }
 
-        // Grid lines
+        // Draw grid lines between character cells (not between pixels)
         if (viewModel.ShowGrid)
         {
             for (int i = 0; i <= GridSize; i++)
             {
                 var hLine = new Line
                 {
-                    StartPoint = new Avalonia.Point(0, i * cellSize),
-                    EndPoint = new Avalonia.Point(totalSize, i * cellSize),
+                    StartPoint = new Avalonia.Point(0, i * cellHeight),
+                    EndPoint = new Avalonia.Point(totalWidth, i * cellHeight),
                     Stroke = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
                     StrokeThickness = 1,
                 };
@@ -273,8 +278,8 @@ public partial class GlyphEditorWindow : Window
 
                 var vLine = new Line
                 {
-                    StartPoint = new Avalonia.Point(i * cellSize, 0),
-                    EndPoint = new Avalonia.Point(i * cellSize, totalSize),
+                    StartPoint = new Avalonia.Point(i * cellWidth, 0),
+                    EndPoint = new Avalonia.Point(i * cellWidth, totalHeight),
                     Stroke = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
                     StrokeThickness = 1,
                 };
@@ -340,12 +345,12 @@ public partial class GlyphEditorWindow : Window
             return null;
         }
 
-        int zoomLevel = viewModel.GridZoomLevel;
-        int pixelScale = zoomLevel + 1;
-        int cellSize = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
+        int pixelScale = viewModel.GridZoomLevel + 1;
+        int cellWidth = (CharacterRenderer.CharacterWidth * pixelScale) + 2;
+        int cellHeight = (CharacterRenderer.CharacterHeight * pixelScale) + 2;
 
-        int col = (int)(position.X / cellSize);
-        int row = (int)(position.Y / cellSize);
+        int col = (int)(position.X / cellWidth);
+        int row = (int)(position.Y / cellHeight);
 
         if (col < 0 || col >= GridSize || row < 0 || row >= GridSize)
         {
@@ -477,6 +482,56 @@ public partial class GlyphEditorWindow : Window
         }
     }
 
+    private void RenderPreview80()
+    {
+        Preview80Canvas.Children.Clear();
+
+        if (viewModel?.SelectedGlyph == null)
+        {
+            return;
+        }
+
+        var glyph = viewModel.SelectedGlyph;
+        bool invert = viewModel.FlashPreviewEnabled && viewModel.IsFlashOn &&
+                      viewModel.SelectedCharCode is >= 0x40 and < 0x80 &&
+                      !viewModel.UseAlternateSet;
+
+        // Background - half width for 80-column mode
+        var bgRect = new Rectangle
+        {
+            Width = BitmapGridWidth * Preview80Scale,
+            Height = BitmapGridHeight * PreviewScale,
+            Fill = Brushes.Black,
+        };
+        Preview80Canvas.Children.Add(bgRect);
+
+        // Draw pixels - half width (4px wide, 8px tall per pixel)
+        for (int y = 0; y < BitmapGridHeight; y++)
+        {
+            for (int x = 0; x < BitmapGridWidth; x++)
+            {
+                bool isSet = glyph[x, y];
+                if (invert)
+                {
+                    isSet = !isSet;
+                }
+
+                if (isSet)
+                {
+                    var pixelRect = new Rectangle
+                    {
+                        Width = Preview80Scale,
+                        Height = PreviewScale,
+                        Fill = new SolidColorBrush(Color.FromRgb(0, 255, 0)),
+                    };
+                    Canvas.SetLeft(pixelRect, x * Preview80Scale);
+                    Canvas.SetTop(pixelRect, y * PreviewScale);
+                    Preview80Canvas.Children.Add(pixelRect);
+                }
+            }
+        }
+    }
+
     private void OnBitmapEditorPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (viewModel?.SelectedGlyph == null)
@@ -494,6 +549,7 @@ public partial class GlyphEditorWindow : Window
             viewModel.TogglePixel(x, y);
             RenderBitmapEditor();
             RenderPreview();
+            RenderPreview80();
             e.Handled = true;
         }
     }
@@ -515,6 +571,7 @@ public partial class GlyphEditorWindow : Window
                 viewModel.SetPixel(x, y, drawValue);
                 RenderBitmapEditor();
                 RenderPreview();
+                RenderPreview80();
             }
         }
     }

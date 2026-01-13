@@ -414,7 +414,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
 
         switch (target)
         {
-            case GlyphLoadTarget.Rom:
+            case GlyphLoadTarget.GlyphRom:
                 if (characterRom == null)
                 {
                     characterRom = new PhysicalMemory(CharacterRomSize, "CharacterROM");
@@ -454,7 +454,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
 
         switch (target)
         {
-            case GlyphLoadTarget.Rom:
+            case GlyphLoadTarget.GlyphRom:
                 if (characterRom == null)
                 {
                     characterRom = new PhysicalMemory(CharacterRomSize, "CharacterROM");
@@ -481,7 +481,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     {
         var result = new byte[CharacterRomSize];
 
-        var source = target == GlyphLoadTarget.Rom ? characterRom : glyphRam;
+        var source = target == GlyphLoadTarget.GlyphRom ? characterRom : glyphRam;
         source?.AsReadOnlySpan().CopyTo(result);
 
         return result;
