@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Configuration;
 
 using Moq;
 
@@ -210,6 +211,131 @@ public partial class DebugCommandsTests
             Assert.That(result.Success, Is.True);
             Assert.That(result.Message, Does.Contain("halted"));
             mockMachine.Verify(m => m.Halt(), Times.Once);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that BootCommand opens video window when autoVideoWindowOpen is true.
+    /// </summary>
+    [Test]
+    public void BootCommand_WithAutoVideoWindowOpen_OpensVideoWindow()
+    {
+        var mockMachine = CreateMockMachine();
+        var mockWindowManager = new Mock<IDebugWindowManager>();
+        mockWindowManager.Setup(m => m.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(true);
+
+        var profile = new MachineProfile
+        {
+            Name = "test",
+            Cpu = new CpuProfileSection { Type = "65C02" },
+            Memory = new MemoryProfileSection(),
+            Boot = new BootProfile
+            {
+                AutoVideoWindowOpen = true,
+            },
+        };
+
+        var command = new BootCommand(profile, mockWindowManager.Object);
+        var contextWithMachine = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
+        contextWithMachine.AttachMachine(mockMachine.Object);
+
+        var result = command.Execute(contextWithMachine, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Contain("Video window opened"));
+            mockWindowManager.Verify(m => m.ShowWindowAsync("Video", mockMachine.Object), Times.Once);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that BootCommand does not open video window when autoVideoWindowOpen is false.
+    /// </summary>
+    [Test]
+    public void BootCommand_WithoutAutoVideoWindowOpen_DoesNotOpenVideoWindow()
+    {
+        var mockMachine = CreateMockMachine();
+        var mockWindowManager = new Mock<IDebugWindowManager>();
+
+        var profile = new MachineProfile
+        {
+            Name = "test",
+            Cpu = new CpuProfileSection { Type = "65C02" },
+            Memory = new MemoryProfileSection(),
+            Boot = new BootProfile
+            {
+                AutoVideoWindowOpen = false,
+            },
+        };
+
+        var command = new BootCommand(profile, mockWindowManager.Object);
+        var contextWithMachine = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
+        contextWithMachine.AttachMachine(mockMachine.Object);
+
+        var result = command.Execute(contextWithMachine, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Not.Contain("Video window opened"));
+            mockWindowManager.Verify(m => m.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object>()), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that BootCommand does not open video window when window manager is null.
+    /// </summary>
+    [Test]
+    public void BootCommand_WithNullWindowManager_DoesNotOpenVideoWindow()
+    {
+        var mockMachine = CreateMockMachine();
+
+        var profile = new MachineProfile
+        {
+            Name = "test",
+            Cpu = new CpuProfileSection { Type = "65C02" },
+            Memory = new MemoryProfileSection(),
+            Boot = new BootProfile
+            {
+                AutoVideoWindowOpen = true,
+            },
+        };
+
+        var command = new BootCommand(profile, null);
+        var contextWithMachine = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
+        contextWithMachine.AttachMachine(mockMachine.Object);
+
+        var result = command.Execute(contextWithMachine, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Not.Contain("Video window opened"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that BootCommand does not open video window when profile is null.
+    /// </summary>
+    [Test]
+    public void BootCommand_WithNullProfile_DoesNotOpenVideoWindow()
+    {
+        var mockMachine = CreateMockMachine();
+        var mockWindowManager = new Mock<IDebugWindowManager>();
+
+        var command = new BootCommand(null, mockWindowManager.Object);
+        var contextWithMachine = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler);
+        contextWithMachine.AttachMachine(mockMachine.Object);
+
+        var result = command.Execute(contextWithMachine, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Not.Contain("Video window opened"));
+            mockWindowManager.Verify(m => m.ShowWindowAsync(It.IsAny<string>(), It.IsAny<object>()), Times.Never);
         });
     }
 

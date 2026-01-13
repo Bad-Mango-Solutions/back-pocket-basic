@@ -19,6 +19,7 @@ namespace BadMango.Emulator.TextEditor;
 /// <item><description>.txt - Plain text</description></item>
 /// <item><description>.md - Markdown</description></item>
 /// <item><description>.json - JSON</description></item>
+/// <item><description>.yaml, .yml - YAML</description></item>
 /// <item><description>.s, .asm, .h - Assembly source</description></item>
 /// </list>
 /// </para>
@@ -30,6 +31,8 @@ public static class SyntaxHighlightingManager
         { ".txt", SyntaxLanguage.PlainText },
         { ".md", SyntaxLanguage.Markdown },
         { ".json", SyntaxLanguage.Json },
+        { ".yaml", SyntaxLanguage.Yaml },
+        { ".yml", SyntaxLanguage.Yaml },
         { ".s", SyntaxLanguage.Assembly },
         { ".asm", SyntaxLanguage.Assembly },
         { ".h", SyntaxLanguage.Assembly },
@@ -102,6 +105,7 @@ public static class SyntaxHighlightingManager
             SyntaxLanguage.PlainText => null,
             SyntaxLanguage.Markdown => "text.html.markdown",
             SyntaxLanguage.Json => "source.json",
+            SyntaxLanguage.Yaml => "source.yaml",
             SyntaxLanguage.Assembly => "source.asm.x86_64", // Closest available grammar
             _ => null,
         };
@@ -119,6 +123,7 @@ public static class SyntaxHighlightingManager
             SyntaxLanguage.PlainText => "Plain Text",
             SyntaxLanguage.Markdown => "Markdown",
             SyntaxLanguage.Json => "JSON",
+            SyntaxLanguage.Yaml => "YAML",
             SyntaxLanguage.Assembly => "Assembly",
             _ => language.ToString(),
         };
