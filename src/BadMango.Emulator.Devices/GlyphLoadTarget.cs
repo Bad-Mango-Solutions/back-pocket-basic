@@ -15,12 +15,7 @@ public enum GlyphLoadTarget
     Rom,
 
     /// <summary>
-    /// Load into glyph RAM bank 1 (overlay for primary set).
+    /// Load into glyph RAM (overlay for custom glyphs).
     /// </summary>
-    GlyphRamBank1,
-
-    /// <summary>
-    /// Load into glyph RAM bank 2 (overlay for alternate set).
-    /// </summary>
-    GlyphRamBank2,
+    GlyphRam,
 }

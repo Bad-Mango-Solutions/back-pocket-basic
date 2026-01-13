@@ -81,16 +81,10 @@
                                      IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=Rom}" />
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Target: Glyph RAM Bank 1">
+                <MenuItem Header="Target: Glyph RAM">
                     <MenuItem.Icon>
                         <RadioButton GroupName="HotLoadTarget"
-                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=GlyphRamBank1}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem Header="Target: Glyph RAM Bank 2">
-                    <MenuItem.Icon>
-                        <RadioButton GroupName="HotLoadTarget"
-                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=GlyphRamBank2}" />
+                                     IsChecked="{Binding HotLoadTarget, Converter={x:Static vm:EnumToBoolConverter.Instance}, ConverterParameter=GlyphRam}" />
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>

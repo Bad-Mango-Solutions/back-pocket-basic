@@ -423,12 +423,8 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
                 glyphData.CopyTo(characterRom.AsSpan());
                 break;
 
-            case GlyphLoadTarget.GlyphRamBank1:
-                glyphData[..CharacterSetSize].CopyTo(glyphRam.AsSpan());
-                break;
-
-            case GlyphLoadTarget.GlyphRamBank2:
-                glyphData[CharacterSetSize..].CopyTo(glyphRam.AsSpan()[CharacterSetSize..]);
+            case GlyphLoadTarget.GlyphRam:
+                glyphData.CopyTo(glyphRam.AsSpan());
                 break;
         }
 
@@ -436,7 +432,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
         {
             Target = target,
             CharacterCode = null,
-            IsAlternateSet = target == GlyphLoadTarget.GlyphRamBank2,
+            IsAlternateSet = false,
         });
     }
 
@@ -467,8 +463,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
                 scanlines[..8].CopyTo(characterRom.AsSpan()[offset..]);
                 break;
 
-            case GlyphLoadTarget.GlyphRamBank1:
-            case GlyphLoadTarget.GlyphRamBank2:
+            case GlyphLoadTarget.GlyphRam:
                 scanlines[..8].CopyTo(glyphRam.AsSpan()[offset..]);
                 break;
         }
