@@ -84,7 +84,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     public const int CharacterSetSize = 2048;
 
     /// <summary>
-    /// Size of the glyph RAM: 4KB (same as ROM).
+    /// Size of the glyph RAM: 4KB for character overlays.
     /// </summary>
     public const int GlyphRamSize = 4096;
 
