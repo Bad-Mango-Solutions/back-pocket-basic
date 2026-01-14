@@ -38,7 +38,8 @@ public sealed class GlyphFileService : IGlyphFileService
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("Glyph Files") { Patterns = ["*.glyph", "*.bin"] },
+                new FilePickerFileType("Glyph Files") { Patterns = ["*.glyph"] },
+                new FilePickerFileType("Memory Image Files") { Patterns = ["*.bin", "*.rom"] },
                 new FilePickerFileType("All Files") { Patterns = ["*.*"] },
             ],
         });
@@ -58,7 +59,7 @@ public sealed class GlyphFileService : IGlyphFileService
             FileTypeChoices =
             [
                 new FilePickerFileType("Glyph Files") { Patterns = ["*.glyph"] },
-                new FilePickerFileType("Binary Files") { Patterns = ["*.bin"] },
+                new FilePickerFileType("Memory Image Files") { Patterns = ["*.bin", "*.rom"] },
             ],
         });
 
@@ -76,7 +77,7 @@ public sealed class GlyphFileService : IGlyphFileService
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("ROM Files") { Patterns = ["*.rom", "*.bin"] },
+                new FilePickerFileType("Memory Image Files") { Patterns = ["*.rom", "*.bin"] },
                 new FilePickerFileType("All Files") { Patterns = ["*.*"] },
             ],
         });
