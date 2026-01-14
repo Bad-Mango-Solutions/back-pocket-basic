@@ -54,4 +54,9 @@ public enum DebugWindowComponent
     /// annunciator visualization, and extensible device status components.
     /// </remarks>
     StatusMonitor,
+
+    /// <summary>
+    /// A character glyph editor window for creating and editing character ROMs.
+    /// </summary>
+    GlyphEditor,
 }

@@ -71,7 +71,7 @@ using Interfaces;
 /// </list>
 /// </remarks>
 [DeviceType("character")]
-public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
+public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGlyphHotLoader
 {
     /// <summary>
     /// Character ROM size: 4KB for two complete character sets.
@@ -115,6 +115,9 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public event Action? CharacterRomChanged;
+
+    /// <inheritdoc />
+    public event EventHandler<GlyphDataChangedEventArgs>? GlyphDataChanged;
 
     /// <inheritdoc />
     public string Name => "Character Generator";
@@ -395,6 +398,95 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
         data.CopyTo(glyphRam.AsSpan().Slice(offset, data.Length));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // IGlyphHotLoader Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public void HotLoadGlyphData(ReadOnlySpan<byte> glyphData, GlyphLoadTarget target)
+    {
+        if (glyphData.Length != CharacterRomSize)
+        {
+            throw new ArgumentException(
+                $"Glyph data must be exactly {CharacterRomSize} bytes.",
+                nameof(glyphData));
+        }
+
+        switch (target)
+        {
+            case GlyphLoadTarget.GlyphRom:
+                if (characterRom == null)
+                {
+                    characterRom = new PhysicalMemory(CharacterRomSize, "CharacterROM");
+                }
+
+                glyphData.CopyTo(characterRom.AsSpan());
+                break;
+
+            case GlyphLoadTarget.GlyphRam:
+                glyphData.CopyTo(glyphRam.AsSpan());
+                break;
+        }
+
+        OnGlyphDataChanged(new GlyphDataChangedEventArgs
+        {
+            Target = target,
+            CharacterCode = null,
+            IsAlternateSet = false,
+        });
+    }
+
+    /// <inheritdoc />
+    public void HotLoadCharacter(
+        byte charCode,
+        ReadOnlySpan<byte> scanlines,
+        bool useAltCharSet,
+        GlyphLoadTarget target)
+    {
+        if (scanlines.Length < 8)
+        {
+            throw new ArgumentException(
+                "Scanlines must contain at least 8 bytes.",
+                nameof(scanlines));
+        }
+
+        int offset = (useAltCharSet ? CharacterSetSize : 0) + (charCode * 8);
+
+        switch (target)
+        {
+            case GlyphLoadTarget.GlyphRom:
+                if (characterRom == null)
+                {
+                    characterRom = new PhysicalMemory(CharacterRomSize, "CharacterROM");
+                }
+
+                scanlines[..8].CopyTo(characterRom.AsSpan()[offset..]);
+                break;
+
+            case GlyphLoadTarget.GlyphRam:
+                scanlines[..8].CopyTo(glyphRam.AsSpan()[offset..]);
+                break;
+        }
+
+        OnGlyphDataChanged(new GlyphDataChangedEventArgs
+        {
+            Target = target,
+            CharacterCode = charCode,
+            IsAlternateSet = useAltCharSet,
+        });
+    }
+
+    /// <inheritdoc />
+    public byte[] GetGlyphData(GlyphLoadTarget target)
+    {
+        var result = new byte[CharacterRomSize];
+
+        var source = target == GlyphLoadTarget.GlyphRom ? characterRom : glyphRam;
+        source?.AsReadOnlySpan().CopyTo(result);
+
+        return result;
+    }
+
     /// <summary>
     /// Gets the offset within the character data source for a character.
     /// </summary>
@@ -589,5 +681,10 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider
     private byte ReadAltGlyph2Status(byte offset, in BusAccess context)
     {
         return altGlyph2Enabled ? StatusBitSet : StatusBitClear;
+    }
+
+    private void OnGlyphDataChanged(GlyphDataChangedEventArgs e)
+    {
+        GlyphDataChanged?.Invoke(this, e);
     }
 }

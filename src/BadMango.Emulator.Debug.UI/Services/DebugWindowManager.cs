@@ -12,6 +12,7 @@ using Avalonia.Threading;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
+using BadMango.Emulator.Debug.UI.Editor.Views;
 using BadMango.Emulator.Debug.UI.StatusMonitor;
 using BadMango.Emulator.Debug.UI.Views;
 using BadMango.Emulator.Devices.Interfaces;
@@ -46,6 +47,7 @@ public class DebugWindowManager : IDebugWindowManager
     [
         nameof(DebugWindowComponent.About),
         nameof(DebugWindowComponent.CharacterPreview),
+        nameof(DebugWindowComponent.GlyphEditor),
         nameof(DebugWindowComponent.StatusMonitor),
         nameof(DebugWindowComponent.TextEditor),
         nameof(DebugWindowComponent.Video),
@@ -272,6 +274,16 @@ public class DebugWindowManager : IDebugWindowManager
         }
     }
 
+    private static GlyphEditorWindow CreateGlyphEditorWindow(object? context)
+    {
+        if (context is ICharacterDevice characterDevice)
+        {
+            return GlyphEditorWindow.Create(characterDevice);
+        }
+
+        return GlyphEditorWindow.Create();
+    }
+
     /// <summary>
     /// Shows a new text editor window, allowing multiple instances.
     /// </summary>
@@ -311,6 +323,7 @@ public class DebugWindowManager : IDebugWindowManager
         {
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
+            "GLYPHEDITOR" => CreateGlyphEditorWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             "TEXTEDITOR" => CreateTextEditorWindow(context),
             "VIDEO" => CreateVideoWindow(context),

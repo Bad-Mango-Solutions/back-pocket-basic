@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BadMango.Emulator.Bus\BadMango.Emulator.Bus.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Debug.Infrastructure\BadMango.Emulator.Debug.Infrastructure.csproj" />
+    <ProjectReference Include="..\BadMango.Emulator.Devices\BadMango.Emulator.Devices.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.TextEditor\BadMango.Emulator.TextEditor.csproj" />
   </ItemGroup>
@@ -35,6 +36,9 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.7" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.7" />
+
+    <!-- MVVM Framework -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 
     <!-- Dependency Injection with Autofac -->
     <PackageReference Include="Autofac" Version="8.3.0" />
