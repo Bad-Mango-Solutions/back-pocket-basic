@@ -65,12 +65,13 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "charactermap status          Show character ROM status",
-        "charactermap default         Load the built-in default character ROM",
-        "charactermap load font.rom   Load character data from font.rom",
-        "charactermap preview         Preview the character set in console",
-        "charactermap edit            Open the glyph editor window",
-        "charmap default              Short alias for loading default ROM",
+        "charactermap status                   Show character ROM status",
+        "charactermap default                  Load the built-in default character ROM",
+        "charactermap load font.rom            Load character data from font.rom",
+        "charmap load library://roms/font.rom  Load from library directory",
+        "charactermap preview                  Preview the character set in console",
+        "charactermap edit                     Open the glyph editor window",
+        "charmap default                       Short alias for loading default ROM",
     ];
 
     /// <inheritdoc/>
@@ -176,14 +177,29 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Character device not found in the machine.");
         }
 
-        if (!File.Exists(filename))
+        // Resolve the path using the path resolver if available
+        string resolvedPath = filename;
+        if (context.PathResolver is not null)
         {
-            return CommandResult.Error($"File not found: '{filename}'");
+            if (!context.PathResolver.TryResolve(filename, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{filename}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            string errorMessage = resolvedPath != filename
+                ? $"File not found: '{filename}' (resolved to '{resolvedPath}')"
+                : $"File not found: '{filename}'";
+            return CommandResult.Error(errorMessage);
         }
 
         try
         {
-            byte[] data = File.ReadAllBytes(filename);
+            byte[] data = File.ReadAllBytes(resolvedPath);
 
             if (data.Length != CharacterDevice.CharacterRomSize)
             {
@@ -193,7 +209,12 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
             }
 
             characterDevice.LoadCharacterRom(data);
-            context.Output.WriteLine($"Loaded character ROM from '{filename}' ({data.Length} bytes).");
+
+            // Show resolved path if different from original
+            string displayPath = resolvedPath != filename
+                ? $"'{filename}' (resolved to '{resolvedPath}')"
+                : $"'{filename}'";
+            context.Output.WriteLine($"Loaded character ROM from {displayPath} ({data.Length} bytes).");
             return CommandResult.Ok();
         }
         catch (IOException ex)

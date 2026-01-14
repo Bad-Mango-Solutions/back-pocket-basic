@@ -57,9 +57,10 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "save rom.bin $F000 $1000     Save 4KB from $F000 to rom.bin",
-        "save program.bin $800 $100  Save 256 bytes from $0800",
-        "save data.bin $300 $20 -n   Save with overwrite protection",
+        "save rom.bin $F000 $1000               Save 4KB from $F000 to rom.bin",
+        "save program.bin $800 $100             Save 256 bytes from $0800",
+        "save data.bin $300 $20 -n              Save with overwrite protection",
+        "save library://dumps/mem.bin $0 $100   Save to library directory",
     ];
 
     /// <inheritdoc/>
@@ -105,6 +106,18 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
             arg.Equals("--no-overwrite", StringComparison.OrdinalIgnoreCase) ||
             arg.Equals("-n", StringComparison.OrdinalIgnoreCase));
 
+        // Resolve the path using the path resolver if available
+        string resolvedPath = filename;
+        if (debugContext.PathResolver is not null)
+        {
+            if (!debugContext.PathResolver.TryResolve(filename, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{filename}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
         // Calculate memory size from bus page count
         uint memorySize = (uint)debugContext.Bus.PageCount << debugContext.Bus.PageShift;
 
@@ -121,13 +134,23 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
         }
 
         // Check if file exists
-        if (File.Exists(filename) && noOverwrite)
+        if (File.Exists(resolvedPath) && noOverwrite)
         {
-            return CommandResult.Error($"File already exists: '{filename}'. Remove --no-overwrite to overwrite.");
+            string errorMessage = resolvedPath != filename
+                ? $"File already exists: '{filename}' (resolved to '{resolvedPath}'). Remove --no-overwrite to overwrite."
+                : $"File already exists: '{filename}'. Remove --no-overwrite to overwrite.";
+            return CommandResult.Error(errorMessage);
         }
 
         try
         {
+            // Ensure the directory exists for library:// paths
+            string? directory = Path.GetDirectoryName(resolvedPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             // Read data from memory
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++)
@@ -136,9 +159,13 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
             }
 
             // Write to file
-            File.WriteAllBytes(filename, data);
+            File.WriteAllBytes(resolvedPath, data);
 
-            debugContext.Output.WriteLine($"Saved {length} bytes from ${startAddress:X4}-${startAddress + (uint)length - 1:X4} to '{filename}'");
+            // Show resolved path if different from original
+            string displayPath = resolvedPath != filename
+                ? $"'{filename}' (resolved to '{resolvedPath}')"
+                : $"'{filename}'";
+            debugContext.Output.WriteLine($"Saved {length} bytes from ${startAddress:X4}-${startAddress + (uint)length - 1:X4} to {displayPath}");
 
             return CommandResult.Ok();
         }
