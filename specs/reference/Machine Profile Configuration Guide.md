@@ -119,6 +119,7 @@ The `memory.rom-images` section declares ROM files that will be loaded and made 
 | `embedded://` | Embedded resource in assembly | `embedded://BadMango.Emulator.Devices/...Resources.boot.rom` |
 | `library://` | ROM library path | `library://roms/basic.rom` |
 | `file://` | Local filesystem path | `file:///path/to/rom.bin` |
+| `app://` | Application base path | `app://profiles/pocket2e-lite.json` |
 
 ---
 
