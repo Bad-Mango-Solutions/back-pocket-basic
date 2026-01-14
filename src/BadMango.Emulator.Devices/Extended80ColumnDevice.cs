@@ -117,16 +117,16 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         expansionRom = new PhysicalMemory(ExpansionRomSize, "EXP_ROM");
 
         // Create targets for bus mapping
-        // Full aux RAM target for $0200-$BFFF (general purpose auxiliary RAM)
+        // Aux RAM target for $0200-$BFFF: offset=0x0200, size=0xBE00 (47.5KB)
         auxRamTarget = new RamTarget(auxiliaryRam.Slice(0x0200, 0xBE00), "AUX_RAM");
 
-        // Zero page/stack target for $0000-$01FF
+        // Zero page/stack target for $0000-$01FF: offset=0x0000, size=0x0200 (512 bytes)
         auxZpTarget = new RamTarget(auxiliaryRam.Slice(0x0000, 0x0200), "AUX_ZP");
 
-        // Text page target for $0400-$07FF (80-column display memory)
+        // Text page target for $0400-$07FF: offset=0x0400, size=0x0400 (1KB)
         auxTextTarget = new RamTarget(auxiliaryRam.Slice(0x0400, 0x0400), "AUX_TEXT");
 
-        // Hi-res page 1 target for $2000-$3FFF (double hi-res)
+        // Hi-res page 1 target for $2000-$3FFF: offset=0x2000, size=0x2000 (8KB)
         auxHiRes1Target = new RamTarget(auxiliaryRam.Slice(0x2000, 0x2000), "AUX_HIRES1");
 
         // Expansion ROM target for $C100-$CFFF
