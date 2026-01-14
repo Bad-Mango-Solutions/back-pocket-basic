@@ -96,6 +96,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private IVideoDevice? videoDevice;
     private IInternalRomHandler? internalRomHandler;
     private int deviceId;
+    private bool layersConfigured; // Tracks whether ConfigureMemory has been called
 
     // ─── Soft Switch State ──────────────────────────────────────────────
     private bool store80;       // 80STORE: PAGE2 controls display memory
@@ -428,6 +429,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // with it during Initialize().
 
         // All layers start deactivated (main RAM visible at power-on)
+        layersConfigured = true;
     }
 
     /// <summary>
@@ -806,6 +808,20 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     {
         if (bus is null)
         {
+            return;
+        }
+
+        // If layers haven't been configured, skip layer-related operations
+        // This happens when the device is used without ConfigureMemory being called
+        if (!layersConfigured)
+        {
+            // Only handle INTCXROM which works via CompositeIOTarget
+            if (internalRomHandler is not null)
+            {
+                internalRomHandler.SetIntCxRom(intcxrom);
+                internalRomHandler.SetIntC3Rom(!slotc3rom);
+            }
+
             return;
         }
 

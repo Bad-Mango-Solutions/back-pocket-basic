@@ -356,6 +356,45 @@ public sealed partial class MachineBuilder
                 loadMethod.Invoke(device, [romData]);
             }
         }
+
+        // Check for expansion ROM configuration on extended 80-column devices
+        // Use reflection to avoid circular dependency with Devices project
+        if (string.Equals(device.DeviceType, "Extended80Column", StringComparison.OrdinalIgnoreCase) &&
+            deviceEntry.Config?.TryGetProperty("expansion-rom", out var expRomProp) == true)
+        {
+            string? romName = expRomProp.GetString();
+            if (!string.IsNullOrEmpty(romName) && romImages.TryGetValue(romName, out var romInfo))
+            {
+                byte[] romData = LoadRomData(romInfo);
+
+                // Validate and potentially truncate the ROM data
+                if (romData.Length > romInfo.Size)
+                {
+                    romData = romData.Take((int)romInfo.Size).ToArray();
+                }
+                else if (romData.Length < romInfo.Size)
+                {
+                    throw new InvalidOperationException(
+                        $"Expansion ROM '{romInfo.Source}' is too small ({romData.Length} bytes). " +
+                        $"Expected {romInfo.Size} bytes for ROM image '{romName}'.");
+                }
+
+                // Use reflection to call LoadExpansionRom(byte[]) method
+                MethodInfo? loadMethod = device.GetType().GetMethod(
+                    "LoadExpansionRom",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    [typeof(byte[])]);
+
+                if (loadMethod is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Device type '{device.GetType().FullName}' does not implement the required " +
+                        $"'LoadExpansionRom(byte[])' method, but an expansion ROM '{romName}' was configured.");
+                }
+
+                loadMethod.Invoke(device, [romData]);
+            }
+        }
     }
 
     private void CreatePhysicalMemory(
