@@ -241,8 +241,8 @@ public partial class GlyphEditorWindow : Window
                             Height = pixelScale,
                             Fill = new SolidColorBrush(Color.FromRgb(0, 255, 0)),
                         };
-                        Canvas.SetLeft(pixelRect, x + (pixel * pixelScale) + 1);
-                        Canvas.SetTop(pixelRect, y + (scanline * pixelScale) + 1);
+                        Canvas.SetLeft(pixelRect, x + (pixel * (double)pixelScale) + 1.0);
+                        Canvas.SetTop(pixelRect, y + (scanline * (double)pixelScale) + 1.0);
                         CharacterCanvas.Children.Add(pixelRect);
                     }
                 }
@@ -400,8 +400,8 @@ public partial class GlyphEditorWindow : Window
                     RadiusX = 2,
                     RadiusY = 2,
                 };
-                Canvas.SetLeft(pixelRect, (x * BitmapPixelSize) + 1);
-                Canvas.SetTop(pixelRect, (y * BitmapPixelSize) + 1);
+                Canvas.SetLeft(pixelRect, (x * (double)BitmapPixelSize) + 1.0);
+                Canvas.SetTop(pixelRect, (y * (double)BitmapPixelSize) + 1.0);
                 BitmapEditorCanvas.Children.Add(pixelRect);
             }
         }
@@ -474,8 +474,8 @@ public partial class GlyphEditorWindow : Window
                         Height = PreviewScale,
                         Fill = new SolidColorBrush(Color.FromRgb(0, 255, 0)),
                     };
-                    Canvas.SetLeft(pixelRect, x * PreviewScale);
-                    Canvas.SetTop(pixelRect, y * PreviewScale);
+                    Canvas.SetLeft(pixelRect, (double)x * PreviewScale);
+                    Canvas.SetTop(pixelRect, (double)y * PreviewScale);
                     PreviewCanvas.Children.Add(pixelRect);
                 }
             }
@@ -524,8 +524,8 @@ public partial class GlyphEditorWindow : Window
                         Height = PreviewScale,
                         Fill = new SolidColorBrush(Color.FromRgb(0, 255, 0)),
                     };
-                    Canvas.SetLeft(pixelRect, x * Preview80Scale);
-                    Canvas.SetTop(pixelRect, y * PreviewScale);
+                    Canvas.SetLeft(pixelRect, (double)x * Preview80Scale);
+                    Canvas.SetTop(pixelRect, (double)y * PreviewScale);
                     Preview80Canvas.Children.Add(pixelRect);
                 }
             }
