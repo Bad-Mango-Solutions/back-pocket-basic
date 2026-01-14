@@ -149,7 +149,11 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
                 WriteByte(debugContext.Bus, startAddress + (uint)i, data[i]);
             }
 
-            debugContext.Output.WriteLine($"Loaded {data.Length} bytes from '{filename}' to ${startAddress:X4}-${startAddress + (uint)data.Length - 1:X4}");
+            // Show resolved path if different from original
+            string displayPath = resolvedPath != filename
+                ? $"'{filename}' (resolved to '{resolvedPath}')"
+                : $"'{filename}'";
+            debugContext.Output.WriteLine($"Loaded {data.Length} bytes from {displayPath} to ${startAddress:X4}-${startAddress + (uint)data.Length - 1:X4}");
 
             return CommandResult.Ok();
         }

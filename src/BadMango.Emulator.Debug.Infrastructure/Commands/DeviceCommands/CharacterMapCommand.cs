@@ -209,7 +209,12 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
             }
 
             characterDevice.LoadCharacterRom(data);
-            context.Output.WriteLine($"Loaded character ROM from '{filename}' ({data.Length} bytes).");
+
+            // Show resolved path if different from original
+            string displayPath = resolvedPath != filename
+                ? $"'{filename}' (resolved to '{resolvedPath}')"
+                : $"'{filename}'";
+            context.Output.WriteLine($"Loaded character ROM from {displayPath} ({data.Length} bytes).");
             return CommandResult.Ok();
         }
         catch (IOException ex)

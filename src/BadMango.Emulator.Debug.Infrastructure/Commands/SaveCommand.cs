@@ -161,7 +161,11 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
             // Write to file
             File.WriteAllBytes(resolvedPath, data);
 
-            debugContext.Output.WriteLine($"Saved {length} bytes from ${startAddress:X4}-${startAddress + (uint)length - 1:X4} to '{filename}'");
+            // Show resolved path if different from original
+            string displayPath = resolvedPath != filename
+                ? $"'{filename}' (resolved to '{resolvedPath}')"
+                : $"'{filename}'";
+            debugContext.Output.WriteLine($"Saved {length} bytes from ${startAddress:X4}-${startAddress + (uint)length - 1:X4} to {displayPath}");
 
             return CommandResult.Ok();
         }
