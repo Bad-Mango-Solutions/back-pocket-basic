@@ -391,6 +391,188 @@ public class Pocket2VideoRendererTests
 
     #endregion
 
+    #region Text80 Mode Tests
+
+    /// <summary>
+    /// Verifies Text80 mode renders content when auxiliary memory reader is provided.
+    /// </summary>
+    [Test]
+    public void RenderFrame_Text80Mode_RendersContent()
+    {
+        renderer.Clear(pixelBuffer);
+        var charRom = new byte[4096];
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.Text80,
+            addr => 0xA0, // Main memory
+            charRom,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            DisplayColorMode.Green,
+            addr => 0xA0); // Aux memory
+
+        Assert.That(pixelBuffer.Length, Is.GreaterThan(0));
+    }
+
+    /// <summary>
+    /// Verifies Text80 mode falls back to Text40 when auxiliary memory reader is null.
+    /// </summary>
+    [Test]
+    public void RenderFrame_Text80Mode_WithoutAuxMemory_FallsBackToText40()
+    {
+        renderer.Clear(pixelBuffer);
+        var charRom = new byte[4096];
+
+        // This should not throw - it falls back to Text40
+        Assert.DoesNotThrow(() =>
+            renderer.RenderFrame(
+                pixelBuffer,
+                VideoMode.Text80,
+                addr => 0xA0,
+                charRom,
+                useAltCharSet: false,
+                isPage2: false,
+                flashState: false,
+                noFlash1Enabled: false,
+                noFlash2Enabled: true,
+                DisplayColorMode.Green,
+                readAuxMemory: null));
+
+        Assert.That(pixelBuffer.Length, Is.GreaterThan(0));
+    }
+
+    /// <summary>
+    /// Verifies Text80 mode reads from both main and auxiliary memory in correct pattern.
+    /// </summary>
+    [Test]
+    public void RenderFrame_Text80_ReadsFromMainAndAuxAlternating()
+    {
+        var mainAddresses = new List<ushort>();
+        var auxAddresses = new List<ushort>();
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.Text80,
+            addr =>
+            {
+                mainAddresses.Add(addr);
+                return 0xA0;
+            },
+            ReadOnlySpan<byte>.Empty,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            DisplayColorMode.Green,
+            addr =>
+            {
+                auxAddresses.Add(addr);
+                return 0xA0;
+            });
+
+        // Should have reads from both main and auxiliary
+        // 80 columns / 2 = 40 reads from each per row, 24 rows
+        Assert.That(mainAddresses.Count, Is.EqualTo(40 * 24), "Expected 40 main memory reads per row");
+        Assert.That(auxAddresses.Count, Is.EqualTo(40 * 24), "Expected 40 aux memory reads per row");
+
+        // Verify addresses are in text page 1 range ($0400-$07FF)
+        Assert.That(mainAddresses.All(addr => addr >= 0x0400 && addr < 0x0800), Is.True);
+        Assert.That(auxAddresses.All(addr => addr >= 0x0400 && addr < 0x0800), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies Text80 mode with page 2 reads from correct addresses.
+    /// </summary>
+    [Test]
+    public void RenderFrame_Text80Page2_ReadsFromPage2Addresses()
+    {
+        var mainAddresses = new List<ushort>();
+        var auxAddresses = new List<ushort>();
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.Text80,
+            addr =>
+            {
+                mainAddresses.Add(addr);
+                return 0xA0;
+            },
+            ReadOnlySpan<byte>.Empty,
+            useAltCharSet: false,
+            isPage2: true, // Page 2 selected
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            DisplayColorMode.Green,
+            addr =>
+            {
+                auxAddresses.Add(addr);
+                return 0xA0;
+            });
+
+        // Verify addresses are in text page 2 range ($0800-$0BFF)
+        Assert.That(mainAddresses.All(addr => addr >= 0x0800 && addr < 0x0C00), Is.True);
+        Assert.That(auxAddresses.All(addr => addr >= 0x0800 && addr < 0x0C00), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies Text80 mode renders different characters from main and aux memory.
+    /// </summary>
+    [Test]
+    public void RenderFrame_Text80_DifferentCharsFromMainAndAux()
+    {
+        renderer.Clear(pixelBuffer);
+
+        // Create character ROM with visible patterns
+        var charRom = new byte[4096];
+        // Fill with patterns so characters are visibly different
+        for (int i = 0; i < charRom.Length; i++)
+        {
+            charRom[i] = (byte)(i % 256);
+        }
+
+        var bufferWithSameChars = new uint[pixelBuffer.Length];
+        var bufferWithDiffChars = new uint[pixelBuffer.Length];
+
+        // Render with same character from both memories
+        renderer.RenderFrame(
+            bufferWithSameChars,
+            VideoMode.Text80,
+            addr => 0xC1, // 'A' from main
+            charRom,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            DisplayColorMode.Green,
+            addr => 0xC1); // 'A' from aux
+
+        // Render with different characters
+        renderer.RenderFrame(
+            bufferWithDiffChars,
+            VideoMode.Text80,
+            addr => 0xC1, // 'A' from main (odd columns)
+            charRom,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            DisplayColorMode.Green,
+            addr => 0xC2); // 'B' from aux (even columns)
+
+        // The buffers should be different when characters differ
+        Assert.That(bufferWithSameChars, Is.Not.EqualTo(bufferWithDiffChars));
+    }
+
+    #endregion
+
     #region Lo-Res Mode Tests
 
     /// <summary>

@@ -53,14 +53,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     public const string LayerNameAuxZeroPage = "AUX_ZP";
 
     /// <summary>
+    /// The name of the auxiliary text page layer for $0400-$07FF (80-column text).
+    /// </summary>
+    public const string LayerNameAuxText = "AUX_TEXT";
+
+    /// <summary>
     /// The name of the auxiliary hi-res page 1 layer ($2000-$3FFF).
     /// </summary>
     public const string LayerNameAuxHiRes1 = "AUX_HIRES1";
-
-    /// <summary>
-    /// The name of the auxiliary hi-res page 2 layer ($4000-$5FFF).
-    /// </summary>
-    public const string LayerNameAuxHiRes2 = "AUX_HIRES2";
 
     /// <summary>
     /// The name of the internal ROM layer for $C100-$CFFF.
@@ -85,10 +85,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private readonly PhysicalMemory auxiliaryRam;
     private readonly PhysicalMemory expansionRom;
     private readonly RamTarget auxRamTarget;
+    private readonly RamTarget auxZpTarget;
+    private readonly RamTarget auxTextTarget;
+    private readonly RamTarget auxHiRes1Target;
     private readonly RomTarget expansionRomTarget;
 
     private IMemoryBus? bus;
     private IVideoDevice? videoDevice;
+    private int deviceId;
 
     // ─── Soft Switch State ──────────────────────────────────────────────
     private bool store80;       // 80STORE: PAGE2 controls display memory
@@ -113,7 +117,19 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         expansionRom = new PhysicalMemory(ExpansionRomSize, "EXP_ROM");
 
         // Create targets for bus mapping
-        auxRamTarget = new RamTarget(auxiliaryRam.Slice(0, AuxRamSize), "AUX_RAM");
+        // Full aux RAM target for $0200-$BFFF (general purpose auxiliary RAM)
+        auxRamTarget = new RamTarget(auxiliaryRam.Slice(0x0200, 0xBE00), "AUX_RAM");
+
+        // Zero page/stack target for $0000-$01FF
+        auxZpTarget = new RamTarget(auxiliaryRam.Slice(0x0000, 0x0200), "AUX_ZP");
+
+        // Text page target for $0400-$07FF (80-column display memory)
+        auxTextTarget = new RamTarget(auxiliaryRam.Slice(0x0400, 0x0400), "AUX_TEXT");
+
+        // Hi-res page 1 target for $2000-$3FFF (double hi-res)
+        auxHiRes1Target = new RamTarget(auxiliaryRam.Slice(0x2000, 0x2000), "AUX_HIRES1");
+
+        // Expansion ROM target for $C100-$CFFF
         expansionRomTarget = new RomTarget(expansionRom.Slice(0, ExpansionRomSize), "EXP_ROM");
     }
 
@@ -243,6 +259,9 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         bus = context.Bus;
 
+        // Get the video device from the machine context
+        videoDevice = context.GetComponent<IVideoDevice>();
+
         // Set initial state: all switches disabled (main RAM visible)
         store80 = false;
         ramrd = false;
@@ -306,15 +325,105 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         ApplyState();
     }
 
-    // ─── Video Device Integration ───────────────────────────────────────
-
     /// <summary>
-    /// Sets a reference to the video device for 80-column mode coordination.
+    /// Configures the auxiliary memory layers and swap groups on the bus.
     /// </summary>
-    /// <param name="video">The video device.</param>
-    public void SetVideoDevice(IVideoDevice video)
+    /// <param name="bus">The memory bus to configure.</param>
+    /// <param name="registry">The device registry for ID generation.</param>
+    /// <remarks>
+    /// <para>
+    /// This method must be called during machine configuration, before the device
+    /// is initialized. It sets up:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>The auxiliary zero page layer for $0000-$01FF (ALTZP switching)</description></item>
+    /// <item><description>The auxiliary RAM layer for $0200-$BFFF (RAMRD/RAMWRT switching)</description></item>
+    /// <item><description>The auxiliary text page layer for $0400-$07FF (80STORE switching)</description></item>
+    /// <item><description>The auxiliary hi-res layer for $2000-$3FFF (80STORE + HIRES switching)</description></item>
+    /// <item><description>The expansion ROM layer for $C100-$CFFF (INTCXROM switching)</description></item>
+    /// </list>
+    /// <para>
+    /// When a layer is inactive, accesses fall through to the underlying base memory
+    /// mapping (main RAM). When active, the layer redirects accesses to auxiliary RAM.
+    /// </para>
+    /// </remarks>
+    public void ConfigureMemory(IMemoryBus bus, IDeviceRegistry registry)
     {
-        videoDevice = video;
+        ArgumentNullException.ThrowIfNull(bus);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        // Generate a device ID for internal use in layered mappings
+        deviceId = registry.GenerateId();
+
+        // Create the layer for auxiliary zero page/stack ($0000-$01FF)
+        var zpLayer = bus.CreateLayer(LayerNameAuxZeroPage, LayerPriority);
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x0000,
+            Size: 0x0200,
+            Layer: zpLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: auxZpTarget.Capabilities,
+            Target: auxZpTarget,
+            PhysBase: 0));
+
+        // Create the layer for auxiliary RAM ($0200-$BFFF)
+        // Note: This layer covers the entire range, but text page and hi-res have
+        // higher priority layers for 80STORE mode.
+        var ramLayer = bus.CreateLayer(LayerNameAuxRam, LayerPriority);
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x0200,
+            Size: 0xBE00,
+            Layer: ramLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: auxRamTarget.Capabilities,
+            Target: auxRamTarget,
+            PhysBase: 0));
+
+        // Create the layer for auxiliary text page ($0400-$07FF) - 80STORE mode
+        // Higher priority than general aux RAM layer
+        var textLayer = bus.CreateLayer(LayerNameAuxText, LayerPriority + 1);
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x0400,
+            Size: 0x0400,
+            Layer: textLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: auxTextTarget.Capabilities,
+            Target: auxTextTarget,
+            PhysBase: 0));
+
+        // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
+        var hiresLayer = bus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0x2000,
+            Size: 0x2000,
+            Layer: hiresLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: auxHiRes1Target.Capabilities,
+            Target: auxHiRes1Target,
+            PhysBase: 0));
+
+        // Create the layer for expansion ROM ($C100-$CFFF)
+        var romLayer = bus.CreateLayer(LayerNameInternalRom, LayerPriority);
+        bus.AddLayeredMapping(new(
+            VirtualBase: 0xC100,
+            Size: ExpansionRomSize,
+            Layer: romLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Rom,
+            Perms: PagePerms.ReadExecute,
+            Caps: expansionRomTarget.Capabilities,
+            Target: expansionRomTarget,
+            PhysBase: 0));
+
+        // All layers start deactivated (main RAM visible at power-on)
     }
 
     /// <summary>
@@ -675,22 +784,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// This method updates the memory mapping based on the current soft switch state:
     /// </para>
     /// <list type="bullet">
-    /// <item><description>RAMRD/RAMWRT: Controls whether $0200-$BFFF accesses auxiliary RAM</description></item>
-    /// <item><description>ALTZP: Controls whether zero page/stack uses auxiliary RAM</description></item>
-    /// <item><description>80STORE: When enabled, PAGE2 controls display memory bank selection</description></item>
-    /// <item><description>INTCXROM: Controls whether internal ROM is mapped at $C100-$CFFF</description></item>
+    /// <item><description>ALTZP: Activates the auxiliary zero page layer ($0000-$01FF)</description></item>
+    /// <item><description>RAMRD/RAMWRT: Activates the auxiliary RAM layer ($0200-$BFFF)</description></item>
+    /// <item><description>80STORE + PAGE2: Activates the auxiliary text layer ($0400-$07FF)</description></item>
+    /// <item><description>80STORE + PAGE2 + HIRES: Activates the auxiliary hi-res layer ($2000-$3FFF)</description></item>
+    /// <item><description>INTCXROM: Activates the expansion ROM layer ($C100-$CFFF)</description></item>
     /// </list>
     /// <para>
-    /// The bus layer system is used to dynamically switch memory mappings based on
-    /// soft switch state. When a layer is activated, it overlays the base memory map.
-    /// </para>
-    /// <para>
-    /// <b>Current Implementation:</b> State is tracked via properties that can be queried
-    /// by other components (e.g., video renderer, memory composite targets). Full bus layer
-    /// manipulation requires machine configuration via a ConfigureMemory method, which
-    /// will be implemented when integrating with the MachineBuilder profile system.
-    /// The <see cref="ShouldUseAuxRamForRead"/> and <see cref="ShouldUseAuxRamForWrite"/>
-    /// methods provide the memory routing logic for composite memory targets.
+    /// When a layer is deactivated, accesses fall through to the base memory mapping (main RAM/ROM).
     /// </para>
     /// </remarks>
     private void ApplyState()
@@ -700,9 +801,71 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             return;
         }
 
-        // State is tracked via properties (Is80StoreEnabled, IsRamRdEnabled, etc.)
-        // Composite memory targets query these properties via ShouldUseAuxRamForRead/Write
-        // to determine memory routing. Full layer manipulation will be added when
-        // ConfigureMemory integration is implemented.
+        // ALTZP: Auxiliary zero page/stack ($0000-$01FF)
+        SetLayerActive(LayerNameAuxZeroPage, altzp);
+
+        // RAMRD/RAMWRT: Auxiliary RAM ($0200-$BFFF)
+        // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
+        bool auxRamActive = ramrd || ramwrt;
+        SetLayerActive(LayerNameAuxRam, auxRamActive);
+        if (auxRamActive)
+        {
+            PagePerms ramPerms = PagePerms.None;
+            if (ramrd)
+            {
+                ramPerms |= PagePerms.ReadExecute;
+            }
+
+            if (ramwrt)
+            {
+                ramPerms |= PagePerms.Write;
+            }
+
+            bus.SetLayerPermissions(LayerNameAuxRam, ramPerms);
+        }
+
+        // 80STORE mode: Text page ($0400-$07FF) controlled by PAGE2
+        // When 80STORE is on and PAGE2 is set, use auxiliary text page
+        bool auxTextActive = store80 && page2;
+        SetLayerActive(LayerNameAuxText, auxTextActive);
+
+        // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
+        // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
+        bool auxHiResActive = store80 && page2 && hires;
+        SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
+
+        // INTCXROM: Expansion ROM ($C100-$CFFF)
+        SetLayerActive(LayerNameInternalRom, intcxrom);
+    }
+
+    /// <summary>
+    /// Activates or deactivates a memory layer.
+    /// </summary>
+    /// <param name="layerName">The name of the layer.</param>
+    /// <param name="active">Whether the layer should be active.</param>
+    private void SetLayerActive(string layerName, bool active)
+    {
+        if (bus is null)
+        {
+            return;
+        }
+
+        try
+        {
+            bool isActive = bus.IsLayerActive(layerName);
+            if (active && !isActive)
+            {
+                bus.ActivateLayer(layerName);
+            }
+            else if (!active && isActive)
+            {
+                bus.DeactivateLayer(layerName);
+            }
+        }
+        catch (KeyNotFoundException)
+        {
+            // Layer not configured yet - this is expected during initialization
+            // before ConfigureMemory is called
+        }
     }
 }
