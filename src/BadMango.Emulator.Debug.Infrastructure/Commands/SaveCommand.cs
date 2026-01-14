@@ -112,7 +112,7 @@ public sealed class SaveCommand : CommandHandlerBase, ICommandHelp
         {
             if (!debugContext.PathResolver.TryResolve(filename, out string? resolved))
             {
-                return CommandResult.Error($"Cannot resolve path: '{filename}'. Library root may not be configured.");
+                return CommandResult.Error($"Cannot resolve path: '{filename}'.");
             }
 
             resolvedPath = resolved!;

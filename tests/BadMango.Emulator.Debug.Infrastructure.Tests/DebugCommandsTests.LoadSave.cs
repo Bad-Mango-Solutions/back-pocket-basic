@@ -89,7 +89,6 @@ public partial class DebugCommandsTests
         {
             Assert.That(result.Success, Is.False);
             Assert.That(result.Message, Does.Contain("Cannot resolve path"));
-            Assert.That(result.Message, Does.Contain("Library root may not be configured"));
         });
     }
 
@@ -135,7 +134,6 @@ public partial class DebugCommandsTests
         {
             Assert.That(result.Success, Is.False);
             Assert.That(result.Message, Does.Contain("Cannot resolve path"));
-            Assert.That(result.Message, Does.Contain("Library root may not be configured"));
         });
     }
 

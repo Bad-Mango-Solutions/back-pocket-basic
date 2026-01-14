@@ -183,7 +183,7 @@ public sealed class CharacterMapCommand : CommandHandlerBase, ICommandHelp
         {
             if (!context.PathResolver.TryResolve(filename, out string? resolved))
             {
-                return CommandResult.Error($"Cannot resolve path: '{filename}'. Library root may not be configured.");
+                return CommandResult.Error($"Cannot resolve path: '{filename}'.");
             }
 
             resolvedPath = resolved!;
