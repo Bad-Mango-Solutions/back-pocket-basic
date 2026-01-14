@@ -20,6 +20,11 @@ using Interfaces;
 /// <para>
 /// Slot 0 is reserved for the Language Card and is not managed by this class.
 /// </para>
+/// <para>
+/// The Extended 80-Column Card provides a default expansion ROM at $C800-$CFFF.
+/// Other slot cards' expansion ROMs layer on top when their slot is selected.
+/// Reading $CFFF removes the layer, revealing the default ROM again.
+/// </para>
 /// </remarks>
 public sealed class SlotManager : ISlotManager
 {
@@ -40,8 +45,10 @@ public sealed class SlotManager : ISlotManager
 
     private readonly IOPageDispatcher dispatcher;
     private readonly ISlotCard?[] slots;
+    private readonly IBusTarget?[] internalExpansionRoms;
     private readonly Dictionary<int, ISlotCard> slotsView;
     private readonly IReadOnlyDictionary<int, ISlotCard> slotsReadOnly;
+    private IBusTarget? defaultExpansionRom;
     private int? activeExpansionSlot;
 
     /// <summary>
@@ -56,6 +63,7 @@ public sealed class SlotManager : ISlotManager
         ArgumentNullException.ThrowIfNull(dispatcher);
         this.dispatcher = dispatcher;
         this.slots = new ISlotCard?[SlotCount];
+        this.internalExpansionRoms = new IBusTarget?[SlotCount];
         this.slotsView = new();
         this.slotsReadOnly = new ReadOnlyDictionary<int, ISlotCard>(this.slotsView);
     }
@@ -137,7 +145,41 @@ public sealed class SlotManager : ISlotManager
     public IBusTarget? GetExpansionRomRegion(int slot)
     {
         ValidateSlotNumber(slot);
-        return slots[slot - MinSlot]?.ExpansionROMRegion;
+        int index = slot - MinSlot;
+
+        // Internal expansion ROM takes precedence over physical card
+        if (internalExpansionRoms[index] is { } internalRom)
+        {
+            return internalRom;
+        }
+
+        return slots[index]?.ExpansionROMRegion;
+    }
+
+    /// <inheritdoc />
+    public IBusTarget? GetVisibleExpansionRom()
+    {
+        // If a slot is selected, return its expansion ROM
+        if (activeExpansionSlot is { } slot)
+        {
+            return GetExpansionRomRegion(slot);
+        }
+
+        // Otherwise return the default expansion ROM (from Extended 80-Column Card)
+        return defaultExpansionRom;
+    }
+
+    /// <inheritdoc />
+    public void RegisterInternalExpansionRom(int slot, IBusTarget? expansionRom)
+    {
+        ValidateSlotNumber(slot);
+        internalExpansionRoms[slot - MinSlot] = expansionRom;
+    }
+
+    /// <inheritdoc />
+    public void SetDefaultExpansionRom(IBusTarget? expansionRom)
+    {
+        defaultExpansionRom = expansionRom;
     }
 
     /// <inheritdoc />
@@ -188,7 +230,7 @@ public sealed class SlotManager : ISlotManager
     /// <inheritdoc />
     public void Reset()
     {
-        // Deselect any active expansion ROM
+        // Deselect any active expansion ROM (revealing default)
         DeselectExpansionSlot();
 
         // Reset all installed cards

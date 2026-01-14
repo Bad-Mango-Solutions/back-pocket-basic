@@ -91,6 +91,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private readonly RamTarget auxTextTarget;
     private readonly RamTarget auxHiRes1Target;
     private readonly RomTarget expansionRomTarget;
+    private readonly RomTarget expansionRomC8Target; // Target for $C800-$CFFF region only
 
     private IMemoryBus? bus;
     private IVideoDevice? videoDevice;
@@ -135,7 +136,12 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         auxHiRes1Target = new RamTarget(auxiliaryRam.Slice(0x2000, 0x2000), "AUX_HIRES1");
 
         // Expansion ROM target - full 4KB for direct I/O page offset mapping
+        // Used for INTCXROM ($C100-$CFFF)
         expansionRomTarget = new RomTarget(expansionRom.Slice(0, ExpansionRomSize), "EXP_ROM");
+
+        // Expansion ROM target for $C800-$CFFF region only (2KB)
+        // Used as the default expansion ROM and for slot 3 internal expansion ROM
+        expansionRomC8Target = new RomTarget(expansionRom.Slice(0x800, 0x800), "INT_EXP_ROM");
     }
 
     // ─── IPeripheral ────────────────────────────────────────────────────
@@ -275,6 +281,22 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             internalRomHandler.SetInternalRom(expansionRomTarget);
         }
 
+        // Get the slot manager to register our expansion ROM
+        var slotManager = context.GetComponent<ISlotManager>();
+        if (slotManager is not null)
+        {
+            // Register our expansion ROM as the DEFAULT expansion ROM at $C800-$CFFF.
+            // This makes our ROM visible at power-on and whenever $CFFF is accessed
+            // (which deselects any slot's layered expansion ROM).
+            slotManager.SetDefaultExpansionRom(GetExpansionRomTarget());
+
+            // Also register as the internal expansion ROM for slot 3.
+            // When INTC3ROM is enabled and $C300-$C3FF is accessed, the internal ROM
+            // provides data but expansion ROM selection for slot 3 still occurs.
+            // This sets up the slot 3 expansion ROM to be our ROM.
+            slotManager.RegisterInternalExpansionRom(3, GetExpansionRomTarget());
+        }
+
         // Set initial state: all switches disabled (main RAM visible)
         store80 = false;
         ramrd = false;
@@ -287,6 +309,29 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         hires = false;
 
         ApplyState();
+    }
+
+    /// <summary>
+    /// Gets the expansion ROM target for the $C800-$CFFF region.
+    /// </summary>
+    /// <returns>A bus target that provides the expansion ROM content.</returns>
+    /// <remarks>
+    /// <para>
+    /// This returns a view into the expansion ROM that maps to the $C800-$CFFF range.
+    /// The full expansion ROM is stored in a 4KB buffer with $C000-$C0FF being unused,
+    /// $C100-$C7FF being the slot ROM portion, and $C800-$CFFF being the expansion ROM.
+    /// </para>
+    /// <para>
+    /// This is used to register as:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>The default expansion ROM (visible at power-on and after $CFFF access)</description></item>
+    /// <item><description>The internal expansion ROM for slot 3 (selected when $C300 is accessed with INTC3ROM)</description></item>
+    /// </list>
+    /// </remarks>
+    private IBusTarget GetExpansionRomTarget()
+    {
+        return expansionRomC8Target;
     }
 
     /// <inheritdoc />
@@ -506,7 +551,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// <item><description>Text page ($0400-$07FF): Controlled by 80STORE + PAGE2</description></item>
     /// <item><description>Hi-res page 1 ($2000-$3FFF): Controlled by 80STORE + PAGE2 + HIRES</description></item>
     /// <item><description>General RAM ($0200-$BFFF except above): Controlled by RAMRD</description></item>
-    /// </list>
     /// </remarks>
     public bool ShouldUseAuxRamForRead(ushort address)
     {
@@ -806,6 +850,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// </remarks>
     private void ApplyState()
     {
+        // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
+        // These always work, even when layers aren't configured
+        if (internalRomHandler is not null)
+        {
+            internalRomHandler.SetIntCxRom(intcxrom);
+            internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
+        }
+
         if (bus is null)
         {
             return;
@@ -815,13 +867,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // This happens when the device is used without ConfigureMemory being called
         if (!layersConfigured)
         {
-            // Only handle INTCXROM which works via CompositeIOTarget
-            if (internalRomHandler is not null)
-            {
-                internalRomHandler.SetIntCxRom(intcxrom);
-                internalRomHandler.SetIntC3Rom(!slotc3rom);
-            }
-
             return;
         }
 
@@ -845,7 +890,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
                 ramPerms |= PagePerms.Write;
             }
 
-            bus.SetLayerPermissions(LayerNameAuxRam, ramPerms);
+            SetLayerPermissions(LayerNameAuxRam, ramPerms);
         }
 
         // 80STORE mode: Text page ($0400-$07FF) controlled by PAGE2
@@ -857,14 +902,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
         bool auxHiResActive = store80 && page2 && hires;
         SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
-
-        // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
-        // The CompositeIOTarget owns the $C100-$CFFF region and handles the overlay logic
-        if (internalRomHandler is not null)
-        {
-            internalRomHandler.SetIntCxRom(intcxrom);
-            internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
-        }
     }
 
     /// <summary>
@@ -890,6 +927,29 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             {
                 bus.DeactivateLayer(layerName);
             }
+        }
+        catch (KeyNotFoundException)
+        {
+            // Layer not configured yet - this is expected during initialization
+            // before ConfigureMemory is called
+        }
+    }
+
+    /// <summary>
+    /// Sets permissions on a memory layer.
+    /// </summary>
+    /// <param name="layerName">The name of the layer.</param>
+    /// <param name="perms">The permissions to set.</param>
+    private void SetLayerPermissions(string layerName, PagePerms perms)
+    {
+        if (bus is null)
+        {
+            return;
+        }
+
+        try
+        {
+            bus.SetLayerPermissions(layerName, perms);
         }
         catch (KeyNotFoundException)
         {

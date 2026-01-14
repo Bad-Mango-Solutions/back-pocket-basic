@@ -19,14 +19,20 @@ namespace BadMango.Emulator.Bus.Interfaces;
 /// <item><description>Handling the $CFFF release trigger</description></item>
 /// </list>
 /// <para>
-/// The expansion ROM selection protocol:
+/// The expansion ROM selection protocol with the Extended 80-Column Card:
 /// </para>
 /// <list type="number">
-/// <item><description>Any access to $Cn00-$CnFF selects slot n's expansion ROM</description></item>
-/// <item><description>Any access to $CFFF deselects all expansion ROMs</description></item>
-/// <item><description>Only one slot's expansion ROM can be visible at a time</description></item>
-/// <item><description>When no slot is selected, $C800-$CFFF returns floating bus</description></item>
+/// <item><description>At power-on, the Extended 80-Column Card's expansion ROM is the default at $C800-$CFFF</description></item>
+/// <item><description>Any access to $Cn00-$CnFF selects slot n's expansion ROM, layering it on top</description></item>
+/// <item><description>Any access to $CFFF deselects the layered expansion ROM, revealing the default</description></item>
+/// <item><description>The default expansion ROM is always visible when no slot is explicitly selected</description></item>
 /// </list>
+/// <para>
+/// Internal expansion ROMs (like the Extended 80-Column Card's ROM for slot 3) can be
+/// registered separately from physical slot cards. When INTC3ROM is enabled, the internal
+/// ROM provides data at $C300-$C3FF, but accessing that range still selects the internal
+/// expansion ROM at $C800-$CFFF (which is the same as the default in this case).
+/// </para>
 /// </remarks>
 public interface ISlotManager
 {
@@ -40,8 +46,8 @@ public interface ISlotManager
     /// Gets the currently selected slot for expansion ROM ($C800-$CFFF).
     /// </summary>
     /// <value>
-    /// The slot number (1-7) whose expansion ROM is currently visible,
-    /// or <see langword="null"/> if no slot is selected (floating bus).
+    /// The slot number (1-7) whose expansion ROM is currently layered on top,
+    /// or <see langword="null"/> if no slot is selected (default expansion ROM is visible).
     /// </value>
     int? ActiveExpansionSlot { get; }
 
@@ -111,7 +117,68 @@ public interface ISlotManager
     /// The slot's expansion ROM region ($C800-$CFFF), or <see langword="null"/>
     /// if the slot is empty or has no expansion ROM.
     /// </returns>
+    /// <remarks>
+    /// If an internal expansion ROM is registered for this slot (via
+    /// <see cref="RegisterInternalExpansionRom"/>), it takes precedence
+    /// over the physical card's expansion ROM.
+    /// </remarks>
     IBusTarget? GetExpansionRomRegion(int slot);
+
+    /// <summary>
+    /// Gets the currently visible expansion ROM region ($C800-$CFFF).
+    /// </summary>
+    /// <returns>
+    /// The expansion ROM that should be visible at $C800-$CFFF:
+    /// the active slot's expansion ROM if a slot is selected,
+    /// otherwise the default expansion ROM (if registered),
+    /// otherwise <see langword="null"/> for floating bus.
+    /// </returns>
+    IBusTarget? GetVisibleExpansionRom();
+
+    /// <summary>
+    /// Registers an internal expansion ROM for a slot.
+    /// </summary>
+    /// <param name="slot">Slot number (1-7).</param>
+    /// <param name="expansionRom">
+    /// The expansion ROM bus target, or <see langword="null"/> to clear.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Internal expansion ROMs are used by motherboard devices like the Extended 80-Column
+    /// Card to provide expansion ROM at $C800-$CFFF when their internal ROM is active
+    /// at the slot ROM address (e.g., $C300 for slot 3 with INTC3ROM).
+    /// </para>
+    /// <para>
+    /// When an internal expansion ROM is registered, it takes precedence over any
+    /// physical card's expansion ROM for that slot. This allows the 80-column firmware
+    /// to be visible at $C800-$CFFF when $C300 is accessed, even though no physical
+    /// card is installed in slot 3.
+    /// </para>
+    /// </remarks>
+    void RegisterInternalExpansionRom(int slot, IBusTarget? expansionRom);
+
+    /// <summary>
+    /// Registers the default expansion ROM that is visible when no slot is selected.
+    /// </summary>
+    /// <param name="expansionRom">
+    /// The default expansion ROM bus target, or <see langword="null"/> for floating bus.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// The default expansion ROM is provided by the Extended 80-Column Card. It is
+    /// visible at $C800-$CFFF when:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>At power-on (no slot has been selected yet)</description></item>
+    /// <item><description>After reading $CFFF (which deselects any active slot)</description></item>
+    /// </list>
+    /// <para>
+    /// When a slot is selected (by accessing $Cn00-$CnFF), that slot's expansion ROM
+    /// layers on top of the default. Reading $CFFF removes that layer, revealing the
+    /// default again.
+    /// </para>
+    /// </remarks>
+    void SetDefaultExpansionRom(IBusTarget? expansionRom);
 
     /// <summary>
     /// Selects a slot's expansion ROM for the $C800-$CFFF region.
@@ -140,7 +207,8 @@ public interface ISlotManager
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Returns $C800-$CFFF to floating bus state where no slot's expansion ROM is visible.
+    /// Removes the currently selected slot's expansion ROM layer, revealing the
+    /// default expansion ROM (if registered) or floating bus.
     /// </para>
     /// <para>
     /// Deselection process:
@@ -180,7 +248,7 @@ public interface ISlotManager
     /// Reset process:
     /// </para>
     /// <list type="number">
-    /// <item><description>Deselects any active expansion ROM</description></item>
+    /// <item><description>Deselects any active expansion ROM (revealing default)</description></item>
     /// <item><description>Calls <see cref="IPeripheral.Reset"/> on all installed cards</description></item>
     /// </list>
     /// </remarks>

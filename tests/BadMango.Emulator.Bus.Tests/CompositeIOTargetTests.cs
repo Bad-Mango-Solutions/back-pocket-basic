@@ -239,6 +239,7 @@ public class CompositeIOTargetTests
     public void Read8_CFFF_DeselectsExpansionRom()
     {
         mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
 
         var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
         ioPage.Read8(0xFFF, in access);
@@ -247,17 +248,37 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that Read8 from $xFFF returns floating bus.
+    /// Verifies that Read8 from $xFFF returns floating bus when no default ROM.
     /// </summary>
     [Test]
-    public void Read8_CFFF_ReturnsFloatingBus()
+    public void Read8_CFFF_NoDefaultRom_ReturnsFloatingBus()
     {
         mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
 
         var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
         byte result = ioPage.Read8(0xFFF, in access);
 
         Assert.That(result, Is.EqualTo(FloatingBusValue));
+    }
+
+    /// <summary>
+    /// Verifies that Read8 from $xFFF returns default ROM data when default is set.
+    /// </summary>
+    [Test]
+    public void Read8_CFFF_WithDefaultRom_ReturnsDefaultRomData()
+    {
+        var defaultMemory = new PhysicalMemory(2048, "DefaultExpansionRom");
+        defaultMemory.AsSpan()[0x7FF] = 0xAA; // Offset 0x7FF = last byte of 2KB expansion ROM
+        var defaultRom = new RomTarget(defaultMemory.Slice(0, 2048));
+
+        mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(defaultRom);
+
+        var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0xFFF, in access);
+
+        Assert.That(result, Is.EqualTo(0xAA), "Should return default ROM data at $CFFF");
     }
 
     /// <summary>
@@ -275,17 +296,16 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that Read8 returns expansion ROM data from selected slot.
+    /// Verifies that Read8 returns expansion ROM data from visible ROM (selected or default).
     /// </summary>
     [Test]
-    public void Read8_ExpansionRom_ReturnsDataFromSelectedSlot()
+    public void Read8_ExpansionRom_ReturnsDataFromVisibleRom()
     {
         var memory = new PhysicalMemory(2048, "ExpansionRom");
         memory.Fill(0xBB);
         var expRomTarget = new RomTarget(memory.Slice(0, 2048));
 
-        mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns(6);
-        mockSlotManager.Setup(m => m.GetExpansionRomRegion(6)).Returns(expRomTarget);
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(expRomTarget);
 
         var access = CreateTestAccess(0xC800, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x800, in access);
@@ -294,27 +314,12 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that Read8 returns floating bus when no expansion ROM is selected.
+    /// Verifies that Read8 returns floating bus when no visible expansion ROM.
     /// </summary>
     [Test]
-    public void Read8_ExpansionRom_NoSlotSelected_ReturnsFloatingBus()
+    public void Read8_ExpansionRom_NoVisibleRom_ReturnsFloatingBus()
     {
-        mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns((int?)null);
-
-        var access = CreateTestAccess(0xC800, AccessIntent.DataRead);
-        byte result = ioPage.Read8(0x800, in access);
-
-        Assert.That(result, Is.EqualTo(FloatingBusValue));
-    }
-
-    /// <summary>
-    /// Verifies that Read8 returns floating bus when selected slot has no expansion ROM.
-    /// </summary>
-    [Test]
-    public void Read8_ExpansionRom_SlotHasNoExpRom_ReturnsFloatingBus()
-    {
-        mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns(6);
-        mockSlotManager.Setup(m => m.GetExpansionRomRegion(6)).Returns((IBusTarget?)null);
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
 
         var access = CreateTestAccess(0xC800, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x800, in access);
@@ -332,14 +337,32 @@ public class CompositeIOTargetTests
         memory.AsSpan()[0x100] = 0xCC; // Offset 0x100 into expansion ROM
         var expRomTarget = new RomTarget(memory.Slice(0, 2048));
 
-        mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns(6);
-        mockSlotManager.Setup(m => m.GetExpansionRomRegion(6)).Returns(expRomTarget);
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(expRomTarget);
 
         // $C900 = offset 0x900 in I/O page, which is offset 0x100 in expansion ROM (0x900 - 0x800)
         var access = CreateTestAccess(0xC900, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x900, in access);
 
         Assert.That(result, Is.EqualTo(0xCC));
+    }
+
+    /// <summary>
+    /// Verifies that default expansion ROM is visible at power-on (no slot selected).
+    /// </summary>
+    [Test]
+    public void Read8_ExpansionRom_DefaultVisibleAtPowerOn()
+    {
+        var defaultMemory = new PhysicalMemory(2048, "DefaultExpansionRom");
+        defaultMemory.Fill(0xDD);
+        var defaultRom = new RomTarget(defaultMemory.Slice(0, 2048));
+
+        // No slot selected, but default ROM is visible
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(defaultRom);
+
+        var access = CreateTestAccess(0xC800, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0x800, in access);
+
+        Assert.That(result, Is.EqualTo(0xDD), "Default ROM should be visible at power-on");
     }
 
     #endregion
@@ -359,7 +382,7 @@ public class CompositeIOTargetTests
         ioPage.SetInternalRom(internalRom);
         ioPage.SetIntCxRom(true);
 
-        // Should not call slot manager when INTCXROM is enabled
+        // Should not call slot manager when INTCXROM is enabled (for slot ROM region)
         var access = CreateTestAccess(0xC600, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x600, in access);
 
@@ -368,27 +391,36 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that INTCXROM overrides expansion ROM with internal ROM.
+    /// Verifies that INTCXROM does NOT affect expansion ROM region.
+    /// The expansion ROM region ($C800-$CFFF) is always controlled by slot selection,
+    /// regardless of INTCXROM state.
     /// </summary>
     [Test]
-    public void Read8_IntCxRomEnabled_ReturnsInternalRomForExpansionRom()
+    public void Read8_IntCxRomEnabled_DoesNotAffectExpansionRomRegion()
     {
         var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
-        internalMemory.AsSpan()[0x800] = 0xEE;
         var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        var expMemory = new PhysicalMemory(2048, "ExpansionRom");
+        expMemory.AsSpan()[0] = 0xEE; // Data at $C800
+        var expRom = new RomTarget(expMemory.Slice(0, 2048));
 
         ioPage.SetInternalRom(internalRom);
         ioPage.SetIntCxRom(true);
 
+        // Even with INTCXROM enabled, expansion ROM is controlled by slot selection
+        mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns(6);
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(expRom);
+
         var access = CreateTestAccess(0xC800, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x800, in access);
 
+        // Should return expansion ROM data, not internal ROM
         Assert.That(result, Is.EqualTo(0xEE));
-        mockSlotManager.VerifyNoOtherCalls();
     }
 
     /// <summary>
-    /// Verifies that INTCXROM prevents expansion ROM selection on writes.
+    /// Verifies that INTCXROM prevents expansion ROM selection on writes to slot ROM.
     /// </summary>
     [Test]
     public void Write8_IntCxRomEnabled_DoesNotSelectExpansionRom()
@@ -426,6 +458,92 @@ public class CompositeIOTargetTests
         Assert.That(result, Is.EqualTo(0x77));
     }
 
+    /// <summary>
+    /// Verifies that reading $CFFF still deselects expansion ROM even when INTCXROM is enabled.
+    /// INTCXROM only controls slot ROM ($C100-$C7FF), not expansion ROM ($C800-$CFFF).
+    /// </summary>
+    [Test]
+    public void Read8_CFFF_IntCxRomEnabled_StillDeselectsExpansionRom()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        ioPage.SetInternalRom(internalRom);
+        ioPage.SetIntCxRom(true);
+
+        mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
+
+        var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
+        ioPage.Read8(0xFFF, in access);
+
+        // $CFFF access always deselects expansion ROM, regardless of INTCXROM
+        mockSlotManager.Verify(m => m.DeselectExpansionSlot(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that reading $CFFF returns floating bus (not internal ROM data).
+    /// </summary>
+    [Test]
+    public void Read8_CFFF_IntCxRomEnabled_ReturnsFloatingBus()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        internalMemory.AsSpan()[0xFFF] = 0xAB; // Data at $CFFF
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        ioPage.SetInternalRom(internalRom);
+        ioPage.SetIntCxRom(true);
+
+        mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
+
+        var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0xFFF, in access);
+
+        // $CFFF returns floating bus when no default ROM is available
+        Assert.That(result, Is.EqualTo(FloatingBusValue));
+    }
+
+    /// <summary>
+    /// Verifies that writing $CFFF still deselects expansion ROM even when INTCXROM is enabled.
+    /// INTCXROM only controls slot ROM ($C100-$C7FF), not expansion ROM ($C800-$CFFF).
+    /// </summary>
+    [Test]
+    public void Write8_CFFF_IntCxRomEnabled_StillDeselectsExpansionRom()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        ioPage.SetInternalRom(internalRom);
+        ioPage.SetIntCxRom(true);
+
+        mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+
+        var access = CreateTestAccess(0xCFFF, AccessIntent.DataWrite);
+        ioPage.Write8(0xFFF, 0x42, in access);
+
+        // $CFFF access always deselects expansion ROM, regardless of INTCXROM
+        mockSlotManager.Verify(m => m.DeselectExpansionSlot(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that when INTCXROM is disabled, reading $CFFF deselects
+    /// the expansion ROM (normal behavior).
+    /// </summary>
+    [Test]
+    public void Read8_CFFF_IntCxRomDisabled_DeselectsExpansionRom()
+    {
+        mockSlotManager.Setup(m => m.DeselectExpansionSlot());
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns((IBusTarget?)null);
+
+        ioPage.SetIntCxRom(false);
+
+        var access = CreateTestAccess(0xCFFF, AccessIntent.DataRead);
+        ioPage.Read8(0xFFF, in access);
+
+        mockSlotManager.Verify(m => m.DeselectExpansionSlot(), Times.Once);
+    }
+
     #endregion
 
     #region INTC3ROM Tests
@@ -443,11 +561,14 @@ public class CompositeIOTargetTests
         ioPage.SetInternalRom(internalRom);
 
         // Slot 3 should use internal ROM by default (INTC3ROM = ON)
+        // BUT expansion ROM selection still occurs!
+        mockSlotManager.Setup(m => m.SelectExpansionSlot(3));
+
         var access = CreateTestAccess(0xC300, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x300, in access);
 
         Assert.That(result, Is.EqualTo(0x88));
-        mockSlotManager.VerifyNoOtherCalls();
+        mockSlotManager.Verify(m => m.SelectExpansionSlot(3), Times.Once);
     }
 
     /// <summary>
@@ -500,10 +621,37 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that INTC3ROM prevents expansion ROM selection for slot 3 writes.
+    /// Verifies that INTC3ROM enabled still triggers expansion ROM selection for slot 3.
+    /// This is critical: when internal ROM provides data at $C300, the expansion ROM
+    /// from the 80-column card must still become visible at $C800-$CFFF.
     /// </summary>
     [Test]
-    public void Write8_IntC3RomEnabled_DoesNotSelectSlot3ExpansionRom()
+    public void Read8_IntC3RomEnabled_StillSelectsSlot3ExpansionRom()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        internalMemory.AsSpan()[0x300] = 0x77;
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        ioPage.SetInternalRom(internalRom);
+        ioPage.SetIntC3Rom(true);
+
+        mockSlotManager.Setup(m => m.SelectExpansionSlot(3));
+
+        var access = CreateTestAccess(0xC300, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0x300, in access);
+
+        // Internal ROM provides the data
+        Assert.That(result, Is.EqualTo(0x77));
+
+        // BUT expansion ROM selection still occurs
+        mockSlotManager.Verify(m => m.SelectExpansionSlot(3), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that write to $C300 with INTC3ROM enabled still triggers expansion ROM selection.
+    /// </summary>
+    [Test]
+    public void Write8_IntC3RomEnabled_StillSelectsSlot3ExpansionRom()
     {
         var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
         var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
@@ -511,9 +659,36 @@ public class CompositeIOTargetTests
         ioPage.SetInternalRom(internalRom);
         ioPage.SetIntC3Rom(true);
 
+        mockSlotManager.Setup(m => m.SelectExpansionSlot(3));
+
         var access = CreateTestAccess(0xC300, AccessIntent.DataWrite);
         ioPage.Write8(0x300, 0x42, in access);
 
+        // Expansion ROM selection should still occur
+        mockSlotManager.Verify(m => m.SelectExpansionSlot(3), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that INTCXROM fully disables slot 3 expansion ROM selection
+    /// (unlike INTC3ROM which only provides internal ROM data but still selects).
+    /// </summary>
+    [Test]
+    public void Read8_IntCxRomEnabled_PreventsSlot3ExpansionRomSelection()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        internalMemory.AsSpan()[0x300] = 0x55;
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+
+        ioPage.SetInternalRom(internalRom);
+        ioPage.SetIntCxRom(true); // Full internal ROM mode
+
+        var access = CreateTestAccess(0xC300, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0x300, in access);
+
+        // Internal ROM provides the data
+        Assert.That(result, Is.EqualTo(0x55));
+
+        // No slot manager calls when INTCXROM is enabled
         mockSlotManager.VerifyNoOtherCalls();
     }
 
@@ -616,29 +791,35 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies ResolveTarget returns expansion ROM target when slot is selected.
+    /// Verifies ResolveTarget returns self for expansion ROM region.
+    /// This ensures CompositeIOTarget handles address translation correctly.
     /// </summary>
     [Test]
-    public void ResolveTarget_ExpansionRomRegion_ReturnsExpansionRom()
+    public void ResolveTarget_ExpansionRomRegion_ReturnsSelf()
     {
         var expMemory = new PhysicalMemory(2048, "ExpansionRom");
         var expRom = new RomTarget(expMemory.Slice(0, 2048));
 
         mockSlotManager.Setup(m => m.ActiveExpansionSlot).Returns(6);
-        mockSlotManager.Setup(m => m.GetExpansionRomRegion(6)).Returns(expRom);
+        mockSlotManager.Setup(m => m.GetVisibleExpansionRom()).Returns(expRom);
 
         IBusTarget? target = ioPage.ResolveTarget(0x800, AccessIntent.DataRead);
-        Assert.That(target, Is.SameAs(expRom));
+
+        // Returns 'this' (CompositeIOTarget) so it can handle address translation
+        Assert.That(target, Is.SameAs(ioPage));
     }
 
     /// <summary>
-    /// Verifies ResolveTarget returns null for $xFFF.
+    /// Verifies ResolveTarget returns self for $xFFF as well.
+    /// The CompositeIOTarget handles $CFFF deselection internally.
     /// </summary>
     [Test]
-    public void ResolveTarget_xFFF_ReturnsNull()
+    public void ResolveTarget_xFFF_ReturnsSelf()
     {
         IBusTarget? target = ioPage.ResolveTarget(0xFFF, AccessIntent.DataRead);
-        Assert.That(target, Is.Null);
+
+        // Returns 'this' so CompositeIOTarget can handle the deselection
+        Assert.That(target, Is.SameAs(ioPage));
     }
 
     #endregion

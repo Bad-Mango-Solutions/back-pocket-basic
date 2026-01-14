@@ -10,6 +10,13 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 public partial class DebugCommandsTests
 {
     /// <summary>
+    /// Gets a platform-appropriate test library root path for LoadSave tests.
+    /// </summary>
+    private static string TestLibraryRootForLoadSave => OperatingSystem.IsWindows()
+        ? @"C:\tmp\test-library"
+        : "/tmp/test-library";
+
+    /// <summary>
     /// Verifies that LoadCommand has correct name.
     /// </summary>
     [Test]
@@ -57,8 +64,8 @@ public partial class DebugCommandsTests
     [Test]
     public void LoadCommand_ReturnsError_WithResolvedPath_WhenLibraryFileNotFound()
     {
-        // Attach a path resolver with a known library root
-        debugContext.AttachPathResolver(new DebugPathResolver("/tmp/test-library"));
+        // Attach a path resolver with a known library root (platform-appropriate)
+        debugContext.AttachPathResolver(new DebugPathResolver(TestLibraryRootForLoadSave));
 
         var command = new LoadCommand();
         var result = command.Execute(debugContext, ["library://nonexistent.bin"]);
@@ -69,7 +76,7 @@ public partial class DebugCommandsTests
             Assert.That(result.Message, Does.Contain("File not found"));
             Assert.That(result.Message, Does.Contain("library://nonexistent.bin"));
             Assert.That(result.Message, Does.Contain("resolved to"));
-            Assert.That(result.Message, Does.Contain("/tmp/test-library"));
+            Assert.That(result.Message, Does.Contain(TestLibraryRootForLoadSave));
         });
     }
 
