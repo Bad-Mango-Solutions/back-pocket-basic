@@ -47,6 +47,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\pocket2-charset.rom">
+      <LogicalName>BadMango.Emulator.Devices.Resources.pocket2-charset.rom</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Resources\boot.rom">
       <LogicalName>BadMango.Emulator.Devices.Resources.boot.rom</LogicalName>
     </EmbeddedResource>
