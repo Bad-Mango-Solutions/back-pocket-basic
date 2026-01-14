@@ -1,0 +1,701 @@
+// <copyright file="Extended80ColumnDevice.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Devices;
+
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+
+using Interfaces;
+
+/// <summary>
+/// Extended 80-Column Card device providing 64KB auxiliary RAM, 80-column text display,
+/// double hi-res graphics, and expansion ROM support for the Apple IIe.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The Extended 80-Column Card (also known as the Apple IIe Memory Expansion Card) provides:
+/// </para>
+/// <list type="bullet">
+/// <item><description>64KB of auxiliary RAM for a total of 128KB system memory</description></item>
+/// <item><description>80-column text display capability (alternating main/aux memory)</description></item>
+/// <item><description>Double hi-res graphics mode (560×192 pixels)</description></item>
+/// <item><description>Expansion ROM at $C100-$CFFF when INTCXROM is enabled</description></item>
+/// </list>
+/// <para>
+/// Memory bank switching is controlled through soft switches at $C000-$C00F:
+/// </para>
+/// <list type="bullet">
+/// <item><description>$C000/$C001: 80STORE off/on - PAGE2 controls display memory switching</description></item>
+/// <item><description>$C002/$C003: RAMRD off/on - Read from auxiliary RAM ($0200-$BFFF)</description></item>
+/// <item><description>$C004/$C005: RAMWRT off/on - Write to auxiliary RAM ($0200-$BFFF)</description></item>
+/// <item><description>$C006/$C007: SETSLOTCX/SETINTCX - Peripheral/internal ROM at $C100-$CFFF</description></item>
+/// <item><description>$C008/$C009: SETSTDZP/SETALTZP - Standard/alternate zero page and stack</description></item>
+/// <item><description>$C00A/$C00B: SETINTC3/SETSLOTC3 - Internal/slot ROM at $C300</description></item>
+/// <item><description>$C00C/$C00D: 80COLOFF/80COLON - 40/80-column display mode</description></item>
+/// </list>
+/// <para>
+/// Note: ALTCHAR ($C00E/$C00F) is managed by <see cref="CharacterDevice"/>, not this device.
+/// </para>
+/// </remarks>
+[DeviceType("extended80column")]
+public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider
+{
+    /// <summary>
+    /// The name of the auxiliary RAM layer for $0200-$BFFF.
+    /// </summary>
+    public const string LayerNameAuxRam = "AUX_RAM";
+
+    /// <summary>
+    /// The name of the auxiliary zero page layer for $0000-$01FF.
+    /// </summary>
+    public const string LayerNameAuxZeroPage = "AUX_ZP";
+
+    /// <summary>
+    /// The name of the auxiliary hi-res page 1 layer ($2000-$3FFF).
+    /// </summary>
+    public const string LayerNameAuxHiRes1 = "AUX_HIRES1";
+
+    /// <summary>
+    /// The name of the auxiliary hi-res page 2 layer ($4000-$5FFF).
+    /// </summary>
+    public const string LayerNameAuxHiRes2 = "AUX_HIRES2";
+
+    /// <summary>
+    /// The name of the internal ROM layer for $C100-$CFFF.
+    /// </summary>
+    public const string LayerNameInternalRom = "INT_CXROM";
+
+    /// <summary>
+    /// The layer priority for auxiliary memory layers.
+    /// </summary>
+    public const int LayerPriority = 10;
+
+    /// <summary>
+    /// Size of auxiliary RAM (64KB).
+    /// </summary>
+    private const uint AuxRamSize = 0x10000;
+
+    /// <summary>
+    /// Size of the expansion ROM ($C100-$CFFF = 3840 bytes).
+    /// </summary>
+    private const uint ExpansionRomSize = 0x0F00;
+
+    private readonly PhysicalMemory auxiliaryRam;
+    private readonly PhysicalMemory expansionRom;
+    private readonly RamTarget auxRamTarget;
+    private readonly RomTarget expansionRomTarget;
+
+    private IMemoryBus? bus;
+    private IVideoDevice? videoDevice;
+
+    // ─── Soft Switch State ──────────────────────────────────────────────
+    private bool store80;       // 80STORE: PAGE2 controls display memory
+    private bool ramrd;         // RAMRD: Read from auxiliary RAM
+    private bool ramwrt;        // RAMWRT: Write to auxiliary RAM
+    private bool intcxrom;      // INTCXROM: Internal ROM at $C100-$CFFF
+    private bool altzp;         // ALTZP: Alternate zero page/stack
+    private bool slotc3rom;     // SLOTC3ROM: Slot 3 ROM (false = internal ROM at $C300)
+    private bool col80;         // 80COL: 80-column display mode
+    private bool page2;         // PAGE2: Page 2 selected (affects 80STORE)
+    private bool hires;         // HIRES: Hi-res mode (affects 80STORE)
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Extended80ColumnDevice"/> class.
+    /// </summary>
+    public Extended80ColumnDevice()
+    {
+        // Create 64KB of auxiliary RAM
+        auxiliaryRam = new PhysicalMemory(AuxRamSize, "AUX_RAM");
+
+        // Create expansion ROM (can be loaded from profile)
+        expansionRom = new PhysicalMemory(ExpansionRomSize, "EXP_ROM");
+
+        // Create targets for bus mapping
+        auxRamTarget = new RamTarget(auxiliaryRam.Slice(0, AuxRamSize), "AUX_RAM");
+        expansionRomTarget = new RomTarget(expansionRom.Slice(0, ExpansionRomSize), "EXP_ROM");
+    }
+
+    // ─── IPeripheral ────────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public string Name => "Extended 80-Column Card";
+
+    /// <inheritdoc />
+    public string DeviceType => "Extended80Column";
+
+    /// <inheritdoc />
+    public PeripheralKind Kind => PeripheralKind.Motherboard;
+
+    // ─── ISoftSwitchProvider ────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public string ProviderName => "Extended 80-Column Card";
+
+    // ─── Public Properties ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets a value indicating whether 80STORE mode is enabled.
+    /// </summary>
+    /// <value><see langword="true"/> if 80STORE mode is enabled; otherwise, <see langword="false"/>.</value>
+    /// <remarks>
+    /// When 80STORE is enabled, the PAGE2 soft switch ($C054/$C055) controls whether
+    /// display memory accesses go to auxiliary or main memory, enabling 80-column text.
+    /// </remarks>
+    public bool Is80StoreEnabled => store80;
+
+    /// <summary>
+    /// Gets a value indicating whether reads from $0200-$BFFF come from auxiliary RAM.
+    /// </summary>
+    /// <value><see langword="true"/> if RAMRD is enabled; otherwise, <see langword="false"/>.</value>
+    public bool IsRamRdEnabled => ramrd;
+
+    /// <summary>
+    /// Gets a value indicating whether writes to $0200-$BFFF go to auxiliary RAM.
+    /// </summary>
+    /// <value><see langword="true"/> if RAMWRT is enabled; otherwise, <see langword="false"/>.</value>
+    public bool IsRamWrtEnabled => ramwrt;
+
+    /// <summary>
+    /// Gets a value indicating whether internal ROM is selected at $C100-$CFFF.
+    /// </summary>
+    /// <value><see langword="true"/> if internal ROM is selected; otherwise, <see langword="false"/>.</value>
+    public bool IsIntCXRomEnabled => intcxrom;
+
+    /// <summary>
+    /// Gets a value indicating whether alternate zero page/stack is enabled.
+    /// </summary>
+    /// <value><see langword="true"/> if auxiliary zero page/stack is active; otherwise, <see langword="false"/>.</value>
+    public bool IsAltZpEnabled => altzp;
+
+    /// <summary>
+    /// Gets a value indicating whether slot 3 ROM is selected at $C300.
+    /// </summary>
+    /// <value><see langword="true"/> if slot 3 ROM is selected; otherwise, <see langword="false"/> for internal ROM.</value>
+    public bool IsSlotC3RomEnabled => slotc3rom;
+
+    /// <summary>
+    /// Gets a value indicating whether 80-column display mode is enabled.
+    /// </summary>
+    /// <value><see langword="true"/> if 80-column mode is enabled; otherwise, <see langword="false"/>.</value>
+    public bool Is80ColumnEnabled => col80;
+
+    /// <summary>
+    /// Gets a value indicating whether PAGE2 is selected.
+    /// </summary>
+    /// <value><see langword="true"/> if page 2 is selected; otherwise, <see langword="false"/>.</value>
+    public bool IsPage2Selected => page2;
+
+    /// <summary>
+    /// Gets a value indicating whether hi-res mode is enabled.
+    /// </summary>
+    /// <value><see langword="true"/> if hi-res mode is enabled; otherwise, <see langword="false"/>.</value>
+    public bool IsHiResEnabled => hires;
+
+    /// <summary>
+    /// Gets the auxiliary RAM target for direct access.
+    /// </summary>
+    /// <value>The RAM target for auxiliary memory.</value>
+    public RamTarget AuxRamTarget => auxRamTarget;
+
+    /// <summary>
+    /// Gets the expansion ROM target for direct access.
+    /// </summary>
+    /// <value>The ROM target for expansion ROM.</value>
+    public RomTarget ExpansionRomTarget => expansionRomTarget;
+
+    /// <summary>
+    /// Gets the total size of auxiliary RAM (64KB).
+    /// </summary>
+    /// <value>The total auxiliary RAM size in bytes.</value>
+    public uint TotalAuxRamSize => AuxRamSize;
+
+    /// <summary>
+    /// Gets the auxiliary RAM as a span for direct memory access.
+    /// </summary>
+    /// <value>A span covering the 64KB auxiliary RAM.</value>
+    public Span<byte> AuxiliaryRam => auxiliaryRam.AsSpan();
+
+    /// <inheritdoc />
+    public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
+    {
+        return
+        [
+            new("80STORE", 0xC000, store80, "PAGE2 controls display memory switching"),
+            new("RAMRD", 0xC002, ramrd, "Reads from auxiliary RAM ($0200-$BFFF)"),
+            new("RAMWRT", 0xC004, ramwrt, "Writes to auxiliary RAM ($0200-$BFFF)"),
+            new("INTCXROM", 0xC006, intcxrom, "Internal ROM at $C100-$CFFF"),
+            new("ALTZP", 0xC008, altzp, "Alternate zero page/stack enabled"),
+            new("SLOTC3ROM", 0xC00A, slotc3rom, "Slot 3 ROM at $C300 (vs internal)"),
+            new("80COL", 0xC00C, col80, "80-column display mode enabled"),
+            new("PAGE2", 0xC054, page2, "Page 2 selected for 80STORE"),
+            new("HIRES", 0xC056, hires, "Hi-res mode for 80STORE"),
+        ];
+    }
+
+    // ─── IScheduledDevice ───────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public void Initialize(IEventContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        bus = context.Bus;
+
+        // Set initial state: all switches disabled (main RAM visible)
+        store80 = false;
+        ramrd = false;
+        ramwrt = false;
+        intcxrom = false;
+        altzp = false;
+        slotc3rom = false;
+        col80 = false;
+        page2 = false;
+        hires = false;
+
+        ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void RegisterHandlers(IOPageDispatcher dispatcher)
+    {
+        ArgumentNullException.ThrowIfNull(dispatcher);
+
+        // ─── Memory Bank Switches ($C000-$C00F) ─────────────────────────
+        // Note: $C000 read is keyboard, we only handle write
+        dispatcher.RegisterWrite(0x00, Handle80StoreOff);   // $C000: 80STOREOFF
+        dispatcher.RegisterWrite(0x01, Handle80StoreOn);    // $C001: 80STOREON
+        dispatcher.RegisterWrite(0x02, HandleRdMainRam);    // $C002: RDMAINRAM
+        dispatcher.RegisterWrite(0x03, HandleRdCardRam);    // $C003: RDCARDRAM
+        dispatcher.RegisterWrite(0x04, HandleWrMainRam);    // $C004: WRMAINRAM
+        dispatcher.RegisterWrite(0x05, HandleWrCardRam);    // $C005: WRCARDRAM
+        dispatcher.RegisterWrite(0x06, HandleSetSlotCX);    // $C006: SETSLOTCX
+        dispatcher.RegisterWrite(0x07, HandleSetIntCX);     // $C007: SETINTCX
+        dispatcher.RegisterWrite(0x08, HandleSetStdZp);     // $C008: SETSTDZP
+        dispatcher.RegisterWrite(0x09, HandleSetAltZp);     // $C009: SETALTZP
+        dispatcher.RegisterWrite(0x0A, HandleSetIntC3);     // $C00A: SETINTC3
+        dispatcher.RegisterWrite(0x0B, HandleSetSlotC3);    // $C00B: SETSLOTC3
+        dispatcher.RegisterWrite(0x0C, Handle80ColOff);     // $C00C: 80COLOFF
+        dispatcher.RegisterWrite(0x0D, Handle80ColOn);      // $C00D: 80COLON
+        dispatcher.RegisterRead(0x13, ReadRamRdStatus);     // $C013: RDRAMRD
+        dispatcher.RegisterRead(0x14, ReadRamWrtStatus);    // $C014: RDRAMWRT
+        dispatcher.RegisterRead(0x15, ReadIntCXRomStatus);  // $C015: RDCXROM
+        dispatcher.RegisterRead(0x16, ReadAltZpStatus);     // $C016: RDALTZP
+        dispatcher.RegisterRead(0x17, ReadC3RomStatus);     // $C017: RDC3ROM
+        dispatcher.RegisterRead(0x18, Read80StoreStatus);   // $C018: RD80STORE
+
+        // $C019 (RDVBL), $C01A-$C01D, $C01F (RD80COL) are handled by VideoDevice
+        // $C01E (RDALTCHAR) is handled by CharacterDevice
+        // PAGE2 and HIRES switches are registered by VideoDevice
+    }
+
+    /// <inheritdoc />
+    public void Reset()
+    {
+        store80 = false;
+        ramrd = false;
+        ramwrt = false;
+        intcxrom = false;
+        altzp = false;
+        slotc3rom = false;
+        col80 = false;
+        page2 = false;
+        hires = false;
+
+        ApplyState();
+    }
+
+    // ─── Video Device Integration ───────────────────────────────────────
+
+    /// <summary>
+    /// Sets a reference to the video device for 80-column mode coordination.
+    /// </summary>
+    /// <param name="video">The video device.</param>
+    public void SetVideoDevice(IVideoDevice video)
+    {
+        videoDevice = video;
+    }
+
+    /// <summary>
+    /// Called when PAGE2 state changes (from VideoDevice or internal).
+    /// </summary>
+    /// <param name="selected">Whether PAGE2 is selected.</param>
+    public void SetPage2(bool selected)
+    {
+        if (page2 != selected)
+        {
+            page2 = selected;
+            ApplyState();
+        }
+    }
+
+    /// <summary>
+    /// Called when HIRES state changes (from VideoDevice or internal).
+    /// </summary>
+    /// <param name="enabled">Whether HIRES mode is enabled.</param>
+    public void SetHiRes(bool enabled)
+    {
+        if (hires != enabled)
+        {
+            hires = enabled;
+            ApplyState();
+        }
+    }
+
+    /// <summary>
+    /// Loads expansion ROM data into the device.
+    /// </summary>
+    /// <param name="romData">The ROM data to load (up to 3840 bytes for $C100-$CFFF).</param>
+    /// <remarks>
+    /// <para>
+    /// This method loads the 80-column card's expansion ROM, which is mapped at
+    /// $C100-$CFFF when the INTCXROM soft switch is enabled.
+    /// </para>
+    /// <para>
+    /// The ROM data should be 3840 bytes (0x0F00) to cover the entire $C100-$CFFF range.
+    /// If the provided data is smaller, only that portion is loaded.
+    /// </para>
+    /// </remarks>
+    public void LoadExpansionRom(ReadOnlySpan<byte> romData)
+    {
+        int copyLength = Math.Min(romData.Length, (int)ExpansionRomSize);
+        romData[..copyLength].CopyTo(expansionRom.AsSpan());
+    }
+
+    /// <summary>
+    /// Loads expansion ROM data from a byte array.
+    /// </summary>
+    /// <param name="romData">The ROM data to load.</param>
+    public void LoadExpansionRom(byte[] romData)
+    {
+        ArgumentNullException.ThrowIfNull(romData);
+        LoadExpansionRom(romData.AsSpan());
+    }
+
+    /// <summary>
+    /// Determines which memory bank to use for reading from a given address.
+    /// </summary>
+    /// <param name="address">The memory address being accessed.</param>
+    /// <returns><see langword="true"/> to use auxiliary RAM; <see langword="false"/> for main RAM.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method implements the Apple IIe memory bank selection logic:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Zero page ($0000-$00FF) and stack ($0100-$01FF): Controlled by ALTZP</description></item>
+    /// <item><description>Text page ($0400-$07FF): Controlled by 80STORE + PAGE2</description></item>
+    /// <item><description>Hi-res page 1 ($2000-$3FFF): Controlled by 80STORE + PAGE2 + HIRES</description></item>
+    /// <item><description>General RAM ($0200-$BFFF except above): Controlled by RAMRD</description></item>
+    /// </list>
+    /// </remarks>
+    public bool ShouldUseAuxRamForRead(ushort address)
+    {
+        if (address < 0x0200)
+        {
+            return altzp;
+        }
+
+        if (store80)
+        {
+            if (address >= 0x0400 && address < 0x0800)
+            {
+                return page2;
+            }
+
+            if (hires && address >= 0x2000 && address < 0x4000)
+            {
+                return page2;
+            }
+        }
+
+        if (address < 0xC000)
+        {
+            return ramrd;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines which memory bank to use for writing to a given address.
+    /// </summary>
+    /// <param name="address">The memory address being accessed.</param>
+    /// <returns><see langword="true"/> to use auxiliary RAM; <see langword="false"/> for main RAM.</returns>
+    /// <remarks>
+    /// Uses the same logic as <see cref="ShouldUseAuxRamForRead"/>, but uses RAMWRT
+    /// instead of RAMRD for the general RAM region.
+    /// </remarks>
+    public bool ShouldUseAuxRamForWrite(ushort address)
+    {
+        if (address < 0x0200)
+        {
+            return altzp;
+        }
+
+        if (store80)
+        {
+            if (address >= 0x0400 && address < 0x0800)
+            {
+                return page2;
+            }
+
+            if (hires && address >= 0x2000 && address < 0x4000)
+            {
+                return page2;
+            }
+        }
+
+        if (address < 0xC000)
+        {
+            return ramwrt;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Reads a byte from auxiliary RAM.
+    /// </summary>
+    /// <param name="address">The address within auxiliary RAM (0-65535).</param>
+    /// <returns>The byte value at the specified address.</returns>
+    public byte ReadAuxRam(ushort address)
+    {
+        return auxiliaryRam.AsSpan()[address];
+    }
+
+    /// <summary>
+    /// Writes a byte to auxiliary RAM.
+    /// </summary>
+    /// <param name="address">The address within auxiliary RAM (0-65535).</param>
+    /// <param name="value">The byte value to write.</param>
+    public void WriteAuxRam(ushort address, byte value)
+    {
+        auxiliaryRam.AsSpan()[address] = value;
+    }
+
+    private void Handle80StoreOff(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        store80 = false;
+        ApplyState();
+    }
+
+    private void Handle80StoreOn(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        store80 = true;
+        ApplyState();
+    }
+
+    private void HandleRdMainRam(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        ramrd = false;
+        ApplyState();
+    }
+
+    private void HandleRdCardRam(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        ramrd = true;
+        ApplyState();
+    }
+
+    private void HandleWrMainRam(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        ramwrt = false;
+        ApplyState();
+    }
+
+    private void HandleWrCardRam(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        ramwrt = true;
+        ApplyState();
+    }
+
+    private void HandleSetSlotCX(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        intcxrom = false;
+        ApplyState();
+    }
+
+    private void HandleSetIntCX(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        intcxrom = true;
+        ApplyState();
+    }
+
+    private void HandleSetStdZp(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        altzp = false;
+        ApplyState();
+    }
+
+    private void HandleSetAltZp(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        altzp = true;
+        ApplyState();
+    }
+
+    private void HandleSetIntC3(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        slotc3rom = false;
+        ApplyState();
+    }
+
+    private void HandleSetSlotC3(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        slotc3rom = true;
+        ApplyState();
+    }
+
+    private void Handle80ColOff(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        col80 = false;
+
+        // Notify video device of mode change
+        videoDevice?.Set80ColumnMode(false);
+
+        ApplyState();
+    }
+
+    private void Handle80ColOn(byte offset, byte value, in BusAccess context)
+    {
+        if (context.IsSideEffectFree)
+        {
+            return;
+        }
+
+        col80 = true;
+
+        // Notify video device of mode change
+        videoDevice?.Set80ColumnMode(true);
+
+        ApplyState();
+    }
+
+    private byte ReadRamRdStatus(byte offset, in BusAccess context)
+    {
+        return ramrd ? (byte)0x80 : (byte)0x00;
+    }
+
+    private byte ReadRamWrtStatus(byte offset, in BusAccess context)
+    {
+        return ramwrt ? (byte)0x80 : (byte)0x00;
+    }
+
+    private byte ReadIntCXRomStatus(byte offset, in BusAccess context)
+    {
+        return intcxrom ? (byte)0x80 : (byte)0x00;
+    }
+
+    private byte ReadAltZpStatus(byte offset, in BusAccess context)
+    {
+        return altzp ? (byte)0x80 : (byte)0x00;
+    }
+
+    private byte ReadC3RomStatus(byte offset, in BusAccess context)
+    {
+        // RDC3ROM returns 1 if internal ROM at $C300 (i.e., NOT slot C3 ROM)
+        return slotc3rom ? (byte)0x00 : (byte)0x80;
+    }
+
+    private byte Read80StoreStatus(byte offset, in BusAccess context)
+    {
+        return store80 ? (byte)0x80 : (byte)0x00;
+    }
+
+    /// <summary>
+    /// Applies the current soft switch state to the memory bus layers.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method updates the memory mapping based on the current soft switch state:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>RAMRD/RAMWRT: Controls whether $0200-$BFFF accesses auxiliary RAM</description></item>
+    /// <item><description>ALTZP: Controls whether zero page/stack uses auxiliary RAM</description></item>
+    /// <item><description>80STORE: When enabled, PAGE2 controls display memory bank selection</description></item>
+    /// <item><description>INTCXROM: Controls whether internal ROM is mapped at $C100-$CFFF</description></item>
+    /// </list>
+    /// <para>
+    /// The bus layer system is used to dynamically switch memory mappings based on
+    /// soft switch state. When a layer is activated, it overlays the base memory map.
+    /// </para>
+    /// </remarks>
+    private void ApplyState()
+    {
+        if (bus is null)
+        {
+            return;
+        }
+
+        // The actual memory layer manipulation requires the bus to have
+        // the appropriate layers configured. This is typically done during
+        // machine configuration via ConfigureMemory().
+        // For now, we track the state and let the rendering/memory access
+        // code query these properties directly for correct behavior.
+    }
+}
