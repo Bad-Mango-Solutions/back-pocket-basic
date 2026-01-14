@@ -471,6 +471,13 @@ public sealed partial class MachineBuilder
         {
             var target = targetFactory(this);
 
+            // If the target implements IInternalRomHandler, register it as a component
+            // so devices like Extended80ColumnDevice can access it
+            if (target is IInternalRomHandler internalRomHandler)
+            {
+                AddComponent<IInternalRomHandler>(internalRomHandler);
+            }
+
             int deviceId = registry.GenerateId();
             registry.Register(deviceId, "Composite", region.Name, $"Memory/{start:X4}");
 

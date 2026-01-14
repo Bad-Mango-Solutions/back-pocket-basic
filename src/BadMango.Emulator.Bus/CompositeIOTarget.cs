@@ -36,7 +36,7 @@ using Interfaces;
 /// Use the handler type "composite-io" in profile JSON to instantiate this target.
 /// </para>
 /// </remarks>
-public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice
+public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, IInternalRomHandler
 {
     /// <summary>
     /// Offset boundary for soft switch region ($x000-$x0FF).

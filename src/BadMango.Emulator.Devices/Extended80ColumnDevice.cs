@@ -92,6 +92,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
     private IMemoryBus? bus;
     private IVideoDevice? videoDevice;
+    private IInternalRomHandler? internalRomHandler;
     private int deviceId;
 
     // ─── Soft Switch State ──────────────────────────────────────────────
@@ -262,6 +263,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // Get the video device from the machine context
         videoDevice = context.GetComponent<IVideoDevice>();
 
+        // Get the internal ROM handler (CompositeIOTarget) to register our expansion ROM
+        internalRomHandler = context.GetComponent<IInternalRomHandler>();
+        if (internalRomHandler is not null)
+        {
+            // Register our expansion ROM as the internal ROM for INTCXROM switching
+            internalRomHandler.SetInternalRom(expansionRomTarget);
+        }
+
         // Set initial state: all switches disabled (main RAM visible)
         store80 = false;
         ramrd = false;
@@ -410,18 +419,10 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             Target: auxHiRes1Target,
             PhysBase: 0));
 
-        // Create the layer for expansion ROM ($C100-$CFFF)
-        var romLayer = bus.CreateLayer(LayerNameInternalRom, LayerPriority);
-        bus.AddLayeredMapping(new(
-            VirtualBase: 0xC100,
-            Size: ExpansionRomSize,
-            Layer: romLayer,
-            DeviceId: deviceId,
-            RegionTag: RegionTag.Rom,
-            Perms: PagePerms.ReadExecute,
-            Caps: expansionRomTarget.Capabilities,
-            Target: expansionRomTarget,
-            PhysBase: 0));
+        // Note: The expansion ROM layer for $C100-$CFFF is NOT created here.
+        // The CompositeIOTarget owns that region and handles INTCXROM switching
+        // via the IInternalRomHandler interface. We register our expansion ROM
+        // with it during Initialize().
 
         // All layers start deactivated (main RAM visible at power-on)
     }
@@ -834,8 +835,13 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         bool auxHiResActive = store80 && page2 && hires;
         SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
 
-        // INTCXROM: Expansion ROM ($C100-$CFFF)
-        SetLayerActive(LayerNameInternalRom, intcxrom);
+        // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
+        // The CompositeIOTarget owns the $C100-$CFFF region and handles the overlay logic
+        if (internalRomHandler is not null)
+        {
+            internalRomHandler.SetIntCxRom(intcxrom);
+            internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
+        }
     }
 
     /// <summary>
