@@ -78,9 +78,11 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private const uint AuxRamSize = 0x10000;
 
     /// <summary>
-    /// Size of the expansion ROM ($C100-$CFFF = 3840 bytes).
+    /// Size of the expansion ROM (4KB to cover full $C000-$CFFF I/O page).
+    /// The CompositeIOTarget passes I/O page offsets directly, so we need
+    /// the full 4KB even though only $C100-$CFFF contains ROM data.
     /// </summary>
-    private const uint ExpansionRomSize = 0x0F00;
+    private const uint ExpansionRomSize = 0x1000;
 
     private readonly PhysicalMemory auxiliaryRam;
     private readonly PhysicalMemory expansionRom;
@@ -115,6 +117,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         auxiliaryRam = new PhysicalMemory(AuxRamSize, "AUX_RAM");
 
         // Create expansion ROM (can be loaded from profile)
+        // Uses full 4KB so I/O page offsets map directly
         expansionRom = new PhysicalMemory(ExpansionRomSize, "EXP_ROM");
 
         // Create targets for bus mapping
@@ -130,7 +133,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // Hi-res page 1 target for $2000-$3FFF: offset=0x2000, size=0x2000 (8KB)
         auxHiRes1Target = new RamTarget(auxiliaryRam.Slice(0x2000, 0x2000), "AUX_HIRES1");
 
-        // Expansion ROM target for $C100-$CFFF
+        // Expansion ROM target - full 4KB for direct I/O page offset mapping
         expansionRomTarget = new RomTarget(expansionRom.Slice(0, ExpansionRomSize), "EXP_ROM");
     }
 
@@ -464,13 +467,17 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// </para>
     /// <para>
     /// The ROM data should be 3840 bytes (0x0F00) to cover the entire $C100-$CFFF range.
-    /// If the provided data is smaller, only that portion is loaded.
+    /// If the provided data is smaller, only that portion is loaded. The data is loaded
+    /// at offset 0x100 in the 4KB ROM buffer to match I/O page addressing.
     /// </para>
     /// </remarks>
     public void LoadExpansionRom(ReadOnlySpan<byte> romData)
     {
-        int copyLength = Math.Min(romData.Length, (int)ExpansionRomSize);
-        romData[..copyLength].CopyTo(expansionRom.AsSpan());
+        // Load ROM data at offset 0x100 to match I/O page addressing ($C100-$CFFF)
+        const int romOffset = 0x100;
+        int maxCopyLength = (int)ExpansionRomSize - romOffset;
+        int copyLength = Math.Min(romData.Length, maxCopyLength);
+        romData[..copyLength].CopyTo(expansionRom.AsSpan().Slice(romOffset));
     }
 
     /// <summary>

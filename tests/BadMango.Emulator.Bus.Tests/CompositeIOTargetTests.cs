@@ -597,10 +597,11 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies ResolveTarget returns internal ROM when INTCXROM is enabled.
+    /// Verifies ResolveTarget returns 'this' when INTCXROM is enabled.
+    /// This allows the CompositeIOTarget to handle address translation for debug writes.
     /// </summary>
     [Test]
-    public void ResolveTarget_IntCxRomEnabled_ReturnsInternalRom()
+    public void ResolveTarget_IntCxRomEnabled_ReturnsSelfForDebugWriteSupport()
     {
         var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
         var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
@@ -609,7 +610,9 @@ public class CompositeIOTargetTests
         ioPage.SetIntCxRom(true);
 
         IBusTarget? target = ioPage.ResolveTarget(0x600, AccessIntent.DataRead);
-        Assert.That(target, Is.SameAs(internalRom));
+
+        // Returns 'this' (CompositeIOTarget) to handle debug writes properly
+        Assert.That(target, Is.SameAs(ioPage));
     }
 
     /// <summary>

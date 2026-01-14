@@ -120,12 +120,30 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
                 softSwitches.Write((byte)offset, value, in access);
                 break;
             case < SlotRomRegionEnd:
-                // Slot ROM: Ignore write, but still trigger expansion ROM selection!
-                WriteSlotRom(offset);
+                // When INTCXROM is enabled and this is a debug write, write to internal ROM
+                if (intCxRomEnabled && internalRom is not null && access.IsDebugAccess)
+                {
+                    internalRom.Write8(offset, value, in access);
+                }
+                else
+                {
+                    // Slot ROM: Ignore write, but still trigger expansion ROM selection!
+                    WriteSlotRom(offset);
+                }
+
                 break;
             default:
-                // Expansion ROM: Ignore write, but check for $xFFF deselection
-                WriteExpansionRom(offset);
+                // When INTCXROM is enabled and this is a debug write, write to internal ROM
+                if (intCxRomEnabled && internalRom is not null && access.IsDebugAccess)
+                {
+                    internalRom.Write8(offset, value, in access);
+                }
+                else
+                {
+                    // Expansion ROM: Ignore write, but check for $xFFF deselection
+                    WriteExpansionRom(offset);
+                }
+
                 break;
         }
     }
@@ -133,6 +151,14 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// <inheritdoc />
     public override IBusTarget? ResolveTarget(Addr offset, AccessIntent intent)
     {
+        // When INTCXROM is enabled, return 'this' for ROM regions so we handle
+        // debug writes in Write8. The ResolveTarget is used by the bus for
+        // dispatch, and returning 'this' ensures we can handle debug writes properly.
+        if (intCxRomEnabled && internalRom is not null && offset >= SoftSwitchRegionEnd)
+        {
+            return this;
+        }
+
         return offset switch
         {
             // Soft switches are handled directly by this target's Read8/Write8
