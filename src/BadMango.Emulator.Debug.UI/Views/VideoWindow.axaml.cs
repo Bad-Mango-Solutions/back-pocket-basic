@@ -84,6 +84,7 @@ public partial class VideoWindow : Window
     // Track Left/Right Alt state separately since Avalonia's KeyModifiers.Alt doesn't distinguish
     private bool leftAltPressed;
     private bool rightAltPressed;
+    private bool capsLockActive;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
@@ -248,12 +249,17 @@ public partial class VideoWindow : Window
         {
             rightAltPressed = true;
         }
+        else if (e.Key == Key.CapsLock)
+        {
+            // Toggle Caps Lock state
+            capsLockActive = !capsLockActive;
+        }
 
         // Handle modifier keys
         UpdateModifiers(e);
 
         // Map key to Pocket2e byte code
-        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers);
+        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers, capsLockActive);
         if (keyCode.HasValue)
         {
             keyboardDevice.KeyDown(keyCode.Value);
@@ -294,8 +300,9 @@ public partial class VideoWindow : Window
     /// </summary>
     /// <param name="key">The Avalonia key code.</param>
     /// <param name="modifiers">The active key modifiers.</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
     /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
-    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers)
+    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
     {
         bool ctrl = modifiers.HasFlag(KeyModifiers.Control);
         bool shift = modifiers.HasFlag(KeyModifiers.Shift);
@@ -338,14 +345,21 @@ public partial class VideoWindow : Window
         if (key >= Key.A && key <= Key.Z)
         {
             byte baseCode = (byte)(key - Key.A + 0x41); // A = 0x41
-            return shift ? baseCode : (byte)(baseCode + 0x20); // Lowercase if no shift
+
+            // Caps Lock affects only letters: XOR with shift for toggle behavior
+            // - Caps Lock off, Shift off → lowercase
+            // - Caps Lock off, Shift on → uppercase
+            // - Caps Lock on, Shift off → uppercase
+            // - Caps Lock on, Shift on → lowercase (shift "undoes" caps lock)
+            bool uppercase = shift ^ capsLock;
+            return uppercase ? baseCode : (byte)(baseCode + 0x20);
         }
 
         if (key >= Key.D0 && key <= Key.D9)
         {
             if (shift)
             {
-                // Shifted number keys produce symbols
+                // Shifted number keys produce symbols (Caps Lock does NOT affect these)
                 return key switch
                 {
                     Key.D1 => (byte)'!',
@@ -365,7 +379,7 @@ public partial class VideoWindow : Window
             return (byte)(key - Key.D0 + 0x30); // 0 = 0x30
         }
 
-        // Punctuation
+        // Punctuation (Caps Lock does NOT affect these)
         return key switch
         {
             Key.OemMinus => shift ? (byte)'_' : (byte)'-',
@@ -559,6 +573,12 @@ public partial class VideoWindow : Window
         if (rightAltPressed)
         {
             modifiers |= KeyboardModifiers.ClosedApple;
+        }
+
+        // Track Caps Lock state
+        if (capsLockActive)
+        {
+            modifiers |= KeyboardModifiers.CapsLock;
         }
 
         keyboardDevice.SetModifiers(modifiers);

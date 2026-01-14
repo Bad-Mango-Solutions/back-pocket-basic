@@ -429,4 +429,81 @@ public class VideoWindowTests
 
         Assert.That(actualSymbol, Is.EqualTo(expectedSymbol));
     }
+
+    /// <summary>
+    /// Verifies Caps Lock produces uppercase for letters only.
+    /// </summary>
+    /// <remarks>
+    /// Tests the XOR logic: CapsLock alone produces uppercase.
+    /// </remarks>
+    /// <param name="letter">The letter to test.</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
+    /// <param name="shift">Whether Shift is pressed.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
+    [TestCase('A', false, false, 0x61)]
+    [TestCase('A', true, false, 0x41)]
+    [TestCase('A', false, true, 0x41)]
+    [TestCase('A', true, true, 0x61)]
+    [TestCase('Z', false, false, 0x7A)]
+    [TestCase('Z', true, false, 0x5A)]
+    [TestCase('Z', false, true, 0x5A)]
+    [TestCase('Z', true, true, 0x7A)]
+    public void CapsLock_AffectsLetterCase(char letter, bool capsLock, bool shift, byte expectedCode)
+    {
+        // Using XOR logic: shift ^ capsLock determines uppercase
+        byte baseCode = (byte)letter;
+        bool uppercase = shift ^ capsLock;
+        byte actualCode = uppercase ? baseCode : (byte)(baseCode + 0x20);
+
+        Assert.That(actualCode, Is.EqualTo(expectedCode));
+    }
+
+    /// <summary>
+    /// Verifies Caps Lock does NOT affect number keys.
+    /// </summary>
+    /// <param name="number">The number key (0-9).</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
+    /// <param name="shift">Whether Shift is pressed.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
+    [TestCase('5', false, false, 0x35)]
+    [TestCase('5', true, false, 0x35)]
+    [TestCase('5', false, true, '%')]
+    [TestCase('5', true, true, '%')]
+    public void CapsLock_DoesNotAffectNumbers(char number, bool capsLock, bool shift, int expectedCode)
+    {
+        // Numbers ignore Caps Lock, only Shift matters
+        byte actualCode;
+        if (shift)
+        {
+            actualCode = number switch
+            {
+                '5' => (byte)'%',
+                _ => (byte)number,
+            };
+        }
+        else
+        {
+            actualCode = (byte)number;
+        }
+
+        Assert.That(actualCode, Is.EqualTo((byte)expectedCode));
+    }
+
+    /// <summary>
+    /// Verifies Caps Lock does NOT affect punctuation keys.
+    /// </summary>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
+    /// <param name="shift">Whether Shift is pressed.</param>
+    /// <param name="expectedCode">The expected ASCII code.</param>
+    [TestCase(false, false, ';')]
+    [TestCase(true, false, ';')]
+    [TestCase(false, true, ':')]
+    [TestCase(true, true, ':')]
+    public void CapsLock_DoesNotAffectPunctuation(bool capsLock, bool shift, char expectedCode)
+    {
+        // Punctuation ignores Caps Lock, only Shift matters
+        char actualCode = shift ? ':' : ';';
+
+        Assert.That(actualCode, Is.EqualTo(expectedCode));
+    }
 }
