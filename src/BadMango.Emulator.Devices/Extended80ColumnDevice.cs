@@ -684,6 +684,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// The bus layer system is used to dynamically switch memory mappings based on
     /// soft switch state. When a layer is activated, it overlays the base memory map.
     /// </para>
+    /// <para>
+    /// <b>Current Implementation:</b> State is tracked via properties that can be queried
+    /// by other components (e.g., video renderer, memory composite targets). Full bus layer
+    /// manipulation requires machine configuration via a ConfigureMemory method, which
+    /// will be implemented when integrating with the MachineBuilder profile system.
+    /// The <see cref="ShouldUseAuxRamForRead"/> and <see cref="ShouldUseAuxRamForWrite"/>
+    /// methods provide the memory routing logic for composite memory targets.
+    /// </para>
     /// </remarks>
     private void ApplyState()
     {
@@ -692,10 +700,9 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             return;
         }
 
-        // The actual memory layer manipulation requires the bus to have
-        // the appropriate layers configured. This is typically done during
-        // machine configuration via ConfigureMemory().
-        // For now, we track the state and let the rendering/memory access
-        // code query these properties directly for correct behavior.
+        // State is tracked via properties (Is80StoreEnabled, IsRamRdEnabled, etc.)
+        // Composite memory targets query these properties via ShouldUseAuxRamForRead/Write
+        // to determine memory routing. Full layer manipulation will be added when
+        // ConfigureMemory integration is implemented.
     }
 }
