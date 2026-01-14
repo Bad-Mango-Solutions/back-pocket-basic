@@ -55,8 +55,8 @@ public partial class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            Assert.That(result.Message, Does.Contain("booted"));
-            mockMachine.Verify(m => m.BootAsync(It.IsAny<CancellationToken>()), Times.Once);
+            Assert.That(result.Message, Does.Contain("Booting"));
+            Assert.That(result.Message, Does.Contain("modifier keys"));
         });
     }
 

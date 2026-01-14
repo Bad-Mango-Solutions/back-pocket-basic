@@ -16,15 +16,25 @@ using BadMango.Emulator.Core.Configuration;
 /// in the background, allowing the debugger to remain responsive.
 /// </para>
 /// <para>
+/// A brief delay (1 second by default) is applied before booting to give
+/// the user time to hold down any modifier keys (such as Open Apple or
+/// Closed Apple) that affect the boot process.
+/// </para>
+/// <para>
 /// After boot, use 'pause' to suspend execution, 'resume' to continue,
 /// or 'halt' to force a complete stop.
-    /// </para>
-    /// <para>
-    /// If the machine profile has <c>autoVideoWindowOpen</c> set to <see langword="true"/>, the video window will be opened automatically when the machine boots.
-    /// </para>
-    /// </remarks>
+/// </para>
+/// <para>
+/// If the machine profile has <c>autoVideoWindowOpen</c> set to <see langword="true"/>, the video window will be opened automatically when the machine boots.
+/// </para>
+/// </remarks>
 public sealed class BootCommand : CommandHandlerBase, ICommandHelp
 {
+    /// <summary>
+    /// Default delay in milliseconds before booting to allow modifier keys to be pressed.
+    /// </summary>
+    private const int DefaultBootDelayMs = 1000;
+
     private readonly MachineProfile? profile;
     private readonly IDebugWindowManager? windowManager;
 
@@ -63,6 +73,8 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
         "This is equivalent to pressing the power/reset button on a real computer. " +
         "The CPU loads its reset vector and begins executing from the reset handler. " +
         "Execution runs in the background, keeping the debugger responsive. " +
+        "A brief delay is applied before booting to allow time to hold modifier keys " +
+        "(Open Apple, Closed Apple) that affect the boot process. " +
         "If the profile has autoVideoWindowOpen enabled, the video window opens automatically.";
 
     /// <inheritdoc/>
@@ -109,21 +121,29 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
             _ = windowManager.ShowWindowAsync("Video", debugContext.Machine);
         }
 
-        // Start boot asynchronously with error handling
-        _ = debugContext.Machine.BootAsync().ContinueWith(
-            task =>
-            {
-                if (task.IsFaulted && task.Exception != null)
-                {
-                    debugContext.Error.WriteLine($"Boot error: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
-                }
-            },
-            TaskScheduler.Default);
+        // Start boot with delay to allow modifier keys to be pressed
+        _ = BootWithDelayAsync(debugContext, DefaultBootDelayMs);
 
         string message = autoOpenVideo && windowManager is not null
-            ? "Machine booted and running. Video window opened. Use 'pause' to suspend execution."
-            : "Machine booted and running. Use 'pause' to suspend execution.";
+            ? $"Booting in {DefaultBootDelayMs / 1000.0:F1}s... Hold modifier keys now. Video window opened."
+            : $"Booting in {DefaultBootDelayMs / 1000.0:F1}s... Hold modifier keys (Open Apple, Closed Apple) now.";
 
         return CommandResult.Ok(message);
+    }
+
+    private static async Task BootWithDelayAsync(IDebugContext debugContext, int delayMs)
+    {
+        try
+        {
+            // Wait to give user time to press modifier keys
+            await Task.Delay(delayMs).ConfigureAwait(false);
+
+            // Now boot the machine
+            await debugContext.Machine!.BootAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            debugContext.Error.WriteLine($"Boot error: {ex.Message}");
+        }
     }
 }

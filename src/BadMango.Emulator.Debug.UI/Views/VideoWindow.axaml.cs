@@ -30,6 +30,13 @@ using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDev
 /// The window captures keyboard input and forwards it to the emulated
 /// keyboard device according to the Keyboard Mapping Specification.
 /// </para>
+/// <para>
+/// Apple key mappings:
+/// <list type="bullet">
+/// <item><description>Left Alt → Open Apple (PB0 at $C061)</description></item>
+/// <item><description>Right Alt → Closed Apple (PB1 at $C062)</description></item>
+/// </list>
+/// </para>
 /// </remarks>
 public partial class VideoWindow : Window
 {
@@ -73,6 +80,10 @@ public partial class VideoWindow : Window
     private int flashFrameCounter;
     private bool flashState;
     private double lastFps;
+
+    // Track Left/Right Alt state separately since Avalonia's KeyModifiers.Alt doesn't distinguish
+    private bool leftAltPressed;
+    private bool rightAltPressed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
@@ -228,6 +239,16 @@ public partial class VideoWindow : Window
             return;
         }
 
+        // Track Left/Right Alt separately for Open/Closed Apple
+        if (e.Key == Key.LeftAlt)
+        {
+            leftAltPressed = true;
+        }
+        else if (e.Key == Key.RightAlt)
+        {
+            rightAltPressed = true;
+        }
+
         // Handle modifier keys
         UpdateModifiers(e);
 
@@ -248,6 +269,16 @@ public partial class VideoWindow : Window
         if (keyboardDevice is null)
         {
             return;
+        }
+
+        // Track Left/Right Alt separately for Open/Closed Apple
+        if (e.Key == Key.LeftAlt)
+        {
+            leftAltPressed = false;
+        }
+        else if (e.Key == Key.RightAlt)
+        {
+            rightAltPressed = false;
         }
 
         // Update modifiers
@@ -517,13 +548,17 @@ public partial class VideoWindow : Window
             modifiers |= KeyboardModifiers.Control;
         }
 
-        // Left Alt → Open Apple
-        // Right Alt → Closed Apple
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        // Left Alt → Open Apple (PB0)
+        // Right Alt → Closed Apple (PB1)
+        // Use our tracked state since Avalonia's KeyModifiers.Alt doesn't distinguish left/right
+        if (leftAltPressed)
         {
-            // Avalonia doesn't distinguish left/right Alt in KeyModifiers,
-            // so we map Alt to Open Apple by default
             modifiers |= KeyboardModifiers.OpenApple;
+        }
+
+        if (rightAltPressed)
+        {
+            modifiers |= KeyboardModifiers.ClosedApple;
         }
 
         keyboardDevice.SetModifiers(modifiers);
