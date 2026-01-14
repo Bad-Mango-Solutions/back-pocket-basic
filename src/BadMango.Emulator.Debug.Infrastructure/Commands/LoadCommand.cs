@@ -54,9 +54,10 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "load program.bin $800   Load file at $0800",
-        "load rom.bin $F000      Load ROM image at $F000",
-        "load data.bin           Load file at $0000 (default)",
+        "load program.bin $800            Load file at $0800",
+        "load rom.bin $F000               Load ROM image at $F000",
+        "load data.bin                    Load file at $0000 (default)",
+        "load library://roms/test.bin $800  Load from library directory",
     ];
 
     /// <inheritdoc/>
@@ -95,19 +96,37 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error($"Invalid address: '{args[1]}'. Use hex format ($1234 or 0x1234) or decimal.");
         }
 
-        // Check if file exists
-        if (!File.Exists(filename))
+        // Resolve the path using the path resolver if available
+        string resolvedPath = filename;
+        if (debugContext.PathResolver is not null)
         {
-            return CommandResult.Error($"File not found: '{filename}'");
+            if (!debugContext.PathResolver.TryResolve(filename, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{filename}'. Library root may not be configured.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        // Check if file exists
+        if (!File.Exists(resolvedPath))
+        {
+            string errorMessage = resolvedPath != filename
+                ? $"File not found: '{filename}' (resolved to '{resolvedPath}')"
+                : $"File not found: '{filename}'";
+            return CommandResult.Error(errorMessage);
         }
 
         try
         {
-            byte[] data = File.ReadAllBytes(filename);
+            byte[] data = File.ReadAllBytes(resolvedPath);
 
             if (data.Length == 0)
             {
-                return CommandResult.Error($"File is empty: '{filename}'");
+                string errorMessage = resolvedPath != filename
+                    ? $"File is empty: '{filename}' (resolved to '{resolvedPath}')"
+                    : $"File is empty: '{filename}'";
+                return CommandResult.Error(errorMessage);
             }
 
             // Calculate memory size from bus page count

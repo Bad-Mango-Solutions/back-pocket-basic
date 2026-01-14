@@ -98,4 +98,20 @@ public interface IDebugContext : ICommandContext
     /// and bus-level tracing are available.
     /// </remarks>
     bool IsBusAttached { get; }
+
+    /// <summary>
+    /// Gets the path resolver for resolving file paths in debug commands.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The path resolver supports <c>library://</c> and <c>app://</c> URI schemes,
+    /// as well as absolute and relative file paths.
+    /// </para>
+    /// <para>
+    /// May be null if no path resolver has been attached to the debug context.
+    /// Commands should check for null before using path resolution, or handle
+    /// paths as literal file system paths when the resolver is unavailable.
+    /// </para>
+    /// </remarks>
+    IDebugPathResolver? PathResolver { get; }
 }

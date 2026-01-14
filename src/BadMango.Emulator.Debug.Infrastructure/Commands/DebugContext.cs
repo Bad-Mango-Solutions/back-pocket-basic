@@ -114,6 +114,9 @@ public sealed class DebugContext : IDebugContext
     /// <inheritdoc/>
     public bool IsBusAttached => this.Bus is not null;
 
+    /// <inheritdoc/>
+    public IDebugPathResolver? PathResolver { get; private set; }
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>
@@ -121,7 +124,9 @@ public sealed class DebugContext : IDebugContext
     /// <returns>A new <see cref="DebugContext"/> using console streams.</returns>
     public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher)
     {
-        return new(dispatcher, Console.Out, Console.Error, Console.In);
+        var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
+        context.AttachPathResolver(new DebugPathResolver());
+        return context;
     }
 
     /// <summary>
@@ -259,6 +264,16 @@ public sealed class DebugContext : IDebugContext
     {
         this.AttachSystem(cpu, bus, disassembler, machineInfo);
         this.AttachTracingListener(tracingListener);
+    }
+
+    /// <summary>
+    /// Attaches a path resolver to this debug context.
+    /// </summary>
+    /// <param name="pathResolver">The path resolver to attach.</param>
+    public void AttachPathResolver(IDebugPathResolver pathResolver)
+    {
+        ArgumentNullException.ThrowIfNull(pathResolver);
+        this.PathResolver = pathResolver;
     }
 
     /// <summary>
