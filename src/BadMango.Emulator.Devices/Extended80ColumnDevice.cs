@@ -40,7 +40,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("extended80column")]
-public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider
+public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider, IExtended80ColumnDevice
 {
     /// <summary>
     /// The name of the auxiliary RAM layer for $0200-$BFFF.
@@ -394,12 +394,14 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// is initialized. It sets up:
     /// </para>
     /// <list type="bullet">
-    /// <item><description>The auxiliary zero page layer for $0000-$01FF (ALTZP switching)</description></item>
-    /// <item><description>The auxiliary RAM layer for $0200-$BFFF (RAMRD/RAMWRT switching)</description></item>
-    /// <item><description>The auxiliary text page layer for $0400-$07FF (80STORE switching)</description></item>
-    /// <item><description>The auxiliary hi-res layer for $2000-$3FFF (80STORE + HIRES switching)</description></item>
-    /// <item><description>The expansion ROM layer for $C100-$CFFF (INTCXROM switching)</description></item>
+    /// <item><description>The auxiliary RAM layer for $1000-$BFFF (RAMRD/RAMWRT switching)</description></item>
     /// </list>
+    /// <para>
+    /// Note: Sub-page regions (zero page, stack, text page, and the first part of general RAM)
+    /// cannot use layer-based switching because the bus uses 4KB page granularity.
+    /// These regions require a composite target approach (like AuxiliaryMemoryPage0Target)
+    /// that routes each access based on soft switch state at access time.
+    /// </para>
     /// <para>
     /// When a layer is inactive, accesses fall through to the underlying base memory
     /// mapping (main RAM). When active, the layer redirects accesses to auxiliary RAM.
@@ -413,49 +415,33 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // Generate a device ID for internal use in layered mappings
         deviceId = registry.GenerateId();
 
-        // Create the layer for auxiliary zero page/stack ($0000-$01FF)
-        var zpLayer = bus.CreateLayer(LayerNameAuxZeroPage, LayerPriority);
-        bus.AddLayeredMapping(new(
-            VirtualBase: 0x0000,
-            Size: 0x0200,
-            Layer: zpLayer,
-            DeviceId: deviceId,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: auxZpTarget.Capabilities,
-            Target: auxZpTarget,
-            PhysBase: 0));
+        // NOTE: Sub-page regions ($0000-$0FFF) cannot be handled by layers because the bus
+        // uses 4KB page granularity. The text page ($0400-$07FF), zero page ($0000-$00FF),
+        // and stack ($0100-$01FF) are all within the first 4KB page.
+        //
+        // These regions require a composite target approach where each memory access
+        // checks the soft switch state at access time. This is handled by mapping page 0
+        // with a composite target (like AuxiliaryMemoryPage0Target) that has a reference
+        // to this device and checks Is80StoreEnabled/IsPage2Selected for routing.
+        //
+        // For now, we only set up layers for regions that are page-aligned (>= $1000).
 
-        // Create the layer for auxiliary RAM ($0200-$BFFF)
-        // Note: This layer covers the entire range, but text page and hi-res have
-        // higher priority layers for 80STORE mode.
+        // Create the layer for auxiliary RAM ($1000-$BFFF)
+        // This handles RAMRD/RAMWRT switching for general memory above page 0.
         var ramLayer = bus.CreateLayer(LayerNameAuxRam, LayerPriority);
         bus.AddLayeredMapping(new(
-            VirtualBase: 0x0200,
-            Size: 0xBE00,
+            VirtualBase: 0x1000,
+            Size: 0xB000,  // $1000-$BFFF = 44KB
             Layer: ramLayer,
             DeviceId: deviceId,
             RegionTag: RegionTag.Ram,
             Perms: PagePerms.All,
             Caps: auxRamTarget.Capabilities,
-            Target: auxRamTarget,
-            PhysBase: 0));
-
-        // Create the layer for auxiliary text page ($0400-$07FF) - 80STORE mode
-        // Higher priority than general aux RAM layer
-        var textLayer = bus.CreateLayer(LayerNameAuxText, LayerPriority + 1);
-        bus.AddLayeredMapping(new(
-            VirtualBase: 0x0400,
-            Size: 0x0400,
-            Layer: textLayer,
-            DeviceId: deviceId,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: auxTextTarget.Capabilities,
-            Target: auxTextTarget,
+            Target: new RamTarget(auxiliaryRam.Slice(0x1000, 0xB000), "AUX_RAM_1000"),
             PhysBase: 0));
 
         // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
+        // This has higher priority than the general AUX_RAM layer and handles 80STORE+PAGE2+HIRES
         var hiresLayer = bus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
         bus.AddLayeredMapping(new(
             VirtualBase: 0x2000,
@@ -467,6 +453,16 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             Caps: auxHiRes1Target.Capabilities,
             Target: auxHiRes1Target,
             PhysBase: 0));
+
+        // Note: The following regions CANNOT be handled by layers (sub-page):
+        // - AUX_ZP ($0000-$01FF): Zero page and stack, controlled by ALTZP
+        // - AUX_TEXT ($0400-$07FF): Text page, controlled by 80STORE+PAGE2
+        // - General RAM in page 0 ($0200-$0FFF except text): controlled by RAMRD/RAMWRT
+        //
+        // These require a composite target configured separately. See AuxiliaryMemoryPage0Target.
+        //
+        // For full 80-column support, the machine configuration should set up a composite
+        // target for page 0 that references this device for state queries.
 
         // Note: The expansion ROM layer for $C100-$CFFF is NOT created here.
         // The CompositeIOTarget owns that region and handles INTCXROM switching
@@ -838,12 +834,16 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// This method updates the memory mapping based on the current soft switch state:
     /// </para>
     /// <list type="bullet">
-    /// <item><description>ALTZP: Activates the auxiliary zero page layer ($0000-$01FF)</description></item>
-    /// <item><description>RAMRD/RAMWRT: Activates the auxiliary RAM layer ($0200-$BFFF)</description></item>
-    /// <item><description>80STORE + PAGE2: Activates the auxiliary text layer ($0400-$07FF)</description></item>
+    /// <item><description>RAMRD/RAMWRT: Activates the auxiliary RAM layer ($1000-$BFFF)</description></item>
     /// <item><description>80STORE + PAGE2 + HIRES: Activates the auxiliary hi-res layer ($2000-$3FFF)</description></item>
-    /// <item><description>INTCXROM: Activates the expansion ROM layer ($C100-$CFFF)</description></item>
+    /// <item><description>INTCXROM: Controls expansion ROM layer ($C100-$CFFF) via CompositeIOTarget</description></item>
     /// </list>
+    /// <para>
+    /// Note: Sub-page regions (zero page, stack, text page within $0000-$0FFF) cannot
+    /// use layer-based switching due to 4KB page granularity. These regions require
+    /// a composite target (like AuxiliaryMemoryPage0Target) that checks this device's
+    /// state at each memory access to determine routing.
+    /// </para>
     /// <para>
     /// When a layer is deactivated, accesses fall through to the base memory mapping (main RAM/ROM).
     /// </para>
@@ -870,10 +870,12 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             return;
         }
 
-        // ALTZP: Auxiliary zero page/stack ($0000-$01FF)
-        SetLayerActive(LayerNameAuxZeroPage, altzp);
+        // NOTE: The following sub-page regions CANNOT be controlled by layers:
+        // - ALTZP ($0000-$01FF): Zero page and stack - requires composite target
+        // - 80STORE+PAGE2 ($0400-$07FF): Text page - requires composite target
+        // These are handled by AuxiliaryMemoryPage0Target or similar composite approach.
 
-        // RAMRD/RAMWRT: Auxiliary RAM ($0200-$BFFF)
+        // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
         // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
         bool auxRamActive = ramrd || ramwrt;
         SetLayerActive(LayerNameAuxRam, auxRamActive);
@@ -892,11 +894,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
             SetLayerPermissions(LayerNameAuxRam, ramPerms);
         }
-
-        // 80STORE mode: Text page ($0400-$07FF) controlled by PAGE2
-        // When 80STORE is on and PAGE2 is set, use auxiliary text page
-        bool auxTextActive = store80 && page2;
-        SetLayerActive(LayerNameAuxText, auxTextActive);
 
         // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
         // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res

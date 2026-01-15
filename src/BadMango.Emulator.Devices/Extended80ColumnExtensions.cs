@@ -5,6 +5,9 @@
 namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+
+using Addr = System.UInt32;
 
 /// <summary>
 /// Extension methods for <see cref="MachineBuilder"/> providing Extended 80-Column Card support.
@@ -40,6 +43,14 @@ public static class Extended80ColumnExtensions
         /// </list>
         /// </para>
         /// <para>
+        /// Memory configuration includes:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description>Page 0 composite target for sub-page routing ($0000-$0FFF)</description></item>
+        /// <item><description>Auxiliary RAM layer for $1000-$BFFF (RAMRD/RAMWRT)</description></item>
+        /// <item><description>Auxiliary hi-res layer for $2000-$3FFF (80STORE+PAGE2+HIRES)</description></item>
+        /// </list>
+        /// <para>
         /// Call this method before <see cref="MachineBuilder.FromProfile"/> when loading
         /// profiles that declare an "extended80column" motherboard device.
         /// </para>
@@ -54,6 +65,12 @@ public static class Extended80ColumnExtensions
                 // This sets up the required auxiliary RAM layers BEFORE device.Initialize() is called.
                 b.ConfigureMemory((bus, registry) =>
                 {
+                    // Configure page 0 with a composite target for sub-page auxiliary memory routing.
+                    // This handles zero page ($0000-$00FF), stack ($0100-$01FF), and text page ($0400-$07FF)
+                    // which cannot use layer-based switching due to 4KB page granularity.
+                    ConfigurePage0CompositeTarget(b, bus, registry, device);
+
+                    // Configure layers for page-aligned regions ($1000+)
                     device.ConfigureMemory(bus, registry);
                 });
 
@@ -87,10 +104,62 @@ public static class Extended80ColumnExtensions
             // Configure memory during the memory configuration phase
             builder.ConfigureMemory((bus, registry) =>
             {
+                // Configure page 0 composite target
+                ConfigurePage0CompositeTarget(builder, bus, registry, device);
+
+                // Configure layers for page-aligned regions ($1000+)
                 device.ConfigureMemory(bus, registry);
             });
 
             return builder;
+        }
+
+        /// <summary>
+        /// Configures page 0 ($0000-$0FFF) with a composite target for sub-page auxiliary memory routing.
+        /// </summary>
+        /// <param name="machineBuilder">The machine builder for accessing physical memory.</param>
+        /// <param name="bus">The memory bus to configure.</param>
+        /// <param name="registry">The device registry.</param>
+        /// <param name="device">The Extended 80-Column device for state queries.</param>
+        private static void ConfigurePage0CompositeTarget(
+            MachineBuilder machineBuilder,
+            IMemoryBus bus,
+            IDeviceRegistry registry,
+            Extended80ColumnDevice device)
+        {
+            // Get the main RAM physical memory from the builder
+            // The main RAM should be configured in the profile as "main-ram-48k" or similar
+            var mainRam = machineBuilder.GetPhysicalMemory("main-ram-48k");
+            if (mainRam is null)
+            {
+                // Fall back to trying other common names
+                mainRam = machineBuilder.GetPhysicalMemory("main-ram");
+            }
+
+            if (mainRam is null)
+            {
+                // Can't configure page 0 without main RAM - the profile may handle this differently
+                return;
+            }
+
+            // Create a RAM target for page 0 of main memory
+            var page0MainTarget = new RamTarget(mainRam.Slice(0, 0x1000), "MAIN_PAGE0");
+
+            // Create the composite target that routes based on soft switch state
+            var page0Target = new Extended80ColumnPage0Target(page0MainTarget, device);
+
+            // Remap page 0 to use the composite target
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "Extended80Column", "Page0_Composite", "Memory/Page0");
+            bus.MapRegion(
+                virtualBase: 0x0000,
+                size: 0x1000,
+                deviceId: deviceId,
+                regionTag: RegionTag.Ram,
+                perms: PagePerms.All,
+                caps: page0Target.Capabilities,
+                target: page0Target,
+                physicalBase: 0);
         }
     }
 }

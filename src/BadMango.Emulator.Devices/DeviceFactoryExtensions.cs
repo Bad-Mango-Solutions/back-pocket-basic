@@ -85,8 +85,8 @@ public static class DeviceFactoryExtensions
         /// </para>
         /// <para>
         /// Additionally, this method registers device factories that require special
-        /// configuration beyond simple instantiation, such as the Language Card which
-        /// needs memory layers and swap groups configured.
+        /// configuration beyond simple instantiation, such as the Language Card and
+        /// Extended 80-Column Card which need memory layers configured.
         /// </para>
         /// <para>
         /// Currently registered devices:
@@ -94,6 +94,7 @@ public static class DeviceFactoryExtensions
         /// <list type="bullet">
         /// <item><description>Motherboard: Speaker ($C030)</description></item>
         /// <item><description>Motherboard: Language Card (16KB RAM at $D000-$FFFF)</description></item>
+        /// <item><description>Motherboard: Extended 80-Column Card (64KB auxiliary RAM)</description></item>
         /// <item><description>Slot Cards: PocketWatch (Thunderclock-compatible RTC)</description></item>
         /// </list>
         /// <para>
@@ -111,6 +112,10 @@ public static class DeviceFactoryExtensions
             // be done through simple auto-discovery. We use a placeholder ROM target that
             // allows the underlying base ROM mapping to show through when LC RAM is disabled.
             builder.RegisterLanguageCardFactory();
+
+            // The Extended 80-Column Card also needs special memory configuration for
+            // auxiliary RAM layers (zero page, stack, text page, hi-res pages).
+            builder.RegisterExtended80ColumnFactory();
 
             return builder;
         }

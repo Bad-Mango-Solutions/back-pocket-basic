@@ -68,6 +68,7 @@ public partial class VideoWindow : Window
     private IMachine? machine;
     private IVideoDevice? videoDevice;
     private ICharacterDevice? characterDevice;
+    private IExtended80ColumnDevice? extended80ColumnDevice;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
     private Memory<byte> characterRom;
@@ -165,8 +166,8 @@ public partial class VideoWindow : Window
     /// <param name="machine">The machine to attach to.</param>
     /// <remarks>
     /// <para>
-    /// Extracts the video device, character device, keyboard device, and memory bus
-    /// from the machine for rendering and input handling.
+    /// Extracts the video device, character device, keyboard device, extended 80-column
+    /// device, and memory bus from the machine for rendering and input handling.
     /// </para>
     /// <para>
     /// If no <see cref="ICharacterRomProvider"/> is found, falls back to the default ROM.
@@ -180,6 +181,7 @@ public partial class VideoWindow : Window
         this.memoryBus = machine.Bus;
         this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
+        this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
         // Look for CharacterDevice (preferred) or any ICharacterRomProvider
         this.characterDevice = machine.GetComponent<ICharacterDevice>();
@@ -218,6 +220,7 @@ public partial class VideoWindow : Window
         memoryBus = null;
         videoDevice = null;
         characterDevice = null;
+        extended80ColumnDevice = null;
         keyboardDevice = null;
         characterRom = Memory<byte>.Empty;
     }
@@ -490,6 +493,12 @@ public partial class VideoWindow : Window
         bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
         bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
 
+        // Get auxiliary memory reader for 80-column mode
+        // This reads directly from the Extended 80-Column device's auxiliary RAM
+        Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
+            ? extended80ColumnDevice.ReadAuxRam
+            : null;
+
         // Render frame using the Pocket2VideoRenderer with current color mode
         renderer.RenderFrame(
             pixels,
@@ -501,7 +510,8 @@ public partial class VideoWindow : Window
             flashState,
             noFlash1,
             noFlash2,
-            colorMode);
+            colorMode,
+            readAuxMemory);
 
         // Commit pixel buffer to bitmap
         pixelBuffer.Commit();

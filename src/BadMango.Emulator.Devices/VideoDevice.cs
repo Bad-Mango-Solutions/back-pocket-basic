@@ -72,6 +72,7 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 
     private readonly bool[] annunciators = new bool[4];
     private IScheduler? scheduler;
+    private IExtended80ColumnDevice? extended80ColumnDevice;
     private EventHandle vblankEventHandle;
     private EventHandle vblankEndEventHandle;
     private bool textMode = true;
@@ -145,6 +146,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         ArgumentNullException.ThrowIfNull(context);
 
         scheduler = context.Scheduler;
+
+        // Get the Extended 80-Column Device if present, to synchronize PAGE2/HIRES state
+        extended80ColumnDevice = context.GetComponent<IExtended80ColumnDevice>();
+
         ScheduleNextVBlank();
     }
 
@@ -288,6 +293,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         if (page2 != selected)
         {
             page2 = selected;
+
+            // Notify Extended 80-Column Device for memory banking
+            extended80ColumnDevice?.SetPage2(selected);
+
             OnModeChanged();
         }
     }
@@ -298,6 +307,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         if (hiresMode != enabled)
         {
             hiresMode = enabled;
+
+            // Notify Extended 80-Column Device for memory banking
+            extended80ColumnDevice?.SetHiRes(enabled);
+
             OnModeChanged();
         }
     }

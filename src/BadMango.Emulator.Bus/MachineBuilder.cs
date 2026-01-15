@@ -451,6 +451,30 @@ public sealed partial class MachineBuilder
     }
 
     /// <summary>
+    /// Gets a physical memory block by name.
+    /// </summary>
+    /// <param name="name">The name of the physical memory block.</param>
+    /// <returns>The physical memory block if found; otherwise, <see langword="null"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Physical memory blocks are created during profile loading when the
+    /// <c>memory.physical</c> section is processed. Each block has a unique name
+    /// that can be used to retrieve it.
+    /// </para>
+    /// <para>
+    /// This method is useful for device factories that need access to the
+    /// physical memory backing stores, such as the Extended 80-Column Card
+    /// which needs to configure a composite target for page 0.
+    /// </para>
+    /// </remarks>
+    public PhysicalMemory? GetPhysicalMemory(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return physicalMemoryBlocks.TryGetValue(name, out var physical) ? physical : null;
+    }
+
+    /// <summary>
     /// Adds a ROM image to the machine at the specified address.
     /// </summary>
     /// <param name="data">The ROM data bytes.</param>
