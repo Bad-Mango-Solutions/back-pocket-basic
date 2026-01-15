@@ -364,7 +364,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// <summary>
     /// Configures the auxiliary memory layers and swap groups on the bus.
     /// </summary>
-    /// <param name="bus">The memory bus to configure.</param>
+    /// <param name="memoryBus">The memory bus to configure.</param>
     /// <param name="registry">The device registry for ID generation.</param>
     /// <remarks>
     /// <para>
@@ -406,8 +406,8 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         // Create the layer for auxiliary RAM ($1000-$BFFF)
         // This handles RAMRD/RAMWRT switching for general memory above page 0.
-        var ramLayer = bus.CreateLayer(LayerNameAuxRam, LayerPriority);
-        bus.AddLayeredMapping(new(
+        var ramLayer = memoryBus.CreateLayer(LayerNameAuxRam, LayerPriority);
+        memoryBus.AddLayeredMapping(new(
             VirtualBase: 0x1000,
             Size: 0xB000,  // $1000-$BFFF = 44KB
             Layer: ramLayer,
@@ -420,8 +420,8 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
         // This has higher priority than the general AUX_RAM layer and handles 80STORE+PAGE2+HIRES
-        var hiresLayer = bus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
-        bus.AddLayeredMapping(new(
+        var hiresLayer = memoryBus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
+        memoryBus.AddLayeredMapping(new(
             VirtualBase: 0x2000,
             Size: 0x2000,
             Layer: hiresLayer,

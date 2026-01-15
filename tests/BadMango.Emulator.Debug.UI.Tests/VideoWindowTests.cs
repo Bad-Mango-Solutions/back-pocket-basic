@@ -476,20 +476,7 @@ public class VideoWindowTests
     public void CapsLock_DoesNotAffectNumbers(char number, bool capsLock, bool shift, int expectedCode)
     {
         // Numbers ignore Caps Lock, only Shift matters
-        byte actualCode;
-        if (shift)
-        {
-            actualCode = number switch
-            {
-                '5' => (byte)'%',
-                _ => (byte)number,
-            };
-        }
-        else
-        {
-            actualCode = (byte)number;
-        }
-
+        byte actualCode = (byte)(shift && number == '5' ? '%' : number);
         Assert.That(actualCode, Is.EqualTo((byte)expectedCode));
     }
 
