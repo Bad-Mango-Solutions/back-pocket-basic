@@ -46,8 +46,8 @@ assigned slot `S` (1-7):
 - **I/O soft switches**: `$C0S0-$C0SF`
 - **ROM**: `$CS00-$CSFF` (256 bytes)
 
-The base I/O address is `0xC080 + (S << 4)` (e.g., slot 6 -> `$C0E0-$C0EF`). The ROM base
-is `0xC000 + (S << 8)` (slot 6 -> `$C600-$C6FF`).
+The base I/O address is `0xC080 + (S << 4)` (slot 1 -> `$C090-$C09F`, slot 6 ->
+`$C0E0-$C0EF`). The ROM base is `0xC000 + (S << 8)` (slot 6 -> `$C600-$C6FF`).
 
 ### 2.2 Soft Switches and Registers
 
