@@ -385,9 +385,9 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// mapping (main RAM). When active, the layer redirects accesses to auxiliary RAM.
     /// </para>
     /// </remarks>
-    public void ConfigureMemory(IMemoryBus bus, IDeviceRegistry registry)
+    public void ConfigureMemory(IMemoryBus memoryBus, IDeviceRegistry registry)
     {
-        ArgumentNullException.ThrowIfNull(bus);
+        ArgumentNullException.ThrowIfNull(memoryBus);
         ArgumentNullException.ThrowIfNull(registry);
 
         // Generate a device ID for internal use in layered mappings
