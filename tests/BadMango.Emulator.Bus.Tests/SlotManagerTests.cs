@@ -549,6 +549,194 @@ public class SlotManagerTests
     }
 
     /// <summary>
+    /// Verifies that RegisterInternalExpansionRom stores the expansion ROM.
+    /// </summary>
+    [Test]
+    public void RegisterInternalExpansionRom_ValidSlot_StoresExpansionRom()
+    {
+        var expRom = new Mock<IBusTarget>();
+
+        slotManager.RegisterInternalExpansionRom(3, expRom.Object);
+
+        // GetExpansionRomRegion should return the internal ROM
+        var result = slotManager.GetExpansionRomRegion(3);
+        Assert.That(result, Is.SameAs(expRom.Object));
+    }
+
+    /// <summary>
+    /// Verifies that RegisterInternalExpansionRom can clear the expansion ROM with null.
+    /// </summary>
+    [Test]
+    public void RegisterInternalExpansionRom_Null_ClearsExpansionRom()
+    {
+        var expRom = new Mock<IBusTarget>();
+
+        slotManager.RegisterInternalExpansionRom(3, expRom.Object);
+        slotManager.RegisterInternalExpansionRom(3, null);
+
+        // GetExpansionRomRegion should return null (no card installed)
+        var result = slotManager.GetExpansionRomRegion(3);
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that RegisterInternalExpansionRom throws for invalid slot.
+    /// </summary>
+    [Test]
+    public void RegisterInternalExpansionRom_InvalidSlot_ThrowsArgumentOutOfRangeException()
+    {
+        var expRom = new Mock<IBusTarget>();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            slotManager.RegisterInternalExpansionRom(0, expRom.Object));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            slotManager.RegisterInternalExpansionRom(8, expRom.Object));
+    }
+
+    /// <summary>
+    /// Verifies that internal expansion ROM takes precedence over physical card.
+    /// </summary>
+    [Test]
+    public void GetExpansionRomRegion_InternalRomTakesPrecedenceOverCard()
+    {
+        var cardExpRom = new Mock<IBusTarget>();
+        var internalExpRom = new Mock<IBusTarget>();
+
+        var card = CreateMockPeripheral();
+        card.Setup(c => c.ExpansionROMRegion).Returns(cardExpRom.Object);
+
+        slotManager.Install(3, card.Object);
+        slotManager.RegisterInternalExpansionRom(3, internalExpRom.Object);
+
+        var result = slotManager.GetExpansionRomRegion(3);
+        Assert.That(result, Is.SameAs(internalExpRom.Object), "Internal ROM should take precedence");
+    }
+
+    /// <summary>
+    /// Verifies that clearing internal expansion ROM restores physical card's ROM.
+    /// </summary>
+    [Test]
+    public void GetExpansionRomRegion_ClearingInternalRomRestoresCardRom()
+    {
+        var cardExpRom = new Mock<IBusTarget>();
+        var internalExpRom = new Mock<IBusTarget>();
+
+        var card = CreateMockPeripheral();
+        card.Setup(c => c.ExpansionROMRegion).Returns(cardExpRom.Object);
+
+        slotManager.Install(3, card.Object);
+        slotManager.RegisterInternalExpansionRom(3, internalExpRom.Object);
+        slotManager.RegisterInternalExpansionRom(3, null); // Clear internal
+
+        var result = slotManager.GetExpansionRomRegion(3);
+        Assert.That(result, Is.SameAs(cardExpRom.Object), "Should fall back to card ROM");
+    }
+
+    /// <summary>
+    /// Verifies that SetDefaultExpansionRom stores the default ROM.
+    /// </summary>
+    [Test]
+    public void SetDefaultExpansionRom_ValidRom_StoresDefaultRom()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+
+        // GetVisibleExpansionRom should return the default ROM when no slot is selected
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.SameAs(defaultRom.Object));
+    }
+
+    /// <summary>
+    /// Verifies that SetDefaultExpansionRom can clear the default ROM with null.
+    /// </summary>
+    [Test]
+    public void SetDefaultExpansionRom_Null_ClearsDefaultRom()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+        slotManager.SetDefaultExpansionRom(null);
+
+        // GetVisibleExpansionRom should return null (floating bus)
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that GetVisibleExpansionRom returns selected slot's ROM when a slot is selected.
+    /// </summary>
+    [Test]
+    public void GetVisibleExpansionRom_SlotSelected_ReturnsSlotRom()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+        var slotRom = new Mock<IBusTarget>();
+
+        var card = CreateMockPeripheral();
+        card.Setup(c => c.ExpansionROMRegion).Returns(slotRom.Object);
+
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+        slotManager.Install(6, card.Object);
+        slotManager.SelectExpansionSlot(6);
+
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.SameAs(slotRom.Object), "Should return slot's ROM, not default");
+    }
+
+    /// <summary>
+    /// Verifies that GetVisibleExpansionRom returns default ROM after deselection.
+    /// </summary>
+    [Test]
+    public void GetVisibleExpansionRom_AfterDeselect_ReturnsDefaultRom()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+        var slotRom = new Mock<IBusTarget>();
+
+        var card = CreateMockPeripheral();
+        card.Setup(c => c.ExpansionROMRegion).Returns(slotRom.Object);
+
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+        slotManager.Install(6, card.Object);
+        slotManager.SelectExpansionSlot(6);
+        slotManager.DeselectExpansionSlot();
+
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.SameAs(defaultRom.Object), "Should return default ROM after deselection");
+    }
+
+    /// <summary>
+    /// Verifies that GetVisibleExpansionRom returns null when no default and no slot selected.
+    /// </summary>
+    [Test]
+    public void GetVisibleExpansionRom_NoDefaultNoSlot_ReturnsNull()
+    {
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    /// Verifies that internal expansion ROM takes precedence over default for selected slot.
+    /// </summary>
+    [Test]
+    public void GetVisibleExpansionRom_InternalRomTakesPrecedenceOverCard()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+        var cardRom = new Mock<IBusTarget>();
+        var internalRom = new Mock<IBusTarget>();
+
+        var card = CreateMockPeripheral();
+        card.Setup(c => c.ExpansionROMRegion).Returns(cardRom.Object);
+
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+        slotManager.Install(3, card.Object);
+        slotManager.RegisterInternalExpansionRom(3, internalRom.Object);
+        slotManager.SelectExpansionSlot(3);
+
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.SameAs(internalRom.Object), "Internal ROM takes precedence over card ROM");
+    }
+
+    /// <summary>
     /// Creates a mock slot card for testing.
     /// </summary>
     /// <returns>A mock slot card instance.</returns>

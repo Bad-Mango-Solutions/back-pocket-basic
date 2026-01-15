@@ -231,9 +231,12 @@ public class KeyboardDeviceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(states, Has.Count.EqualTo(2));
+            Assert.That(states, Has.Count.EqualTo(5));
             Assert.That(states.Any(s => s.Name == "KBD" && s.Address == 0xC000), Is.True);
             Assert.That(states.Any(s => s.Name == "KBDSTRB" && s.Address == 0xC010), Is.True);
+            Assert.That(states.Any(s => s.Name == "PB0" && s.Address == 0xC061), Is.True);
+            Assert.That(states.Any(s => s.Name == "PB1" && s.Address == 0xC062), Is.True);
+            Assert.That(states.Any(s => s.Name == "PB2" && s.Address == 0xC063), Is.True);
         });
     }
 
@@ -281,6 +284,193 @@ public class KeyboardDeviceTests
         var releasedStates = provider.GetSoftSwitchStates();
         var strbAfterRelease = releasedStates.First(s => s.Name == "KBDSTRB");
         Assert.That(strbAfterRelease.Value, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that reading $C061 (PB0) returns $00 when Open Apple is not pressed.
+    /// </summary>
+    [Test]
+    public void ReadC061_WhenOpenAppleNotPressed_ReturnsZero()
+    {
+        device.SetModifiers(KeyboardModifiers.None);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x61, in context);
+
+        Assert.That(result, Is.EqualTo(0x00));
+    }
+
+    /// <summary>
+    /// Verifies that reading $C061 (PB0) returns $80 when Open Apple is pressed.
+    /// </summary>
+    [Test]
+    public void ReadC061_WhenOpenApplePressed_Returns80()
+    {
+        device.SetModifiers(KeyboardModifiers.OpenApple);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x61, in context);
+
+        Assert.That(result, Is.EqualTo(0x80));
+    }
+
+    /// <summary>
+    /// Verifies that reading $C062 (PB1) returns $00 when Closed Apple is not pressed.
+    /// </summary>
+    [Test]
+    public void ReadC062_WhenClosedAppleNotPressed_ReturnsZero()
+    {
+        device.SetModifiers(KeyboardModifiers.None);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x62, in context);
+
+        Assert.That(result, Is.EqualTo(0x00));
+    }
+
+    /// <summary>
+    /// Verifies that reading $C062 (PB1) returns $80 when Closed Apple is pressed.
+    /// </summary>
+    [Test]
+    public void ReadC062_WhenClosedApplePressed_Returns80()
+    {
+        device.SetModifiers(KeyboardModifiers.ClosedApple);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x62, in context);
+
+        Assert.That(result, Is.EqualTo(0x80));
+    }
+
+    /// <summary>
+    /// Verifies that reading $C063 (PB2) returns $00 when Shift is not pressed.
+    /// </summary>
+    [Test]
+    public void ReadC063_WhenShiftNotPressed_ReturnsZero()
+    {
+        device.SetModifiers(KeyboardModifiers.None);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x63, in context);
+
+        Assert.That(result, Is.EqualTo(0x00));
+    }
+
+    /// <summary>
+    /// Verifies that reading $C063 (PB2) returns $80 when Shift is pressed.
+    /// </summary>
+    [Test]
+    public void ReadC063_WhenShiftPressed_Returns80()
+    {
+        device.SetModifiers(KeyboardModifiers.Shift);
+        var context = CreateTestContext();
+
+        byte result = dispatcher.Read(0x63, in context);
+
+        Assert.That(result, Is.EqualTo(0x80));
+    }
+
+    /// <summary>
+    /// Verifies that both Open Apple and Closed Apple can be pressed simultaneously.
+    /// </summary>
+    [Test]
+    public void PushButtons_BothAppleKeysPressed_BothReturnPressed()
+    {
+        device.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple);
+        var context = CreateTestContext();
+
+        byte pb0 = dispatcher.Read(0x61, in context);
+        byte pb1 = dispatcher.Read(0x62, in context);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pb0, Is.EqualTo(0x80), "PB0 (Open Apple) should be pressed");
+            Assert.That(pb1, Is.EqualTo(0x80), "PB1 (Closed Apple) should be pressed");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetSoftSwitchStates includes PB0, PB1, and PB2 states.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_IncludesPushButtonStates()
+    {
+        var provider = (ISoftSwitchProvider)device;
+        device.SetModifiers(KeyboardModifiers.OpenApple);
+
+        var states = provider.GetSoftSwitchStates();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(states, Has.Count.EqualTo(5));
+            Assert.That(states.Any(s => s.Name == "PB0" && s.Address == 0xC061), Is.True, "Should have PB0 state");
+            Assert.That(states.Any(s => s.Name == "PB1" && s.Address == 0xC062), Is.True, "Should have PB1 state");
+            Assert.That(states.Any(s => s.Name == "PB2" && s.Address == 0xC063), Is.True, "Should have PB2 state");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that GetSoftSwitchStates reflects correct PB0 state.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_PB0_ReflectsOpenAppleState()
+    {
+        var provider = (ISoftSwitchProvider)device;
+
+        // Initially not pressed
+        device.SetModifiers(KeyboardModifiers.None);
+        var initialStates = provider.GetSoftSwitchStates();
+        var pb0Initial = initialStates.First(s => s.Name == "PB0");
+        Assert.That(pb0Initial.Value, Is.False, "PB0 should be false when Open Apple not pressed");
+
+        // Now press Open Apple
+        device.SetModifiers(KeyboardModifiers.OpenApple);
+        var pressedStates = provider.GetSoftSwitchStates();
+        var pb0Pressed = pressedStates.First(s => s.Name == "PB0");
+        Assert.That(pb0Pressed.Value, Is.True, "PB0 should be true when Open Apple pressed");
+    }
+
+    /// <summary>
+    /// Verifies that GetSoftSwitchStates reflects correct PB1 state.
+    /// </summary>
+    [Test]
+    public void GetSoftSwitchStates_PB1_ReflectsClosedAppleState()
+    {
+        var provider = (ISoftSwitchProvider)device;
+
+        // Initially not pressed
+        device.SetModifiers(KeyboardModifiers.None);
+        var initialStates = provider.GetSoftSwitchStates();
+        var pb1Initial = initialStates.First(s => s.Name == "PB1");
+        Assert.That(pb1Initial.Value, Is.False, "PB1 should be false when Closed Apple not pressed");
+
+        // Now press Closed Apple
+        device.SetModifiers(KeyboardModifiers.ClosedApple);
+        var pressedStates = provider.GetSoftSwitchStates();
+        var pb1Pressed = pressedStates.First(s => s.Name == "PB1");
+        Assert.That(pb1Pressed.Value, Is.True, "PB1 should be true when Closed Apple pressed");
+    }
+
+    /// <summary>
+    /// Verifies that Reset clears the modifier state which affects pushbuttons.
+    /// </summary>
+    [Test]
+    public void Reset_ClearsModifiers_PushButtonsReturnZero()
+    {
+        device.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift);
+        var context = CreateTestContext();
+
+        // Verify buttons are pressed before reset
+        Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "PB0 should be pressed before reset");
+
+        device.Reset();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x00), "PB0 should be clear after reset");
+            Assert.That(dispatcher.Read(0x62, in context), Is.EqualTo(0x00), "PB1 should be clear after reset");
+            Assert.That(dispatcher.Read(0x63, in context), Is.EqualTo(0x00), "PB2 should be clear after reset");
+        });
     }
 
     private static BusAccess CreateTestContext()

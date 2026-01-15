@@ -32,6 +32,7 @@
     <File Path="SETUP_GUIDE.md" />
   </Folder>
   <Folder Name="/profiles/">
+    <File Path="profiles/pocket2e-a2.json" />
     <File Path="profiles/pocket2e-devices.json" />
     <File Path="profiles/pocket2e-lite.json" />
     <File Path="profiles/pocket2e-min.json" />
@@ -91,6 +92,7 @@
     <File Path="specs/reference/Apple II Serial Communications Specification.md" />
     <File Path="specs/reference/Apple II Soft Switches Reference.md" />
     <File Path="specs/reference/Applesoft BASIC ROM Reference.md" />
+    <File Path="specs/reference/Machine Profile Configuration Guide.md" />
   </Folder>
   <Folder Name="/specs/video/">
     <File Path="specs/video/Apple II 80-Column Card Specification.md" />
@@ -118,12 +120,12 @@
     <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
     <Project Path="src/BadMango.Emulator.Infrastructure/BadMango.Emulator.Infrastructure.csproj" />
     <Project Path="src/BadMango.Emulator.Rendering/BadMango.Emulator.Rendering.csproj" />
-    <Project Path="src/BadMango.Emulator.UI.Abstractions/BadMango.Emulator.UI.Abstractions.csproj" />
     <Project Path="src/BadMango.Emulator.TextEditor/BadMango.Emulator.TextEditor.csproj" />
+    <Project Path="src/BadMango.Emulator.UI.Abstractions/BadMango.Emulator.UI.Abstractions.csproj" />
   </Folder>
   <Folder Name="/src/emulator/ui/">
-    <Project Path="src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj" />
     <Project Path="src/BadMango.Emulator.Debug.UI/BadMango.Emulator.Debug.UI.csproj" />
+    <Project Path="src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj" />
     <Project Path="src/BadMango.Emulator.UI/BadMango.Emulator.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -137,8 +139,8 @@
     <Project Path="tests/BadMango.Emulator.Infrastructure.Tests/BadMango.Emulator.Infrastructure.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Rendering.Tests/BadMango.Emulator.Rendering.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
-    <Project Path="tests/BadMango.Emulator.UI.Tests/BadMango.Emulator.UI.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.TextEditor.Tests/BadMango.Emulator.TextEditor.Tests.csproj" />
+    <Project Path="tests/BadMango.Emulator.UI.Tests/BadMango.Emulator.UI.Tests.csproj" />
   </Folder>
   <Folder Name="/wiki/">
     <File Path="wiki/6502-Emulation.md" />

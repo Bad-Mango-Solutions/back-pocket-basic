@@ -59,6 +59,11 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     private const int Text40Columns = 40;
 
     /// <summary>
+    /// Number of text columns in 80-column mode.
+    /// </summary>
+    private const int Text80Columns = 80;
+
+    /// <summary>
     /// Character width in pixels.
     /// </summary>
     private const int CharWidth = 7;
@@ -106,7 +111,8 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         bool flashState,
         bool noFlash1Enabled,
         bool noFlash2Enabled,
-        DisplayColorMode colorMode = DisplayColorMode.Green)
+        DisplayColorMode colorMode = DisplayColorMode.Green,
+        Func<ushort, byte>? readAuxMemory = null)
     {
         ArgumentNullException.ThrowIfNull(readMemory);
 
@@ -114,6 +120,19 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         {
             case VideoMode.Text40:
                 RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
+                break;
+
+            case VideoMode.Text80:
+                if (readAuxMemory is not null)
+                {
+                    RenderText80(pixels, readMemory, readAuxMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
+                }
+                else
+                {
+                    // Fall back to 40-column mode if auxiliary memory reader not provided
+                    RenderText40(pixels, readMemory, characterRomData, useAltCharSet, isPage2, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
+                }
+
                 break;
 
             case VideoMode.LoRes:
@@ -305,6 +324,142 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     }
 
     /// <summary>
+    /// Renders 80-column text mode.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In 80-column mode, characters are displayed at half the width of 40-column mode.
+    /// Each character is 7 pixels wide (no horizontal scaling) and 16 pixels tall (2× vertical).
+    /// </para>
+    /// <para>
+    /// Character data is interleaved between main and auxiliary memory:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Even columns (0, 2, 4, ..., 78): Read from auxiliary memory</description></item>
+    /// <item><description>Odd columns (1, 3, 5, ..., 79): Read from main memory</description></item>
+    /// </list>
+    /// <para>
+    /// The memory address for both main and auxiliary is the same within the text page;
+    /// the column position determines which bank to read from.
+    /// </para>
+    /// </remarks>
+    private void RenderText80(
+        Span<uint> pixels,
+        Func<ushort, byte> readMainMemory,
+        Func<ushort, byte> readAuxMemory,
+        ReadOnlySpan<byte> characterRomData,
+        bool useAltCharSet,
+        bool isPage2,
+        bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
+        DisplayColorMode colorMode)
+    {
+        for (int row = 0; row < TextRows; row++)
+        {
+            ushort rowAddr = (ushort)(TextRowAddresses[row] + (isPage2 ? 0x0400 : 0));
+
+            for (int col80 = 0; col80 < Text80Columns; col80++)
+            {
+                // Memory column maps 80-column to 40-column address
+                // Two 80-column characters share the same memory address (one from main, one from aux)
+                int memCol = col80 / 2;
+                ushort addr = (ushort)(rowAddr + memCol);
+
+                // Even columns (0, 2, 4, ...) come from auxiliary memory
+                // Odd columns (1, 3, 5, ...) come from main memory
+                bool isEvenCol = (col80 & 1) == 0;
+                byte charCode = isEvenCol ? readAuxMemory(addr) : readMainMemory(addr);
+
+                RenderCharacter80(pixels, characterRomData, charCode, row, col80, useAltCharSet, flashState, noFlash1Enabled, noFlash2Enabled, colorMode);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Renders a single character in 80-column mode at half width.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In 80-column mode, characters are rendered at 7×16 pixels (half the width of 40-column).
+    /// This is achieved by using 1× horizontal scaling and 2× vertical scaling.
+    /// </para>
+    /// <para>
+    /// Character display modes are the same as 40-column mode:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>$00-$3F: Inverse (pre-inverted in ROM)</description></item>
+    /// <item><description>$40-$7F: Flashing</description></item>
+    /// <item><description>$80-$FF: Normal</description></item>
+    /// </list>
+    /// </remarks>
+    private void RenderCharacter80(
+        Span<uint> pixels,
+        ReadOnlySpan<byte> characterRomData,
+        byte charCode,
+        int row,
+        int col,
+        bool useAltCharSet,
+        bool flashState,
+        bool noFlash1Enabled,
+        bool noFlash2Enabled,
+        DisplayColorMode colorMode)
+    {
+        // Determine display style based on character code
+        bool isFlashing = charCode >= 0x40 && charCode < 0x80;
+
+        // Check if flashing is disabled for the current bank
+        bool noFlash = useAltCharSet ? noFlash2Enabled : noFlash1Enabled;
+        if (noFlash)
+        {
+            isFlashing = false;
+        }
+
+        // ROM offset: charCode maps directly to ROM (charCode * 8)
+        int romOffset = useAltCharSet ? 2048 : 0;
+
+        // Calculate pixel position (1× horizontal, 2× vertical: 7×16 pixels per character)
+        int pixelX = col * CharWidth;
+        int pixelY = row * CharHeight * 2;
+
+        // For flashing characters, invert when flash state is ON
+        bool shouldInvert = isFlashing && flashState;
+
+        // Get foreground color based on color mode
+        uint foregroundColor = DisplayColors.GetForegroundColor(colorMode);
+        uint backgroundColor = DisplayColors.GetBackgroundColor(colorMode);
+
+        // Render each scanline
+        for (int scanline = 0; scanline < CharHeight; scanline++)
+        {
+            byte scanlineData = 0;
+            int romIndex = romOffset + (charCode * 8) + scanline;
+            if (!characterRomData.IsEmpty && romIndex < characterRomData.Length)
+            {
+                scanlineData = characterRomData[romIndex];
+            }
+
+            if (shouldInvert)
+            {
+                scanlineData = (byte)(~scanlineData & 0x7F);
+            }
+
+            // Render 7 pixels per scanline with 1× horizontal scaling, 2× vertical
+            for (int pixel = 0; pixel < CharWidth; pixel++)
+            {
+                bool isSet = (scanlineData & (1 << (6 - pixel))) != 0;
+                uint color = isSet ? foregroundColor : backgroundColor;
+
+                // Write 1×2 block for each source pixel (half width, same height as 40-col)
+                int x = pixelX + pixel;
+                int y = pixelY + (scanline * 2);
+
+                SetPixel1x2(pixels, x, y, color);
+            }
+        }
+    }
+
+    /// <summary>
     /// Renders lo-res graphics mode.
     /// </summary>
     private void RenderLoRes(
@@ -431,6 +586,22 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
             pixels[offset + 1] = color;
             pixels[offset + stride] = color;
             pixels[offset + stride + 1] = color;
+        }
+    }
+
+    /// <summary>
+    /// Sets a 1×2 pixel block at the specified position (half-width for 80-column mode).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetPixel1x2(Span<uint> pixels, int x, int y, uint color)
+    {
+        int stride = CanonicalWidth;
+
+        if (x >= 0 && x < stride && y >= 0 && y + 1 < CanonicalHeight)
+        {
+            int offset = (y * stride) + x;
+            pixels[offset] = color;
+            pixels[offset + stride] = color;
         }
     }
 

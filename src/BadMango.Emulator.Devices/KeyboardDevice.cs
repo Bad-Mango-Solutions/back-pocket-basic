@@ -24,17 +24,33 @@ using Interfaces;
 /// When a key is pressed, the ASCII code is latched into the keyboard data register
 /// with the high bit (strobe) set. The strobe remains set until cleared by accessing $C010.
 /// </para>
+/// <para>
+/// The keyboard device also manages the pushbutton inputs that correspond to the
+/// Apple II's Open Apple and Closed Apple keys:
+/// </para>
+/// <list type="bullet">
+/// <item><description>$C061 (PB0): Open Apple / Button 0 - bit 7 set when pressed</description></item>
+/// <item><description>$C062 (PB1): Closed Apple / Button 1 - bit 7 set when pressed</description></item>
+/// <item><description>$C063 (PB2): Shift key modifier - bit 7 set when pressed</description></item>
+/// </list>
 /// </remarks>
 [DeviceType("keyboard")]
 public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 {
     private const ushort KeyboardDataAddress = 0xC000;
     private const ushort KeyboardStrobeAddress = 0xC010;
+    private const ushort PushButton0Address = 0xC061;
+    private const ushort PushButton1Address = 0xC062;
+    private const ushort PushButton2Address = 0xC063;
 
     private const byte KeyboardDataOffset = 0x00;
     private const byte KeyboardStrobeOffset = 0x10;
+    private const byte PushButton0Offset = 0x61;
+    private const byte PushButton1Offset = 0x62;
+    private const byte PushButton2Offset = 0x63;
     private const byte StrobeBit = 0x80;
     private const byte KeyDownBit = 0x80;
+    private const byte ButtonPressedBit = 0x80;
 
     /// <summary>
     /// CPU cycles per millisecond at approximately 1.02 MHz.
@@ -72,10 +88,17 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
     /// <inheritdoc />
     public IReadOnlyList<SoftSwitchState> GetSoftSwitchStates()
     {
+        bool openApplePressed = modifiers.HasFlag(KeyboardModifiers.OpenApple);
+        bool closedApplePressed = modifiers.HasFlag(KeyboardModifiers.ClosedApple);
+        bool shiftPressed = modifiers.HasFlag(KeyboardModifiers.Shift);
+
         return
         [
             new("KBD", KeyboardDataAddress, strobe, "Keyboard data register (strobe set when key available)"),
             new("KBDSTRB", KeyboardStrobeAddress, keyDown, "Any key down flag"),
+            new("PB0", PushButton0Address, openApplePressed, "Pushbutton 0 / Open Apple"),
+            new("PB1", PushButton1Address, closedApplePressed, "Pushbutton 1 / Closed Apple"),
+            new("PB2", PushButton2Address, shiftPressed, "Pushbutton 2 / Shift key"),
         ];
     }
 
@@ -96,6 +119,11 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 
         // $C010: Clear strobe (read and write)
         dispatcher.Register(KeyboardStrobeOffset, ClearStrobeRead, ClearStrobeWrite);
+
+        // $C061-$C063: Pushbutton inputs (read-only)
+        dispatcher.RegisterRead(PushButton0Offset, ReadPushButton0);
+        dispatcher.RegisterRead(PushButton1Offset, ReadPushButton1);
+        dispatcher.RegisterRead(PushButton2Offset, ReadPushButton2);
     }
 
     /// <inheritdoc />
@@ -187,6 +215,24 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
         {
             strobe = false;
         }
+    }
+
+    private byte ReadPushButton0(byte offset, in BusAccess context)
+    {
+        // PB0 / Open Apple: bit 7 set = button pressed
+        return modifiers.HasFlag(KeyboardModifiers.OpenApple) ? ButtonPressedBit : (byte)0x00;
+    }
+
+    private byte ReadPushButton1(byte offset, in BusAccess context)
+    {
+        // PB1 / Closed Apple: bit 7 set = button pressed
+        return modifiers.HasFlag(KeyboardModifiers.ClosedApple) ? ButtonPressedBit : (byte)0x00;
+    }
+
+    private byte ReadPushButton2(byte offset, in BusAccess context)
+    {
+        // PB2 / Shift key: bit 7 set = key pressed
+        return modifiers.HasFlag(KeyboardModifiers.Shift) ? ButtonPressedBit : (byte)0x00;
     }
 
     private void ProcessTypeQueue()

@@ -13,6 +13,13 @@ using BadMango.Emulator.Debug.Infrastructure.Commands;
 public class DebugPathResolverTests
 {
     /// <summary>
+    /// Gets a platform-appropriate test library root path.
+    /// </summary>
+    private static string TestLibraryRoot => OperatingSystem.IsWindows()
+        ? @"C:\test\library"
+        : "/test/library";
+
+    /// <summary>
     /// Verifies that the default constructor sets a library root.
     /// </summary>
     [Test]
@@ -49,12 +56,12 @@ public class DebugPathResolverTests
     [Test]
     public void Resolve_LibraryPath_ResolvesToLibraryRoot()
     {
-        var resolver = new DebugPathResolver("/test/library");
+        var resolver = new DebugPathResolver(TestLibraryRoot);
 
         var result = resolver.Resolve("library://roms/test.bin");
 
         Assert.That(result, Does.EndWith(Path.Combine("roms", "test.bin")));
-        Assert.That(result, Does.StartWith("/test/library"));
+        Assert.That(result, Does.StartWith(TestLibraryRoot));
     }
 
     /// <summary>
@@ -93,7 +100,7 @@ public class DebugPathResolverTests
     [Test]
     public void TryResolve_LibraryPath_WhenLibraryRootSet_ReturnsTrue()
     {
-        var resolver = new DebugPathResolver("/test/library");
+        var resolver = new DebugPathResolver(TestLibraryRoot);
 
         bool success = resolver.TryResolve("library://test.bin", out var result);
 
@@ -101,7 +108,7 @@ public class DebugPathResolverTests
         {
             Assert.That(success, Is.True);
             Assert.That(result, Is.Not.Null);
-            Assert.That(result, Does.StartWith("/test/library"));
+            Assert.That(result, Does.StartWith(TestLibraryRoot));
         });
     }
 
@@ -163,8 +170,11 @@ public class DebugPathResolverTests
     public void TryResolve_AbsolutePath_ReturnsNormalizedPath()
     {
         var resolver = new DebugPathResolver();
+        string testPath = OperatingSystem.IsWindows()
+            ? @"C:\Users\test\test.bin"
+            : "/home/user/test.bin";
 
-        bool success = resolver.TryResolve("/home/user/test.bin", out var result);
+        bool success = resolver.TryResolve(testPath, out var result);
 
         Assert.Multiple(() =>
         {
@@ -197,7 +207,7 @@ public class DebugPathResolverTests
     [Test]
     public void TryResolve_LibraryPathCaseInsensitive_ReturnsTrue()
     {
-        var resolver = new DebugPathResolver("/test/library");
+        var resolver = new DebugPathResolver(TestLibraryRoot);
 
         bool success1 = resolver.TryResolve("library://test.bin", out _);
         bool success2 = resolver.TryResolve("LIBRARY://test.bin", out _);

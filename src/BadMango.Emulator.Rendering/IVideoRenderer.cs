@@ -74,6 +74,11 @@ public interface IVideoRenderer
     /// <param name="colorMode">
     /// The display color mode (green, amber, white, or color). Defaults to green phosphor for classic monochrome display.
     /// </param>
+    /// <param name="readAuxMemory">
+    /// Optional delegate that reads bytes from auxiliary memory for 80-column text mode.
+    /// Required when rendering <see cref="VideoMode.Text80"/>. If null and Text80 mode
+    /// is requested, the renderer will fall back to 40-column mode.
+    /// </param>
     void RenderFrame(
         Span<uint> pixels,
         VideoMode mode,
@@ -84,7 +89,8 @@ public interface IVideoRenderer
         bool flashState,
         bool noFlash1Enabled,
         bool noFlash2Enabled,
-        DisplayColorMode colorMode = DisplayColorMode.Green);
+        DisplayColorMode colorMode = DisplayColorMode.Green,
+        Func<ushort, byte>? readAuxMemory = null);
 
     /// <summary>
     /// Clears the pixel buffer to black.

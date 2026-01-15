@@ -30,6 +30,13 @@ using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDev
 /// The window captures keyboard input and forwards it to the emulated
 /// keyboard device according to the Keyboard Mapping Specification.
 /// </para>
+/// <para>
+/// Apple key mappings:
+/// <list type="bullet">
+/// <item><description>Left Alt → Open Apple (PB0 at $C061)</description></item>
+/// <item><description>Right Alt → Closed Apple (PB1 at $C062)</description></item>
+/// </list>
+/// </para>
 /// </remarks>
 public partial class VideoWindow : Window
 {
@@ -61,6 +68,7 @@ public partial class VideoWindow : Window
     private IMachine? machine;
     private IVideoDevice? videoDevice;
     private ICharacterDevice? characterDevice;
+    private IExtended80ColumnDevice? extended80ColumnDevice;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
     private Memory<byte> characterRom;
@@ -73,6 +81,11 @@ public partial class VideoWindow : Window
     private int flashFrameCounter;
     private bool flashState;
     private double lastFps;
+
+    // Track Left/Right Alt state separately since Avalonia's KeyModifiers.Alt doesn't distinguish
+    private bool leftAltPressed;
+    private bool rightAltPressed;
+    private bool capsLockActive;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
@@ -153,8 +166,8 @@ public partial class VideoWindow : Window
     /// <param name="machine">The machine to attach to.</param>
     /// <remarks>
     /// <para>
-    /// Extracts the video device, character device, keyboard device, and memory bus
-    /// from the machine for rendering and input handling.
+    /// Extracts the video device, character device, keyboard device, extended 80-column
+    /// device, and memory bus from the machine for rendering and input handling.
     /// </para>
     /// <para>
     /// If no <see cref="ICharacterRomProvider"/> is found, falls back to the default ROM.
@@ -168,6 +181,7 @@ public partial class VideoWindow : Window
         this.memoryBus = machine.Bus;
         this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
+        this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
         // Look for CharacterDevice (preferred) or any ICharacterRomProvider
         this.characterDevice = machine.GetComponent<ICharacterDevice>();
@@ -206,6 +220,7 @@ public partial class VideoWindow : Window
         memoryBus = null;
         videoDevice = null;
         characterDevice = null;
+        extended80ColumnDevice = null;
         keyboardDevice = null;
         characterRom = Memory<byte>.Empty;
     }
@@ -228,11 +243,26 @@ public partial class VideoWindow : Window
             return;
         }
 
+        // Track Left/Right Alt separately for Open/Closed Apple
+        if (e.Key == Key.LeftAlt)
+        {
+            leftAltPressed = true;
+        }
+        else if (e.Key == Key.RightAlt)
+        {
+            rightAltPressed = true;
+        }
+        else if (e.Key == Key.CapsLock)
+        {
+            // Toggle Caps Lock state
+            capsLockActive = !capsLockActive;
+        }
+
         // Handle modifier keys
         UpdateModifiers(e);
 
         // Map key to Pocket2e byte code
-        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers);
+        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers, capsLockActive);
         if (keyCode.HasValue)
         {
             keyboardDevice.KeyDown(keyCode.Value);
@@ -250,6 +280,16 @@ public partial class VideoWindow : Window
             return;
         }
 
+        // Track Left/Right Alt separately for Open/Closed Apple
+        if (e.Key == Key.LeftAlt)
+        {
+            leftAltPressed = false;
+        }
+        else if (e.Key == Key.RightAlt)
+        {
+            rightAltPressed = false;
+        }
+
         // Update modifiers
         UpdateModifiers(e);
 
@@ -263,8 +303,9 @@ public partial class VideoWindow : Window
     /// </summary>
     /// <param name="key">The Avalonia key code.</param>
     /// <param name="modifiers">The active key modifiers.</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
     /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
-    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers)
+    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
     {
         bool ctrl = modifiers.HasFlag(KeyModifiers.Control);
         bool shift = modifiers.HasFlag(KeyModifiers.Shift);
@@ -307,14 +348,21 @@ public partial class VideoWindow : Window
         if (key >= Key.A && key <= Key.Z)
         {
             byte baseCode = (byte)(key - Key.A + 0x41); // A = 0x41
-            return shift ? baseCode : (byte)(baseCode + 0x20); // Lowercase if no shift
+
+            // Caps Lock affects only letters: XOR with shift for toggle behavior
+            // - Caps Lock off, Shift off → lowercase
+            // - Caps Lock off, Shift on → uppercase
+            // - Caps Lock on, Shift off → uppercase
+            // - Caps Lock on, Shift on → lowercase (shift "undoes" caps lock)
+            bool uppercase = shift ^ capsLock;
+            return uppercase ? baseCode : (byte)(baseCode + 0x20);
         }
 
         if (key >= Key.D0 && key <= Key.D9)
         {
             if (shift)
             {
-                // Shifted number keys produce symbols
+                // Shifted number keys produce symbols (Caps Lock does NOT affect these)
                 return key switch
                 {
                     Key.D1 => (byte)'!',
@@ -334,7 +382,7 @@ public partial class VideoWindow : Window
             return (byte)(key - Key.D0 + 0x30); // 0 = 0x30
         }
 
-        // Punctuation
+        // Punctuation (Caps Lock does NOT affect these)
         return key switch
         {
             Key.OemMinus => shift ? (byte)'_' : (byte)'-',
@@ -445,6 +493,12 @@ public partial class VideoWindow : Window
         bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
         bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
 
+        // Get auxiliary memory reader for 80-column mode
+        // This reads directly from the Extended 80-Column device's auxiliary RAM
+        Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
+            ? extended80ColumnDevice.ReadAuxRam
+            : null;
+
         // Render frame using the Pocket2VideoRenderer with current color mode
         renderer.RenderFrame(
             pixels,
@@ -456,7 +510,8 @@ public partial class VideoWindow : Window
             flashState,
             noFlash1,
             noFlash2,
-            colorMode);
+            colorMode,
+            readAuxMemory);
 
         // Commit pixel buffer to bitmap
         pixelBuffer.Commit();
@@ -517,13 +572,23 @@ public partial class VideoWindow : Window
             modifiers |= KeyboardModifiers.Control;
         }
 
-        // Left Alt → Open Apple
-        // Right Alt → Closed Apple
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        // Left Alt → Open Apple (PB0)
+        // Right Alt → Closed Apple (PB1)
+        // Use our tracked state since Avalonia's KeyModifiers.Alt doesn't distinguish left/right
+        if (leftAltPressed)
         {
-            // Avalonia doesn't distinguish left/right Alt in KeyModifiers,
-            // so we map Alt to Open Apple by default
             modifiers |= KeyboardModifiers.OpenApple;
+        }
+
+        if (rightAltPressed)
+        {
+            modifiers |= KeyboardModifiers.ClosedApple;
+        }
+
+        // Track Caps Lock state
+        if (capsLockActive)
+        {
+            modifiers |= KeyboardModifiers.CapsLock;
         }
 
         keyboardDevice.SetModifiers(modifiers);

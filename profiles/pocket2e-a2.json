@@ -1,0 +1,156 @@
+{
+    "$schema": "https://bad-mango-solutions.github.io/schemas/machine-profile.schema.json",
+    "name": "pocket2e-a2",
+    "displayName": "Pocket2e A2",
+    "description": "Pocket2e A2 - Apple IIe clone with full 128KB RAM, I/O page with soft switches, slot manager, Language Card, and Apple ROM images loaded. Includes PocketWatch RTC in slot 4.",
+
+    "cpu": {
+        "type": "65C02",
+        "clockSpeed": 1020484
+    },
+
+    "addressSpace": 16,
+
+    "memory": {
+        "rom-images": [
+            {
+                "name": "a2-expansion-rom",
+                "source": "library://roms/a2-expansion.rom",
+                "size": "0xf00",
+                "required": true,
+                "on-verification-fail": "stop"
+            },
+            {
+                "name": "a2-monitor-rom",
+                "source": "library://roms/a2-monitor.rom",
+                "size": "0x0800",
+                "required": true,
+                "on_verification_fail": "stop"
+            },
+            {
+                "name": "a2-system-rom",
+                "source": "library://roms/a2-system.rom",
+                "size": "0x2800",
+                "required": true,
+                "on_verification_fail": "fallback"
+            },
+            {
+                "name": "character-rom",
+                "source": "embedded://BadMango.Emulator.Devices/BadMango.Emulator.Devices.Resources.pocket2-charset.rom",
+                "size": "0x1000",
+                "required": true,
+                "on_verification_fail": "stop"
+            }
+        ],
+        "physical": [
+            {
+                "name": "main-ram-48k",
+                "size": "0xC000",
+                "fill": "0x00"
+            },
+            {
+                "name": "system-rom-12k",
+                "size": "0x3000",
+                "sources": [
+                    {
+                        "type": "rom-image",
+                        "name": "system-rom",
+                        "rom-image": "a2-system-rom",
+                        "offset": "0x0000"
+                    },
+                    {
+                        "type": "rom-image",
+                        "name": "monitor-rom",
+                        "rom-image": "a2-monitor-rom",
+                        "offset": "0x2800"
+                    }
+                ]
+            }
+        ],
+        "regions": [
+            {
+                "name": "main-ram",
+                "type": "ram",
+                "start": "0x0000",
+                "size": "0xC000",
+                "permissions": "rwx",
+                "source": "main-ram-48k",
+                "source-offset": "0x0000"
+            },
+            {
+                "name": "io-region",
+                "type": "composite",
+                "start": "0xC000",
+                "size": "0x1000",
+                "handler": "composite-io"
+            },
+            {
+                "name": "system-rom",
+                "type": "rom",
+                "start": "0xD000",
+                "size": "0x3000",
+                "permissions": "rx",
+                "source": "system-rom-12k",
+                "source-offset": "0x0000"
+            }
+        ]
+    },
+
+    "devices": {
+        "motherboard": [
+            {
+                "type": "keyboard",
+                "name": "Keyboard",
+                "enabled": true
+            },
+            {
+                "type": "video",
+                "name": "Video Device",
+                "enabled": true
+            },
+            {
+                "type": "character",
+                "name": "Character Generator",
+                "enabled": true,
+                "config": {
+                    "character-rom": "character-rom"
+                }
+            },
+            {
+                "type": "speaker",
+                "name": "Speaker",
+                "enabled": true
+            },
+            {
+                "type": "languagecard",
+                "name": "Language Card",
+                "enabled": true
+            },
+            {
+                "type": "extended80column",
+                "name": "Extended 80-Column Card",
+                "enabled": true,
+                "config": {
+                    "expansion-rom": "a2-expansion-rom"
+                }
+            }
+        ],
+        "slots": {
+            "io-region": "io-region",
+            "enabled": true,
+            "internalC3Rom": false,
+            "internalCxRom": false,
+            "cards": [
+                {
+                    "slot": 4,
+                    "type": "pocketwatch"
+                }
+            ]
+        }
+    },
+
+    "boot": {
+        "autoStart": false,
+        "autoVideoWindowOpen": true
+    }
+}

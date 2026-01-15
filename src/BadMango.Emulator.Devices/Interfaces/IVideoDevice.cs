@@ -159,4 +159,20 @@ public interface IVideoDevice : IMotherboardDevice
     /// </para>
     /// </remarks>
     void SetPage2(bool selected);
+
+    /// <summary>
+    /// Sets the 80-column display mode state.
+    /// </summary>
+    /// <param name="enabled">Whether 80-column mode is enabled.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called by the <c>Extended80ColumnDevice</c> when the
+    /// $C00C (80COLOFF) or $C00D (80COLON) soft switches are triggered.
+    /// </para>
+    /// <para>
+    /// The 80-column switch enables the double-width text display mode that alternates
+    /// characters between main and auxiliary memory for 80 columns of text per line.
+    /// </para>
+    /// </remarks>
+    void Set80ColumnMode(bool enabled);
 }
