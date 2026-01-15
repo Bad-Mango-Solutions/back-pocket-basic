@@ -312,29 +312,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         ApplyState();
     }
 
-    /// <summary>
-    /// Gets the expansion ROM target for the $C800-$CFFF region.
-    /// </summary>
-    /// <returns>A bus target that provides the expansion ROM content.</returns>
-    /// <remarks>
-    /// <para>
-    /// This returns a view into the expansion ROM that maps to the $C800-$CFFF range.
-    /// The full expansion ROM is stored in a 4KB buffer with $C000-$C0FF being unused,
-    /// $C100-$C7FF being the slot ROM portion, and $C800-$CFFF being the expansion ROM.
-    /// </para>
-    /// <para>
-    /// This is used to register as:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>The default expansion ROM (visible at power-on and after $CFFF access)</description></item>
-    /// <item><description>The internal expansion ROM for slot 3 (selected when $C300 is accessed with INTC3ROM)</description></item>
-    /// </list>
-    /// </remarks>
-    private IBusTarget GetExpansionRomTarget()
-    {
-        return expansionRomC8Target;
-    }
-
     /// <inheritdoc />
     public void RegisterHandlers(IOPageDispatcher dispatcher)
     {
@@ -535,86 +512,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     }
 
     /// <summary>
-    /// Determines which memory bank to use for reading from a given address.
-    /// </summary>
-    /// <param name="address">The memory address being accessed.</param>
-    /// <returns><see langword="true"/> to use auxiliary RAM; <see langword="false"/> for main RAM.</returns>
-    /// <remarks>
-    /// <para>
-    /// This method implements the Apple IIe memory bank selection logic:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Zero page ($0000-$00FF) and stack ($0100-$01FF): Controlled by ALTZP</description></item>
-    /// <item><description>Text page ($0400-$07FF): Controlled by 80STORE + PAGE2</description></item>
-    /// <item><description>Hi-res page 1 ($2000-$3FFF): Controlled by 80STORE + PAGE2 + HIRES</description></item>
-    /// <item><description>General RAM ($0200-$BFFF except above): Controlled by RAMRD</description></item>
-    /// </remarks>
-    public bool ShouldUseAuxRamForRead(ushort address)
-    {
-        if (address < 0x0200)
-        {
-            return altzp;
-        }
-
-        if (store80)
-        {
-            if (address >= 0x0400 && address < 0x0800)
-            {
-                return page2;
-            }
-
-            if (hires && address >= 0x2000 && address < 0x4000)
-            {
-                return page2;
-            }
-        }
-
-        if (address < 0xC000)
-        {
-            return ramrd;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Determines which memory bank to use for writing to a given address.
-    /// </summary>
-    /// <param name="address">The memory address being accessed.</param>
-    /// <returns><see langword="true"/> to use auxiliary RAM; <see langword="false"/> for main RAM.</returns>
-    /// <remarks>
-    /// Uses the same logic as <see cref="ShouldUseAuxRamForRead"/>, but uses RAMWRT
-    /// instead of RAMRD for the general RAM region.
-    /// </remarks>
-    public bool ShouldUseAuxRamForWrite(ushort address)
-    {
-        if (address < 0x0200)
-        {
-            return altzp;
-        }
-
-        if (store80)
-        {
-            if (address >= 0x0400 && address < 0x0800)
-            {
-                return page2;
-            }
-
-            if (hires && address >= 0x2000 && address < 0x4000)
-            {
-                return page2;
-            }
-        }
-
-        if (address < 0xC000)
-        {
-            return ramwrt;
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// Reads a byte from auxiliary RAM.
     /// </summary>
     /// <param name="address">The address within auxiliary RAM (0-65535).</param>
@@ -632,6 +529,55 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     public void WriteAuxRam(ushort address, byte value)
     {
         auxiliaryRam.AsSpan()[address] = value;
+    }
+
+    /// <summary>
+    /// Gets the auxiliary RAM target for page 0 (used by composite target configuration).
+    /// </summary>
+    /// <returns>A RAM target covering page 0 of auxiliary memory.</returns>
+    public RamTarget GetAuxPage0Target()
+    {
+        return new RamTarget(auxiliaryRam.Slice(0, 0x1000), "AUX_PAGE0");
+    }
+
+    /// <summary>
+    /// Sets the page 0 composite target reference for routing updates.
+    /// </summary>
+    /// <param name="target">The page 0 composite target.</param>
+    /// <remarks>
+    /// This must be called after the page 0 target is created and configured.
+    /// The device will call <see cref="Extended80ColumnPage0Target.UpdateRouting"/>
+    /// whenever soft switches change to update the routing table.
+    /// </remarks>
+    public void SetPage0Target(Extended80ColumnPage0Target target)
+    {
+        page0Target = target;
+
+        // Initialize routing with current state
+        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
+    }
+
+    /// <summary>
+    /// Gets the expansion ROM target for the $C800-$CFFF region.
+    /// </summary>
+    /// <returns>A bus target that provides the expansion ROM content.</returns>
+    /// <remarks>
+    /// <para>
+    /// This returns a view into the expansion ROM that maps to the $C800-$CFFF range.
+    /// The full expansion ROM is stored in a 4KB buffer with $C000-$C0FF being unused,
+    /// $C100-$C7FF being the slot ROM portion, and $C800-$CFFF being the expansion ROM.
+    /// </para>
+    /// <para>
+    /// This is used to register as:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>The default expansion ROM (visible at power-on and after $CFFF access)</description></item>
+    /// <item><description>The internal expansion ROM for slot 3 (selected when $C300 is accessed with INTC3ROM)</description></item>
+    /// </list>
+    /// </remarks>
+    private IBusTarget GetExpansionRomTarget()
+    {
+        return expansionRomC8Target;
     }
 
     private void Handle80StoreOff(byte offset, byte value, in BusAccess context)
@@ -825,32 +771,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private byte Read80StoreStatus(byte offset, in BusAccess context)
     {
         return store80 ? (byte)0x80 : (byte)0x00;
-    }
-
-    /// <summary>
-    /// Gets the auxiliary RAM target for page 0 (used by composite target configuration).
-    /// </summary>
-    /// <returns>A RAM target covering page 0 of auxiliary memory.</returns>
-    public RamTarget GetAuxPage0Target()
-    {
-        return new RamTarget(auxiliaryRam.Slice(0, 0x1000), "AUX_PAGE0");
-    }
-
-    /// <summary>
-    /// Sets the page 0 composite target reference for routing updates.
-    /// </summary>
-    /// <param name="target">The page 0 composite target.</param>
-    /// <remarks>
-    /// This must be called after the page 0 target is created and configured.
-    /// The device will call <see cref="Extended80ColumnPage0Target.UpdateRouting"/>
-    /// whenever soft switches change to update the routing table.
-    /// </remarks>
-    public void SetPage0Target(Extended80ColumnPage0Target target)
-    {
-        page0Target = target;
-
-        // Initialize routing with current state
-        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
     }
 
     /// <summary>

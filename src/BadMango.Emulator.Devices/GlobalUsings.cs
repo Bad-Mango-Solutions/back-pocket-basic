@@ -1,10 +1,8 @@
-// <copyright file="GlobalUsings.cs" company="Bad Mango Solutions">
+﻿// <copyright file="GlobalUsings.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 #pragma warning disable SA1200 // Using directives should be placed correctly
-
-global using BadMango.Emulator.Debug.UI;
 
 // Global type aliases for semantic clarity across CPU implementations
 global using Addr = uint;  // Address type - 32-bit for future flat addressing

@@ -53,6 +53,16 @@ public interface IExtended80ColumnDevice : IMotherboardDevice
     bool IsPage2Selected { get; }
 
     /// <summary>
+    /// Gets the auxiliary RAM as a span for direct memory access.
+    /// </summary>
+    /// <value>A span covering the 64KB auxiliary RAM.</value>
+    /// <remarks>
+    /// This property provides direct access to auxiliary RAM for efficient
+    /// bulk rendering operations. The span covers the full 64KB auxiliary RAM space.
+    /// </remarks>
+    Span<byte> AuxiliaryRam { get; }
+
+    /// <summary>
     /// Reads a byte from auxiliary RAM at the specified address.
     /// </summary>
     /// <param name="address">The address within auxiliary RAM (0x0000-0xFFFF).</param>
@@ -62,16 +72,6 @@ public interface IExtended80ColumnDevice : IMotherboardDevice
     /// It does not go through the memory bus and does not trigger soft switches.
     /// </remarks>
     byte ReadAuxRam(ushort address);
-
-    /// <summary>
-    /// Gets the auxiliary RAM as a span for direct memory access.
-    /// </summary>
-    /// <value>A span covering the 64KB auxiliary RAM.</value>
-    /// <remarks>
-    /// This property provides direct access to auxiliary RAM for efficient
-    /// bulk rendering operations. The span covers the full 64KB auxiliary RAM space.
-    /// </remarks>
-    Span<byte> AuxiliaryRam { get; }
 
     /// <summary>
     /// Called when PAGE2 state changes (from VideoDevice).

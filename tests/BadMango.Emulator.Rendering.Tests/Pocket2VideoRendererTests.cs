@@ -159,7 +159,9 @@ public class Pocket2VideoRendererTests
             charRom,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(pixelBuffer.Length, Is.GreaterThan(0));
     }
@@ -183,7 +185,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Text page 1 is $0400-$07FF
         Assert.That(readAddresses.Any(a => a >= 0x0400 && a < 0x0800), Is.True);
@@ -209,7 +213,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: true,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Text page 2 is $0800-$0BFF
         Assert.That(readAddresses.Any(a => a >= 0x0800 && a < 0x0C00), Is.True);
@@ -261,7 +267,9 @@ public class Pocket2VideoRendererTests
             charRom,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Array.Copy(pixelBuffer, buffer1, pixelBuffer.Length);
 
@@ -274,7 +282,9 @@ public class Pocket2VideoRendererTests
             charRom,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Buffers should be different
         bool hasDifference = !pixelBuffer.SequenceEqual(buffer1);
@@ -297,7 +307,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Array.Copy(pixelBuffer, bufferFlashOff, pixelBuffer.Length);
 
@@ -309,7 +321,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: true, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: true,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         bool hasDifference = !pixelBuffer.SequenceEqual(bufferFlashOff);
         Assert.That(hasDifference, Is.True, "Flash state should affect flashing characters");
@@ -351,7 +365,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(rowsAccessed.Count, Is.EqualTo(24), "All 24 text rows should be accessed");
     }
@@ -384,7 +400,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(columnsAccessed.Count, Is.EqualTo(40), "All 40 text columns should be accessed");
     }
@@ -530,6 +548,7 @@ public class Pocket2VideoRendererTests
 
         // Create character ROM with visible patterns
         var charRom = new byte[4096];
+
         // Fill with patterns so characters are visibly different
         for (int i = 0; i < charRom.Length; i++)
         {
@@ -590,7 +609,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
             DisplayColorMode.Color);
 
         uint topColor = DisplayColors.GetLoResColor(2);
@@ -630,7 +651,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
             DisplayColorMode.Color);
 
         uint expectedColor = DisplayColors.GetLoResColor(color);
@@ -657,7 +680,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
             DisplayColorMode.Color);
 
         uint color1 = DisplayColors.GetLoResColor(1);
@@ -689,7 +714,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
             DisplayColorMode.Color);
 
         uint topColor = DisplayColors.GetLoResColor(1);
@@ -722,7 +749,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: true,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(readAddresses.Any(a => a >= 0x0800 && a < 0x0C00), Is.True);
     }
@@ -754,7 +783,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(pixelBuffer[0], Is.EqualTo(DisplayColors.GreenPhosphor));
     }
@@ -783,7 +814,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // The pixel at position 'bit * 2' should be set (2× scaling)
         int pixelX = bit * 2;
@@ -817,7 +850,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(readAddresses.Any(a => a >= 0x2000 && a < 0x4000), Is.True);
         Assert.That(readAddresses.Any(a => a >= 0x4000 && a < 0x6000), Is.False);
@@ -842,7 +877,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: true,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(readAddresses.Any(a => a >= 0x4000 && a < 0x6000), Is.True);
     }
@@ -871,7 +908,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Should have accessed addresses from all 192 scanlines
         Assert.That(scanlineAddresses.Count, Is.GreaterThanOrEqualTo(192 / 8), "Should access all scanline groups");
@@ -909,7 +948,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(pixelBuffer[0], Is.EqualTo(DisplayColors.GreenPhosphor));
     }
@@ -937,7 +978,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Should not read addresses for scanlines 160-191
         // This is a simplification - actual test would verify row addresses
@@ -967,7 +1010,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // Should have text addresses for rows 20-23
         Assert.That(textAddresses.Count, Is.GreaterThan(0), "Mixed mode should read text addresses");
@@ -1002,7 +1047,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: true,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(readFromPage2, Is.True, "Should read from page 2 addresses");
     }
@@ -1027,7 +1074,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Array.Copy(pixelBuffer, bufferCopy1, pixelBuffer.Length);
 
@@ -1040,7 +1089,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: true, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: true,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         bool hasDifference = !pixelBuffer.SequenceEqual(bufferCopy1);
         Assert.That(hasDifference, Is.True, "Flash state should affect rendering");
@@ -1062,7 +1113,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Array.Copy(pixelBuffer, bufferFlashOff, pixelBuffer.Length);
 
@@ -1074,7 +1127,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: true, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: true,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         bool identical = pixelBuffer.SequenceEqual(bufferFlashOff);
         Assert.That(identical, Is.True, "Normal characters should not be affected by flash state");
@@ -1099,7 +1154,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(pixelBuffer.All(p => p == DisplayColors.Black), Is.True);
     }
@@ -1119,7 +1176,9 @@ public class Pocket2VideoRendererTests
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         // First 14 pixels (2× scaled from 7 bits) should be green
         for (int x = 0; x < 14; x++)
@@ -1166,7 +1225,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         renderer.RenderFrame(
             buffer2,
@@ -1175,7 +1236,9 @@ public class Pocket2VideoRendererTests
             new byte[4096],
             useAltCharSet: false,
             isPage2: false,
-            flashState: false, noFlash1Enabled: false, noFlash2Enabled: true);
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true);
 
         Assert.That(buffer1.SequenceEqual(buffer2), Is.True, "Same inputs should produce same output");
     }

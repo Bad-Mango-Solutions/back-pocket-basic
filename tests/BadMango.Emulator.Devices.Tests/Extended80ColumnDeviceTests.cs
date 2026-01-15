@@ -356,152 +356,6 @@ public class Extended80ColumnDeviceTests
     }
 
     /// <summary>
-    /// Verifies memory bank selection for zero page with ALTZP disabled.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_ZeroPage_WithAltZpDisabled_ReturnsFalse()
-    {
-        var device = new Extended80ColumnDevice();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x0000), Is.False);
-            Assert.That(device.ShouldUseAuxRamForRead(0x00FF), Is.False);
-            Assert.That(device.ShouldUseAuxRamForRead(0x0100), Is.False);
-            Assert.That(device.ShouldUseAuxRamForRead(0x01FF), Is.False);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for zero page with ALTZP enabled.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_ZeroPage_WithAltZpEnabled_ReturnsTrue()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x09, 0x00, in context); // Enable ALTZP
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x0000), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x00FF), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x0100), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x01FF), Is.True);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for text page with 80STORE mode.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_TextPage_With80StoreAndPage2_ReturnsTrue()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x01, 0x00, in context); // Enable 80STORE
-        device.SetPage2(true); // Select PAGE2
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x0400), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x07FF), Is.True);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for text page with 80STORE but PAGE1.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_TextPage_With80StoreAndPage1_ReturnsFalse()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x01, 0x00, in context); // Enable 80STORE
-        device.SetPage2(false); // Keep PAGE1
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x0400), Is.False);
-            Assert.That(device.ShouldUseAuxRamForRead(0x07FF), Is.False);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for hi-res page with 80STORE + HIRES + PAGE2.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_HiResPage_With80StoreHiResAndPage2_ReturnsTrue()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x01, 0x00, in context); // Enable 80STORE
-        device.SetHiRes(true); // Enable HIRES
-        device.SetPage2(true); // Select PAGE2
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x2000), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x3FFF), Is.True);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for hi-res page without HIRES mode.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_HiResPage_Without80StoreHires_UsesRamRd()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x01, 0x00, in context); // Enable 80STORE
-        device.SetPage2(true); // Select PAGE2 (but HIRES is off)
-
-        Assert.Multiple(() =>
-        {
-            // Without HIRES, hi-res page follows RAMRD setting, not PAGE2
-            Assert.That(device.ShouldUseAuxRamForRead(0x2000), Is.False);
-            Assert.That(device.ShouldUseAuxRamForRead(0x3FFF), Is.False);
-        });
-    }
-
-    /// <summary>
-    /// Verifies memory bank selection for general RAM with RAMRD enabled.
-    /// </summary>
-    [Test]
-    public void ShouldUseAuxRamForRead_GeneralRam_WithRamRd_ReturnsTrue()
-    {
-        var device = new Extended80ColumnDevice();
-        var dispatcher = new IOPageDispatcher();
-        device.RegisterHandlers(dispatcher);
-
-        var context = CreateTestContext();
-        dispatcher.Write(0x03, 0x00, in context); // Enable RAMRD
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(device.ShouldUseAuxRamForRead(0x0800), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0x6000), Is.True);
-            Assert.That(device.ShouldUseAuxRamForRead(0xBFFF), Is.True);
-        });
-    }
-
-    /// <summary>
     /// Verifies that expansion ROM can be loaded.
     /// </summary>
     [Test]
@@ -546,6 +400,57 @@ public class Extended80ColumnDeviceTests
         Assert.That(device.IsHiResEnabled, Is.False);
     }
 
+    /// <summary>
+    /// Verifies that GetAuxPage0Target returns a valid target.
+    /// </summary>
+    [Test]
+    public void GetAuxPage0Target_ReturnsValidTarget()
+    {
+        var device = new Extended80ColumnDevice();
+
+        var target = device.GetAuxPage0Target();
+
+        Assert.That(target, Is.Not.Null);
+        Assert.That(target.Name, Is.EqualTo("AUX_PAGE0"));
+    }
+
+    /// <summary>
+    /// Verifies that SetPage0Target can be called and updates routing.
+    /// </summary>
+    [Test]
+    public void SetPage0Target_UpdatesRoutingOnSwitchChange()
+    {
+        var device = new Extended80ColumnDevice();
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+
+        // Create a mock page 0 target
+        var mainRam = new PhysicalMemory(0x1000, "MAIN");
+        var auxRam = new PhysicalMemory(0x1000, "AUX");
+        var mainTarget = new RamTarget(mainRam.Slice(0, 0x1000), "MAIN");
+        var auxTarget = new RamTarget(auxRam.Slice(0, 0x1000), "AUX");
+        var page0Target = new Extended80ColumnPage0Target(mainTarget, auxTarget);
+
+        // Wire up the device to the page 0 target
+        device.SetPage0Target(page0Target);
+
+        // Write a value to main memory zero page
+        mainRam.AsSpan()[0x50] = 0xAA;
+
+        // With ALTZP off, should read from main
+        var readAccess = CreateBusAccess(0x50, AccessIntent.DataRead);
+        byte resultMain = page0Target.Read8(0x50, in readAccess);
+        Assert.That(resultMain, Is.EqualTo(0xAA), "Should read from main with ALTZP off");
+
+        // Enable ALTZP via soft switch
+        var context = CreateTestContext();
+        dispatcher.Write(0x09, 0x00, in context);
+
+        // Now should read from aux (which is 0x00 since uninitialized)
+        byte resultAux = page0Target.Read8(0x50, in readAccess);
+        Assert.That(resultAux, Is.EqualTo(0x00), "Should read from aux with ALTZP on");
+    }
+
     private static BusAccess CreateTestContext(bool isSideEffectFree = false)
     {
         var flags = isSideEffectFree ? AccessFlags.NoSideEffects : AccessFlags.None;
@@ -560,5 +465,19 @@ public class Extended80ColumnDeviceTests
             SourceId: 0,
             Cycle: 0,
             Flags: flags);
+    }
+
+    private static BusAccess CreateBusAccess(ushort address, AccessIntent intent)
+    {
+        return new(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: intent,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
     }
 }

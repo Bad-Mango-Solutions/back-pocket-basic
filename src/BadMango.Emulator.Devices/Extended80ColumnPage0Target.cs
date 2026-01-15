@@ -11,8 +11,6 @@ using BadMango.Emulator.Bus.Interfaces;
 
 using Interfaces;
 
-using Addr = System.UInt32;
-
 /// <summary>
 /// Bus target for page 0 ($0000-$0FFF) that handles sub-page auxiliary memory switching
 /// for the Extended 80-Column Card using a routing table approach.
