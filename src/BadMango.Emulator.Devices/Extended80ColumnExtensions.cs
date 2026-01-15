@@ -145,8 +145,14 @@ public static class Extended80ColumnExtensions
             // Create a RAM target for page 0 of main memory
             var page0MainTarget = new RamTarget(mainRam.Slice(0, 0x1000), "MAIN_PAGE0");
 
-            // Create the composite target that routes based on soft switch state
-            var page0Target = new Extended80ColumnPage0Target(page0MainTarget, device);
+            // Get the auxiliary page 0 target from the device
+            var page0AuxTarget = device.GetAuxPage0Target();
+
+            // Create the composite target that routes based on routing table
+            var page0Target = new Extended80ColumnPage0Target(page0MainTarget, page0AuxTarget);
+
+            // Wire up the device to update the routing table when switches change
+            device.SetPage0Target(page0Target);
 
             // Remap page 0 to use the composite target
             int deviceId = registry.GenerateId();

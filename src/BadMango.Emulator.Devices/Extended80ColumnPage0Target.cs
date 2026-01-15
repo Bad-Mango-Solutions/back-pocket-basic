@@ -15,7 +15,7 @@ using Addr = System.UInt32;
 
 /// <summary>
 /// Bus target for page 0 ($0000-$0FFF) that handles sub-page auxiliary memory switching
-/// for the Extended 80-Column Card.
+/// for the Extended 80-Column Card using a routing table approach.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,57 +29,78 @@ using Addr = System.UInt32;
 /// <item><description>General ($0800-$0FFF): Controlled by RAMRD/RAMWRT switches</description></item>
 /// </list>
 /// <para>
-/// This target uses the <see cref="IExtended80ColumnDevice"/> state to determine
-/// which backing memory (main or auxiliary) should handle each access.
+/// This target uses a routing table approach for efficiency. Instead of checking soft switch
+/// state at each memory access, the routing table is updated when switches change. Each access
+/// simply indexes into the routing table based on the high nibble of the address offset.
 /// </para>
 /// <para>
-/// Unlike the layer-based approach, this composite target checks soft switch state
-/// at each memory access, enabling proper sub-page bank switching needed for
-/// 80-column text mode.
+/// The routing table has 16 entries (one per 256-byte sub-page). When a soft switch changes,
+/// only the affected entries are updated via <see cref="UpdateRouting"/>.
 /// </para>
 /// </remarks>
 public sealed class Extended80ColumnPage0Target : IBusTarget
 {
     /// <summary>
-    /// End of zero page region (exclusive).
+    /// Number of 256-byte sub-pages in page 0.
     /// </summary>
-    private const int ZeroPageEnd = 0x0100;
+    private const int SubPageCount = 16;
 
     /// <summary>
-    /// End of stack region (exclusive).
+    /// Size of each sub-page in bytes.
     /// </summary>
-    private const int StackEnd = 0x0200;
+    private const int SubPageSize = 256;
 
     /// <summary>
-    /// Start of text page 1 region.
+    /// Shift value for sub-page index calculation.
     /// </summary>
-    private const int TextPageStart = 0x0400;
+    private const int SubPageShift = 8;
 
     /// <summary>
-    /// End of text page 1 region (exclusive).
+    /// Mask for offset within a sub-page.
     /// </summary>
-    private const int TextPageEnd = 0x0800;
+    private const int SubPageMask = 0xFF;
 
     private readonly IBusTarget mainMemory;
-    private readonly Extended80ColumnDevice controller;
+    private readonly IBusTarget auxMemory;
+
+    /// <summary>
+    /// Read routing table: one target per 256-byte sub-page.
+    /// Index 0 = $0000-$00FF, Index 1 = $0100-$01FF, etc.
+    /// </summary>
+    private readonly IBusTarget[] readRouting;
+
+    /// <summary>
+    /// Write routing table: one target per 256-byte sub-page.
+    /// </summary>
+    private readonly IBusTarget[] writeRouting;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Extended80ColumnPage0Target"/> class.
     /// </summary>
     /// <param name="mainMemory">The main memory target for page 0 (must be at least 4KB).</param>
-    /// <param name="controller">The Extended 80-Column device that manages switch states.</param>
+    /// <param name="auxMemory">The auxiliary memory target for page 0 (must be at least 4KB).</param>
     /// <exception cref="ArgumentNullException">
     /// Thrown when any parameter is <see langword="null"/>.
     /// </exception>
     public Extended80ColumnPage0Target(
         IBusTarget mainMemory,
-        Extended80ColumnDevice controller)
+        IBusTarget auxMemory)
     {
         ArgumentNullException.ThrowIfNull(mainMemory);
-        ArgumentNullException.ThrowIfNull(controller);
+        ArgumentNullException.ThrowIfNull(auxMemory);
 
         this.mainMemory = mainMemory;
-        this.controller = controller;
+        this.auxMemory = auxMemory;
+
+        // Initialize routing tables - all pointing to main memory by default
+        readRouting = new IBusTarget[SubPageCount];
+        writeRouting = new IBusTarget[SubPageCount];
+
+        for (int i = 0; i < SubPageCount; i++)
+        {
+            readRouting[i] = mainMemory;
+            writeRouting[i] = mainMemory;
+        }
     }
 
     /// <summary>
@@ -96,16 +117,13 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
-        bool useAux = ShouldUseAuxForRead(offset);
+        int subPage = offset >> SubPageShift;
+        int subOffset = offset & SubPageMask;
 
-        if (useAux)
-        {
-            // Read from auxiliary RAM
-            return controller.ReadAuxRam((ushort)offset);
-        }
-
-        // Read from main memory
-        return mainMemory.Read8(physicalAddress, in access);
+        // Route to the appropriate target based on sub-page
+        var target = readRouting[subPage];
+        Addr targetAddress = (Addr)((subPage << SubPageShift) + subOffset);
+        return target.Read8(targetAddress, in access);
     }
 
     /// <inheritdoc />
@@ -113,17 +131,86 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
-        bool useAux = ShouldUseAuxForWrite(offset);
+        int subPage = offset >> SubPageShift;
+        int subOffset = offset & SubPageMask;
 
-        if (useAux)
+        // Route to the appropriate target based on sub-page
+        var target = writeRouting[subPage];
+        Addr targetAddress = (Addr)((subPage << SubPageShift) + subOffset);
+        target.Write8(targetAddress, value, in access);
+    }
+
+    /// <summary>
+    /// Updates the routing table based on the current soft switch state.
+    /// </summary>
+    /// <param name="altZp">Whether ALTZP is enabled (affects $0000-$01FF).</param>
+    /// <param name="store80">Whether 80STORE is enabled.</param>
+    /// <param name="page2">Whether PAGE2 is selected (affects text page when 80STORE is on).</param>
+    /// <param name="ramRd">Whether RAMRD is enabled (affects general RAM reads).</param>
+    /// <param name="ramWrt">Whether RAMWRT is enabled (affects general RAM writes).</param>
+    /// <remarks>
+    /// <para>
+    /// Call this method whenever any of the soft switches change. The routing table
+    /// is updated atomically for the affected sub-pages. This is much more efficient
+    /// than checking switch state at each memory access.
+    /// </para>
+    /// <para>
+    /// Routing rules:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Sub-pages 0-1 ($0000-$01FF): Use aux if ALTZP, else main</description></item>
+    /// <item><description>Sub-pages 2-3 ($0200-$03FF): Use aux if RAMRD/RAMWRT, else main</description></item>
+    /// <item><description>Sub-pages 4-7 ($0400-$07FF): Use aux if 80STORE+PAGE2, else follow RAMRD/RAMWRT</description></item>
+    /// <item><description>Sub-pages 8-15 ($0800-$0FFF): Use aux if RAMRD/RAMWRT, else main</description></item>
+    /// </list>
+    /// </remarks>
+    public void UpdateRouting(bool altZp, bool store80, bool page2, bool ramRd, bool ramWrt)
+    {
+        // Sub-pages 0-1: Zero page and stack ($0000-$01FF) - controlled by ALTZP
+        var zpTarget = altZp ? auxMemory : mainMemory;
+        readRouting[0] = zpTarget;
+        readRouting[1] = zpTarget;
+        writeRouting[0] = zpTarget;
+        writeRouting[1] = zpTarget;
+
+        // Sub-pages 2-3: General RAM ($0200-$03FF) - controlled by RAMRD/RAMWRT
+        readRouting[2] = ramRd ? auxMemory : mainMemory;
+        readRouting[3] = ramRd ? auxMemory : mainMemory;
+        writeRouting[2] = ramWrt ? auxMemory : mainMemory;
+        writeRouting[3] = ramWrt ? auxMemory : mainMemory;
+
+        // Sub-pages 4-7: Text page ($0400-$07FF) - controlled by 80STORE+PAGE2 or RAMRD/RAMWRT
+        IBusTarget textReadTarget;
+        IBusTarget textWriteTarget;
+
+        if (store80)
         {
-            // Write to auxiliary RAM
-            controller.WriteAuxRam((ushort)offset, value);
-            return;
+            // 80STORE mode: PAGE2 controls text page routing
+            textReadTarget = page2 ? auxMemory : mainMemory;
+            textWriteTarget = page2 ? auxMemory : mainMemory;
+        }
+        else
+        {
+            // Normal mode: text page follows RAMRD/RAMWRT like general memory
+            textReadTarget = ramRd ? auxMemory : mainMemory;
+            textWriteTarget = ramWrt ? auxMemory : mainMemory;
         }
 
-        // Write to main memory
-        mainMemory.Write8(physicalAddress, value, in access);
+        for (int i = 4; i < 8; i++)
+        {
+            readRouting[i] = textReadTarget;
+            writeRouting[i] = textWriteTarget;
+        }
+
+        // Sub-pages 8-15: General RAM ($0800-$0FFF) - controlled by RAMRD/RAMWRT
+        var generalReadTarget = ramRd ? auxMemory : mainMemory;
+        var generalWriteTarget = ramWrt ? auxMemory : mainMemory;
+
+        for (int i = 8; i < SubPageCount; i++)
+        {
+            readRouting[i] = generalReadTarget;
+            writeRouting[i] = generalWriteTarget;
+        }
     }
 
     /// <summary>
@@ -133,72 +220,12 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     /// <returns>Region tag for the sub-region.</returns>
     public RegionTag GetSubRegionTag(Addr offset)
     {
-        return offset switch
+        return (offset >> SubPageShift) switch
         {
-            < ZeroPageEnd => RegionTag.ZeroPage,
-            < StackEnd => RegionTag.Stack,
-            >= TextPageStart and < TextPageEnd => RegionTag.Video,
+            0 => RegionTag.ZeroPage,
+            1 => RegionTag.Stack,
+            >= 4 and < 8 => RegionTag.Video,
             _ => RegionTag.Ram,
         };
-    }
-
-    /// <summary>
-    /// Determines if a read access should use auxiliary memory.
-    /// </summary>
-    /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
-    /// <returns><see langword="true"/> to use auxiliary memory; otherwise, <see langword="false"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool ShouldUseAuxForRead(int offset)
-    {
-        // Zero page ($0000-$00FF) and Stack ($0100-$01FF): Controlled by ALTZP
-        if (offset < StackEnd)
-        {
-            return controller.IsAltZpEnabled;
-        }
-
-        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2
-        if (offset >= TextPageStart && offset < TextPageEnd)
-        {
-            if (controller.Is80StoreEnabled)
-            {
-                return controller.IsPage2Selected;
-            }
-
-            // When 80STORE is disabled, text page follows RAMRD like general regions
-            return controller.IsRamRdEnabled;
-        }
-
-        // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMRD
-        return controller.IsRamRdEnabled;
-    }
-
-    /// <summary>
-    /// Determines if a write access should use auxiliary memory.
-    /// </summary>
-    /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
-    /// <returns><see langword="true"/> to use auxiliary memory; otherwise, <see langword="false"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool ShouldUseAuxForWrite(int offset)
-    {
-        // Zero page ($0000-$00FF) and Stack ($0100-$01FF): Controlled by ALTZP
-        if (offset < StackEnd)
-        {
-            return controller.IsAltZpEnabled;
-        }
-
-        // Text page 1 ($0400-$07FF): Controlled by 80STORE + PAGE2
-        if (offset >= TextPageStart && offset < TextPageEnd)
-        {
-            if (controller.Is80StoreEnabled)
-            {
-                return controller.IsPage2Selected;
-            }
-
-            // When 80STORE is disabled, text page follows RAMWRT like general regions
-            return controller.IsRamWrtEnabled;
-        }
-
-        // General RAM regions ($0200-$03FF, $0800-$0FFF): Controlled by RAMWRT
-        return controller.IsRamWrtEnabled;
     }
 }

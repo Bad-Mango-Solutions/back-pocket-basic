@@ -96,6 +96,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private IMemoryBus? bus;
     private IVideoDevice? videoDevice;
     private IInternalRomHandler? internalRomHandler;
+    private Extended80ColumnPage0Target? page0Target; // Reference to the page 0 composite target
     private int deviceId;
     private bool layersConfigured; // Tracks whether ConfigureMemory has been called
 
@@ -827,6 +828,32 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     }
 
     /// <summary>
+    /// Gets the auxiliary RAM target for page 0 (used by composite target configuration).
+    /// </summary>
+    /// <returns>A RAM target covering page 0 of auxiliary memory.</returns>
+    public RamTarget GetAuxPage0Target()
+    {
+        return new RamTarget(auxiliaryRam.Slice(0, 0x1000), "AUX_PAGE0");
+    }
+
+    /// <summary>
+    /// Sets the page 0 composite target reference for routing updates.
+    /// </summary>
+    /// <param name="target">The page 0 composite target.</param>
+    /// <remarks>
+    /// This must be called after the page 0 target is created and configured.
+    /// The device will call <see cref="Extended80ColumnPage0Target.UpdateRouting"/>
+    /// whenever soft switches change to update the routing table.
+    /// </remarks>
+    public void SetPage0Target(Extended80ColumnPage0Target target)
+    {
+        page0Target = target;
+
+        // Initialize routing with current state
+        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
+    }
+
+    /// <summary>
     /// Applies the current soft switch state to the memory bus layers.
     /// </summary>
     /// <remarks>
@@ -837,13 +864,8 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// <item><description>RAMRD/RAMWRT: Activates the auxiliary RAM layer ($1000-$BFFF)</description></item>
     /// <item><description>80STORE + PAGE2 + HIRES: Activates the auxiliary hi-res layer ($2000-$3FFF)</description></item>
     /// <item><description>INTCXROM: Controls expansion ROM layer ($C100-$CFFF) via CompositeIOTarget</description></item>
+    /// <item><description>Updates page 0 routing table for sub-page regions</description></item>
     /// </list>
-    /// <para>
-    /// Note: Sub-page regions (zero page, stack, text page within $0000-$0FFF) cannot
-    /// use layer-based switching due to 4KB page granularity. These regions require
-    /// a composite target (like AuxiliaryMemoryPage0Target) that checks this device's
-    /// state at each memory access to determine routing.
-    /// </para>
     /// <para>
     /// When a layer is deactivated, accesses fall through to the base memory mapping (main RAM/ROM).
     /// </para>
@@ -858,6 +880,10 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
         }
 
+        // Update page 0 routing table for sub-page regions
+        // This is efficient - just updates a few array entries, no per-access checks
+        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
+
         if (bus is null)
         {
             return;
@@ -869,11 +895,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         {
             return;
         }
-
-        // NOTE: The following sub-page regions CANNOT be controlled by layers:
-        // - ALTZP ($0000-$01FF): Zero page and stack - requires composite target
-        // - 80STORE+PAGE2 ($0400-$07FF): Text page - requires composite target
-        // These are handled by AuxiliaryMemoryPage0Target or similar composite approach.
 
         // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
         // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
