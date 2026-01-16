@@ -123,7 +123,7 @@ visible. Typical ROM behavior includes:
 
 - Boot entry at `$CS00` (e.g., `$C600` for slot 6), used by `PR#6` or `C600G`.
 - A boot routine that spins the drive, seeks track 0, reads sector 0, and executes it.
-- Standard entry points used by DOS 3.3 or ProDOS 8 drivers.
+- A minimal bootstrap only; DOS/ProDOS load their own RWTS routines after boot.
 
 ### 3.2 ROM Loading Rules
 
@@ -140,6 +140,43 @@ On power-on or reset:
 - Q6/Q7 default low (read mode).
 - Phases all off; head position remains at track 0 unless configured otherwise.
 - Allow a motor spin-up delay (~1 second) before returning valid disk data.
+
+### 3.4 ROM Entry Points and Call Conventions
+
+The Disk II ROM is intentionally tiny, so entry points are limited and tightly packed.
+The emulator must map the full ROM bytes at `$CS00-$CSFF` so the CPU can execute them
+directly rather than substituting high-level hooks.
+
+| Entry | Address (relative) | Purpose | Notes |
+|-------|-------------------|---------|-------|
+| BOOT0 / ENTRY | `$CS00` | Bootstrap disk load | Reads track 0 sector 0 into $0800 and jumps to BOOT1. |
+| BOOT1 (loaded) | `$0800` | Second-stage loader | Loaded from disk by BOOT0; continues DOS/ProDOS boot. |
+| ReadSector (internal) | ROM label | Finds address/data prologues | Uses X = slot index, `$26-$27` = buffer, `$3D` = sector, `$41` = track. |
+
+Notes:
+- The ROM begins with the controller signature (`$20`/`$00`/`$03` pattern) used by
+  system firmware to identify a Disk II card.
+- The internal ReadSector routine is invoked by BOOT0/BOOT1 and must remain at the
+  correct offset for the selected ROM revision. Use the disassembly references to
+  confirm offsets for the 13-sector (P5) vs 16-sector (P5A) ROMs.
+- The ROM does not expose a general read/write API; DOS/ProDOS RWTS routines in RAM
+  handle sector I/O after BOOT1 takes over.
+- Treat all other ROM addresses as internal entry points for the bootloader sequence;
+  the emulator must execute ROM code as-is rather than emulating routines selectively.
+
+### 3.5 Clean-Room ROM Guidance
+
+If the project needs a clean-room ROM replacement (for testing or open-source use),
+follow a strict separation process:
+
+1. **Spec team** documents ROM behavior from public references and hardware testing.
+2. **Implementation team** writes new code from the spec only (no ROM bytes or code copy).
+3. Maintain logs of sources consulted and ensure all reviewers are independent of ROM
+   disassembly work.
+4. Validate against behavioral tests (boot flow, sector decode, error handling), not
+   byte-level ROM comparisons.
+
+This preserves IP boundaries while enabling a compatible boot process.
 
 ---
 
@@ -198,26 +235,67 @@ use.
 
 ## 5. Disk Image Handling
 
-### 5.1 Supported Formats
+### 5.1 Supported Formats (Phase 1)
 
-| Format | Description | Notes |
-|--------|-------------|-------|
-| `.dsk` | Raw sector image | Common; usually DOS 3.3 order |
-| `.do`  | DOS order image | Explicit DOS 3.3 ordering |
-| `.po`  | ProDOS order image | Explicit ProDOS ordering |
-| `.d13` | 13-sector image | DOS 3.2, 116,480 bytes |
-| `.nib` | Nibble image | ~6,656 bytes/track; preserves sync/headers |
-| `.woz` | Bitstream image (WOZ 1.0/2.0) | Best for copy protection |
-| `.2mg` | Universal image with header | Includes metadata (order, size) |
+| Format | Status | Description | Notes |
+|--------|--------|-------------|-------|
+| `.dsk` | Supported | Raw sector image | Common; usually DOS 3.3 order (ambiguous). |
+| `.do`  | Supported | DOS order image | Explicit DOS 3.3 interleave. |
+| `.po`  | Supported | ProDOS order image | Explicit ProDOS ordering. |
+| `.2mg` | Supported | 2IMG header + data | Use header to detect order and flags. |
+| `.d13` | Recognized only | 13-sector image | DOS 3.2, 116,480 bytes; unsupported initially. |
+| `.nib` | Planned | Nibble image | Track-level data, sync/headers preserved. |
+| `.woz` | Planned | Bitstream image (WOZ 1.0/2.0) | Best for copy protection. |
 
-### 5.2 Format Handling Rules
+### 5.2 Sector-Based Images (.do/.po/.dsk)
 
-- `.dsk` is ambiguous; treat as `.do` by default and allow user override.
-- `.nib` and `.woz` require nibble/bitstream pipelines; sector order is not relevant.
-- `.2mg` headers specify sector order and read-only flags; honor them explicitly.
-- Disk image providers should expose a read-only flag (WOZ/2MG metadata or user option).
+#### 5.2.1 `.do` (DOS Order)
 
-### 5.3 Copy Protection and Quarter Tracks
+- Fixed size: 143,360 bytes (35 * 16 * 256).
+- Logical sector mapping follows the DOS 3.3 interleave (see Section 4.3).
+- Writes update the sector data in-place (respect write-protect flags).
+
+#### 5.2.2 `.po` (ProDOS Order)
+
+- Fixed size: 143,360 bytes for 5.25\" disks.
+- Logical sector order is linear (0,1,2,3...), no interleave translation.
+- Prefer for ProDOS system disks and block-device tooling.
+
+#### 5.2.3 `.dsk` (Ambiguous Order)
+
+- Same size as `.do`/`.po`, but sector ordering is not encoded.
+- Default to DOS order; allow user override/configuration.
+- Optional heuristic: inspect VTOC or ProDOS boot blocks to infer order.
+
+### 5.3 2MG / 2IMG Images
+
+The `.2mg` format provides a 64-byte header with metadata:
+
+- Magic: `2IMG`
+- Image data offset and length
+- Image format (DOS/ProDOS/nibble)
+- Flags (write-protect, volume number)
+
+Implementation rules:
+
+- Parse the header to select DOS vs ProDOS ordering.
+- Respect write-protect flags and volume metadata when present.
+- Use the data offset/length rather than file length alone.
+
+### 5.4 Recognized-Only Legacy Images (.d13)
+
+- `.d13` files represent 13-sector DOS 3.2 disks (116,480 bytes).
+- Detect and report as **unsupported** rather than mis-mounting as 16-sector data.
+- Plan for future 13-sector decode support alongside nibble/bitstream pipelines.
+
+### 5.5 Planned Nibble/Bitstream Formats (.nib/.woz)
+
+- `.nib` stores raw track data (~6,656 bytes per track) including sync and address fields.
+- `.woz` stores bitstream timing and track metadata (WOZ1/WOZ2).
+- For initial delivery, detect and surface “not yet supported” errors while keeping the
+  format metadata models in place for later implementation.
+
+### 5.6 Copy Protection and Quarter Tracks
 
 - Copy protection often uses half/quarter tracks, nonstandard sector counts, or weak bits.
 - `.nib` captures many protections; `.woz` captures bitstream-level anomalies and timing.
@@ -283,6 +361,18 @@ emulator must ensure:
   to schedule rotational position updates and motor timeouts.
 - Avoid polling per CPU cycle by using event-driven transitions for performance.
 
+### 7.5 Host-Side Emulation Responsibilities
+
+The Disk II device is entirely emulated in software; no physical hardware is attached.
+Host-side responsibilities include:
+
+- Implement soft-switch side effects (phase lines, drive select, motor, Q6/Q7 modes).
+- Maintain a shift-register/data-latch model that feeds bytes to the CPU at ROM timing.
+- Translate disk image data into the current track/sector stream and advance it based
+  on emulated rotational position.
+- Surface disk state (inserted, write-protected, drive selected) through `IDeviceRegistry`.
+- Keep all timing-driven behavior deterministic to support cycle-counted ROM loops.
+
 ---
 
 ## 8. Edge Cases and Error Handling
@@ -301,11 +391,14 @@ emulator must ensure:
 
 - Apple Disk II Floppy Disk Subsystem Manual: https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf
 - Disk II ROM disassembly (C600ROM): https://6502disassembly.com/a2-rom/C600ROM.html
+- Disk II BOOT0 disassembly source (c600rom.s): https://github.com/xouillet/asm6502/blob/master/c600rom.s
+- DOS 3.3 Boot ROM source listing: https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/source_code/DOS%203.3%20Boot%20ROM.pdf
 - Apple II ROM disassembly overview: https://6502disassembly.com/a2-rom/
 - Disk II controller hardware overview: https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/
 - Software Control of the Disk II or IWM Controller (1984): https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Software_Control_of_the_Disk_II_or_IWM_Controller_1984-04-26.pdf
 - Beneath Apple DOS (Archive.org): https://archive.org/details/Beneath_Apple_DOS_alt/
 - DOS 3.3 filesystem notes (sector order, VTOC): https://ciderpress2.com/formatdoc/DOS-notes.html
+- Disk image formats (.dsk/.do/.po): https://stason.org/TULARC/pc/apple2/faq/10-006-What-are-DSK-PO-DO-HDV-NIB-and-2MG-disk-image.html
 - Nibble image format notes: https://ciderpress2.com/formatdoc/Nibble-notes.html
 - WOZ specification (WOZ1/WOZ2): https://applesaucefdc.com/woz/reference2/
 - WOZ format notes: https://ciderpress2.com/formatdoc/Woz-notes.html
