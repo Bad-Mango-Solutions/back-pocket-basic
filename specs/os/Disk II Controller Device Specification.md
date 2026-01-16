@@ -150,8 +150,12 @@ directly rather than substituting high-level hooks.
 | Entry | Address (relative) | Purpose | Notes |
 |-------|-------------------|---------|-------|
 | BOOT0 / ENTRY | `$CS00` | Bootstrap disk load | Reads track 0 sector 0 into $0800 and jumps to BOOT1. |
+| ReadSector | `$CS5C` | Locate address/data headers | Uses X = slot index, `$26-$27` = buffer, `$3D` = sector, `$41` = track. |
+| FoundAddress | `$CS83` | Parse address field | Reads volume/track/sector header. |
+| FoundData | `$CSA6` | Read encoded data | Reads 6-and-2 data into the sector buffer. |
+| DecodeLoop | `$CSD5` | Decode 6-and-2 | Recombines 2-bit and 6-bit chunks. |
+| Jump BOOT1 | `$CSF8` | Transfer control | Jumps to `$0801` after successful read. |
 | BOOT1 (loaded) | `$0800` | Second-stage loader | Loaded from disk by BOOT0; continues DOS/ProDOS boot. |
-| ReadSector (internal) | ROM label | Finds address/data prologues | Uses X = slot index, `$26-$27` = buffer, `$3D` = sector, `$41` = track. |
 
 Notes:
 - The ROM begins with the controller signature (`$20`/`$00`/`$03` pattern) used by
@@ -159,6 +163,8 @@ Notes:
 - The internal ReadSector routine is invoked by BOOT0/BOOT1 and must remain at the
   correct offset for the selected ROM revision. Use the disassembly references to
   confirm offsets for the 13-sector (P5) vs 16-sector (P5A) ROMs.
+- The addresses above are taken from the 16-sector BOOT0 disassembly; treat them as
+  revision-specific and do not hardcode offsets without validation.
 - The ROM does not expose a general read/write API; DOS/ProDOS RWTS routines in RAM
   handle sector I/O after BOOT1 takes over.
 - Treat all other ROM addresses as internal entry points for the bootloader sequence;
