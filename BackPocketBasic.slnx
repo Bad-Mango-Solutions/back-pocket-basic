@@ -77,6 +77,7 @@
     <File Path="specs/os/Apple II Monitor ROM Reference.md" />
     <File Path="specs/os/Apple II Startup Sequence Reference.md" />
     <File Path="specs/os/Apple IIgs Startup Sequence Reference.md" />
+    <File Path="specs/os/Disk II Controller Device Specification.md" />
     <File Path="specs/os/DOS 3.3 Reference.md" />
     <File Path="specs/os/PocketOS Gen 1-MVP Technical Specification.md" />
     <File Path="specs/os/ProDOS 8 Reference.md" />
