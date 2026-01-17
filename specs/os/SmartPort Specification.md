@@ -4,318 +4,404 @@
 
 | Field        | Value                                              |
 |--------------|----------------------------------------------------|
-| Version      | 1.0                                                |
-| Date         | 2025-12-28                                         |
-| Status       | Initial Draft                                      |
+| Version      | 2.0                                                |
+| Date         | 2025-06-11                                         |
+| Status       | Revised Draft                                      |
 | Applies To   | Pocket2c (Apple IIc), PocketGS (Apple IIgs)        |
 
 ---
 
 ## 1. Overview
 
-SmartPort is Apple's enhanced disk interface protocol introduced with the Apple IIc and
-used extensively on the Apple IIgs. It supersedes the simpler Disk II interface while
-maintaining backward compatibility with ProDOS.
+SmartPort is Apple's block-level device interface protocol introduced with the Apple IIc
+and UniDisk 3.5 drive, and later used extensively on the Apple IIgs. It provides a
+firmware-level abstraction for block devices that supersedes the hardware-level Disk II
+interface.
 
-### 1.1 Why SmartPort Exists
+### 1.1 History and Purpose
 
-The original Disk II controller was designed for 5.25" floppy drives with a simple
-read/write protocol. As Apple introduced new storage devices (3.5" drives, hard drives,
-RAM disks), a more flexible protocol was needed:
+SmartPort was developed to address limitations of the original Disk II interface:
 
-1. **Device abstraction**: SmartPort provides a uniform interface for different device types
-2. **Extended capacity**: Supports devices larger than the Disk II's 140KB limit
-3. **Multiple devices**: Up to 127 devices on a single controller
-4. **Device information**: Standardized way to query device capabilities
+1. **Device independence**: A uniform command interface for different storage device types
+2. **Extended capacity**: Support for devices larger than 140KB (up to 32MB per device)
+3. **Daisy-chaining**: Multiple devices (up to 8 per controller, not 127) on a single port
+4. **Standard status reporting**: Consistent error codes and device information
 
 ### 1.2 SmartPort vs. Disk II
 
 | Feature              | Disk II                | SmartPort              |
 |----------------------|------------------------|------------------------|
-| Max devices          | 2                      | 127                    |
-| Max block size       | 256 bytes (sectors)    | 512 bytes (blocks)     |
+| Max devices          | 2 per controller       | 8 per controller       |
+| Block size           | 256 bytes (sectors)    | 512 bytes (blocks)     |
 | Max device size      | 140KB                  | 32MB (per device)      |
-| Device types         | 5.25" floppy only      | Any block device       |
-| Protocol             | Hardware-level         | Firmware command/status|
-| Error handling       | Basic                  | Extended status codes  |
+| Addressing           | Track/Sector           | Linear block number    |
+| Protocol             | Hardware bit-level     | Firmware command calls |
+| Error handling       | Basic (carry flag)     | Extended error codes   |
 
 ---
 
 ## 2. SmartPort Architecture
 
-### 2.1 Hardware Interface
+### 2.1 Physical Interface
 
-SmartPort uses a daisy-chain topology where multiple devices share a single cable:
+SmartPort uses a DB-19 connector (same as standard Apple II disk port) but with
+enhanced signaling. Devices are daisy-chained with each device having IN and OUT
+ports.
 
 ```
-??????????     ????????????     ????????????     ????????????
-? Host   ??????? Device 1 ??????? Device 2 ??????? Device N ?
-?(IIc/gs)?     ?(Internal)?     ?          ?     ?          ?
-??????????     ????????????     ????????????     ????????????
+??????????     ??????????????     ??????????????
+? Host   ??????? Device 1   ??????? Device 2   ?...
+?(IIc/gs)?     ? (Unit 1)   ?     ? (Unit 2)   ?
+??????????     ??????????????     ??????????????
 ```
 
 ### 2.2 Device Addressing
 
-Each device on the SmartPort chain has a unique unit number:
+Unit numbers are assigned sequentially starting at 1:
 
-| Unit Number | Device                                    |
-|-------------|-------------------------------------------|
-| 0           | Host controller (used for bus commands)   |
-| 1           | First device (often internal drive)       |
-| 2           | Second device                             |
-| ...         | ...                                       |
-| 127         | Maximum device number                     |
+| Unit Number | Description                                       |
+|-------------|---------------------------------------------------|
+| 0           | Host adapter (bus-level STATUS only)              |
+| 1           | First device in chain                             |
+| 2           | Second device in chain                            |
+| ...         | ...                                               |
+| 8           | Maximum devices per SmartPort controller          |
 
-### 2.3 Memory-Mapped Interface
+**Note**: The maximum of 8 devices per controller is a practical limit imposed by the
+protocol and enumeration scheme, not 127 as sometimes erroneously stated.
 
-On the Apple IIc, SmartPort is accessed through slot 5 ($C0D0-$C0DF):
+### 2.3 Slot Assignment
 
-| Address | Name    | Function                              |
-|---------|---------|---------------------------------------|
-| $C0D0   | PHASE0  | Phase 0 control                       |
-| $C0D1   | PHASE0  | Phase 0 control (alternate)           |
-| $C0D2   | PHASE1  | Phase 1 control                       |
-| $C0D3   | PHASE1  | Phase 1 control (alternate)           |
-| $C0D4   | PHASE2  | Phase 2 control                       |
-| $C0D5   | PHASE2  | Phase 2 control (alternate)           |
-| $C0D6   | PHASE3  | Phase 3 control                       |
-| $C0D7   | PHASE3  | Phase 3 control (alternate)           |
-| $C0D8   | MOTOROFF| Motor off (also deselect)             |
-| $C0D9   | MOTORON | Motor on (also select)                |
-| $C0DA   | DEVSEL1 | Select drive 1                        |
-| $C0DB   | DEVSEL2 | Select drive 2                        |
-| $C0DC   | Q6L     | Strobe data latch / shift             |
-| $C0DD   | Q6H     | Load data latch                       |
-| $C0DE   | Q7L     | Prepare for read                      |
-| $C0DF   | Q7H     | Prepare for write                     |
+On the Apple IIc, SmartPort is accessible through slot 5 (memory-mapped at $C500).
+On the Apple IIgs, SmartPort is accessible through slot 5 (internal) and slot 6 or
+other slots with SmartPort-compatible cards.
 
 ---
 
-## 3. SmartPort Commands
+## 3. SmartPort Calling Convention
 
-SmartPort commands are invoked via a firmware call at the SmartPort entry point:
+SmartPort commands are invoked via a firmware call with inline parameters:
 
 ```assembly
-; SmartPort call convention
-    JSR $C5xx          ; Call SmartPort entry point
-    .BYTE command      ; Command number
-    .WORD param_list   ; Pointer to parameter list
-    ; Returns here with error code in A, carry set on error
+; Standard SmartPort call convention (8-bit)
+        JSR     $Cn00+dispatch  ; Call SmartPort entry point
+        .BYTE   command         ; Command number (1 byte)
+        .WORD   param_list      ; Pointer to parameter list (2 bytes)
+        ; Returns here with:
+        ;   A = error code (0 = success)
+        ;   Carry clear = success, Carry set = error
 ```
 
-### 3.1 Standard Commands
+### 3.1 Finding the SmartPort Entry Point
 
-| Command | Name           | Description                           |
-|---------|----------------|---------------------------------------|
-| $00     | STATUS         | Get device/bus status                 |
-| $01     | READ BLOCK     | Read one or more blocks               |
-| $02     | WRITE BLOCK    | Write one or more blocks              |
-| $03     | FORMAT         | Format the device                     |
-| $04     | CONTROL        | Device-specific control               |
-| $05     | INIT           | Initialize device                     |
-| $06     | OPEN           | Open access to device                 |
-| $07     | CLOSE          | Close access to device                |
-| $08     | READ           | Character-device read                 |
-| $09     | WRITE          | Character-device write                |
+The SmartPort entry point is located by examining the slot ROM:
 
-### 3.2 Extended Commands (IIgs)
+```assembly
+; Locating SmartPort entry point for slot N
+; Slot ROM is at $CN00
+        LDA     $CNFF           ; Signature byte 1
+        CMP     #$00            ; Must be $00 for SmartPort
+        BNE     not_smartport
+        LDA     $CNFE           ; Signature byte 2
+        CMP     #$FF            ; Usually $FF
+        BNE     not_smartport
+        LDA     $CNFB           ; Signature byte 3
+        CMP     #$00            ; Must be $00
+        BNE     not_smartport
+        LDA     $CN07           ; Check ProDOS device signature
+        CMP     #$00            ; Must be $00
+        BNE     not_smartport
+        
+        ; SmartPort entry point offset is at $CNFF
+        ; Actual entry = $CN00 + [$CNFF] + 3
+        LDA     $CNFF           ; Get ProDOS entry offset
+        CLC
+        ADC     #$03            ; SmartPort entry is ProDOS+3
+        STA     entry_lo
+```
 
-| Command | Name           | Description                           |
-|---------|----------------|---------------------------------------|
-| $40     | STATUS (ext)   | Extended status with long addressing  |
-| $41     | READ (ext)     | Extended read with long addressing    |
-| $42     | WRITE (ext)    | Extended write with long addressing   |
-| $43     | FORMAT (ext)   | Extended format                       |
-| $44     | CONTROL (ext)  | Extended control                      |
+For slot 5 on the Apple IIc, the SmartPort entry point is typically at $C50D.
 
 ---
 
-## 4. Command Details
+## 4. Standard Commands
 
-### 4.1 STATUS Command ($00)
+### 4.1 Command Summary
 
-Returns information about a device or the entire SmartPort bus.
+| Cmd | Name           | Description                               |
+|-----|----------------|-------------------------------------------|
+| $00 | STATUS         | Get device or bus status                  |
+| $01 | READ BLOCK     | Read one 512-byte block                   |
+| $02 | WRITE BLOCK    | Write one 512-byte block                  |
+| $03 | FORMAT         | Format/initialize the device              |
+| $04 | CONTROL        | Send device-specific control command      |
+| $05 | INIT           | Initialize device (reset)                 |
+| $06 | OPEN           | Open device (character devices)           |
+| $07 | CLOSE          | Close device (character devices)          |
+| $08 | READ           | Character read (character devices)        |
+| $09 | WRITE          | Character write (character devices)       |
 
-**Parameter List**:
+### 4.2 Extended Commands (Apple IIgs)
+
+Extended commands use 3-byte block addresses and 4-byte buffer pointers:
+
+| Cmd  | Name              | Description                            |
+|------|-------------------|----------------------------------------|
+| $40  | STATUS (ext)      | Extended status with long parameters   |
+| $41  | READ BLOCK (ext)  | Extended read with 24-bit addressing   |
+| $42  | WRITE BLOCK (ext) | Extended write with 24-bit addressing  |
+| $43  | FORMAT (ext)      | Extended format                        |
+| $44  | CONTROL (ext)     | Extended control                       |
+| $45  | INIT (ext)        | Extended init                          |
+| $46  | OPEN (ext)        | Extended open                          |
+| $47  | CLOSE (ext)       | Extended close                         |
+| $48  | READ (ext)        | Extended character read                |
+| $49  | WRITE (ext)       | Extended character write               |
+
+---
+
+## 5. Command Details
+
+### 5.1 STATUS Command ($00)
+
+Returns information about a device or the SmartPort bus.
+
+**Parameter List (3 bytes)**:
 ```
-+0: Parameter count (3)
-+1: Unit number (0 = bus, 1-127 = device)
-+2: Status list pointer (low byte)
-+3: Status list pointer (high byte)
-+4: Status code
+Offset  Size  Description
++0      1     Parameter count (always 3)
++1      1     Unit number (0 = bus, 1-8 = device)
++2      2     Status list pointer (result buffer)
++4      1     Status code
 ```
 
 **Status Codes**:
-| Code | Description                                       |
-|------|---------------------------------------------------|
-| $00  | Device status (returns DIB - Device Info Block)   |
-| $01  | Get DCB (Device Control Block)                    |
-| $02  | Get newline status                                |
-| $03  | Get DIB (Device Information Block)                |
 
-**Device Status ($00) Return Data**:
+| Code | Name              | Description                             |
+|------|-------------------|-----------------------------------------|
+| $00  | Device Status     | General device status and block count   |
+| $01  | DCB               | Device Control Block (vendor-specific)  |
+| $02  | Newline Status    | Get newline character (char devices)    |
+| $03  | DIB               | Device Information Block                |
+
+**Device Status ($00) Return Buffer (4 bytes)**:
 ```
-+0: General status byte
-    Bit 7: Block device
-    Bit 6: Write-allowed
-    Bit 5: Read-allowed
-    Bit 4: Device online/disk inserted
-    Bit 3: Format-allowed
-    Bit 2: Write-protected media
-    Bit 1: Interruptible
-    Bit 0: Device open
-+1-3: Device size in blocks (24-bit, little-endian)
-```
-
-### 4.2 READ BLOCK Command ($01)
-
-Reads one or more 512-byte blocks from the device.
-
-**Parameter List**:
-```
-+0: Parameter count (3)
-+1: Unit number (1-127)
-+2: Buffer pointer (low)
-+3: Buffer pointer (high)
-+4: Block number (low)
-+5: Block number (middle)
-+6: Block number (high)
+Offset  Size  Description
++0      1     General status byte:
+              Bit 7: 1 = Block device, 0 = Character device
+              Bit 6: 1 = Write allowed
+              Bit 5: 1 = Read allowed
+              Bit 4: 1 = Device online (disk in drive)
+              Bit 3: 1 = Format allowed
+              Bit 2: 1 = Media write-protected
+              Bit 1: 1 = Interrupting (device needs attention)
+              Bit 0: 1 = Device currently open
++1      3     Number of blocks (little-endian, 24-bit)
 ```
 
-**Implementation**:
-```csharp
-public TrapResult SmartPortRead(ICpu cpu, IMemoryBus bus, IEventContext context)
-{
-    // Get parameter list address from inline bytes after JSR
-    ushort paramList = GetInlineWord(cpu, bus);
-    
-    byte paramCount = bus.Read8(paramList);
-    byte unitNumber = bus.Read8((ushort)(paramList + 1));
-    ushort bufferPtr = bus.Read16((ushort)(paramList + 2));
-    uint blockNumber = bus.Read8((ushort)(paramList + 4)) |
-                       ((uint)bus.Read8((ushort)(paramList + 5)) << 8) |
-                       ((uint)bus.Read8((ushort)(paramList + 6)) << 16);
-    
-    var device = GetDevice(unitNumber);
-    if (device == null)
-        return SmartPortError(cpu, 0x28);  // No device connected
-    
-    var block = device.ReadBlock(blockNumber);
-    if (block == null)
-        return SmartPortError(cpu, 0x27);  // I/O error
-    
-    // Copy block to buffer
-    for (int i = 0; i < 512; i++)
-        bus.Write8((ushort)(bufferPtr + i), block[i]);
-    
-    return SmartPortSuccess(cpu);
-}
+**Bus Status (Unit 0)**: When unit 0 is specified, returns number of devices
+connected to the SmartPort bus in the first byte.
+
+**Device Information Block (Status Code $03)**:
+```
+Offset  Size  Description
++0      1     General status byte (same as Device Status)
++1      3     Number of blocks (little-endian)
++4      1     Device ID string length (1-16)
++5      16    Device ID string (padded with spaces)
++21     2     Device type:
+              Byte 0: Type (see Device Types)
+              Byte 1: Subtype
++23     2     Firmware version (major.minor)
 ```
 
-### 4.3 WRITE BLOCK Command ($02)
+### 5.2 READ BLOCK Command ($01)
 
-Writes one or more 512-byte blocks to the device.
+Reads a single 512-byte block from the device.
 
-**Parameter List**:
+**Parameter List (3 bytes)**:
 ```
-+0: Parameter count (3)
-+1: Unit number (1-127)
-+2: Buffer pointer (low)
-+3: Buffer pointer (high)
-+4: Block number (low)
-+5: Block number (middle)
-+6: Block number (high)
+Offset  Size  Description
++0      1     Parameter count (always 3)
++1      1     Unit number (1-8)
++2      2     Data buffer pointer
++4      3     Block number (little-endian, 24-bit)
 ```
 
-### 4.4 FORMAT Command ($03)
+**Notes**:
+- Returns 512 bytes to the specified buffer
+- Block numbers start at 0
+- Maximum block number is device-dependent (see STATUS)
 
-Formats the device (initializes all blocks).
+### 5.3 WRITE BLOCK Command ($02)
 
-**Parameter List**:
+Writes a single 512-byte block to the device.
+
+**Parameter List (3 bytes)**:
 ```
-+0: Parameter count (1)
-+1: Unit number (1-127)
+Offset  Size  Description
++0      1     Parameter count (always 3)
++1      1     Unit number (1-8)
++2      2     Data buffer pointer (source)
++4      3     Block number (little-endian, 24-bit)
 ```
 
-### 4.5 CONTROL Command ($04)
+### 5.4 FORMAT Command ($03)
+
+Formats/initializes the device. Effect is device-dependent.
+
+**Parameter List (1 byte)**:
+```
+Offset  Size  Description
++0      1     Parameter count (always 1)
++1      1     Unit number (1-8)
+```
+
+**Notes**:
+- For floppy disks: Low-level format
+- For hard disks: May write boot blocks or do nothing
+- For RAM disks: Typically zeroes all blocks
+
+### 5.5 CONTROL Command ($04)
 
 Sends a device-specific control command.
 
-**Parameter List**:
+**Parameter List (3 bytes)**:
 ```
-+0: Parameter count (3)
-+1: Unit number (1-127)
-+2: Control list pointer (low)
-+3: Control list pointer (high)
-+4: Control code
+Offset  Size  Description
++0      1     Parameter count (always 3)
++1      1     Unit number (1-8)
++2      2     Control list pointer
++4      1     Control code
 ```
 
-**Common Control Codes**:
-| Code | Description                                       |
-|------|---------------------------------------------------|
-| $00  | Reset device                                      |
-| $01  | Set DCB                                           |
-| $02  | Set newline mode                                  |
-| $03  | Eject disk                                        |
-| $04  | Set disk-switched flag                            |
+**Standard Control Codes**:
 
----
+| Code | Name              | Description                             |
+|------|-------------------|-----------------------------------------|
+| $00  | Reset Device      | Reset device to power-on state          |
+| $01  | Set DCB           | Set Device Control Block                |
+| $02  | Set Newline       | Set newline character (char devices)    |
+| $03  | Service Interrupt | Acknowledge/clear device interrupt      |
+| $04  | Eject             | Eject removable media                   |
+| $05  | Set IW Mode       | Set interleave/write mode               |
 
-## 5. Error Codes
-
-SmartPort returns error codes in the accumulator with carry set:
-
-| Code | Name              | Description                          |
-|------|-------------------|--------------------------------------|
-| $00  | No error          | Operation successful                 |
-| $01  | Bad command       | Unknown command number               |
-| $04  | Bad param count   | Wrong number of parameters           |
-| $21  | Invalid unit      | Unit number out of range             |
-| $27  | I/O error         | Device read/write failed             |
-| $28  | No device         | No device at specified unit          |
-| $2B  | Write protected   | Attempt to write read-only media     |
-| $2D  | Disk switched     | Disk was changed since last access   |
-| $2E  | Device offline    | No disk in drive                     |
-| $2F  | Volume too large  | Block number exceeds device size     |
-
----
-
-## 6. Device Types
-
-SmartPort supports various device types, identified in the Device Information Block:
-
-### 6.1 Device Type Codes
-
-| Code | Device Type                                       |
-|------|---------------------------------------------------|
-| $00  | Memory expansion card (RAM disk)                  |
-| $01  | 3.5" floppy disk drive                            |
-| $02  | ProFile hard drive                                |
-| $03  | Generic SCSI device                               |
-| $04  | SCSI hard disk                                    |
-| $05  | SCSI tape drive                                   |
-| $06  | SCSI CD-ROM                                       |
-| $07  | SCSI printer                                      |
-| $08  | Host adapter                                      |
-| $09  | Character device (serial, etc.)                   |
-| $0A  | Tape backup unit                                  |
-
-### 6.2 Device Information Block (DIB)
-
-The DIB is returned by STATUS command code $03:
-
+**Control List Format** (for control code $04 - Eject):
 ```
-+0:    Status byte (same as STATUS $00 byte 0)
-+1-3:  Block count (24-bit)
-+4:    String length (1-16)
-+5-20: Device name (Pascal string, 16 bytes max)
-+21-22: Device type and subtype
-+23-24: Version number
+Offset  Size  Description
++0      1     List length (0)
+```
+
+### 5.6 INIT Command ($05)
+
+Initializes/resets the device.
+
+**Parameter List (1 byte)**:
+```
+Offset  Size  Description
++0      1     Parameter count (always 1)
++1      1     Unit number (1-8)
 ```
 
 ---
 
-## 7. SmartPort Interface
+## 6. Error Codes
+
+All SmartPort commands return an error code in the accumulator:
+
+| Code | Name                 | Description                          |
+|------|----------------------|--------------------------------------|
+| $00  | NO_ERROR             | Operation successful                 |
+| $01  | BAD_COMMAND          | Invalid command number               |
+| $04  | BAD_PARAM_COUNT      | Wrong number of parameters           |
+| $11  | BUS_ERROR            | Bus communication error              |
+| $21  | BAD_UNIT             | Unit number out of range             |
+| $27  | IO_ERROR             | General I/O error                    |
+| $28  | NO_DEVICE            | No device at specified unit          |
+| $2B  | WRITE_PROTECTED      | Media is write-protected             |
+| $2E  | DISK_SWITCHED        | Disk changed since last access       |
+| $2F  | DEVICE_OFFLINE       | No media in drive                    |
+| $30  | VOLUME_TOO_LARGE     | Block number exceeds device capacity |
+
+**Note on "Disk Switched"**: This error indicates the media was changed. The host
+should re-read the volume directory before continuing.
+
+---
+
+## 7. Device Types
+
+### 7.1 Device Type Codes
+
+Device type is returned in the DIB (STATUS code $03):
+
+| Type | Subtype | Device                                   |
+|------|---------|------------------------------------------|
+| $00  | $00     | Memory expansion (RAM disk)              |
+| $01  | $00     | 3.5" floppy disk (400K/800K)             |
+| $01  | $01     | 3.5" floppy disk (Apple UniDisk 3.5)     |
+| $02  | $00     | ProFile hard disk                        |
+| $02  | $01     | Generic hard disk                        |
+| $03  | $xx     | Generic SCSI device                      |
+| $04  | $00     | SCSI hard disk                           |
+| $05  | $00     | SCSI tape drive                          |
+| $06  | $00     | SCSI CD-ROM                              |
+| $08  | $00     | Host adapter                             |
+| $09  | $00     | Serial/character device                  |
+| $0A  | $00     | AppleTalk/network device                 |
+
+### 7.2 Determining Device Characteristics
+
+```csharp
+public bool IsBlockDevice(byte statusByte) => (statusByte & 0x80) != 0;
+public bool IsWriteAllowed(byte statusByte) => (statusByte & 0x40) != 0;
+public bool IsReadAllowed(byte statusByte) => (statusByte & 0x20) != 0;
+public bool IsOnline(byte statusByte) => (statusByte & 0x10) != 0;
+public bool IsFormatAllowed(byte statusByte) => (statusByte & 0x08) != 0;
+public bool IsWriteProtected(byte statusByte) => (statusByte & 0x04) != 0;
+public bool IsInterrupting(byte statusByte) => (statusByte & 0x02) != 0;
+public bool IsOpen(byte statusByte) => (statusByte & 0x01) != 0;
+```
+
+---
+
+## 8. ProDOS Integration
+
+SmartPort integrates with ProDOS through the MLI (Machine Language Interface).
+
+### 8.1 ProDOS Device Numbers
+
+ProDOS maps SmartPort devices to slot/drive combinations:
+
+```
+ProDOS Unit = $S0 + (D-1) * $10
+Where:
+  S = Slot number (1-7)
+  D = Drive number (1 or 2)
+
+Example: Slot 5, Drive 1 = $50
+         Slot 5, Drive 2 = $D0 (bit 7 indicates drive 2)
+```
+
+### 8.2 Block Device Driver Entry
+
+ProDOS calls device drivers with:
+- Command in zero page $42
+- Unit number in zero page $43
+- Buffer pointer in zero page $44-45
+- Block number in zero page $46-47
+
+| ProDOS Command | SmartPort Equivalent |
+|----------------|----------------------|
+| $00 - Status   | STATUS ($00)         |
+| $01 - Read     | READ BLOCK ($01)     |
+| $02 - Write    | WRITE BLOCK ($02)    |
+| $03 - Format   | FORMAT ($03)         |
+
+---
+
+## 9. Implementation Interfaces
+
+### 9.1 SmartPort Controller Interface
 
 ```csharp
 /// <summary>
@@ -323,22 +409,36 @@ The DIB is returned by STATUS command code $03:
 /// </summary>
 public interface ISmartPortController : IPeripheral
 {
-    /// <summary>Gets the number of connected devices.</summary>
+    /// <summary>Gets the number of devices on this SmartPort bus.</summary>
     int DeviceCount { get; }
     
-    /// <summary>Gets a connected device by unit number.</summary>
+    /// <summary>Gets a device by unit number (1-8).</summary>
+    /// <param name="unitNumber">The unit number (1-based).</param>
+    /// <returns>The device, or null if no device at that unit.</returns>
     ISmartPortDevice? GetDevice(int unitNumber);
     
-    /// <summary>Adds a device to the SmartPort chain.</summary>
+    /// <summary>Adds a device to the SmartPort bus.</summary>
+    /// <param name="device">The device to add.</param>
+    /// <returns>The assigned unit number, or -1 if bus is full.</returns>
     int AddDevice(ISmartPortDevice device);
     
-    /// <summary>Removes a device from the SmartPort chain.</summary>
+    /// <summary>Removes a device from the SmartPort bus.</summary>
+    /// <param name="unitNumber">The unit number to remove.</param>
+    /// <returns>True if device was removed.</returns>
     bool RemoveDevice(int unitNumber);
     
     /// <summary>Executes a SmartPort command.</summary>
-    SmartPortResult ExecuteCommand(SmartPortCommand command, in SmartPortParams parameters);
+    /// <param name="command">The command number.</param>
+    /// <param name="paramListAddress">Address of the parameter list.</param>
+    /// <param name="bus">Memory bus for parameter/data access.</param>
+    /// <returns>Error code (0 = success).</returns>
+    byte ExecuteCommand(byte command, ushort paramListAddress, IMemoryBus bus);
 }
+```
 
+### 9.2 SmartPort Device Interface
+
+```csharp
 /// <summary>
 /// Interface for a SmartPort-compatible device.
 /// </summary>
@@ -347,11 +447,17 @@ public interface ISmartPortDevice
     /// <summary>Gets the device type code.</summary>
     byte DeviceType { get; }
     
-    /// <summary>Gets the device name (max 16 characters).</summary>
+    /// <summary>Gets the device subtype code.</summary>
+    byte DeviceSubtype { get; }
+    
+    /// <summary>Gets the device name (1-16 characters).</summary>
     string DeviceName { get; }
     
-    /// <summary>Gets the total number of blocks.</summary>
+    /// <summary>Gets the total number of 512-byte blocks.</summary>
     uint BlockCount { get; }
+    
+    /// <summary>Gets the firmware version.</summary>
+    ushort FirmwareVersion { get; }
     
     /// <summary>Gets whether the device is online (media present).</summary>
     bool IsOnline { get; }
@@ -359,153 +465,205 @@ public interface ISmartPortDevice
     /// <summary>Gets whether the device is write-protected.</summary>
     bool IsWriteProtected { get; }
     
-    /// <summary>Reads a block from the device.</summary>
-    SmartPortResult ReadBlock(uint blockNumber, Span<byte> buffer);
+    /// <summary>Gets whether the media was changed since last access.</summary>
+    bool DiskSwitched { get; }
     
-    /// <summary>Writes a block to the device.</summary>
-    SmartPortResult WriteBlock(uint blockNumber, ReadOnlySpan<byte> buffer);
+    /// <summary>Reads a 512-byte block.</summary>
+    /// <param name="blockNumber">Block number (0-based).</param>
+    /// <param name="buffer">512-byte buffer to fill.</param>
+    /// <returns>Error code (0 = success).</returns>
+    byte ReadBlock(uint blockNumber, Span<byte> buffer);
+    
+    /// <summary>Writes a 512-byte block.</summary>
+    /// <param name="blockNumber">Block number (0-based).</param>
+    /// <param name="buffer">512-byte buffer to write.</param>
+    /// <returns>Error code (0 = success).</returns>
+    byte WriteBlock(uint blockNumber, ReadOnlySpan<byte> buffer);
     
     /// <summary>Formats the device.</summary>
-    SmartPortResult Format();
+    /// <returns>Error code (0 = success).</returns>
+    byte Format();
     
     /// <summary>Gets device status.</summary>
-    SmartPortResult GetStatus(byte statusCode, Span<byte> buffer);
+    /// <param name="statusCode">Status code to retrieve.</param>
+    /// <param name="buffer">Buffer to fill with status data.</param>
+    /// <returns>Error code (0 = success).</returns>
+    byte GetStatus(byte statusCode, Span<byte> buffer);
     
     /// <summary>Executes a control command.</summary>
-    SmartPortResult Control(byte controlCode, ReadOnlySpan<byte> parameters);
+    /// <param name="controlCode">Control code.</param>
+    /// <param name="controlList">Control list data.</param>
+    /// <returns>Error code (0 = success).</returns>
+    byte Control(byte controlCode, ReadOnlySpan<byte> controlList);
+    
+    /// <summary>Initializes/resets the device.</summary>
+    /// <returns>Error code (0 = success).</returns>
+    byte Init();
+}
+```
+
+### 9.3 Result Type
+
+```csharp
+/// <summary>
+/// SmartPort error codes.
+/// </summary>
+public static class SmartPortError
+{
+    public const byte NoError = 0x00;
+    public const byte BadCommand = 0x01;
+    public const byte BadParamCount = 0x04;
+    public const byte BusError = 0x11;
+    public const byte BadUnit = 0x21;
+    public const byte IoError = 0x27;
+    public const byte NoDevice = 0x28;
+    public const byte WriteProtected = 0x2B;
+    public const byte DiskSwitched = 0x2E;
+    public const byte DeviceOffline = 0x2F;
+    public const byte VolumeTooLarge = 0x30;
 }
 
 /// <summary>
-/// Result of a SmartPort operation.
+/// Represents the result of a SmartPort command handler.
 /// </summary>
-public readonly record struct SmartPortResult(
-    byte ErrorCode,
-    int BytesTransferred = 0
-)
-{
-    public bool IsSuccess => ErrorCode == 0;
-    
-    public static SmartPortResult Success(int bytes = 0) 
-        => new(0, bytes);
-    public static SmartPortResult Error(byte code) 
-        => new(code);
-}
+/// <param name="ResultCode">The result code (0 = success).</param>
+/// <param name="CyclesConsumed">The number of cycles consumed by the operation.</param>
+public readonly record struct SmartPortCommandHandlerResult(byte ResultCode, Cycle CyclesConsumed);
 ```
 
 ---
 
-## 8. ProDOS Integration
+## 10. Implementation Notes
 
-SmartPort integrates seamlessly with ProDOS through the ProDOS block device driver interface.
+### 10.1 Disk Image Formats
 
-### 8.1 ProDOS Device Driver Calls
+Common disk image formats used with SmartPort:
 
-ProDOS uses a simplified interface that maps to SmartPort:
+| Format | Extension | Block Size | Notes                         |
+|--------|-----------|------------|-------------------------------|
+| 2IMG   | .2mg      | 512        | Includes metadata header      |
+| ProDOS | .po       | 512        | Raw ProDOS-order blocks       |
+| DOS    | .do       | 256?512    | Requires sector translation   |
+| HDV    | .hdv      | 512        | Hard disk volume image        |
+| DC42   | .dc       | 512        | DiskCopy 4.2 format           |
 
-| ProDOS Call    | Maps To SmartPort   |
-|----------------|---------------------|
-| DRIVER_STATUS  | STATUS ($00)        |
-| DRIVER_READ    | READ BLOCK ($01)    |
-| DRIVER_WRITE   | WRITE BLOCK ($02)   |
-| DRIVER_FORMAT  | FORMAT ($03)        |
+### 10.2 Block Addressing
 
-### 8.2 Volume Mapping
-
-ProDOS maps SmartPort units to drive slots:
-
-```
-/S5D1 ? Slot 5, Drive 1 ? SmartPort Unit 1
-/S5D2 ? Slot 5, Drive 2 ? SmartPort Unit 2
-```
-
----
-
-## 9. Implementation Notes
-
-### 9.1 Disk Image Support
-
-Common disk image formats for SmartPort devices:
-
-| Format | Extension | Description                           |
-|--------|-----------|---------------------------------------|
-| 2IMG   | .2mg      | Universal disk image with metadata    |
-| ProDOS | .po      | Raw ProDOS-order blocks               |
-| DOS    | .do       | Raw DOS 3.3-order sectors             |
-| HDV    | .hdv      | Hard disk volume image                |
-
-### 9.2 Block Translation
-
-For 2IMG and ProDOS images, blocks map directly:
-
+For 2IMG, .po, and .hdv images:
 ```csharp
-long fileOffset = blockNumber * 512;
+long fileOffset = blockNumber * 512L;
 ```
 
-For DOS-order images, sector interleaving applies.
+For .do (DOS-order) images, physical-to-logical sector interleaving is required:
+```csharp
+// DOS 3.3 to ProDOS sector translation
+private static readonly byte[] DosToProDos = 
+{
+    0x0, 0xE, 0xD, 0xC, 0xB, 0xA, 0x9, 0x8,
+    0x7, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0xF
+};
+```
 
-### 9.3 Trap Handler Example
+### 10.3 Trap Handler Implementation
 
 ```csharp
 /// <summary>
 /// SmartPort entry point trap handler.
 /// </summary>
-public TrapResult SmartPortEntry(ICpu cpu, IMemoryBus bus, IEventContext context)
+public TrapResult HandleSmartPortCall(IMachine machine)
 {
-    // Get return address (points to inline parameters)
-    ushort returnAddr = PopWord(cpu, bus);
+    ICpu cpu = machine.Cpu;
+    IMemoryBus bus = machine.Bus;
+
+    // Get return address from stack (points to inline parameters)
+    ushort returnAddr = (ushort)(cpu.PopWord() + 1);
     
     // Read inline command and parameter list pointer
     byte command = bus.Read8(returnAddr);
     ushort paramList = bus.Read16((ushort)(returnAddr + 1));
     
-    // Advance return address past inline data
+    // Advance return address past inline data (3 bytes)
     returnAddr += 3;
-    PushWord(cpu, bus, returnAddr);
+    cpu.PushWord((ushort)(returnAddr - 1));
+    
+    // Read parameter count and unit number
+    byte paramCount = bus.Read8(paramList);
+    byte unitNumber = bus.Read8((ushort)(paramList + 1));
+    
+    // Validate unit number
+    if (unitNumber > MaxDevices && command != 0x00)
+    {
+        cpu.A = SmartPortError.BadUnit;
+        cpu.SetCarry(true);
+        return TrapResult.Success(10, TrapReturnMethod.Rts);
+    }
     
     // Execute command
-    var result = _controller.ExecuteCommand(
-        (SmartPortCommand)command,
-        ReadParameters(bus, paramList));
+    SmartPortCommandHandlerResult result = command switch
+    {
+        0x00 => HandleStatus(unitNumber, paramList, bus),
+        0x01 => HandleReadBlock(unitNumber, paramList, bus),
+        0x02 => HandleWriteBlock(unitNumber, paramList, bus),
+        0x03 => HandleFormat(unitNumber, paramList, bus),
+        0x04 => HandleControl(unitNumber, paramList, bus),
+        0x05 => HandleInit(unitNumber, paramList, bus),
+        _ => new SmartPortCommandHandlerResult(SmartPortError.BadCommand, 10)
+    };
     
-    // Set result in accumulator and carry
-    cpu.SetRegisterA(result.ErrorCode);
-    cpu.SetCarry(result.ErrorCode != 0);
+    // Set result in accumulator and carry flag
+    cpu.A = result.ResultCode;
+    cpu.SetCarry(result.ResultCode != 0);
     
-    return new TrapResult(
-        Handled: true,
-        CyclesConsumed: new Cycle(result.IsSuccess ? 100 : 50),
-        ReturnAddress: null);
+    return TrapResult.Success(result.CyclesConsumed, TrapReturnMethod.Rts);
+}
+
+private SmartPortCommandHandlerResult HandleReadBlock(byte unitNumber, ushort paramList, IMemoryBus bus)
+{
+    var device = GetDevice(unitNumber);
+    if (device == null)
+        return SmartPortError.NoDevice;
+    
+    ushort bufferPtr = bus.Read16((ushort)(paramList + 2));
+    uint blockNumber = bus.Read8((ushort)(paramList + 4)) |
+                       ((uint)bus.Read8((ushort)(paramList + 5)) << 8) |
+                       ((uint)bus.Read8((ushort)(paramList + 6)) << 16);
+    
+    Span<byte> buffer = stackalloc byte[512];
+    byte resultCode = device.ReadBlock(blockNumber, buffer);
+    
+    if (resultCode == SmartPortError.NoError)
+    {
+        // Copy block to guest memory
+        for (int i = 0; i < 512; i++)
+            bus.Write8((ushort)(bufferPtr + i), buffer[i]);
+    }
+    
+    return new SmartPortCommandHandlerResult(resultCode, 50000); // 50000 cycles for Read
 }
 ```
 
+### 10.4 Timing Considerations
+
+SmartPort operations should model realistic timing:
+
+| Operation      | Typical Cycles | Notes                          |
+|----------------|----------------|--------------------------------|
+| STATUS         | 500-2000       | Quick device query             |
+| READ BLOCK     | 20000-50000    | ~20-50ms for floppy            |
+| WRITE BLOCK    | 20000-50000    | ~20-50ms for floppy            |
+| FORMAT         | 1000000+       | Full disk format               |
+| Motor spin-up  | 500000         | ~0.5 second                    |
+
 ---
 
-## Document History
+## 11. Bus Architecture Integration
 
-| Version | Date       | Changes                            |
-|---------|------------|------------------------------------|
-| 1.0     | 2025-12-28 | Initial specification              |
-
----
-
-## Appendix A: Bus Architecture Integration
-
-This appendix provides implementation guidance for integrating SmartPort with the
-emulator's bus architecture.
-
-### A.1 SmartPort as IPeripheral
-
-SmartPort controllers implement `IPeripheral` for slot integration:
+### 11.1 SmartPort as IPeripheral
 
 ```csharp
-/// <summary>
-/// SmartPort controller implementing the peripheral interface.
-/// </summary>
-public sealed class SmartPortController : IPeripheral, ISchedulable
+public sealed class SmartPortController : IPeripheral
 {
-    private readonly List<ISmartPortDevice> _devices = new();
-    private readonly byte[] _slotRom;
-    private readonly byte[] _expansionRom;
+    private readonly List<ISmartPortDevice> _devices = [];
     
     /// <inheritdoc/>
     public string Name => "SmartPort Controller";
@@ -517,337 +675,219 @@ public sealed class SmartPortController : IPeripheral, ISchedulable
     public int SlotNumber { get; set; }
     
     /// <inheritdoc/>
-    public IBusTarget? MMIORegion { get; }
+    public IBusTarget? SlotRomRegion { get; }
     
     /// <inheritdoc/>
-    public IBusTarget? ROMRegion { get; }
-    
-    /// <inheritdoc/>
-    public IBusTarget? ExpansionROMRegion { get; }
+    public IBusTarget? ExpansionRomRegion { get; }
     
     public SmartPortController()
     {
-        MMIORegion = new SmartPortMMIO(this);
-        ROMRegion = new RomTarget(_slotRom);
-        ExpansionROMRegion = new RomTarget(_expansionRom);
+        SlotRomRegion = new SmartPortSlotRom(this);
+        ExpansionRomRegion = new SmartPortExpansionRom(this);
     }
 }
 ```
 
-### A.2 MMIO Target Implementation
+### 11.2 Slot ROM Identification
 
-The SmartPort MMIO region ($C0n0-$C0nF) implements `IBusTarget`:
+SmartPort slot ROM must contain identifying bytes:
 
-```csharp
-/// <summary>
-/// SmartPort MMIO registers (16 bytes per slot).
-/// </summary>
-public sealed class SmartPortMMIO : IBusTarget
-{
-    private readonly SmartPortController _controller;
-    
-    /// <inheritdoc/>
-    public TargetCaps Capabilities => TargetCaps.SideEffects | TargetCaps.TimingSense;
-    
-    /// <inheritdoc/>
-    public byte Read8(Addr physicalAddress, in BusAccess access)
-    {
-        if (access.IsSideEffectFree)
-            return 0xFF;  // Debug reads return floating bus
-        
-        int offset = (int)(physicalAddress & 0x0F);
-        
-        return offset switch
-        {
-            0x00 => _controller.GetPhase0(),
-            0x02 => _controller.GetPhase1(),
-            0x04 => _controller.GetPhase2(),
-            0x06 => _controller.GetPhase3(),
-            0x08 => _controller.MotorOff(),
-            0x09 => _controller.MotorOn(),
-            0x0C => _controller.ReadQ6L(),
-            0x0D => _controller.ReadQ6H(),
-            0x0E => _controller.ReadQ7L(),
-            0x0F => _controller.ReadQ7H(),
-            _ => 0xFF
-        };
-    }
-    
-    /// <inheritdoc/>
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
-    {
-        if (access.IsSideEffectFree)
-            return;
-        
-        int offset = (int)(physicalAddress & 0x0F);
-        
-        // Most SmartPort accesses trigger on read; writes echo the behavior
-        _ = Read8(physicalAddress, access);
-    }
-}
+```
+$CnFF = $00     (SmartPort signature)
+$CnFE = $FF     (Usually)
+$CnFB = $00     (SmartPort signature)
+$Cn07 = $00     (ProDOS block device signature)
+$Cn05 = $03     (ProDOS status byte - 3.5" drive)
+$CnFC = SmartPort entry point offset
 ```
 
-### A.3 Trap Handler for SmartPort Entry Point
-
-SmartPort firmware entry is trapped for native implementation:
+### 11.3 Device Registry Integration
 
 ```csharp
-/// <summary>
-/// SmartPort entry point trap handler.
-/// </summary>
-public sealed class SmartPortTrap
+public void RegisterDevices(IDeviceRegistry registry, int slot)
 {
-    private readonly SmartPortController _controller;
-    private readonly ISlotManager _slots;
-    
-    /// <summary>
-    /// Trap handler for SmartPort firmware entry ($Cn00).
-    /// </summary>
-    public TrapResult Execute(ICpu cpu, IMemoryBus bus, IEventContext context)
-    {
-        // Verify slot contains SmartPort controller
-        var card = _slots.GetCard(_controller.SlotNumber);
-        if (card?.DeviceType != "SmartPort")
-            return new TrapResult(Handled: false, default, null);
-        
-        // Select expansion ROM (simulates ROM access)
-        _slots.SelectExpansionSlot(_controller.SlotNumber);
-        
-        // Get return address from stack (points to inline parameters)
-        ushort returnAddr = PopWord(cpu, bus, context);
-        
-        // Read inline command and parameter list
-        var access = CreateAccess(cpu, context, AccessIntent.DataRead);
-        byte command = bus.Read8(access with { Address = returnAddr }).Value;
-        ushort paramList = bus.Read16(access with { Address = (Addr)(returnAddr + 1) }).Value;
-        
-        // Advance return address past inline data
-        returnAddr += 3;
-        PushWord(cpu, bus, context, returnAddr);
-        
-        // Execute the SmartPort command
-        var result = ExecuteCommand(command, paramList, bus, context);
-        
-        // Set result in accumulator and carry
-        cpu.A = result.ErrorCode;
-        cpu.SetCarry(result.ErrorCode != 0);
-        
-        return new TrapResult(
-            Handled: true,
-            CyclesConsumed: new Cycle(result.IsSuccess ? 200 : 50),
-            ReturnAddress: null);
-    }
-    
-    private SmartPortResult ExecuteCommand(
-        byte command, 
-        ushort paramList,
-        IMemoryBus bus,
-        IEventContext context)
-    {
-        var access = CreateAccess(null, context, AccessIntent.DataRead);
-        
-        byte paramCount = bus.Read8(access with { Address = paramList }).Value;
-        byte unitNumber = bus.Read8(access with { Address = (Addr)(paramList + 1) }).Value;
-        
-        return command switch
-        {
-            0x00 => HandleStatus(unitNumber, paramList, bus, access),
-            0x01 => HandleReadBlock(unitNumber, paramList, bus, access),
-            0x02 => HandleWriteBlock(unitNumber, paramList, bus, access),
-            0x03 => HandleFormat(unitNumber),
-            0x04 => HandleControl(unitNumber, paramList, bus, access),
-            _ => SmartPortResult.Error(0x01)  // Bad command
-        };
-    }
-}
-```
-
-### A.4 Block Device Implementation
-
-SmartPort devices implement block I/O with proper bus access:
-
-```csharp
-/// <summary>
-/// SmartPort block device (e.g., 3.5" floppy, hard drive).
-/// </summary>
-public sealed class SmartPortBlockDevice : ISmartPortDevice
-{
-    private readonly Stream _diskImage;
-    private readonly byte[] _blockBuffer = new byte[512];
-    
-    /// <inheritdoc/>
-    public SmartPortResult ReadBlock(uint blockNumber, Span<byte> buffer)
-    {
-        if (blockNumber >= BlockCount)
-            return SmartPortResult.Error(0x2F);  // Volume too large
-        
-        if (!IsOnline)
-            return SmartPortResult.Error(0x2E);  // Device offline
-        
-        _diskImage.Seek(blockNumber * 512, SeekOrigin.Begin);
-        int read = _diskImage.Read(_blockBuffer);
-        
-        if (read != 512)
-            return SmartPortResult.Error(0x27);  // I/O error
-        
-        _blockBuffer.CopyTo(buffer);
-        return SmartPortResult.Success(512);
-    }
-    
-    /// <inheritdoc/>
-    public SmartPortResult WriteBlock(uint blockNumber, ReadOnlySpan<byte> buffer)
-    {
-        if (IsWriteProtected)
-            return SmartPortResult.Error(0x2B);  // Write protected
-        
-        if (blockNumber >= BlockCount)
-            return SmartPortResult.Error(0x2F);  // Volume too large
-        
-        buffer.CopyTo(_blockBuffer);
-        _diskImage.Seek(blockNumber * 512, SeekOrigin.Begin);
-        _diskImage.Write(_blockBuffer);
-        
-        return SmartPortResult.Success(512);
-    }
-}
-```
-
-### A.5 Memory Transfer with Bus Access
-
-Block transfers copy data through the bus with proper access semantics:
-
-```csharp
-private SmartPortResult HandleReadBlock(
-    byte unitNumber,
-    ushort paramList,
-    IMemoryBus bus,
-    BusAccess baseAccess)
-{
-    ushort bufferPtr = bus.Read16(baseAccess with { Address = (Addr)(paramList + 2) }).Value;
-    uint blockNumber = bus.Read8(baseAccess with { Address = (Addr)(paramList + 4) }).Value |
-                       ((uint)bus.Read8(baseAccess with { Address = (Addr)(paramList + 5) }).Value << 8) |
-                       ((uint)bus.Read8(baseAccess with { Address = (Addr)(paramList + 6) }).Value << 16);
-    
-    var device = _controller.GetDevice(unitNumber);
-    if (device == null)
-        return SmartPortResult.Error(0x28);  // No device connected
-    
-    Span<byte> buffer = stackalloc byte[512];
-    var result = device.ReadBlock(blockNumber, buffer);
-    
-    if (!result.IsSuccess)
-        return result;
-    
-    // Copy block to guest memory
-    var writeAccess = baseAccess with { Intent = AccessIntent.DataWrite };
-    for (int i = 0; i < 512; i++)
-    {
-        bus.Write8(writeAccess with { 
-            Address = (Addr)(bufferPtr + i),
-            Value = buffer[i]
-        });
-    }
-    
-    return SmartPortResult.Success(512);
-}
-```
-
-### A.6 Scheduler Integration for Motor Timing
-
-SmartPort uses the scheduler for realistic motor timing:
-
-```csharp
-public sealed class SmartPortController : ISchedulable
-{
-    private const ulong MotorSpinUpCycles = 500_000;  // ~0.5 second
-    private const ulong MotorSpinDownCycles = 2_000_000;  // ~2 seconds
-    
-    private bool _motorRunning;
-    private bool _motorSpinningUp;
-    
-    public byte MotorOn()
-    {
-        if (!_motorRunning && !_motorSpinningUp)
-        {
-            _motorSpinningUp = true;
-            _scheduler.ScheduleAfter(this, MotorSpinUpCycles);
-        }
-        return 0xFF;
-    }
-    
-    public byte MotorOff()
-    {
-        if (_motorRunning)
-        {
-            _motorRunning = false;
-            // Motor coasts to stop
-            _scheduler.ScheduleAfter(this, MotorSpinDownCycles);
-        }
-        return 0xFF;
-    }
-    
-    /// <inheritdoc/>
-    public ulong Execute(ulong currentCycle)
-    {
-        if (_motorSpinningUp)
-        {
-            _motorSpinningUp = false;
-            _motorRunning = true;
-        }
-        return 0;  // One-shot event
-    }
-}
-```
-
-### A.7 Device Registry
-
-```csharp
-public void RegisterSmartPortDevices(IDeviceRegistry registry, int slot)
-{
-    // Controller
-    int controllerId = registry.GenerateId();
+    // Register controller
     registry.Register(
-        controllerId,
-        DevicePageId.Create(DevicePageClass.Storage, instance: (byte)slot, page: 0),
+        DevicePageId.Create(DevicePageClass.Storage, (byte)slot, 0),
         kind: "SmartPortController",
         name: $"SmartPort (Slot {slot})",
         wiringPath: $"main/slots/{slot}/smartport");
     
-    // Individual devices
-    foreach (var device in _devices)
+    // Register each device
+    for (int unit = 1; unit <= _devices.Count; unit++)
     {
+        var device = _devices[unit - 1];
         registry.Register(
-            registry.GenerateId(),
-            DevicePageId.Create(DevicePageClass.Storage, instance: (byte)slot, page: (byte)device.UnitNumber),
-            kind: device.DeviceType.ToString(),
+            DevicePageId.Create(DevicePageClass.Storage, (byte)slot, (byte)unit),
+            kind: $"SmartPort{device.DeviceType:X2}",
             name: device.DeviceName,
-            wiringPath: $"main/slots/{slot}/smartport/unit{device.UnitNumber}");
+            wiringPath: $"main/slots/{slot}/smartport/unit{unit}");
     }
 }
 ```
 
-### A.8 Expansion ROM Trap Considerations
+---
 
-SmartPort expansion ROM traps must validate slot selection:
+## Document History
+
+| Version | Date       | Changes                                    |
+|---------|------------|--------------------------------------------|
+| 1.0     | 2025-12-28 | Initial specification                      |
+| 2.0     | 2025-06-11 | Major revision with accurate information   |
+
+---
+
+## References
+
+1. Apple IIgs Hardware Reference Manual, Chapter 7: SmartPort
+2. Apple II SmartPort Technical Notes #1-7
+3. Apple IIc Technical Reference Manual
+4. ProDOS 8 Technical Reference Manual
+
+---
+
+## Appendix A: Complete Status Byte Definitions
+
+### A.1 Device Status Byte (returned by STATUS code $00)
+
+```
+Bit 7 (DEVTYPE):  1 = Block device
+                  0 = Character device
+
+Bit 6 (WRITABLE): 1 = Device can be written to
+                  0 = Read-only device
+
+Bit 5 (READABLE): 1 = Device can be read from
+                  0 = Write-only device (rare)
+
+Bit 4 (ONLINE):   1 = Media present and ready
+                  0 = No media or not ready
+
+Bit 3 (FORMAT):   1 = Format command supported
+                  0 = Format not supported
+
+Bit 2 (PROTECT):  1 = Media is write-protected
+                  0 = Media is writable
+
+Bit 1 (INTR):     1 = Device is interrupting
+                  0 = No pending interrupt
+
+Bit 0 (OPEN):     1 = Device has been opened
+                  0 = Device is closed
+```
+
+### A.2 Typical Status Byte Values
+
+| Value | Meaning                                              |
+|-------|------------------------------------------------------|
+| $F8   | Block device, R/W, online, formattable               |
+| $FC   | Block device, R/W, online, formattable, protected    |
+| $E8   | Block device, R/W, offline (no disk)                 |
+| $D8   | Block device, read-only, online                      |
+| $18   | Character device, R/W, online                        |
+
+---
+
+## Appendix B: Example Device Implementation
+
+### B.1 RAM Disk Device
 
 ```csharp
 /// <summary>
-/// Trap for SmartPort routine in expansion ROM.
+/// A simple RAM disk SmartPort device.
 /// </summary>
-public TrapResult SmartPortExpansionTrap(ICpu cpu, IMemoryBus bus, IEventContext context)
+public sealed class SmartPortRamDisk : ISmartPortDevice
 {
-    // Only handle if correct slot's expansion ROM is active
-    if (_slots.ActiveExpansionSlot != _controller.SlotNumber)
+    private readonly byte[] _storage;
+    
+    public byte DeviceType => 0x00;  // Memory expansion
+    public byte DeviceSubtype => 0x00;
+    public string DeviceName => "RAMDISK";
+    public uint BlockCount { get; }
+    public ushort FirmwareVersion => 0x0100;
+    public bool IsOnline => true;
+    public bool IsWriteProtected => false;
+    public bool DiskSwitched => false;
+    
+    public SmartPortRamDisk(uint blockCount)
     {
-        // Different slot's expansion ROM is selected - don't trap
-        return new TrapResult(Handled: false, default, null);
+        BlockCount = blockCount;
+        _storage = new byte[blockCount * 512];
     }
     
-    // Verify slot has SmartPort controller
-    var card = _slots.GetCard(_controller.SlotNumber);
-    if (card?.DeviceType != "SmartPort")
-        return new TrapResult(Handled: false, default, null);
+    public byte ReadBlock(uint blockNumber, Span<byte> buffer)
+    {
+        if (blockNumber >= BlockCount)
+            return SmartPortError.VolumeTooLarge;
+        
+        _storage.AsSpan((int)(blockNumber * 512), 512).CopyTo(buffer);
+        return SmartPortError.NoError;
+    }
     
-    // Handle the trap...
-    return HandleSmartPortRoutine(cpu, bus, context);
+    public byte WriteBlock(uint blockNumber, ReadOnlySpan<byte> buffer)
+    {
+        if (blockNumber >= BlockCount)
+            return SmartPortError.VolumeTooLarge;
+        
+        buffer.CopyTo(_storage.AsSpan((int)(blockNumber * 512), 512));
+        return SmartPortError.NoError;
+    }
+    
+    public byte Format()
+    {
+        Array.Clear(_storage);
+        return SmartPortError.NoError;
+    }
+    
+    public byte GetStatus(byte statusCode, Span<byte> buffer)
+    {
+        return statusCode switch
+        {
+            0x00 => GetDeviceStatus(buffer),
+            0x03 => GetDIB(buffer),
+            _ => SmartPortError.BadCommand
+        };
+    }
+    
+    private byte GetDeviceStatus(Span<byte> buffer)
+    {
+        buffer[0] = 0xF8;  // Block, R/W, online, formattable
+        buffer[1] = (byte)(BlockCount & 0xFF);
+        buffer[2] = (byte)((BlockCount >> 8) & 0xFF);
+        buffer[3] = (byte)((BlockCount >> 16) & 0xFF);
+        return SmartPortError.NoError;
+    }
+    
+    private byte GetDIB(Span<byte> buffer)
+    {
+        GetDeviceStatus(buffer);
+        
+        // Device name
+        buffer[4] = 7;  // Length
+        "RAMDISK".AsSpan().CopyTo(MemoryMarshal.Cast<byte, char>(buffer.Slice(5, 16)));
+        
+        // Device type
+        buffer[21] = DeviceType;
+        buffer[22] = DeviceSubtype;
+        
+        // Version
+        buffer[23] = (byte)(FirmwareVersion & 0xFF);
+        buffer[24] = (byte)((FirmwareVersion >> 8) & 0xFF);
+        
+        return SmartPortError.NoError;
+    }
+    
+    public byte Control(byte controlCode, ReadOnlySpan<byte> controlList)
+    {
+        return controlCode switch
+        {
+            0x00 => Init(),  // Reset
+            _ => SmartPortError.BadCommand
+        };
+    }
+    
+    public byte Init()
+    {
+        return SmartPortError.NoError;
+    }
 }
