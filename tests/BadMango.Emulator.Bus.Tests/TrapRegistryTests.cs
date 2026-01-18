@@ -1267,65 +1267,6 @@ public class TrapRegistryTests
         Assert.That(traps, Has.Count.EqualTo(3));
     }
 
-    // ─── Helper Methods ─────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Creates a mock Language Card state for testing trap context-awareness.
-    /// </summary>
-    /// <returns>A tuple containing the mock Language Card state and a function to enable/disable RAM.</returns>
-    private static (Mock<ILanguageCardState> MockLanguageCard, Action<bool> SetRamEnabled) CreateMockLanguageCard()
-    {
-        var mockLanguageCard = new Mock<ILanguageCardState>();
-        bool ramEnabled = false;
-
-        mockLanguageCard.Setup(lc => lc.IsRamReadEnabled).Returns(() => ramEnabled);
-        mockLanguageCard.Setup(lc => lc.IsRamWriteEnabled).Returns(() => ramEnabled);
-        mockLanguageCard.Setup(lc => lc.SelectedBank).Returns(1);
-
-        void SetRamEnabled(bool enabled)
-        {
-            ramEnabled = enabled;
-        }
-
-        return (mockLanguageCard, SetRamEnabled);
-    }
-
-    /// <summary>
-    /// Creates a mock event context with the specified bus.
-    /// </summary>
-    /// <param name="bus">The memory bus to configure in the mock context.</param>
-    /// <returns>A mock <see cref="IEventContext"/> with the specified bus.</returns>
-    private static IEventContext CreateMockEventContext(IMemoryBus bus)
-    {
-        var mockContext = new Mock<IEventContext>();
-        mockContext.Setup(c => c.Bus).Returns(bus);
-        return mockContext.Object;
-    }
-
-    /// <summary>
-    /// Helper method to create test bus access structures.
-    /// </summary>
-    /// <param name="address">The memory address for the access.</param>
-    /// <param name="intent">The access intent (read or write).</param>
-    /// <param name="flags">Optional access flags.</param>
-    /// <returns>A <see cref="BusAccess"/> configured with the specified parameters.</returns>
-    private static BusAccess CreateTestAccess(
-        Addr address,
-        AccessIntent intent,
-        AccessFlags flags = AccessFlags.None)
-    {
-        return new(
-            Address: address,
-            Value: 0,
-            WidthBits: 8,
-            Mode: BusAccessMode.Decomposed,
-            EmulationFlag: true,
-            Intent: intent,
-            SourceId: 0,
-            Cycle: 0,
-            Flags: flags);
-    }
-
     /// <summary>
     /// Verifies that TrapRegistered event is raised when a trap is registered.
     /// </summary>
@@ -1467,5 +1408,64 @@ public class TrapRegistryTests
             Assert.That(raisedResult!.Value.CyclesConsumed.Value, Is.EqualTo(10ul));
             Assert.That(raisedCycle!.Value.Value, Is.EqualTo(12345ul));
         });
+    }
+
+    // ─── Helper Methods ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates a mock Language Card state for testing trap context-awareness.
+    /// </summary>
+    /// <returns>A tuple containing the mock Language Card state and a function to enable/disable RAM.</returns>
+    private static (Mock<ILanguageCardState> MockLanguageCard, Action<bool> SetRamEnabled) CreateMockLanguageCard()
+    {
+        var mockLanguageCard = new Mock<ILanguageCardState>();
+        bool ramEnabled = false;
+
+        mockLanguageCard.Setup(lc => lc.IsRamReadEnabled).Returns(() => ramEnabled);
+        mockLanguageCard.Setup(lc => lc.IsRamWriteEnabled).Returns(() => ramEnabled);
+        mockLanguageCard.Setup(lc => lc.SelectedBank).Returns(1);
+
+        void SetRamEnabled(bool enabled)
+        {
+            ramEnabled = enabled;
+        }
+
+        return (mockLanguageCard, SetRamEnabled);
+    }
+
+    /// <summary>
+    /// Creates a mock event context with the specified bus.
+    /// </summary>
+    /// <param name="bus">The memory bus to configure in the mock context.</param>
+    /// <returns>A mock <see cref="IEventContext"/> with the specified bus.</returns>
+    private static IEventContext CreateMockEventContext(IMemoryBus bus)
+    {
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Bus).Returns(bus);
+        return mockContext.Object;
+    }
+
+    /// <summary>
+    /// Helper method to create test bus access structures.
+    /// </summary>
+    /// <param name="address">The memory address for the access.</param>
+    /// <param name="intent">The access intent (read or write).</param>
+    /// <param name="flags">Optional access flags.</param>
+    /// <returns>A <see cref="BusAccess"/> configured with the specified parameters.</returns>
+    private static BusAccess CreateTestAccess(
+        Addr address,
+        AccessIntent intent,
+        AccessFlags flags = AccessFlags.None)
+    {
+        return new(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: intent,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: flags);
     }
 }
