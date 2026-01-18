@@ -1,0 +1,190 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650"
+        x:Class="BadMango.Emulator.Debug.UI.Views.TrapMonitorWindow"
+        Title="Trap Monitor"
+        Width="900"
+        Height="650"
+        MinWidth="700"
+        MinHeight="450"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Trap Monitor"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10" />
+
+        <!-- Filters Section -->
+        <Border Grid.Row="1" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Category:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="CategoryFilter" SelectedIndex="0" Margin="0,0,15,0">
+                    <ComboBoxItem Content="All" />
+                </ComboBox>
+
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Operation:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <ComboBox Grid.Row="0" Grid.Column="3" x:Name="OperationFilter" SelectedIndex="0" Margin="0,0,15,0">
+                    <ComboBoxItem Content="All" />
+                </ComboBox>
+
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Context:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <ComboBox Grid.Row="0" Grid.Column="5" x:Name="ContextFilter" SelectedIndex="0" Margin="0,0,15,0">
+                    <ComboBoxItem Content="All" />
+                </ComboBox>
+
+                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="7" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="200" />
+                    </Grid.ColumnDefinitions>
+
+                    <CheckBox Grid.Column="0" x:Name="ShowEnabledCheckbox" Content="Show Enabled" IsChecked="True" Margin="0,0,15,0" VerticalAlignment="Center" />
+                    <CheckBox Grid.Column="1" x:Name="ShowDisabledCheckbox" Content="Show Disabled" IsChecked="True" Margin="0,0,15,0" VerticalAlignment="Center" />
+                    <CheckBox Grid.Column="2" x:Name="PauseUpdatesCheckbox" Content="Pause Updates" VerticalAlignment="Center" />
+                    
+                    <TextBlock Grid.Column="4" Text="Search:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                    <TextBox Grid.Column="5" x:Name="SearchTextBox" Watermark="Name or address..." />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Registered Traps Section -->
+        <Border Grid.Row="2" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" x:Name="RegisteredTrapsHeader" Text="Registered Traps (0)" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" Margin="0,0,0,8" />
+                <DataGrid Grid.Row="1" x:Name="TrapsGrid" 
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          CanUserReorderColumns="True"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Addr" Binding="{Binding Address}" Width="70" />
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />
+                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110" />
+                        <DataGridTextColumn Header="Operation" Binding="{Binding Operation}" Width="80" />
+                        <DataGridTextColumn Header="Context" Binding="{Binding Context}" Width="90" />
+                        <DataGridTextColumn Header="Slot" Binding="{Binding Slot}" Width="50" />
+                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding IsEnabled}" Width="70" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- Invocation Log Header -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Trap Invocation Log" FontSize="14" FontWeight="SemiBold" Foreground="CornflowerBlue" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="Clear Log" Click="OnClearLogClick" Padding="10,4" />
+        </Grid>
+
+        <!-- Invocation Log Section -->
+        <Border Grid.Row="4" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Background="#1A1A1A"
+                Padding="10"
+                Margin="0,5,0,10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="InvocationLogList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" 
+                                       FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                                       FontSize="11"
+                                       Margin="0,1" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="5" 
+                Background="#222222"
+                CornerRadius="3"
+                Padding="10,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Total Traps: " Foreground="Gray" />
+                    <TextBlock x:Name="TotalTrapsText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="Enabled: " Foreground="Gray" />
+                    <TextBlock x:Name="EnabledCountText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <TextBlock Text="Disabled: " Foreground="Gray" />
+                    <TextBlock x:Name="DisabledCountText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </StackPanel>
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <TextBlock Text="Invocations: " Foreground="Gray" />
+                    <TextBlock x:Name="InvocationCountText" Text="0" FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

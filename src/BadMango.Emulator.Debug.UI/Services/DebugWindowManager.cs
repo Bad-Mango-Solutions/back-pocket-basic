@@ -48,8 +48,10 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.About),
         nameof(DebugWindowComponent.CharacterPreview),
         nameof(DebugWindowComponent.GlyphEditor),
+        nameof(DebugWindowComponent.ScheduleMonitor),
         nameof(DebugWindowComponent.StatusMonitor),
         nameof(DebugWindowComponent.TextEditor),
+        nameof(DebugWindowComponent.TrapMonitor),
         nameof(DebugWindowComponent.Video),
     ];
 
@@ -284,6 +286,32 @@ public class DebugWindowManager : IDebugWindowManager
         return GlyphEditorWindow.Create();
     }
 
+    private static ScheduleMonitorWindow CreateScheduleMonitorWindow(object? context)
+    {
+        var window = new ScheduleMonitorWindow();
+
+        // If context is IMachine, set it on the window for scheduler access
+        if (context is IMachine machine)
+        {
+            window.SetMachine(machine);
+        }
+
+        return window;
+    }
+
+    private static TrapMonitorWindow CreateTrapMonitorWindow(object? context)
+    {
+        var window = new TrapMonitorWindow();
+
+        // If context is IMachine, set it on the window for trap registry access
+        if (context is IMachine machine)
+        {
+            window.SetMachine(machine);
+        }
+
+        return window;
+    }
+
     /// <summary>
     /// Shows a new text editor window, allowing multiple instances.
     /// </summary>
@@ -324,8 +352,10 @@ public class DebugWindowManager : IDebugWindowManager
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             "GLYPHEDITOR" => CreateGlyphEditorWindow(context),
+            "SCHEDULEMONITOR" => CreateScheduleMonitorWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             "TEXTEDITOR" => CreateTextEditorWindow(context),
+            "TRAPMONITOR" => CreateTrapMonitorWindow(context),
             "VIDEO" => CreateVideoWindow(context),
             _ => null,
         };
