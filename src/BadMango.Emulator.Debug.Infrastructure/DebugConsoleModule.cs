@@ -173,6 +173,24 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.Register(ctx =>
+            {
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                var debugContext = ctx.ResolveOptional<IDebugContext>();
+                return new SchedMonCommand(windowManager, debugContext);
+            })
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.Register(ctx =>
+            {
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                var debugContext = ctx.ResolveOptional<IDebugContext>();
+                return new TrapMonCommand(windowManager, debugContext);
+            })
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         // Register device-specific debug commands (auto-discovered)
         // This includes commands with IDebugWindowManager dependencies (AboutCommand, CharacterMapCommand, etc.)
         builder.RegisterModule<DeviceDebugCommandsModule>();
