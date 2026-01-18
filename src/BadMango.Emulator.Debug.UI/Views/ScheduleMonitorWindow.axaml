@@ -61,9 +61,6 @@
                     <ComboBoxItem Content="All" />
                 </ComboBox>
 
-                <CheckBox Grid.Column="4" x:Name="ShowPendingCheckbox" Content="Show Pending" IsChecked="True" Margin="0,0,10,0" VerticalAlignment="Center" />
-                <CheckBox Grid.Column="5" x:Name="ShowConsumedCheckbox" Content="Show Consumed" IsChecked="True" Margin="0,0,10,0" VerticalAlignment="Center" />
-
                 <CheckBox Grid.Column="7" x:Name="PauseUpdatesCheckbox" Content="Pause Updates" VerticalAlignment="Center" />
             </Grid>
         </Border>

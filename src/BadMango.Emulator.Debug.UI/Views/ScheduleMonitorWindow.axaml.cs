@@ -57,8 +57,6 @@ public partial class ScheduleMonitorWindow : Window
     private readonly TextBlock consumedCountText;
 
     private IMachine? machine;
-    private ulong totalScheduled;
-    private ulong totalConsumed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ScheduleMonitorWindow"/> class.
@@ -185,6 +183,22 @@ public partial class ScheduleMonitorWindow : Window
         UpdateSchedulerState();
     }
 
+    /// <summary>
+    /// Updates the scheduler state display with current values from the scheduler.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The current <see cref="IScheduler"/> interface provides basic information such as
+    /// the current cycle and pending event count. More detailed event information
+    /// (such as listing individual pending events with their source devices) would
+    /// require an <c>ISchedulerObserver</c> interface to be added to the <c>Scheduler</c>
+    /// class in a future enhancement.
+    /// </para>
+    /// <para>
+    /// Statistics like total scheduled and consumed counts would also require
+    /// scheduler-level event tracking to be implemented.
+    /// </para>
+    /// </remarks>
     private void UpdateSchedulerState()
     {
         if (machine is null)
@@ -206,14 +220,9 @@ public partial class ScheduleMonitorWindow : Window
         pendingCountText.Text = pendingCount.ToString();
         pendingEventsHeader.Text = $"Pending Events ({pendingCount})";
 
-        // Update statistics
-        totalScheduledText.Text = FormatNumber(totalScheduled);
-        consumedCountText.Text = FormatNumber(totalConsumed);
-
-        // Note: The current IScheduler interface doesn't expose pending events details
-        // for iteration. This would require an ISchedulerObserver interface to be added
-        // to the Scheduler class to notify when events are scheduled and consumed.
-        // For now, we display the pending count from the scheduler.
+        // Statistics not yet available - scheduler observer required
+        totalScheduledText.Text = "--";
+        consumedCountText.Text = "--";
     }
 
     private void AddLogEntry(string entry)

@@ -62,7 +62,6 @@ public partial class TrapMonitorWindow : Window
 
     private IMachine? machine;
     private ITrapRegistry? trapRegistry;
-    private ulong invocationCount;
     private string lastSearchText = string.Empty;
 
     /// <summary>
@@ -132,26 +131,6 @@ public partial class TrapMonitorWindow : Window
 
         // Force an initial update of the traps list
         UpdateTrapsList();
-    }
-
-    private static string FormatNumber(ulong value)
-    {
-        if (value >= 1_000_000_000)
-        {
-            return $"{value / 1_000_000_000.0:F2}G";
-        }
-
-        if (value >= 1_000_000)
-        {
-            return $"{value / 1_000_000.0:F2}M";
-        }
-
-        if (value >= 1_000)
-        {
-            return $"{value / 1_000.0:F1}K";
-        }
-
-        return value.ToString();
     }
 
     private void PopulateCategoryFilter()
@@ -295,6 +274,18 @@ public partial class TrapMonitorWindow : Window
         registeredTrapsHeader.Text = $"Registered Traps ({traps.Count})";
     }
 
+    /// <summary>
+    /// Updates the trap statistics display with current values from the trap registry.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The current <see cref="ITrapRegistry"/> interface provides information about
+    /// registered traps and their enabled/disabled state. Invocation counting would
+    /// require an <c>ITrapRegistryObserver</c> interface to be added to the
+    /// <c>TrapRegistry</c> class in a future enhancement to track when traps are
+    /// called and their results.
+    /// </para>
+    /// </remarks>
     private void UpdateStatistics()
     {
         if (trapRegistry is null)
@@ -310,7 +301,7 @@ public partial class TrapMonitorWindow : Window
         totalTrapsText.Text = totalTraps.ToString();
         enabledCountText.Text = enabledTraps.ToString();
         disabledCountText.Text = disabledTraps.ToString();
-        invocationCountText.Text = FormatNumber(invocationCount);
+        invocationCountText.Text = "--"; // Trap observer required for invocation tracking
     }
 
     private void OnClearLogClick(object? sender, RoutedEventArgs e)
