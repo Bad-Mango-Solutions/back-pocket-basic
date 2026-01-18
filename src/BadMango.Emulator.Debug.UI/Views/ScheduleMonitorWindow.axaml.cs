@@ -14,6 +14,7 @@ using Avalonia.Threading;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Schedule monitor window displaying scheduler events in real-time.
@@ -57,6 +58,9 @@ public partial class ScheduleMonitorWindow : Window
     private readonly TextBlock consumedCountText;
 
     private IMachine? machine;
+    private ISchedulerObserver? schedulerObserver;
+    private ulong totalScheduledCount;
+    private ulong totalConsumedCount;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ScheduleMonitorWindow"/> class.
@@ -97,17 +101,14 @@ public partial class ScheduleMonitorWindow : Window
         Closed += OnWindowClosed;
     }
 
-    /// <summary>
-    /// Sets the machine to monitor.
-    /// </summary>
-    /// <param name="machineToMonitor">The machine containing the scheduler to monitor.</param>
-    public void SetMachine(IMachine machineToMonitor)
+    private static string GetDeviceName(object? tag)
     {
-        ArgumentNullException.ThrowIfNull(machineToMonitor);
-        machine = machineToMonitor;
-
-        // Populate device filter with devices from the machine
-        PopulateDeviceFilter();
+        return tag switch
+        {
+            IPeripheral peripheral => peripheral.Name,
+            string name => name,
+            _ => "Unknown",
+        };
     }
 
     private static string FormatNumber(ulong value)
@@ -128,6 +129,84 @@ public partial class ScheduleMonitorWindow : Window
         }
 
         return value.ToString();
+    }
+
+    /// <summary>
+    /// Sets the machine to monitor.
+    /// </summary>
+    /// <param name="machineToMonitor">The machine containing the scheduler to monitor.</param>
+    public void SetMachine(IMachine machineToMonitor)
+    {
+        ArgumentNullException.ThrowIfNull(machineToMonitor);
+        machine = machineToMonitor;
+
+        // Subscribe to scheduler observer events if the scheduler supports observation
+        if (machine.Scheduler is ISchedulerObserver observer)
+        {
+            schedulerObserver = observer;
+            schedulerObserver.EventScheduled += OnEventScheduled;
+            schedulerObserver.EventConsumed += OnEventConsumed;
+            schedulerObserver.EventCancelled += OnEventCancelled;
+        }
+
+        // Populate device filter with devices from the machine
+        PopulateDeviceFilter();
+    }
+
+    private void OnEventScheduled(EventHandle handle, Cycle cycle, ScheduledEventKind kind, int priority, object? tag)
+    {
+        totalScheduledCount++;
+
+        // Get device name from tag if available
+        var deviceName = GetDeviceName(tag);
+
+        // Add log entry (use Dispatcher.Post for thread safety since scheduler runs on emulator thread)
+        Dispatcher.UIThread.Post(() =>
+        {
+            AddLogEntry($"[{cycle}] {deviceName}: Scheduled {kind} @ cycle {cycle} (pri {priority})");
+
+            // Add to pending events grid
+            pendingEvents.Add(new PendingEventInfo(
+                $"0x{handle.Id:X8}",
+                deviceName,
+                kind.ToString(),
+                FormatNumber(cycle),
+                priority));
+        });
+    }
+
+    private void OnEventConsumed(EventHandle handle, Cycle cycle, ScheduledEventKind kind)
+    {
+        totalConsumedCount++;
+
+        // Add log entry (use Dispatcher.Post for thread safety since scheduler runs on emulator thread)
+        Dispatcher.UIThread.Post(() =>
+        {
+            AddLogEntry($"[{cycle}] Consumed {kind} @ cycle {cycle}");
+
+            // Remove from pending events grid
+            var handleStr = $"0x{handle.Id:X8}";
+            var toRemove = pendingEvents.FirstOrDefault(e => e.Handle == handleStr);
+            if (toRemove != null)
+            {
+                pendingEvents.Remove(toRemove);
+            }
+        });
+    }
+
+    private void OnEventCancelled(EventHandle handle)
+    {
+        // Remove from pending events grid
+        Dispatcher.UIThread.Post(() =>
+        {
+            var handleStr = $"0x{handle.Id:X8}";
+            var toRemove = pendingEvents.FirstOrDefault(e => e.Handle == handleStr);
+            if (toRemove != null)
+            {
+                pendingEvents.Remove(toRemove);
+                AddLogEntry($"Cancelled event {handleStr}");
+            }
+        });
     }
 
     private void PopulateKindFilter()
@@ -171,6 +250,15 @@ public partial class ScheduleMonitorWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         updateTimer.Stop();
+
+        // Unsubscribe from scheduler observer events
+        if (schedulerObserver != null)
+        {
+            schedulerObserver.EventScheduled -= OnEventScheduled;
+            schedulerObserver.EventConsumed -= OnEventConsumed;
+            schedulerObserver.EventCancelled -= OnEventCancelled;
+            schedulerObserver = null;
+        }
     }
 
     private void OnTimerTick(object? sender, EventArgs e)
@@ -188,15 +276,9 @@ public partial class ScheduleMonitorWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The current <see cref="IScheduler"/> interface provides basic information such as
-    /// the current cycle and pending event count. More detailed event information
-    /// (such as listing individual pending events with their source devices) would
-    /// require an <c>ISchedulerObserver</c> interface to be added to the <c>Scheduler</c>
-    /// class in a future enhancement.
-    /// </para>
-    /// <para>
-    /// Statistics like total scheduled and consumed counts would also require
-    /// scheduler-level event tracking to be implemented.
+    /// The window subscribes to <see cref="ISchedulerObserver"/> events to track
+    /// when events are scheduled, consumed, and cancelled. The pending events grid
+    /// is updated in real-time via these event handlers.
     /// </para>
     /// </remarks>
     private void UpdateSchedulerState()
@@ -215,14 +297,14 @@ public partial class ScheduleMonitorWindow : Window
         // Update current cycle
         currentCycleText.Text = FormatNumber(scheduler.Now);
 
-        // Update pending count
+        // Update pending count from scheduler
         var pendingCount = scheduler.PendingEventCount;
         pendingCountText.Text = pendingCount.ToString();
         pendingEventsHeader.Text = $"Pending Events ({pendingCount})";
 
-        // Statistics not yet available - scheduler observer required
-        totalScheduledText.Text = "--";
-        consumedCountText.Text = "--";
+        // Update statistics from our counters
+        totalScheduledText.Text = FormatNumber(totalScheduledCount);
+        consumedCountText.Text = FormatNumber(totalConsumedCount);
     }
 
     private void AddLogEntry(string entry)
