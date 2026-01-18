@@ -101,6 +101,28 @@ public partial class ScheduleMonitorWindow : Window
         Closed += OnWindowClosed;
     }
 
+    /// <summary>
+    /// Sets the machine to monitor.
+    /// </summary>
+    /// <param name="machineToMonitor">The machine containing the scheduler to monitor.</param>
+    public void SetMachine(IMachine machineToMonitor)
+    {
+        ArgumentNullException.ThrowIfNull(machineToMonitor);
+        machine = machineToMonitor;
+
+        // Subscribe to scheduler observer events if the scheduler supports observation
+        if (machine.Scheduler is ISchedulerObserver observer)
+        {
+            schedulerObserver = observer;
+            schedulerObserver.EventScheduled += OnEventScheduled;
+            schedulerObserver.EventConsumed += OnEventConsumed;
+            schedulerObserver.EventCancelled += OnEventCancelled;
+        }
+
+        // Populate device filter with devices from the machine
+        PopulateDeviceFilter();
+    }
+
     private static string GetDeviceName(object? tag)
     {
         return tag switch
@@ -129,28 +151,6 @@ public partial class ScheduleMonitorWindow : Window
         }
 
         return value.ToString();
-    }
-
-    /// <summary>
-    /// Sets the machine to monitor.
-    /// </summary>
-    /// <param name="machineToMonitor">The machine containing the scheduler to monitor.</param>
-    public void SetMachine(IMachine machineToMonitor)
-    {
-        ArgumentNullException.ThrowIfNull(machineToMonitor);
-        machine = machineToMonitor;
-
-        // Subscribe to scheduler observer events if the scheduler supports observation
-        if (machine.Scheduler is ISchedulerObserver observer)
-        {
-            schedulerObserver = observer;
-            schedulerObserver.EventScheduled += OnEventScheduled;
-            schedulerObserver.EventConsumed += OnEventConsumed;
-            schedulerObserver.EventCancelled += OnEventCancelled;
-        }
-
-        // Populate device filter with devices from the machine
-        PopulateDeviceFilter();
     }
 
     private void OnEventScheduled(EventHandle handle, Cycle cycle, ScheduledEventKind kind, int priority, object? tag)
@@ -211,13 +211,10 @@ public partial class ScheduleMonitorWindow : Window
 
     private void PopulateKindFilter()
     {
-        // Add all ScheduledEventKind enum values
-        foreach (var kind in Enum.GetValues<ScheduledEventKind>())
+        // Add all ScheduledEventKind enum values except None
+        foreach (var kind in Enum.GetValues<ScheduledEventKind>().Where(k => k != ScheduledEventKind.None))
         {
-            if (kind != ScheduledEventKind.None)
-            {
-                kindFilter.Items.Add(new ComboBoxItem { Content = kind.ToString() });
-            }
+            kindFilter.Items.Add(new ComboBoxItem { Content = kind.ToString() });
         }
     }
 

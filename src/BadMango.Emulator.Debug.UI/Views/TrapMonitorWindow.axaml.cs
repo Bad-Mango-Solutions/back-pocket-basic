@@ -14,6 +14,7 @@ using Avalonia.Threading;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Trap monitor window displaying registered traps and invocations in real-time.
@@ -62,7 +63,9 @@ public partial class TrapMonitorWindow : Window
 
     private IMachine? machine;
     private ITrapRegistry? trapRegistry;
+    private ITrapRegistryObserver? trapRegistryObserver;
     private string lastSearchText = string.Empty;
+    private ulong totalInvocationCount;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrapMonitorWindow"/> class.
@@ -129,8 +132,92 @@ public partial class TrapMonitorWindow : Window
         // Try to get the trap registry from the machine components
         trapRegistry = machine.GetComponent<ITrapRegistry>();
 
+        // Subscribe to trap registry observer events for real-time updates, if supported.
+        if (trapRegistry is ITrapRegistryObserver observer)
+        {
+            trapRegistryObserver = observer;
+            trapRegistryObserver.TrapInvoked += OnTrapInvoked;
+            trapRegistryObserver.TrapRegistered += OnTrapRegistered;
+            trapRegistryObserver.TrapUnregistered += OnTrapUnregistered;
+            trapRegistryObserver.TrapEnabledChanged += OnTrapEnabledChanged;
+        }
+
         // Force an initial update of the traps list
         UpdateTrapsList();
+    }
+
+    private static string FormatNumber(ulong value)
+    {
+        if (value >= 1_000_000_000)
+        {
+            return $"{value / 1_000_000_000.0:F2}G";
+        }
+
+        if (value >= 1_000_000)
+        {
+            return $"{value / 1_000_000.0:F2}M";
+        }
+
+        if (value >= 1_000)
+        {
+            return $"{value / 1_000.0:F1}K";
+        }
+
+        return value.ToString();
+    }
+
+    private void OnTrapInvoked(TrapInfo info, TrapResult result, Core.Cycle cycle)
+    {
+        totalInvocationCount++;
+
+        // Add log entry (use Dispatcher.Post for thread safety since trap execution runs on emulator thread)
+        Dispatcher.UIThread.Post(() =>
+        {
+            var resultText = result.Handled ? $"Handled=true, Cycles={result.CyclesConsumed}" : "Handled=false";
+            AddLogEntry($"[{cycle}] ${info.Address:X4} {info.Name} ({info.Category}): Called, {resultText}");
+        });
+    }
+
+    private void OnTrapRegistered(TrapInfo info)
+    {
+        // Refresh traps list when a new trap is registered
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpdateTrapsList();
+            AddLogEntry($"Registered: ${info.Address:X4} {info.Name} ({info.Category})");
+        });
+    }
+
+    private void OnTrapUnregistered(Addr address, TrapOperation operation, MemoryContext context)
+    {
+        // Refresh traps list when a trap is unregistered
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpdateTrapsList();
+            AddLogEntry($"Unregistered: ${address:X4} ({operation}, {context.Id})");
+        });
+    }
+
+    private void OnTrapEnabledChanged(Addr address, TrapOperation operation, MemoryContext context, bool enabled)
+    {
+        // Refresh traps list when enabled state changes
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpdateTrapsList();
+            var stateText = enabled ? "enabled" : "disabled";
+            AddLogEntry($"${address:X4} ({operation}, {context.Id}): {stateText}");
+        });
+    }
+
+    private void AddLogEntry(string entry)
+    {
+        invocationLog.Add(entry);
+
+        // Trim log if it exceeds maximum
+        while (invocationLog.Count > MaxLogEntries)
+        {
+            invocationLog.RemoveAt(0);
+        }
     }
 
     private void PopulateCategoryFilter()
@@ -169,6 +256,16 @@ public partial class TrapMonitorWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         updateTimer.Stop();
+
+        // Unsubscribe from trap registry observer events
+        if (trapRegistryObserver != null)
+        {
+            trapRegistryObserver.TrapInvoked -= OnTrapInvoked;
+            trapRegistryObserver.TrapRegistered -= OnTrapRegistered;
+            trapRegistryObserver.TrapUnregistered -= OnTrapUnregistered;
+            trapRegistryObserver.TrapEnabledChanged -= OnTrapEnabledChanged;
+            trapRegistryObserver = null;
+        }
     }
 
     private void OnTimerTick(object? sender, EventArgs e)
@@ -279,11 +376,9 @@ public partial class TrapMonitorWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The current <see cref="ITrapRegistry"/> interface provides information about
-    /// registered traps and their enabled/disabled state. Invocation counting would
-    /// require an <c>ITrapRegistryObserver</c> interface to be added to the
-    /// <c>TrapRegistry</c> class in a future enhancement to track when traps are
-    /// called and their results.
+    /// The window subscribes to <see cref="ITrapRegistryObserver"/> events to track
+    /// trap invocations, registrations, and enabled state changes. Invocation counts
+    /// are tracked via the <see cref="ITrapRegistryObserver.TrapInvoked"/> event.
     /// </para>
     /// </remarks>
     private void UpdateStatistics()
@@ -301,7 +396,7 @@ public partial class TrapMonitorWindow : Window
         totalTrapsText.Text = totalTraps.ToString();
         enabledCountText.Text = enabledTraps.ToString();
         disabledCountText.Text = disabledTraps.ToString();
-        invocationCountText.Text = "--"; // Trap observer required for invocation tracking
+        invocationCountText.Text = FormatNumber(totalInvocationCount);
     }
 
     private void OnClearLogClick(object? sender, RoutedEventArgs e)

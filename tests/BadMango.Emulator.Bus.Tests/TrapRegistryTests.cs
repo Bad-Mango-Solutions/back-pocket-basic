@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Moq;
@@ -1331,13 +1332,13 @@ public class TrapRegistryTests
     [Test]
     public void TrapRegistered_WhenRegisteringTrap_RaisesEvent()
     {
-        var registry = new TrapRegistry();
+        var localRegistry = new TrapRegistry();
         TrapInfo? raisedInfo = null;
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
 
-        registry.TrapRegistered += info => raisedInfo = info;
+        localRegistry.TrapRegistered += info => raisedInfo = info;
 
-        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        localRegistry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
 
         Assert.That(raisedInfo, Is.Not.Null);
         Assert.Multiple(() =>
@@ -1354,21 +1355,21 @@ public class TrapRegistryTests
     [Test]
     public void TrapUnregistered_WhenUnregisteringTrap_RaisesEvent()
     {
-        var registry = new TrapRegistry();
+        var localRegistry = new TrapRegistry();
         Addr? raisedAddress = null;
         TrapOperation? raisedOperation = null;
         MemoryContext? raisedContext = null;
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
 
-        registry.TrapUnregistered += (addr, op, ctx) =>
+        localRegistry.TrapUnregistered += (addr, op, ctx) =>
         {
             raisedAddress = addr;
             raisedOperation = op;
             raisedContext = ctx;
         };
 
-        registry.Register(0xFDED, "COUT", TrapCategory.MonitorRom, handler);
-        registry.Unregister(0xFDED);
+        localRegistry.Register(0xFDED, "COUT", TrapCategory.MonitorRom, handler);
+        localRegistry.Unregister(0xFDED);
 
         Assert.Multiple(() =>
         {
@@ -1384,19 +1385,19 @@ public class TrapRegistryTests
     [Test]
     public void TrapEnabledChanged_WhenSettingEnabled_RaisesEvent()
     {
-        var registry = new TrapRegistry();
+        var localRegistry = new TrapRegistry();
         bool? newEnabledState = null;
         var eventRaised = false;
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
 
-        registry.TrapEnabledChanged += (addr, op, ctx, enabled) =>
+        localRegistry.TrapEnabledChanged += (addr, op, ctx, enabled) =>
         {
             newEnabledState = enabled;
             eventRaised = true;
         };
 
-        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
-        registry.SetEnabled(0xFC58, false);
+        localRegistry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        localRegistry.SetEnabled(0xFC58, false);
 
         Assert.Multiple(() =>
         {
@@ -1411,17 +1412,60 @@ public class TrapRegistryTests
     [Test]
     public void TrapEnabledChanged_WhenSettingSameState_DoesNotRaiseEvent()
     {
-        var registry = new TrapRegistry();
+        var localRegistry = new TrapRegistry();
         var eventCount = 0;
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
 
-        registry.TrapEnabledChanged += (_, _, _, _) => eventCount++;
+        localRegistry.TrapEnabledChanged += (_, _, _, _) => eventCount++;
 
-        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        localRegistry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
 
         // Initially enabled, setting to enabled again should not raise
-        registry.SetEnabled(0xFC58, true);
+        localRegistry.SetEnabled(0xFC58, true);
 
         Assert.That(eventCount, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that TrapInvoked event is raised when a trap is executed.
+    /// </summary>
+    [Test]
+    public void TrapInvoked_WhenExecutingTrap_RaisesEvent()
+    {
+        // Arrange - Create scheduler and context mocks for TryExecute
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.Setup(s => s.Now).Returns(new Cycle(12345));
+        mockContext.Setup(c => c.Scheduler).Returns(mockScheduler.Object);
+
+        var localRegistry = new TrapRegistry();
+        TrapInfo? raisedInfo = null;
+        TrapResult? raisedResult = null;
+        Cycle? raisedCycle = null;
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.Success(new Cycle(10));
+
+        localRegistry.TrapInvoked += (info, result, cycle) =>
+        {
+            raisedInfo = info;
+            raisedResult = result;
+            raisedCycle = cycle;
+        };
+
+        localRegistry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+
+        // Act
+        localRegistry.TryExecute(0xFC58, mockCpu.Object, mockBus.Object, mockContext.Object);
+
+        // Assert
+        Assert.That(raisedInfo, Is.Not.Null);
+        Assert.That(raisedResult, Is.Not.Null);
+        Assert.That(raisedCycle, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(raisedInfo!.Value.Address, Is.EqualTo((Addr)0xFC58));
+            Assert.That(raisedInfo!.Value.Name, Is.EqualTo("HOME"));
+            Assert.That(raisedResult!.Value.Handled, Is.True);
+            Assert.That(raisedResult!.Value.CyclesConsumed.Value, Is.EqualTo(10ul));
+            Assert.That(raisedCycle!.Value.Value, Is.EqualTo(12345ul));
+        });
     }
 }
