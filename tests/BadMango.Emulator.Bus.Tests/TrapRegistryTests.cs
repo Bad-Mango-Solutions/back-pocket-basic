@@ -1324,4 +1324,104 @@ public class TrapRegistryTests
             Cycle: 0,
             Flags: flags);
     }
+
+    /// <summary>
+    /// Verifies that TrapRegistered event is raised when a trap is registered.
+    /// </summary>
+    [Test]
+    public void TrapRegistered_WhenRegisteringTrap_RaisesEvent()
+    {
+        var registry = new TrapRegistry();
+        TrapInfo? raisedInfo = null;
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.TrapRegistered += info => raisedInfo = info;
+
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+
+        Assert.That(raisedInfo, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(raisedInfo!.Value.Address, Is.EqualTo((Addr)0xFC58));
+            Assert.That(raisedInfo!.Value.Name, Is.EqualTo("HOME"));
+            Assert.That(raisedInfo!.Value.Category, Is.EqualTo(TrapCategory.MonitorRom));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TrapUnregistered event is raised when a trap is unregistered.
+    /// </summary>
+    [Test]
+    public void TrapUnregistered_WhenUnregisteringTrap_RaisesEvent()
+    {
+        var registry = new TrapRegistry();
+        Addr? raisedAddress = null;
+        TrapOperation? raisedOperation = null;
+        MemoryContext? raisedContext = null;
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.TrapUnregistered += (addr, op, ctx) =>
+        {
+            raisedAddress = addr;
+            raisedOperation = op;
+            raisedContext = ctx;
+        };
+
+        registry.Register(0xFDED, "COUT", TrapCategory.MonitorRom, handler);
+        registry.Unregister(0xFDED);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raisedAddress, Is.EqualTo((Addr)0xFDED));
+            Assert.That(raisedOperation, Is.EqualTo(TrapOperation.Call));
+            Assert.That(raisedContext, Is.EqualTo(MemoryContexts.Rom));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TrapEnabledChanged event is raised when a trap's enabled state changes.
+    /// </summary>
+    [Test]
+    public void TrapEnabledChanged_WhenSettingEnabled_RaisesEvent()
+    {
+        var registry = new TrapRegistry();
+        bool? newEnabledState = null;
+        var eventRaised = false;
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.TrapEnabledChanged += (addr, op, ctx, enabled) =>
+        {
+            newEnabledState = enabled;
+            eventRaised = true;
+        };
+
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        registry.SetEnabled(0xFC58, false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventRaised, Is.True);
+            Assert.That(newEnabledState, Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that TrapEnabledChanged event is not raised when setting the same enabled state.
+    /// </summary>
+    [Test]
+    public void TrapEnabledChanged_WhenSettingSameState_DoesNotRaiseEvent()
+    {
+        var registry = new TrapRegistry();
+        var eventCount = 0;
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+
+        registry.TrapEnabledChanged += (_, _, _, _) => eventCount++;
+
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+
+        // Initially enabled, setting to enabled again should not raise
+        registry.SetEnabled(0xFC58, true);
+
+        Assert.That(eventCount, Is.EqualTo(0));
+    }
 }

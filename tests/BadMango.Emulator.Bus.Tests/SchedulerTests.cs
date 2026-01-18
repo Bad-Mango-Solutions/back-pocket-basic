@@ -889,4 +889,110 @@ public class SchedulerTests
         Assert.That(nextDue, Is.Not.Null, "PeekNextDue should complete and find next event");
         Assert.That(nextDue!.Value.Value, Is.GreaterThanOrEqualTo(1000ul), "Next event should be at or after cycle 1000");
     }
+
+    /// <summary>
+    /// Verifies that EventScheduled is raised when an event is scheduled.
+    /// </summary>
+    [Test]
+    public void EventScheduled_WhenSchedulingEvent_RaisesEvent()
+    {
+        EventHandle raisedHandle = default;
+        Cycle raisedCycle = default;
+        ScheduledEventKind raisedKind = default;
+        int raisedPriority = -1;
+        object? raisedTag = null;
+
+        scheduler.EventScheduled += (handle, cycle, kind, priority, tag) =>
+        {
+            raisedHandle = handle;
+            raisedCycle = cycle;
+            raisedKind = kind;
+            raisedPriority = priority;
+            raisedTag = tag;
+        };
+
+        var handle = scheduler.ScheduleAt(100, ScheduledEventKind.VideoScanline, 5, _ => { }, "test-tag");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raisedHandle, Is.EqualTo(handle));
+            Assert.That(raisedCycle.Value, Is.EqualTo(100ul));
+            Assert.That(raisedKind, Is.EqualTo(ScheduledEventKind.VideoScanline));
+            Assert.That(raisedPriority, Is.EqualTo(5));
+            Assert.That(raisedTag, Is.EqualTo("test-tag"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that EventConsumed is raised when an event is dispatched.
+    /// </summary>
+    [Test]
+    public void EventConsumed_WhenDispatchingEvent_RaisesEvent()
+    {
+        EventHandle raisedHandle = default;
+        Cycle raisedCycle = default;
+        ScheduledEventKind raisedKind = default;
+        var eventConsumed = false;
+
+        scheduler.EventConsumed += (handle, cycle, kind) =>
+        {
+            raisedHandle = handle;
+            raisedCycle = cycle;
+            raisedKind = kind;
+            eventConsumed = true;
+        };
+
+        var handle = scheduler.ScheduleAt(10, ScheduledEventKind.AudioTick, 0, _ => { });
+        scheduler.Advance(10);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventConsumed, Is.True);
+            Assert.That(raisedHandle, Is.EqualTo(handle));
+            Assert.That(raisedCycle.Value, Is.EqualTo(10ul));
+            Assert.That(raisedKind, Is.EqualTo(ScheduledEventKind.AudioTick));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that EventCancelled is raised when an event is cancelled.
+    /// </summary>
+    [Test]
+    public void EventCancelled_WhenCancellingEvent_RaisesEvent()
+    {
+        EventHandle raisedHandle = default;
+        var eventCancelled = false;
+
+        scheduler.EventCancelled += (handle) =>
+        {
+            raisedHandle = handle;
+            eventCancelled = true;
+        };
+
+        var handle = scheduler.ScheduleAt(100, ScheduledEventKind.DeviceTimer, 0, _ => { });
+        scheduler.Cancel(handle);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventCancelled, Is.True);
+            Assert.That(raisedHandle, Is.EqualTo(handle));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that EventCancelled is not raised when cancelling the same event twice.
+    /// </summary>
+    [Test]
+    public void EventCancelled_WhenCancellingSameEventTwice_RaisesEventOnlyOnce()
+    {
+        var cancelCount = 0;
+
+        scheduler.EventCancelled += (_) => cancelCount++;
+
+        var handle = scheduler.ScheduleAt(100, ScheduledEventKind.DeviceTimer, 0, _ => { });
+        scheduler.Cancel(handle);
+        scheduler.Cancel(handle);
+
+        Assert.That(cancelCount, Is.EqualTo(1));
+    }
 }
