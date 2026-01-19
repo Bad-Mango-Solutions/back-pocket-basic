@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Bus;
 
 using System.Runtime.CompilerServices;
 
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Interfaces;
@@ -28,7 +29,7 @@ using Interfaces;
 /// <item><description>Memory context checks for different RAM banks (LC RAM, Aux RAM, ProDOS, etc.)</description></item>
 /// </list>
 /// </remarks>
-public sealed class TrapRegistry : ITrapRegistry
+public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
 {
     /// <summary>
     /// O(1) lookup for traps by address, operation, and memory context.
@@ -104,6 +105,18 @@ public sealed class TrapRegistry : ITrapRegistry
         this.memoryContextResolver = memoryContextResolver;
     }
 
+    /// <inheritdoc cref="ITrapRegistryObserver.TrapRegistered" />
+    public event Action<TrapInfo>? TrapRegistered;
+
+    /// <inheritdoc cref="ITrapRegistryObserver.TrapUnregistered" />
+    public event Action<Addr, TrapOperation, MemoryContext>? TrapUnregistered;
+
+    /// <inheritdoc cref="ITrapRegistryObserver.TrapInvoked" />
+    public event Action<TrapInfo, TrapResult, Cycle>? TrapInvoked;
+
+    /// <inheritdoc cref="ITrapRegistryObserver.TrapEnabledChanged" />
+    public event Action<Addr, TrapOperation, MemoryContext, bool>? TrapEnabledChanged;
+
     /// <inheritdoc />
     public int Count => traps.Count;
 
@@ -162,7 +175,7 @@ public sealed class TrapRegistry : ITrapRegistry
                 $"A trap for operation '{operation}' in context '{memoryContext}' is already registered at address ${address:X4}.");
         }
 
-        traps[key] = new()
+        var entry = new TrapEntry
         {
             Address = address,
             Operation = operation,
@@ -172,6 +185,11 @@ public sealed class TrapRegistry : ITrapRegistry
             Description = description,
             MemoryContext = memoryContext,
         };
+
+        traps[key] = entry;
+
+        // Notify observers
+        TrapRegistered?.Invoke(entry.ToTrapInfo());
     }
 
     /// <inheritdoc />
@@ -210,7 +228,7 @@ public sealed class TrapRegistry : ITrapRegistry
         // Determine if this is in expansion ROM space ($C800-$CFFF)
         bool requiresExpansionRom = address >= 0xC800 && address <= 0xCFFF;
 
-        traps[key] = new()
+        var entry = new TrapEntry
         {
             Address = address,
             Operation = operation,
@@ -222,6 +240,11 @@ public sealed class TrapRegistry : ITrapRegistry
             RequiresExpansionRom = requiresExpansionRom,
             MemoryContext = MemoryContexts.Rom,
         };
+
+        traps[key] = entry;
+
+        // Notify observers
+        TrapRegistered?.Invoke(entry.ToTrapInfo());
     }
 
     /// <inheritdoc />
@@ -269,7 +292,13 @@ public sealed class TrapRegistry : ITrapRegistry
     public bool UnregisterWithContext(Addr address, TrapOperation operation, MemoryContext memoryContext)
     {
         var key = new TrapKey(address, operation, memoryContext);
-        return traps.Remove(key);
+        var removed = traps.Remove(key);
+        if (removed)
+        {
+            TrapUnregistered?.Invoke(address, operation, memoryContext);
+        }
+
+        return removed;
     }
 
     /// <inheritdoc />
@@ -297,6 +326,7 @@ public sealed class TrapRegistry : ITrapRegistry
         foreach (var key in keysToRemove)
         {
             traps.Remove(key);
+            TrapUnregistered?.Invoke(key.Address, key.Operation, key.MemoryContext);
         }
     }
 
@@ -311,6 +341,7 @@ public sealed class TrapRegistry : ITrapRegistry
         foreach (var key in keysToRemove)
         {
             traps.Remove(key);
+            TrapUnregistered?.Invoke(key.Address, key.Operation, key.MemoryContext);
         }
     }
 
@@ -352,7 +383,12 @@ public sealed class TrapRegistry : ITrapRegistry
         }
 
         // Execute the handler
-        return entry.Handler(cpu, bus, context);
+        var result = entry.Handler(cpu, bus, context);
+
+        // Notify observers after execution
+        TrapInvoked?.Invoke(entry.ToTrapInfo(), result, context.Scheduler.Now);
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -426,7 +462,15 @@ public sealed class TrapRegistry : ITrapRegistry
         var key = new TrapKey(address, operation, memoryContext);
         if (traps.TryGetValue(key, out var entry))
         {
+            var previousState = entry.IsEnabled;
             entry.IsEnabled = enabled;
+
+            // Notify observers if state changed
+            if (previousState != enabled)
+            {
+                TrapEnabledChanged?.Invoke(address, operation, memoryContext, enabled);
+            }
+
             return true;
         }
 

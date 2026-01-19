@@ -59,4 +59,22 @@ public enum DebugWindowComponent
     /// A character glyph editor window for creating and editing character ROMs.
     /// </summary>
     GlyphEditor,
+
+    /// <summary>
+    /// A schedule monitor window for monitoring scheduler events.
+    /// </summary>
+    /// <remarks>
+    /// The schedule monitor shows pending events, event history, and allows filtering
+    /// by device and event kind for diagnostic purposes.
+    /// </remarks>
+    ScheduleMonitor,
+
+    /// <summary>
+    /// A trap monitor window for monitoring trap registration and invocation.
+    /// </summary>
+    /// <remarks>
+    /// The trap monitor shows all registered traps, their enabled/disabled state,
+    /// and logs trap invocations in real-time for diagnostic purposes.
+    /// </remarks>
+    TrapMonitor,
 }

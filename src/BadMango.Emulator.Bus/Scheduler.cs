@@ -29,7 +29,7 @@ using Interfaces;
 /// event order and the same behavior, making the system fully reproducible and debuggable.
 /// </para>
 /// </remarks>
-public sealed class Scheduler : IScheduler
+public sealed class Scheduler : IScheduler, ISchedulerObserver
 {
     /// <summary>
     /// Maximum number of cancelled handles to accumulate before forcing cleanup.
@@ -76,6 +76,15 @@ public sealed class Scheduler : IScheduler
         cancelledHandles = new();
     }
 
+    /// <inheritdoc cref="ISchedulerObserver.EventScheduled" />
+    public event Action<EventHandle, Cycle, ScheduledEventKind, int, object?>? EventScheduled;
+
+    /// <inheritdoc cref="ISchedulerObserver.EventConsumed" />
+    public event Action<EventHandle, Cycle, ScheduledEventKind>? EventConsumed;
+
+    /// <inheritdoc cref="ISchedulerObserver.EventCancelled" />
+    public event Action<EventHandle>? EventCancelled;
+
     /// <inheritdoc />
     public Cycle Now
     {
@@ -116,6 +125,8 @@ public sealed class Scheduler : IScheduler
         var scheduledEvent = new ScheduledEvent(handle, due, priority, nextSequence++, kind, callback, tag);
         eventQueue.Enqueue(scheduledEvent, scheduledEvent);
 
+        EventScheduled?.Invoke(handle, due, kind, priority, tag);
+
         return handle;
     }
 
@@ -131,7 +142,13 @@ public sealed class Scheduler : IScheduler
     public bool Cancel(EventHandle handle)
     {
         // Mark the handle as cancelled - it will be skipped during dispatch
-        return cancelledHandles.Add(handle.Id);
+        var cancelled = cancelledHandles.Add(handle.Id);
+        if (cancelled)
+        {
+            EventCancelled?.Invoke(handle);
+        }
+
+        return cancelled;
     }
 
     /// <inheritdoc />
@@ -238,6 +255,9 @@ public sealed class Scheduler : IScheduler
             }
 
             nextEvent.Callback(eventContext);
+
+            // Notify observers after execution
+            EventConsumed?.Invoke(nextEvent.Handle, now, nextEvent.Kind);
         }
 
         // Clean up the cancelled handles set periodically to prevent unbounded growth
