@@ -30,7 +30,7 @@ public static partial class Instructions
             opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
-            byte carry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C);
+            byte carry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C); // C is bit 0, yields 0 or 1
 
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
@@ -122,7 +122,7 @@ public static partial class Instructions
             opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
-            byte borrow = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) ^ 0x01);
+            byte borrow = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) ^ 0x01); // C is bit 0, invert for borrow
 
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
