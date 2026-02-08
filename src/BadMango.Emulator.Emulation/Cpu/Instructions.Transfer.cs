@@ -24,20 +24,18 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte size = cpu.Registers.GetIndexSize();
             var value = cpu.Registers.A.GetValue(size);
             cpu.Registers.X.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -51,20 +49,18 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte size = cpu.Registers.GetIndexSize();
             var value = cpu.Registers.A.GetValue(size);
             cpu.Registers.Y.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAY };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -78,20 +74,18 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte size = cpu.Registers.GetAccumulatorSize();
             var value = cpu.Registers.X.GetValue(size);
             cpu.Registers.A.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXA };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -105,20 +99,18 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte size = cpu.Registers.GetAccumulatorSize();
             var value = cpu.Registers.Y.GetValue(size);
             cpu.Registers.A.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TYA };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -132,17 +124,15 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             cpu.Registers.SP.SetByte(cpu.Registers.X.GetByte());
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXS };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -156,20 +146,18 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte size = cpu.Registers.GetIndexSize();
             byte value = cpu.Registers.SP.GetByte();
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 }

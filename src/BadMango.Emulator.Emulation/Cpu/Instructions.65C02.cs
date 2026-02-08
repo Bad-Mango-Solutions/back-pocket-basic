@@ -24,17 +24,15 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             Addr address = addressingMode(cpu);
             cpu.Write8(address, 0x00);
-            opCycles++; // Memory write
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STZ };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1; // Memory write
         };
     }
 
@@ -52,10 +50,8 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             Addr address = addressingMode(cpu);
             byte value = cpu.Read8(address);
-            opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
 
@@ -72,14 +68,13 @@ public static partial class Instructions
             // Set bits in memory (M = M OR A)
             value |= a;
             cpu.Write8(address, value);
-            opCycles += 2; // Memory write + internal operation
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSB };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 3; // Memory read + Memory write + internal operation
         };
     }
 
@@ -97,10 +92,8 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             Addr address = addressingMode(cpu);
             byte value = cpu.Read8(address);
-            opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
 
@@ -117,14 +110,13 @@ public static partial class Instructions
             // Clear bits in memory (M = M AND (NOT A))
             value &= (byte)~a;
             cpu.Write8(address, value);
-            opCycles += 2; // Memory write + internal operation
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TRB };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 3; // Memory read + Memory write + internal operation
         };
     }
 
@@ -142,17 +134,15 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             cpu.HaltReason = HaltState.Wai;
-            opCycles += 2;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.WAI };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 2;
         };
     }
 
@@ -170,17 +160,15 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             cpu.HaltReason = HaltState.Stp;
-            opCycles += 2;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STP };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 2;
         };
     }
 }

@@ -270,19 +270,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.X.GetByte() + 1);
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -296,19 +294,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.Y.GetByte() + 1);
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INY };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -322,19 +318,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.X.GetByte() - 1);
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -348,19 +342,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.Y.GetByte() - 1);
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEY };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 }
