@@ -32,7 +32,7 @@ using Core.Debugger;
 /// Optimized with aggressive inlining for maximum performance.
 /// </para>
 /// </remarks>
-public class Cpu65C02 : CpuBase
+public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
     private ITrapRegistry? trapRegistry;

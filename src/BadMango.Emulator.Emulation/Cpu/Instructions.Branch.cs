@@ -27,7 +27,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -61,7 +61,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.C))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -95,7 +95,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.Z) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -129,7 +129,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.Z))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.Z) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -163,7 +163,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.N) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -197,7 +197,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.N))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.N) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -231,7 +231,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (!cpu.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.V) == 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);
@@ -265,7 +265,7 @@ public static partial class Instructions
             byte opCycles = 0;
             Addr targetAddr = addressingMode(cpu);
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.V))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.V) != 0)
             {
                 Word oldPC = cpu.Registers.PC.GetWord();
                 cpu.Registers.PC.SetWord((Word)targetAddr);

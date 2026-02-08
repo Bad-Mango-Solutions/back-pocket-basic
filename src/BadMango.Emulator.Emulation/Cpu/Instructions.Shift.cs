@@ -178,7 +178,7 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C);
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
@@ -218,7 +218,7 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C);
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
@@ -257,7 +257,7 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) << 7);
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
@@ -297,7 +297,7 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) << 7);
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
