@@ -736,7 +736,7 @@ public class SchedulerTests
         //    (VideoDevice.Reset() does this)
         scheduler.Cancel(vblankHandle); // Cancel stale handle
         bool vblankFired = false;
-        var newVblankHandle = scheduler.ScheduleAfter(
+        _ = scheduler.ScheduleAfter(
             12480ul, ScheduledEventKind.VideoBlank, 0, _ => vblankFired = true);
 
         // 3. Simulate CPU execution advancing past VBlank cycle
