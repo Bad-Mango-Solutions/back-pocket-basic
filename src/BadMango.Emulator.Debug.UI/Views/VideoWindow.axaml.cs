@@ -68,7 +68,7 @@ public partial class VideoWindow : Window
     private IMemoryBus? memoryBus;
     private Memory<byte> characterRom;
     private bool characterRomUpdatePending;
-    private volatile bool vblankPending;
+    private int vblankPending;
 
     private int scale = 2;
     private bool showFps;
@@ -440,9 +440,11 @@ public partial class VideoWindow : Window
     /// </summary>
     private void OnVBlankOccurred()
     {
-        // Mark that a VBlank has occurred; the UI thread will process it
-        vblankPending = true;
-        Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+        // Only queue a UI render if one isn't already pending
+        if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
+        {
+            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+        }
     }
 
     /// <summary>
@@ -450,12 +452,7 @@ public partial class VideoWindow : Window
     /// </summary>
     private void ProcessVBlankFrame()
     {
-        if (!vblankPending)
-        {
-            return;
-        }
-
-        vblankPending = false;
+        Interlocked.Exchange(ref vblankPending, 0);
 
         // Update flash state
         flashFrameCounter++;
