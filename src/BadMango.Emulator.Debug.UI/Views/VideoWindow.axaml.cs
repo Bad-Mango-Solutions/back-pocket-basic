@@ -61,8 +61,21 @@ public partial class VideoWindow : Window
     private const int TextPageSnapshotBase = 0x0400;
 
     /// <summary>
-    /// Size of the text page snapshot covering both Page 1 and Page 2 ($0400-$0BFF).
+    /// Size of the text page snapshot covering both text page ranges ($0400-$0BFF).
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In 40-column mode, Page 1 uses main $0400-$07FF and Page 2 uses main $0800-$0BFF.
+    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF
+    /// (even columns from aux, odd columns from main). The 80-column firmware typically
+    /// uses PAGE1 addresses ($0400-$07FF) in both main and aux RAM — PAGE2 in 80-column
+    /// mode refers to $0400-$07FF in auxiliary RAM, not $0800.
+    /// </para>
+    /// <para>
+    /// We snapshot the full $0400-$0BFF range from both main and aux to cover all
+    /// page configurations.
+    /// </para>
+    /// </remarks>
     private const int TextPageSnapshotSize = 0x0800;
 
     private readonly IVideoRenderer renderer;
@@ -75,6 +88,7 @@ public partial class VideoWindow : Window
     // firmware is actively modifying text pages between frames.
     private readonly byte[] mainMemorySnapshot = new byte[TextPageSnapshotSize];
     private readonly byte[] auxMemorySnapshot = new byte[TextPageSnapshotSize];
+    private readonly object snapshotLock = new();
 
     private IMachine? machine;
     private IVideoDevice? videoDevice;
@@ -247,6 +261,7 @@ public partial class VideoWindow : Window
         extended80ColumnDevice = null;
         keyboardDevice = null;
         characterRom = Memory<byte>.Empty;
+        snapshotValid = false;
     }
 
     /// <summary>
@@ -487,37 +502,42 @@ public partial class VideoWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method captures both text pages ($0400-$0BFF) from main memory and auxiliary
-    /// memory. The snapshot is taken at VBlank start when the CPU is not actively modifying
-    /// video memory, ensuring the renderer sees a consistent frame.
+    /// This method captures the text page address range ($0400-$0BFF) from both main and
+    /// auxiliary memory. The snapshot is taken at VBlank start when the CPU is not actively
+    /// modifying video memory, ensuring the renderer sees a consistent frame.
     /// </para>
     /// <para>
-    /// In 80-column mode, even columns read from auxiliary memory and odd columns from main
-    /// memory. Both sources must be captured to prevent interleaving artifacts.
+    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF:
+    /// even columns come from auxiliary RAM and odd columns from main RAM. PAGE2 in
+    /// 80-column mode refers to $0400-$07FF in auxiliary RAM, not the $0800 page.
+    /// Both main and aux sources must be captured to prevent interleaving artifacts.
     /// </para>
     /// </remarks>
     private void CaptureDisplaySnapshot()
     {
-        // Capture main memory text pages ($0400-$0BFF)
-        if (memoryBus is not null)
+        lock (snapshotLock)
         {
-            for (int i = 0; i < TextPageSnapshotSize; i++)
+            // Capture main memory text pages ($0400-$0BFF)
+            if (memoryBus is not null)
             {
-                mainMemorySnapshot[i] = ReadMemoryByte((ushort)(TextPageSnapshotBase + i));
+                for (int i = 0; i < TextPageSnapshotSize; i++)
+                {
+                    mainMemorySnapshot[i] = ReadMemoryByte((ushort)(TextPageSnapshotBase + i));
+                }
             }
-        }
 
-        // Capture auxiliary memory text pages (same address range in aux RAM)
-        if (extended80ColumnDevice is not null)
-        {
-            for (int i = 0; i < TextPageSnapshotSize; i++)
+            // Capture auxiliary memory text pages (same address range in aux RAM)
+            if (extended80ColumnDevice is not null)
             {
-                auxMemorySnapshot[i] = extended80ColumnDevice.ReadAuxRam(
-                    (ushort)(TextPageSnapshotBase + i));
+                for (int i = 0; i < TextPageSnapshotSize; i++)
+                {
+                    auxMemorySnapshot[i] = extended80ColumnDevice.ReadAuxRam(
+                        (ushort)(TextPageSnapshotBase + i));
+                }
             }
-        }
 
-        snapshotValid = true;
+            snapshotValid = true;
+        }
     }
 
     /// <summary>
@@ -595,43 +615,47 @@ public partial class VideoWindow : Window
         bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
         bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
 
-        // Get auxiliary memory reader for 80-column mode
-        // When a snapshot is valid, use the captured snapshot instead of live memory.
-        // This prevents 80-column flicker caused by reading memory while the firmware
-        // is actively modifying PAGE1/PAGE2 buffers between VBlanks.
-        Func<ushort, byte> readMemory;
-        Func<ushort, byte>? readAuxMemory;
-
         if (snapshotValid)
         {
-            // Use snapshot data — guaranteed consistent from VBlank capture
-            readMemory = ReadSnapshotMainByte;
-            readAuxMemory = extended80ColumnDevice is not null
-                ? ReadSnapshotAuxByte
-                : null;
+            // Use snapshot data — guaranteed consistent from VBlank capture.
+            // Lock to prevent a concurrent VBlank from overwriting the snapshot
+            // while the renderer is reading from it.
+            lock (snapshotLock)
+            {
+                renderer.RenderFrame(
+                    pixels,
+                    mode,
+                    ReadSnapshotMainByte,
+                    characterRom.Span,
+                    useAltCharSet,
+                    videoDevice.IsPage2,
+                    flashState,
+                    noFlash1,
+                    noFlash2,
+                    colorMode,
+                    extended80ColumnDevice is not null ? ReadSnapshotAuxByte : null);
+            }
         }
         else
         {
             // No snapshot available (e.g., force redraw) — fall back to live memory
-            readMemory = ReadMemoryByte;
-            readAuxMemory = extended80ColumnDevice is not null
+            Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
                 ? extended80ColumnDevice.ReadAuxRam
                 : null;
-        }
 
-        // Render frame using the Pocket2VideoRenderer with current color mode
-        renderer.RenderFrame(
-            pixels,
-            mode,
-            readMemory,
-            characterRom.Span,
-            useAltCharSet,
-            videoDevice.IsPage2,
-            flashState,
-            noFlash1,
-            noFlash2,
-            colorMode,
-            readAuxMemory);
+            renderer.RenderFrame(
+                pixels,
+                mode,
+                ReadMemoryByte,
+                characterRom.Span,
+                useAltCharSet,
+                videoDevice.IsPage2,
+                flashState,
+                noFlash1,
+                noFlash2,
+                colorMode,
+                readAuxMemory);
+        }
 
         // Commit pixel buffer to bitmap
         pixelBuffer.Commit();

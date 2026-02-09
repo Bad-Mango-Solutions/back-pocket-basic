@@ -342,6 +342,14 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// The memory address for both main and auxiliary is the same within the text page;
     /// the column position determines which bank to read from.
     /// </para>
+    /// <para>
+    /// In 80-column mode, the PAGE2 soft switch does not select a different display page
+    /// address. The 80-column display always uses text page 1 addresses ($0400-$07FF) in
+    /// both main and auxiliary memory. The PAGE2 switch is repurposed by the 80-column
+    /// firmware (via 80STORE) for auxiliary memory bank selection, not display paging.
+    /// The <paramref name="isPage2"/> parameter is accepted for interface consistency
+    /// but intentionally ignored.
+    /// </para>
     /// </remarks>
     private void RenderText80(
         Span<uint> pixels,
@@ -357,7 +365,9 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     {
         for (int row = 0; row < TextRows; row++)
         {
-            ushort rowAddr = (ushort)(TextRowAddresses[row] + (isPage2 ? 0x0400 : 0));
+            // In 80-column mode, always use text page 1 addresses ($0400-$07FF).
+            // PAGE2 is repurposed for aux memory bank selection, not display paging.
+            ushort rowAddr = TextRowAddresses[row];
 
             for (int col80 = 0; col80 < Text80Columns; col80++)
             {
