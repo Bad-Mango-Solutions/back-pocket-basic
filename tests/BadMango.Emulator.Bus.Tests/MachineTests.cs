@@ -131,20 +131,20 @@ public class MachineTests
     public void Step_DoesNotDoubleAdvanceScheduler()
     {
         var mockCpu = CreateMockCpu();
-
-        // Pre-advance the scheduler to simulate the CPU having advanced it
-        // during its own Step() call.
         var machine = CreateTestMachine(mockCpu);
-        machine.Scheduler.Advance(10);
 
-        // Setup CPU to return 5 cycles consumed (as if it already advanced the scheduler by 5)
-        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 5));
+        // Setup CPU to report 10 cycles consumed.
+        // In production, Cpu65C02.Step() would have already advanced the scheduler
+        // by 10 cycles internally. The mock doesn't do this, so the scheduler stays at 0.
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 10));
 
         machine.Step();
 
-        // Machine.Step() should NOT add another 5 cycles — the scheduler should remain
-        // at 10 (the value set by our pre-advance), not 15 (which would indicate double-advance).
-        Assert.That(machine.Now.Value, Is.EqualTo(10));
+        // Machine.Step() must NOT advance the scheduler itself — the scheduler should
+        // remain at 0 (since the mock CPU doesn't advance it). If Machine.Step() were
+        // to call Scheduler.Advance(10), the value would be 10, indicating a double-advance
+        // bug with the real Cpu65C02.
+        Assert.That(machine.Now.Value, Is.EqualTo(0));
     }
 
     /// <summary>
