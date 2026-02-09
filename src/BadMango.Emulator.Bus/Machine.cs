@@ -111,12 +111,19 @@ public sealed class Machine : IMachine
         // Reset CPU
         Cpu.Reset();
 
-        // Reset slot manager if present
+        // Reset slot manager if present (resets slot cards)
         var slotManager = GetComponent<ISlotManager>();
         slotManager?.Reset();
 
-        // Reset scheduler
+        // Reset scheduler (clears all pending events and resets cycle counter)
         Scheduler.Reset();
+
+        // Reset all scheduled devices so they return to power-on state and
+        // reschedule their events (e.g., VideoDevice reschedules VBLANK).
+        // This must happen AFTER Scheduler.Reset() so that freshly scheduled
+        // events are not cleared, and AFTER the scheduler is at cycle 0 so
+        // events are scheduled relative to the start of the timeline.
+        ResetDevices();
 
         // Deassert RESET signal
         Signals.Deassert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
@@ -311,13 +318,48 @@ public sealed class Machine : IMachine
     /// Initializes all scheduled devices with this machine as the event context.
     /// </summary>
     /// <remarks>
-    /// This is called by the builder after all components are assembled.
+    /// <para>
+    /// This is called once by the builder after all components are assembled.
+    /// Devices use this to store references to system services and schedule
+    /// their initial events.
+    /// </para>
+    /// <para>
+    /// For subsequent resets, use <see cref="ResetDevices"/> instead, which
+    /// calls each device's <see cref="IPeripheral.Reset"/> method to return
+    /// to power-on state and reschedule events without repeating one-time
+    /// initialization (ROM registration, swap group lookup, etc.).
+    /// </para>
     /// </remarks>
     internal void InitializeDevices()
     {
         foreach (var device in scheduledDevices)
         {
             device.Initialize(this);
+        }
+    }
+
+    /// <summary>
+    /// Resets all scheduled devices that implement <see cref="IPeripheral"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called during <see cref="Reset"/> after the scheduler is cleared.
+    /// Each device's <see cref="IPeripheral.Reset"/> restores power-on state
+    /// and reschedules any periodic events (e.g., VideoDevice reschedules VBLANK).
+    /// </para>
+    /// <para>
+    /// This is distinct from <see cref="InitializeDevices"/>, which performs
+    /// one-time setup during machine construction and should not be called again.
+    /// </para>
+    /// </remarks>
+    private void ResetDevices()
+    {
+        foreach (var device in scheduledDevices)
+        {
+            if (device is IPeripheral peripheral)
+            {
+                peripheral.Reset();
+            }
         }
     }
 

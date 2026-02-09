@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Core.Signaling;
@@ -57,6 +58,58 @@ public class MachineTests
         machine.Reset();
 
         mockCpu.Verify(c => c.Reset(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that Reset resets peripheral devices so they can reschedule events.
+    /// </summary>
+    [Test]
+    public void Reset_ResetsPeripheralDevices()
+    {
+        var mockCpu = CreateMockCpu();
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("TestDevice");
+
+        var machine = CreateTestMachine(mockCpu);
+        machine.AddScheduledDevice(mockPeripheral.Object);
+
+        machine.Reset();
+
+        mockPeripheral.Verify(p => p.Reset(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that Reset reschedules device events after clearing the scheduler.
+    /// </summary>
+    /// <remarks>
+    /// This tests the critical scenario where <see cref="Scheduler.Reset"/> clears
+    /// all events, and then device resets must reschedule them (e.g., VBLANK).
+    /// </remarks>
+    [Test]
+    public void Reset_DeviceEventsArePresentAfterReset()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+
+        // Create a peripheral that schedules an event during Reset
+        bool eventScheduled = false;
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("TestSchedulingDevice");
+        mockPeripheral.Setup(p => p.Reset()).Callback(() =>
+        {
+            machine.Scheduler.ScheduleAfter(100, ScheduledEventKind.DeviceTimer, 0, _ => { }, "test");
+            eventScheduled = true;
+        });
+
+        machine.AddScheduledDevice(mockPeripheral.Object);
+
+        machine.Reset();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventScheduled, Is.True, "Device Reset should have been called");
+            Assert.That(machine.Scheduler.PendingEventCount, Is.GreaterThan(0), "Device should have scheduled events after reset");
+        });
     }
 
     /// <summary>
