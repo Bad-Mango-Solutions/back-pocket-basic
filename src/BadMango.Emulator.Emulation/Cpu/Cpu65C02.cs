@@ -32,10 +32,10 @@ using Core.Debugger;
 /// Optimized with aggressive inlining for maximum performance.
 /// </para>
 /// </remarks>
-public class Cpu65C02 : CpuBase
+public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
-    private ITrapRegistry? trapRegistry;
+    private ITrapRegistry trapRegistry;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -46,6 +46,7 @@ public class Cpu65C02 : CpuBase
         : base(context)
     {
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        trapRegistry = NullTrapRegistry.Instance;
     }
 
     /// <inheritdoc />
@@ -54,7 +55,11 @@ public class Cpu65C02 : CpuBase
     /// <summary>
     /// Gets or sets the trap registry for ROM routine interception.
     /// </summary>
-    /// <value>The trap registry, or <see langword="null"/> if no traps are registered.</value>
+    /// <value>
+    /// The trap registry. Defaults to <see cref="NullTrapRegistry.Instance"/> when
+    /// no custom registry is assigned, ensuring a non-null value is always available
+    /// in the hot loop without requiring null checks.
+    /// </value>
     /// <remarks>
     /// <para>
     /// When a trap registry is attached, the CPU will check for traps at each instruction
@@ -66,11 +71,15 @@ public class Cpu65C02 : CpuBase
     /// This enables native implementations of ROM routines for performance optimization
     /// while maintaining compatibility with code that calls those routines.
     /// </para>
+    /// <para>
+    /// Setting this property to <see langword="null"/> resets it to the default
+    /// <see cref="NullTrapRegistry.Instance"/>.
+    /// </para>
     /// </remarks>
-    public ITrapRegistry? TrapRegistry
+    public ITrapRegistry TrapRegistry
     {
         get => trapRegistry;
-        set => trapRegistry = value;
+        set => trapRegistry = value ?? NullTrapRegistry.Instance;
     }
 
     /// <inheritdoc/>
@@ -119,8 +128,11 @@ public class Cpu65C02 : CpuBase
         // Capture state before execution for debug listener
         Addr pcBefore = Registers.PC.GetAddr();
 
-        // Check for trap at this address before fetching the opcode
-        if (trapRegistry is not null)
+        // Check for trap at this address before fetching the opcode.
+        // First perform an O(1) address check; only if a trap exists at this
+        // address do we proceed with the more expensive context resolution
+        // and handler invocation.
+        if (trapRegistry.ContainsAddress(pcBefore))
         {
             var trapResult = trapRegistry.TryExecute(pcBefore, this, Bus, EventContext);
             if (trapResult.Handled)

@@ -30,9 +30,9 @@ public static partial class Instructions
             opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
-            byte carry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte carry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C); // C is bit 0, yields 0 or 1
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.D))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
                 // Decimal mode
                 int al = (a & 0x0F) + (value & 0x0F) + carry;
@@ -122,9 +122,9 @@ public static partial class Instructions
             opCycles++; // Memory read
 
             byte a = cpu.Registers.A.GetByte();
-            byte borrow = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0 : (byte)1;
+            byte borrow = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) ^ 0x01); // C is bit 0, invert for borrow
 
-            if (cpu.Registers.P.HasFlag(ProcessorStatusFlags.D))
+            if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
                 // Decimal mode
                 int al = (a & 0x0F) - (value & 0x0F) - borrow;
@@ -270,19 +270,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.X.GetByte() + 1);
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -296,19 +294,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.Y.GetByte() + 1);
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INY };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -322,19 +318,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.X.GetByte() - 1);
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEX };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -348,19 +342,17 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = (byte)(cpu.Registers.Y.GetByte() - 1);
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEY };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 }

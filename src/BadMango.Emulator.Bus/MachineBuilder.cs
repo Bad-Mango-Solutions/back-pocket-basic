@@ -849,6 +849,24 @@ public sealed partial class MachineBuilder
         // Set event context for scheduler
         scheduler.SetEventContext(machine);
 
+        // Create and register a TrapRegistry before device initialization.
+        // Peripherals (e.g., disk drive controllers) may register traps during
+        // their Initialize() or slot card installation, so the registry must be
+        // available before those phases run. The registry is constructed with
+        // available components (SlotManager, LanguageCard) so that trap context
+        // resolution works automatically.
+        //
+        // The null check allows callers (e.g., system-specific extension methods)
+        // to provide a pre-configured TrapRegistry as a component before Build()
+        // is called, in which case their instance is preserved.
+        if (machine.GetComponent<ITrapRegistry>() is null)
+        {
+            var slotManager = machine.GetComponent<ISlotManager>();
+            var languageCard = machine.GetComponent<ILanguageCardState>();
+            var trapRegistry = new TrapRegistry(slotManager, languageCard, memoryContextResolver: null);
+            machine.AddComponent<ITrapRegistry>(trapRegistry);
+        }
+
         // Run before-device-init callbacks (e.g., I/O page mapping)
         foreach (var callback in beforeDeviceInitCallbacks)
         {

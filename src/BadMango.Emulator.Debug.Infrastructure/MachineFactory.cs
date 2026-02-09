@@ -71,6 +71,12 @@ public static class MachineFactory
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
 
+        // Wire the trap registry to the CPU so that traps fire during execution.
+        // The MachineBuilder creates and registers the TrapRegistry as a component;
+        // we assign it to the CPU here since the TrapRegistry property is on the
+        // concrete Cpu65C02 type, not the ICpu interface.
+        WireTrapRegistry(machine);
+
         // Create opcode table and disassembler
         var opcodeTable = GetOpcodeTable(profile.Cpu);
         var disassembler = new Disassembler(opcodeTable, machine.Bus);
@@ -113,10 +119,15 @@ public static class MachineFactory
         // This enables profiles to declare devices like speaker, keyboard, video, etc.
         builder.RegisterStandardDeviceFactories();
 
-        return builder
+        var machine = builder
             .FromProfile(profile, pathResolver)
             .WithCpuFactory(CreateCpuFactory(profile.Cpu))
             .Build();
+
+        // Wire the trap registry to the CPU so that traps fire during execution.
+        WireTrapRegistry(machine);
+
+        return machine;
     }
 
     /// <summary>
@@ -158,5 +169,36 @@ public static class MachineFactory
             "65832" => throw new NotSupportedException("65832 CPU is not yet implemented."),
             _ => throw new NotSupportedException($"CPU type '{cpuConfig.Type}' is not supported."),
         };
+    }
+
+    /// <summary>
+    /// Wires the trap registry from the machine's component bag to the CPU.
+    /// </summary>
+    /// <param name="machine">The machine whose CPU should receive the trap registry.</param>
+    /// <remarks>
+    /// <para>
+    /// The <see cref="MachineBuilder"/> creates and registers a <see cref="TrapRegistry"/>
+    /// as a machine component during <see cref="MachineBuilder.Build"/>. This method
+    /// retrieves that registry and assigns it to the CPU's <see cref="Cpu65C02.TrapRegistry"/>
+    /// property so that traps fire during instruction execution.
+    /// </para>
+    /// <para>
+    /// The assignment is done here rather than in the builder because the
+    /// <c>TrapRegistry</c> property is on the concrete <see cref="Cpu65C02"/> type,
+    /// which is not accessible from the Bus layer where <see cref="MachineBuilder"/> lives.
+    /// </para>
+    /// <para>
+    /// This method is a no-op if the machine's CPU is not a <see cref="Cpu65C02"/>
+    /// or if no <see cref="ITrapRegistry"/> component was registered. In those cases,
+    /// the CPU retains its default <see cref="NullTrapRegistry"/> instance.
+    /// </para>
+    /// </remarks>
+    private static void WireTrapRegistry(IMachine machine)
+    {
+        var trapRegistry = machine.GetComponent<ITrapRegistry>();
+        if (trapRegistry is not null && machine.Cpu is Cpu65C02 cpu)
+        {
+            cpu.TrapRegistry = trapRegistry;
+        }
     }
 }

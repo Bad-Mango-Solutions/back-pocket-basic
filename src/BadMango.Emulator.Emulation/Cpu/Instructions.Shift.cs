@@ -24,7 +24,6 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
 
@@ -41,14 +40,13 @@ public static partial class Instructions
             value <<= 1;
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -102,7 +100,6 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
 
@@ -119,14 +116,13 @@ public static partial class Instructions
             value >>= 1;
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -180,10 +176,9 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C); // C is bit 0, yields 0 or 1
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
@@ -198,14 +193,13 @@ public static partial class Instructions
             value = (byte)((value << 1) | oldCarry);
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -224,7 +218,7 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)1 : (byte)0;
+            byte oldCarry = (byte)((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C); // C is bit 0, yields 0 or 1
 
             // Set carry from bit 7
             if ((value & 0x80) != 0)
@@ -261,10 +255,9 @@ public static partial class Instructions
     {
         return cpu =>
         {
-            byte opCycles = 0;
             addressingMode(cpu);
             byte value = cpu.Registers.A.GetByte();
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) << 7); // C is bit 0, shift to bit 7
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)
@@ -279,14 +272,13 @@ public static partial class Instructions
             value = (byte)((value >> 1) | oldCarry);
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-            opCycles++;
 
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
             }
 
-            cpu.Registers.TCU += opCycles;
+            cpu.Registers.TCU += 1;
         };
     }
 
@@ -305,7 +297,7 @@ public static partial class Instructions
             byte value = cpu.Read8(address);
             opCycles++; // Memory read
 
-            byte oldCarry = cpu.Registers.P.HasFlag(ProcessorStatusFlags.C) ? (byte)0x80 : (byte)0;
+            byte oldCarry = (byte)(((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.C) << 7); // C is bit 0, shift to bit 7
 
             // Set carry from bit 0
             if ((value & 0x01) != 0)

@@ -137,7 +137,7 @@ public interface ICpu
     /// <returns>The byte value at the specified address.</returns>
     /// <remarks>
     /// <para>
-    /// This method uses <see cref="AccessIntent.DebugRead"/> to read memory without
+    /// This method uses the debug read access intent to read memory without
     /// triggering soft switches, clearing flags, or causing other side effects.
     /// </para>
     /// <para>
@@ -154,7 +154,7 @@ public interface ICpu
     /// <param name="value">The byte value to write.</param>
     /// <remarks>
     /// <para>
-    /// This method uses <see cref="AccessIntent.DebugWrite"/> to write memory,
+    /// This method uses the debug write access intent to write memory,
     /// bypassing ROM write protection and avoiding side effects on I/O addresses.
     /// </para>
     /// <para>

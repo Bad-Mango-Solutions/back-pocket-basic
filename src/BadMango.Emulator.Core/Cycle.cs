@@ -26,12 +26,12 @@ public readonly record struct Cycle(ulong Value) : IComparable<Cycle>
     /// <summary>
     /// Gets a <see cref="Cycle"/> instance representing zero cycles.
     /// </summary>
-    public static Cycle Zero => new(0);
+    public static readonly Cycle Zero = new(0);
 
     /// <summary>
     /// Gets a <see cref="Cycle"/> instance representing one cycle.
     /// </summary>
-    public static Cycle One => new(1);
+    public static readonly Cycle One = new(1);
 
     /// <summary>
     /// Implicitly converts a <see cref="ulong"/> to a <see cref="Cycle"/> instance.

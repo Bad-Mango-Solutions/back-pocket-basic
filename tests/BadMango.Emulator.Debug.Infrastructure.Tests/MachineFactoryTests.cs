@@ -4,7 +4,10 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
+using BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
@@ -81,6 +84,153 @@ public class MachineFactoryTests
             Assert.That(memory, Is.Not.Null);
             Assert.That(disassembler, Is.Not.Null);
             Assert.That(info, Is.Not.Null);
+        });
+    }
+
+    // ─── TrapRegistry Integration Tests ─────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that the CPU receives a functional <see cref="ITrapRegistry"/>
+    /// (not <see cref="NullTrapRegistry"/>) when a machine is built from a JSON profile.
+    /// </summary>
+    [Test]
+    public void CreateDebugSystem_65C02_CpuHasFunctionalTrapRegistry()
+    {
+        var profile = CreateTestProfile();
+
+        var (machine, _, _) = MachineFactory.CreateDebugSystem(profile);
+
+        var cpu = (Cpu65C02)machine.Cpu;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cpu.TrapRegistry, Is.Not.Null, "CPU should have a trap registry");
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.Not.SameAs(NullTrapRegistry.Instance),
+                "CPU should have a functional trap registry, not the null singleton");
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.InstanceOf<TrapRegistry>(),
+                "CPU should have a real TrapRegistry instance");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the <see cref="ITrapRegistry"/> is accessible as a machine component
+    /// via <see cref="IEventContext.GetComponent{T}"/>.
+    /// </summary>
+    [Test]
+    public void CreateDebugSystem_65C02_TrapRegistryIsAccessibleAsComponent()
+    {
+        var profile = CreateTestProfile();
+
+        var (machine, _, _) = MachineFactory.CreateDebugSystem(profile);
+
+        var trapRegistry = machine.GetComponent<ITrapRegistry>();
+
+        Assert.That(trapRegistry, Is.Not.Null, "TrapRegistry should be retrievable as a machine component");
+        Assert.That(
+            trapRegistry,
+            Is.InstanceOf<TrapRegistry>(),
+            "Component should be a real TrapRegistry instance");
+    }
+
+    /// <summary>
+    /// Verifies that the trap registry on the CPU is the same instance as the
+    /// one stored as a machine component.
+    /// </summary>
+    [Test]
+    public void CreateDebugSystem_65C02_CpuAndComponentShareSameTrapRegistry()
+    {
+        var profile = CreateTestProfile();
+
+        var (machine, _, _) = MachineFactory.CreateDebugSystem(profile);
+
+        var cpu = (Cpu65C02)machine.Cpu;
+        var componentRegistry = machine.GetComponent<ITrapRegistry>();
+
+        Assert.That(
+            cpu.TrapRegistry,
+            Is.SameAs(componentRegistry),
+            "CPU and machine component should reference the same TrapRegistry instance");
+    }
+
+    /// <summary>
+    /// Verifies that traps can be registered and fire during CPU execution
+    /// when the machine is built from a profile.
+    /// </summary>
+    [Test]
+    public void CreateDebugSystem_65C02_RegisteredTrapFiresDuringExecution()
+    {
+        var profile = CreateTestProfile();
+        var trapInvoked = false;
+
+        var (machine, _, _) = MachineFactory.CreateDebugSystem(profile);
+
+        var cpu = (Cpu65C02)machine.Cpu;
+
+        // Register a trap at $0400 (our subroutine target)
+        cpu.TrapRegistry.Register(
+            0x0400,
+            "TEST_TRAP",
+            TrapCategory.UserDefined,
+            (c, bus, ctx) =>
+            {
+                trapInvoked = true;
+                return TrapResult.Success(new Core.Cycle(6));
+            });
+
+        // Write test program: JSR $0400; STP
+        machine.Cpu.Write8(0x0300, 0x20); // JSR
+        machine.Cpu.Write8(0x0301, 0x00); // low byte $0400
+        machine.Cpu.Write8(0x0302, 0x04); // high byte $0400
+        machine.Cpu.Write8(0x0303, 0xDB); // STP
+
+        // Write RTS stub at $0400 in case trap doesn't fire
+        machine.Cpu.Write8(0x0400, 0x60); // RTS
+
+        // Execute
+        machine.Cpu.SetPC(0x0300);
+        machine.Step(); // JSR $0400
+        machine.Step(); // Trap fires at $0400, auto-RTS
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(trapInvoked, Is.True, "Trap should fire during CPU execution");
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(0x0303u),
+                "PC should return to instruction after JSR");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="MachineFactory.CreateMachine"/> also wires the trap registry.
+    /// </summary>
+    [Test]
+    public void CreateMachine_65C02_CpuHasFunctionalTrapRegistry()
+    {
+        var profile = CreateTestProfile();
+
+        var machine = MachineFactory.CreateMachine(profile);
+
+        var cpu = (Cpu65C02)machine.Cpu;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.Not.SameAs(NullTrapRegistry.Instance),
+                "CPU should have a functional trap registry from CreateMachine");
+            Assert.That(
+                machine.GetComponent<ITrapRegistry>(),
+                Is.Not.Null,
+                "TrapRegistry should be a machine component");
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.SameAs(machine.GetComponent<ITrapRegistry>()),
+                "CPU and component should share the same instance");
         });
     }
 

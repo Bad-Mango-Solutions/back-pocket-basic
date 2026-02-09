@@ -215,34 +215,53 @@ public static class ProcessorStatusFlagsHelpers
         /// <summary>Sets the Zero and Negative flags based on a byte value.</summary>
         /// <param name="value">The value to test.</param>
         /// <returns>The updated processor status flags with Z and N set appropriately.</returns>
+        /// <remarks>
+        /// Uses branchless bitmask operations: clears both Z and N, then sets them
+        /// in a single pass to avoid multiple conditional branches in the hot path.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetZeroAndNegative(byte value)
         {
-            p = p.SetZero(value == 0);
-            p = p.SetNegative((value & 0x80) != 0);
+            // Clear Z and N, then set them branchlessly:
+            // - Z bit (0x02): set when value == 0.
+            // - N bit (0x80): copy bit 7 directly from value.
+            byte flags = (byte)((byte)p & ~(ZeroBit | NegativeBit));
+            flags |= (byte)((((uint)value - 1) >> 31) << 1); // Z flag: underflow sets bit 31
+            flags |= (byte)(value & NegativeBit);             // N flag
+            p = (ProcessorStatusFlags)flags;
             return p;
         }
 
         /// <summary>Sets the Zero and Negative flags based on a 16-bit value.</summary>
         /// <param name="value">The value to test.</param>
         /// <returns>The updated processor status flags with Z and N set appropriately.</returns>
+        /// <remarks>
+        /// Uses branchless bitmask operations for the 16-bit case.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetZeroAndNegative(Word value)
         {
-            p = p.SetZero(value == 0);
-            p = p.SetNegative((value & 0x8000) != 0);
+            byte flags = (byte)((byte)p & ~(ZeroBit | NegativeBit));
+            flags |= (byte)((((uint)value - 1) >> 31) << 1); // Z flag
+            flags |= (byte)((value >> 8) & NegativeBit);      // N flag
+            p = (ProcessorStatusFlags)flags;
             return p;
         }
 
         /// <summary>Sets the Zero and Negative flags based on a 32-bit value.</summary>
         /// <param name="value">The value to test.</param>
         /// <returns>The updated processor status flags with Z and N set appropriately.</returns>
-        /// <remarks>Only meaningful in 65832 native-32 mode.</remarks>
+        /// <remarks>
+        /// Uses branchless bitmask operations for the 32-bit case.
+        /// Only meaningful in 65832 native-32 mode.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetZeroAndNegative(uint value)
         {
-            p = p.SetZero(value == 0);
-            p = p.SetNegative((value & 0x8000_0000) != 0);
+            byte flags = (byte)((byte)p & ~(ZeroBit | NegativeBit));
+            flags |= (byte)((((ulong)value - 1) >> 63) << 1); // Z flag
+            flags |= (byte)((value >> 24) & NegativeBit);      // N flag
+            p = (ProcessorStatusFlags)flags;
             return p;
         }
 
