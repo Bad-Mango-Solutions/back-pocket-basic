@@ -855,6 +855,10 @@ public sealed partial class MachineBuilder
         // available before those phases run. The registry is constructed with
         // available components (SlotManager, LanguageCard) so that trap context
         // resolution works automatically.
+        //
+        // The null check allows callers (e.g., system-specific extension methods)
+        // to provide a pre-configured TrapRegistry as a component before Build()
+        // is called, in which case their instance is preserved.
         if (machine.GetComponent<ITrapRegistry>() is null)
         {
             var slotManager = machine.GetComponent<ISlotManager>();

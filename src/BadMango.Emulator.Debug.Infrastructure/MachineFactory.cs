@@ -187,6 +187,11 @@ public static class MachineFactory
     /// <c>TrapRegistry</c> property is on the concrete <see cref="Cpu65C02"/> type,
     /// which is not accessible from the Bus layer where <see cref="MachineBuilder"/> lives.
     /// </para>
+    /// <para>
+    /// This method is a no-op if the machine's CPU is not a <see cref="Cpu65C02"/>
+    /// or if no <see cref="ITrapRegistry"/> component was registered. In those cases,
+    /// the CPU retains its default <see cref="NullTrapRegistry"/> instance.
+    /// </para>
     /// </remarks>
     private static void WireTrapRegistry(IMachine machine)
     {
