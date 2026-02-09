@@ -195,8 +195,10 @@ public sealed class Machine : IMachine
             Cpu.RequestStop();
         }
 
+        // CPU.Step() advances the scheduler internally — each code path
+        // in Cpu65C02.Step() calls Scheduler.Advance(cycles) before returning.
+        // Do NOT advance the scheduler again here to avoid double-advancement.
         var result = Cpu.Step();
-        Scheduler.Advance(result.CyclesConsumed);
 
         // Transition to paused after stepping
         SetState(MachineState.Paused);

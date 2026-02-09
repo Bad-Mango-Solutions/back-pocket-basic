@@ -123,18 +123,27 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that Step advances the scheduler.
+    /// Verifies that Step does not advance the scheduler directly,
+    /// since the CPU is responsible for advancing the scheduler internally
+    /// during <see cref="ICpu.Step()"/>.
     /// </summary>
     [Test]
-    public void Step_AdvancesScheduler()
+    public void Step_DoesNotDoubleAdvanceScheduler()
     {
         var mockCpu = CreateMockCpu();
-        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 10));
 
+        // Pre-advance the scheduler to simulate the CPU having advanced it
+        // during its own Step() call.
         var machine = CreateTestMachine(mockCpu);
+        machine.Scheduler.Advance(10);
+
+        // Setup CPU to return 5 cycles consumed (as if it already advanced the scheduler by 5)
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 5));
 
         machine.Step();
 
+        // Machine.Step() should NOT add another 5 cycles — the scheduler should remain
+        // at 10 (the value set by our pre-advance), not 15 (which would indicate double-advance).
         Assert.That(machine.Now.Value, Is.EqualTo(10));
     }
 
