@@ -63,6 +63,7 @@ public sealed partial class MachineBuilder
 
     private int addressSpaceBits = 16;
     private CpuFamily cpuFamily = CpuFamily.Cpu65C02;
+    private long clockSpeedHz;
     private Func<IEventContext, ICpu>? cpuFactory;
     private ProfilePathResolver? profilePathResolver;
 
@@ -833,6 +834,9 @@ public sealed partial class MachineBuilder
 
         // Create machine
         var machine = new Machine(cpu, bus, scheduler, signals, devices);
+
+        // Configure clock speed for CPU throttling
+        machine.ClockSpeedHz = clockSpeedHz;
 
         // Add components
         foreach (var component in components)

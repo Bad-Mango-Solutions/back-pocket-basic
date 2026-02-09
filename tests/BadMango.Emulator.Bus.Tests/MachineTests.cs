@@ -525,6 +525,129 @@ public class MachineTests
         Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
     }
 
+    // ─── CPU Throttling Tests ───────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz defaults to zero (unthrottled).
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_DefaultsToZero()
+    {
+        var machine = CreateTestMachine();
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz can be set and retrieved.
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_CanBeSetAndRetrieved()
+    {
+        var machine = CreateTestMachine();
+        machine.ClockSpeedHz = 1_020_484;
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(1_020_484));
+    }
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz can be changed at runtime.
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_CanBeChangedAtRuntime()
+    {
+        var machine = CreateTestMachine();
+        machine.ClockSpeedHz = 1_020_484;
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(1_020_484));
+
+        machine.ClockSpeedHz = 2_800_000; // IIgs fast mode
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(2_800_000));
+
+        machine.ClockSpeedHz = 0; // Unthrottled
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that throttling slows execution when clock speed is set.
+    /// </summary>
+    /// <remarks>
+    /// This test configures a very low clock speed so that 10,000 cycles
+    /// (the yield interval) should take significant wall-clock time. It then
+    /// verifies that execution completes in a time range consistent with
+    /// throttling rather than running flat-out.
+    /// </remarks>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
+    [Test]
+    public async Task RunAsync_WithThrottling_SlowsExecution()
+    {
+        var mockCpu = CreateMockCpu();
+        int stepCount = 0;
+
+        // Each step returns 100 cycles, so 100 steps = 10,000 cycles = 1 yield
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            stepCount++;
+            return new CpuStepResult(CpuRunState.Running, 100);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // Set clock speed to 100,000 Hz — 10,000 cycles should take 100ms
+        machine.ClockSpeedHz = 100_000;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            await machine.RunAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        stopwatch.Stop();
+
+        // At 100,000 Hz with 100 cycles/step, we get ~1000 steps/second.
+        // In 500ms, we expect ~500 steps. Without throttling, we'd get many more.
+        // The key assertion is that throttling limited execution.
+        Assert.That(stepCount, Is.LessThan(2000), "Throttling should limit step count");
+    }
+
+    /// <summary>
+    /// Verifies that unthrottled execution runs at maximum speed.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
+    [Test]
+    public async Task RunAsync_WithoutThrottling_RunsAtFullSpeed()
+    {
+        var mockCpu = CreateMockCpu();
+        int stepCount = 0;
+
+        // Each step returns 100 cycles
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            stepCount++;
+            return new CpuStepResult(CpuRunState.Running, 100);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // No throttling (default ClockSpeedHz = 0)
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        try
+        {
+            await machine.RunAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Without throttling, we should execute a very large number of steps
+        Assert.That(stepCount, Is.GreaterThan(1000), "Without throttling, step count should be high");
+    }
+
     private static Machine CreateTestMachine(Mock<ICpu>? mockCpu = null)
     {
         mockCpu ??= CreateMockCpu();

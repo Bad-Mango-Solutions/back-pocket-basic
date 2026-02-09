@@ -53,6 +53,31 @@ public interface IMachine : IEventContext
     /// <value>The registry containing all device metadata for this machine.</value>
     IDeviceRegistry Devices { get; }
 
+    // ─── Timing ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets or sets the target CPU clock speed in Hz for cycle-accurate throttling.
+    /// </summary>
+    /// <value>
+    /// The target clock speed in Hz. A value of <c>0</c> disables throttling and
+    /// allows the CPU to run at maximum host speed.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// The Apple IIe uses a 1.023 MHz clock (1,020,484 Hz). When throttling is
+    /// enabled, the execution loop paces CPU cycles to match wall-clock time at
+    /// the configured rate. This ensures that cycle-dependent firmware (such as
+    /// the 80-column card's PAGE1/PAGE2 switching) operates within its designed
+    /// timing window, preventing display artifacts.
+    /// </para>
+    /// <para>
+    /// This property can be changed at runtime to adjust the emulated CPU speed
+    /// (e.g., for Apple IIgs emulation where the user could switch between
+    /// 1 MHz and 2.8 MHz modes via the control panel).
+    /// </para>
+    /// </remarks>
+    long ClockSpeedHz { get; set; }
+
     // ─── Lifecycle ──────────────────────────────────────────────────────
 
     /// <summary>

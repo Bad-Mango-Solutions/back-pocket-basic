@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Core;
@@ -95,6 +96,9 @@ public sealed class Machine : IMachine
 
     /// <inheritdoc />
     public MachineState State => state;
+
+    /// <inheritdoc />
+    public long ClockSpeedHz { get; set; }
 
     /// <inheritdoc />
     public void Reset()
@@ -364,12 +368,28 @@ public sealed class Machine : IMachine
     }
 
     /// <summary>
-    /// Executes the main run loop asynchronously with periodic yields.
+    /// Executes the main run loop asynchronously with cycle-accurate throttling.
     /// </summary>
     /// <param name="cancellationToken">Token to cancel execution.</param>
+    /// <remarks>
+    /// <para>
+    /// When <see cref="ClockSpeedHz"/> is set to a positive value, the loop paces
+    /// CPU execution so that emulated cycles match wall-clock time at the configured
+    /// clock rate. For example, at 1,020,484 Hz (Apple IIe speed), the loop ensures
+    /// that 1,020,484 emulated cycles elapse per second of real time.
+    /// </para>
+    /// <para>
+    /// Throttling uses a <see cref="Stopwatch"/> to measure elapsed wall-clock time
+    /// and inserts delays when the CPU runs ahead of real time. The delay is applied
+    /// at each yield point (every <see cref="YieldIntervalCycles"/> cycles), providing
+    /// smooth pacing without excessive timer overhead.
+    /// </para>
+    /// </remarks>
     private async Task ExecuteLoopAsync(CancellationToken cancellationToken)
     {
         long cyclesSinceYield = 0;
+        var throttleStopwatch = Stopwatch.StartNew();
+        long throttleCycleBase = 0;
 
         while (state == MachineState.Running && !Cpu.IsStopRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -400,7 +420,33 @@ public sealed class Machine : IMachine
             cyclesSinceYield += (long)result.CyclesConsumed.Value;
             if (cyclesSinceYield >= YieldIntervalCycles)
             {
+                throttleCycleBase += cyclesSinceYield;
                 cyclesSinceYield = 0;
+
+                // Apply throttling if a clock speed is configured
+                long clockSpeed = ClockSpeedHz;
+                if (clockSpeed > 0)
+                {
+                    // Calculate how many milliseconds should have elapsed for the
+                    // cycles we've executed since the throttle window started
+                    double expectedMs = throttleCycleBase * 1000.0 / clockSpeed;
+                    double actualMs = throttleStopwatch.Elapsed.TotalMilliseconds;
+                    double aheadMs = expectedMs - actualMs;
+
+                    if (aheadMs >= 1.0)
+                    {
+                        // CPU is ahead of real time — delay to catch up
+                        await Task.Delay((int)aheadMs, cancellationToken).ConfigureAwait(false);
+                    }
+                    else if (aheadMs < -100.0)
+                    {
+                        // CPU fell significantly behind (e.g., debugger pause, GC stall).
+                        // Reset the throttle window to avoid a burst of catch-up cycles.
+                        throttleStopwatch.Restart();
+                        throttleCycleBase = 0;
+                    }
+                }
+
                 await Task.Yield();
             }
         }
