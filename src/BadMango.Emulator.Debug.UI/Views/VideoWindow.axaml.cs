@@ -51,18 +51,13 @@ public partial class VideoWindow : Window
     private const int CanonicalHeight = 384;
 
     /// <summary>
-    /// Target frame rate in frames per second.
-    /// </summary>
-    private const double TargetFrameRate = 60.0;
-
-    /// <summary>
     /// Number of frames between flash state toggles (~1.9 Hz at 60 fps).
     /// </summary>
     private const int FlashToggleFrames = 16;
 
     private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
-    private readonly DispatcherTimer refreshTimer;
+    private readonly DispatcherTimer fpsTimer;
     private readonly Stopwatch fpsStopwatch;
 
     private IMachine? machine;
@@ -73,6 +68,7 @@ public partial class VideoWindow : Window
     private IMemoryBus? memoryBus;
     private Memory<byte> characterRom;
     private bool characterRomUpdatePending;
+    private volatile bool vblankPending;
 
     private int scale = 2;
     private bool showFps;
@@ -101,12 +97,12 @@ public partial class VideoWindow : Window
         // Set initial bitmap from PixelBuffer
         VideoImage.Source = pixelBuffer.Bitmap;
 
-        // Initialize refresh timer at ~60 Hz
-        refreshTimer = new DispatcherTimer(DispatcherPriority.Render)
+        // Initialize FPS timer at 1 Hz for FPS counter updates only
+        fpsTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(1000.0 / TargetFrameRate),
+            Interval = TimeSpan.FromSeconds(1),
         };
-        refreshTimer.Tick += OnRefreshTimer;
+        fpsTimer.Tick += OnFpsTimer;
 
         // Subscribe to window events
         Opened += OnWindowOpened;
@@ -203,6 +199,12 @@ public partial class VideoWindow : Window
         {
             characterDevice.CharacterRomChanged += OnCharacterRomChanged;
         }
+
+        // Subscribe to VBlank event for frame-accurate rendering
+        if (videoDevice != null)
+        {
+            videoDevice.VBlankOccurred += OnVBlankOccurred;
+        }
     }
 
     /// <summary>
@@ -214,6 +216,11 @@ public partial class VideoWindow : Window
         if (characterDevice != null)
         {
             characterDevice.CharacterRomChanged -= OnCharacterRomChanged;
+        }
+
+        if (videoDevice != null)
+        {
+            videoDevice.VBlankOccurred -= OnVBlankOccurred;
         }
 
         machine = null;
@@ -417,18 +424,39 @@ public partial class VideoWindow : Window
     {
         UpdateWindowSize();
         fpsStopwatch.Start();
-        refreshTimer.Start();
+        fpsTimer.Start();
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
-        refreshTimer.Stop();
+        fpsTimer.Stop();
         fpsStopwatch.Stop();
         pixelBuffer.Dispose();
     }
 
-    private void OnRefreshTimer(object? sender, EventArgs e)
+    /// <summary>
+    /// Called when the video device fires a VBlank event.
+    /// Marshals the rendering call to the UI thread.
+    /// </summary>
+    private void OnVBlankOccurred()
     {
+        // Mark that a VBlank has occurred; the UI thread will process it
+        vblankPending = true;
+        Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+    }
+
+    /// <summary>
+    /// Processes a VBlank-triggered frame redraw on the UI thread.
+    /// </summary>
+    private void ProcessVBlankFrame()
+    {
+        if (!vblankPending)
+        {
+            return;
+        }
+
+        vblankPending = false;
+
         // Update flash state
         flashFrameCounter++;
         if (flashFrameCounter >= FlashToggleFrames)
@@ -449,6 +477,10 @@ public partial class VideoWindow : Window
 
         // Update FPS counter
         frameCount++;
+    }
+
+    private void OnFpsTimer(object? sender, EventArgs e)
+    {
         if (fpsStopwatch.ElapsedMilliseconds >= 1000)
         {
             lastFps = frameCount / (fpsStopwatch.ElapsedMilliseconds / 1000.0);
