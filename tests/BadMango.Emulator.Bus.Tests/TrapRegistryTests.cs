@@ -339,6 +339,116 @@ public class TrapRegistryTests
         });
     }
 
+    // ─── ContainsAddress Tests ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that ContainsAddress returns true for an address with a registered trap.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_ExistingTrap_ReturnsTrue()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+
+        Assert.That(registry.ContainsAddress(0xFC58), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress returns false for an address with no traps.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_NonExistentAddress_ReturnsFalse()
+    {
+        Assert.That(registry.ContainsAddress(0xFC58), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress returns true regardless of operation type.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_AnyOperation_ReturnsTrue()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xC050, TrapOperation.Read, "READ_SWITCH", TrapCategory.OnboardDevice, handler);
+
+        Assert.That(registry.ContainsAddress(0xC050), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress returns false after unregistering the last trap at an address.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_AfterUnregister_ReturnsFalse()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        registry.Unregister(0xFC58);
+
+        Assert.That(registry.ContainsAddress(0xFC58), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress tracks multiple traps at the same address correctly.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_MultipleTrapsAtSameAddress_ReferenceCountedCorrectly()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xC050, TrapOperation.Read, "READ_SWITCH", TrapCategory.OnboardDevice, handler);
+        registry.Register(0xC050, TrapOperation.Write, "WRITE_SWITCH", TrapCategory.OnboardDevice, handler);
+
+        // Both traps registered - address should be present
+        Assert.That(registry.ContainsAddress(0xC050), Is.True);
+
+        // Unregister one - address should still be present
+        registry.Unregister(0xC050, TrapOperation.Read);
+        Assert.That(registry.ContainsAddress(0xC050), Is.True);
+
+        // Unregister the last one - address should be gone
+        registry.Unregister(0xC050, TrapOperation.Write);
+        Assert.That(registry.ContainsAddress(0xC050), Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress returns false after Clear.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_AfterClear_ReturnsFalse()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.Register(0xFC58, "HOME", TrapCategory.MonitorRom, handler);
+        registry.Register(0xFDED, "COUT", TrapCategory.MonitorRom, handler);
+        registry.Clear();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.ContainsAddress(0xFC58), Is.False);
+            Assert.That(registry.ContainsAddress(0xFDED), Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that ContainsAddress works correctly with context-specific traps.
+    /// </summary>
+    [Test]
+    public void ContainsAddress_WithContextTraps_TracksCorrectly()
+    {
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        registry.RegisterWithContext(0xD000, MemoryContexts.Rom, "ROM_TRAP", TrapCategory.MonitorRom, handler);
+        registry.RegisterLanguageCardRam(0xD000, "LC_TRAP", TrapCategory.MonitorRom, handler);
+
+        // Both contexts registered - address should be present
+        Assert.That(registry.ContainsAddress(0xD000), Is.True);
+
+        // Unregister ROM context - address should still be present (LC RAM trap remains)
+        registry.UnregisterWithContext(0xD000, MemoryContexts.Rom);
+        Assert.That(registry.ContainsAddress(0xD000), Is.True);
+
+        // Unregister LC RAM context - address should be gone
+        registry.UnregisterLanguageCardRam(0xD000);
+        Assert.That(registry.ContainsAddress(0xD000), Is.False);
+    }
+
     // ─── GetTrapInfo Tests ──────────────────────────────────────────────────────
 
     /// <summary>
