@@ -689,9 +689,7 @@ public class VideoWindowTests
     {
         physicalRam = new byte[65536]; // 64KB main RAM
 
-        var physicalMemory = new PhysicalMemory(
-            (ReadOnlySpan<byte>)physicalRam.AsSpan(),
-            "TestMainRAM");
+        var physicalMemory = new PhysicalMemory(65536, "TestMainRAM");
         var mockMainMemoryProvider = new Mock<IMainMemoryProvider>();
         mockMainMemoryProvider.Setup(p => p.MainRam).Returns(physicalMemory.Memory);
 
