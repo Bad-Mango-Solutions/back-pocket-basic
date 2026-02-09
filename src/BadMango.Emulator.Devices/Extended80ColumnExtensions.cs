@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices.Interfaces;
 
 using Addr = System.UInt32;
 
@@ -166,6 +167,36 @@ public static class Extended80ColumnExtensions
                 caps: page0Target.Capabilities,
                 target: page0Target,
                 physicalBase: 0);
+
+            // Register IMainMemoryProvider so the video display subsystem can snapshot
+            // physical main RAM directly, bypassing all soft switch routing (80STORE, PAGE2, RAMRD).
+            // Without this, the VBlank snapshot falls back to bus reads which respect soft switch
+            // state and may return auxiliary memory data when 80STORE+PAGE2 is active.
+            machineBuilder.AddComponent<IMainMemoryProvider>(
+                new PhysicalMemoryMainRamProvider(mainRam));
         }
+    }
+
+    /// <summary>
+    /// Provides direct physical main RAM access for the video display subsystem.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This adapter wraps a <see cref="PhysicalMemory"/> instance to implement
+    /// <see cref="IMainMemoryProvider"/>. It is registered as a machine component
+    /// during Extended 80-Column Card configuration so that the video snapshot
+    /// can read from the physical main RAM backing store without going through
+    /// the memory bus and its soft switch routing.
+    /// </para>
+    /// </remarks>
+    /// <param name="memory">The physical memory backing store for main RAM.</param>
+    private sealed class PhysicalMemoryMainRamProvider(PhysicalMemory memory)
+        : IMainMemoryProvider
+    {
+        /// <inheritdoc />
+        public ReadOnlyMemory<byte> MainRam => memory.Memory;
+
+        /// <inheritdoc />
+        public byte ReadMainRam(ushort address) => memory.AsReadOnlySpan()[address];
     }
 }

@@ -459,7 +459,8 @@ public sealed partial class MachineBuilder
     /// <remarks>
     /// <para>
     /// Physical memory blocks are created during profile loading when the
-    /// <c>memory.physical</c> section is processed. Each block has a unique name
+    /// <c>memory.physical</c> section is processed, or added programmatically
+    /// via <see cref="AddPhysicalMemory"/>. Each block has a unique name
     /// that can be used to retrieve it.
     /// </para>
     /// <para>
@@ -473,6 +474,39 @@ public sealed partial class MachineBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         return physicalMemoryBlocks.TryGetValue(name, out var physical) ? physical : null;
+    }
+
+    /// <summary>
+    /// Adds a named physical memory block to the builder.
+    /// </summary>
+    /// <param name="name">The unique name for the physical memory block.</param>
+    /// <param name="memory">The physical memory instance to add.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="memory"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when a block with the same name already exists.</exception>
+    /// <remarks>
+    /// <para>
+    /// This method allows programmatic addition of physical memory blocks for use by
+    /// device factories and memory configuration callbacks. Physical memory blocks added
+    /// this way are equivalent to those created during profile loading.
+    /// </para>
+    /// <para>
+    /// Names are case-insensitive and must be unique within the builder.
+    /// </para>
+    /// </remarks>
+    public MachineBuilder AddPhysicalMemory(string name, PhysicalMemory memory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(memory);
+
+        if (physicalMemoryBlocks.ContainsKey(name))
+        {
+            throw new InvalidOperationException($"Duplicate physical memory name: '{name}'.");
+        }
+
+        physicalMemoryBlocks[name] = memory;
+        return this;
     }
 
     /// <summary>
