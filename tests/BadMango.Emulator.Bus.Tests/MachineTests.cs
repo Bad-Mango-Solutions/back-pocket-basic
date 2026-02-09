@@ -608,8 +608,9 @@ public class MachineTests
         stopwatch.Stop();
 
         // At 100,000 Hz with 100 cycles/step, we get ~1000 steps/second.
-        // In 500ms, we expect ~500 steps. Without throttling, we'd get many more.
-        // The key assertion is that throttling limited execution.
+        // In 500ms, we expect ~500 steps. We use a generous upper bound of 2000
+        // to account for timer resolution, scheduling overhead, and CI variability.
+        // Without throttling, this same test would execute hundreds of thousands of steps.
         Assert.That(stepCount, Is.LessThan(2000), "Throttling should limit step count");
     }
 

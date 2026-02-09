@@ -64,7 +64,7 @@ public interface IMachine : IEventContext
     /// </value>
     /// <remarks>
     /// <para>
-    /// The Apple IIe uses a 1.023 MHz clock (1,020,484 Hz). When throttling is
+    /// The Apple IIe uses a ~1.020484 MHz clock (1,020,484 Hz). When throttling is
     /// enabled, the execution loop paces CPU cycles to match wall-clock time at
     /// the configured rate. This ensures that cycle-dependent firmware (such as
     /// the 80-column card's PAGE1/PAGE2 switching) operates within its designed
