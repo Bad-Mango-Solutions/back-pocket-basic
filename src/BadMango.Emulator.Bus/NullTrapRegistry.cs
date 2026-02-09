@@ -33,6 +33,17 @@ public sealed class NullTrapRegistry : ITrapRegistry
     /// </summary>
     public static readonly NullTrapRegistry Instance = new();
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NullTrapRegistry"/> class.
+    /// </summary>
+    /// <remarks>
+    /// This constructor is private to enforce the singleton and null-object pattern.
+    /// Use <see cref="Instance"/> to access the shared instance.
+    /// </remarks>
+    private NullTrapRegistry()
+    {
+    }
+
     /// <inheritdoc />
     public int Count => 0;
 

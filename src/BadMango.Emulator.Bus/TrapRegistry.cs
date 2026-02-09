@@ -641,14 +641,9 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     /// <param name="address">The address to add.</param>
     private void AddToAddressIndex(Addr address)
     {
-        if (trappedAddresses.TryGetValue(address, out var count))
-        {
-            trappedAddresses[address] = count + 1;
-        }
-        else
-        {
-            trappedAddresses[address] = 1;
-        }
+        trappedAddresses[address] = trappedAddresses.TryGetValue(address, out var count)
+            ? count + 1
+            : 1;
     }
 
     /// <summary>
