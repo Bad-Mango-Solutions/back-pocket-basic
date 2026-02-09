@@ -87,46 +87,6 @@ public class MachineFactoryTests
         });
     }
 
-    /// <summary>
-    /// Creates a standard test profile using the new regions-based schema.
-    /// </summary>
-    /// <returns>A machine profile for testing.</returns>
-    private static MachineProfile CreateTestProfile()
-    {
-        return new()
-        {
-            Name = "test-65c02",
-            DisplayName = "Test 65C02",
-            Cpu = new() { Type = "65C02" },
-            AddressSpace = 16,
-            Memory = new()
-            {
-                Physical =
-                [
-                    new()
-                    {
-                        Name = "main-ram-64k",
-                        Size = "0x10000",
-                        Fill = "0x00",
-                    },
-                ],
-                Regions =
-                [
-                    new()
-                    {
-                        Name = "main-ram",
-                        Type = "ram",
-                        Start = "0x0000",
-                        Size = "0x10000",
-                        Permissions = "rwx",
-                        Source = "main-ram-64k",
-                        SourceOffset = "0x0000",
-                    },
-                ],
-            },
-        };
-    }
-
     // ─── TrapRegistry Integration Tests ─────────────────────────────────────────
 
     /// <summary>
@@ -145,9 +105,13 @@ public class MachineFactoryTests
         Assert.Multiple(() =>
         {
             Assert.That(cpu.TrapRegistry, Is.Not.Null, "CPU should have a trap registry");
-            Assert.That(cpu.TrapRegistry, Is.Not.SameAs(NullTrapRegistry.Instance),
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.Not.SameAs(NullTrapRegistry.Instance),
                 "CPU should have a functional trap registry, not the null singleton");
-            Assert.That(cpu.TrapRegistry, Is.InstanceOf<TrapRegistry>(),
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.InstanceOf<TrapRegistry>(),
                 "CPU should have a real TrapRegistry instance");
         });
     }
@@ -166,7 +130,9 @@ public class MachineFactoryTests
         var trapRegistry = machine.GetComponent<ITrapRegistry>();
 
         Assert.That(trapRegistry, Is.Not.Null, "TrapRegistry should be retrievable as a machine component");
-        Assert.That(trapRegistry, Is.InstanceOf<TrapRegistry>(),
+        Assert.That(
+            trapRegistry,
+            Is.InstanceOf<TrapRegistry>(),
             "Component should be a real TrapRegistry instance");
     }
 
@@ -184,7 +150,9 @@ public class MachineFactoryTests
         var cpu = (Cpu65C02)machine.Cpu;
         var componentRegistry = machine.GetComponent<ITrapRegistry>();
 
-        Assert.That(cpu.TrapRegistry, Is.SameAs(componentRegistry),
+        Assert.That(
+            cpu.TrapRegistry,
+            Is.SameAs(componentRegistry),
             "CPU and machine component should reference the same TrapRegistry instance");
     }
 
@@ -230,7 +198,9 @@ public class MachineFactoryTests
         Assert.Multiple(() =>
         {
             Assert.That(trapInvoked, Is.True, "Trap should fire during CPU execution");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0303u),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(0x0303u),
                 "PC should return to instruction after JSR");
         });
     }
@@ -249,12 +219,58 @@ public class MachineFactoryTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(cpu.TrapRegistry, Is.Not.SameAs(NullTrapRegistry.Instance),
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.Not.SameAs(NullTrapRegistry.Instance),
                 "CPU should have a functional trap registry from CreateMachine");
-            Assert.That(machine.GetComponent<ITrapRegistry>(), Is.Not.Null,
+            Assert.That(
+                machine.GetComponent<ITrapRegistry>(),
+                Is.Not.Null,
                 "TrapRegistry should be a machine component");
-            Assert.That(cpu.TrapRegistry, Is.SameAs(machine.GetComponent<ITrapRegistry>()),
+            Assert.That(
+                cpu.TrapRegistry,
+                Is.SameAs(machine.GetComponent<ITrapRegistry>()),
                 "CPU and component should share the same instance");
         });
+    }
+
+    /// <summary>
+    /// Creates a standard test profile using the new regions-based schema.
+    /// </summary>
+    /// <returns>A machine profile for testing.</returns>
+    private static MachineProfile CreateTestProfile()
+    {
+        return new()
+        {
+            Name = "test-65c02",
+            DisplayName = "Test 65C02",
+            Cpu = new() { Type = "65C02" },
+            AddressSpace = 16,
+            Memory = new()
+            {
+                Physical =
+                [
+                    new()
+                    {
+                        Name = "main-ram-64k",
+                        Size = "0x10000",
+                        Fill = "0x00",
+                    },
+                ],
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "main-ram",
+                        Type = "ram",
+                        Start = "0x0000",
+                        Size = "0x10000",
+                        Permissions = "rwx",
+                        Source = "main-ram-64k",
+                        SourceOffset = "0x0000",
+                    },
+                ],
+            },
+        };
     }
 }

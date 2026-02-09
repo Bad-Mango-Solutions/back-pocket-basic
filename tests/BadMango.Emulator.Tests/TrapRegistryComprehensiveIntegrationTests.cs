@@ -260,21 +260,30 @@ public class TrapRegistryComprehensiveIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
-        trapRegistry.Register(HomeAddress, "HOME", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            HomeAddress,
+            "HOME",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 invocationOrder.Add("HOME");
                 return TrapResult.Success(new Cycle(6));
             });
 
-        trapRegistry.Register(CoutAddress, "COUT", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            CoutAddress,
+            "COUT",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 invocationOrder.Add("COUT");
                 return TrapResult.Success(new Cycle(6));
             });
 
-        trapRegistry.Register(RdkeyAddress, "RDKEY", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            RdkeyAddress,
+            "RDKEY",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 invocationOrder.Add("RDKEY");
@@ -389,7 +398,7 @@ public class TrapRegistryComprehensiveIntegrationTests
         ushort addr = TestProgramAddress;
         machine.Cpu.Write8(addr++, 0x4C); // JMP
         machine.Cpu.Write8(addr++, 0xED); // low byte $FDED
-        machine.Cpu.Write8(addr, 0xFD);   // high byte $FDED
+        machine.Cpu.Write8(addr++, 0xFD); // high byte $FDED
 
         // STP at redirect target
         machine.Cpu.Write8(SubroutineAddress, 0xDB);
@@ -403,7 +412,9 @@ public class TrapRegistryComprehensiveIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(trapInvoked, Is.True, "Trap handler should have fired");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(SubroutineAddress),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(SubroutineAddress),
                 "PC should be at redirect target address");
         });
 
@@ -493,7 +504,9 @@ public class TrapRegistryComprehensiveIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(trapInvoked, Is.True, "Trap handler should have fired");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(rtiReturnAddress),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(rtiReturnAddress),
                 "PC should be at RTI return address after trap");
         });
 
@@ -539,6 +552,7 @@ public class TrapRegistryComprehensiveIntegrationTests
             (cpu, bus, ctx) =>
             {
                 trapInvoked = true;
+
                 // Handler explicitly sets PC to where we want to continue
                 cpu.SetPC(continueAddress);
                 return TrapResult.Success(new Cycle(6), TrapReturnMethod.None);
@@ -564,7 +578,9 @@ public class TrapRegistryComprehensiveIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(trapInvoked, Is.True, "Trap should fire on JMP target");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(continueAddress),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(continueAddress),
                 "PC should be at continue address set by handler");
         });
 
@@ -607,14 +623,20 @@ public class TrapRegistryComprehensiveIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
-        trapRegistry.Register(CoutAddress, "COUT_ROM", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            CoutAddress,
+            "COUT_ROM",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 trapInvocationOrder.Add("ROM");
                 return TrapResult.Success(new Cycle(6));
             });
 
-        trapRegistry.RegisterLanguageCardRam(CoutAddress, "COUT_LCRAM", TrapCategory.MonitorRom,
+        trapRegistry.RegisterLanguageCardRam(
+            CoutAddress,
+            "COUT_LCRAM",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 trapInvocationOrder.Add("LC_RAM");
@@ -751,7 +773,10 @@ public class TrapRegistryComprehensiveIntegrationTests
             });
 
         // Register main RAM trap (ROM context - default)
-        trapRegistry.Register(SubroutineAddress, "SUB_MAIN", TrapCategory.UserDefined,
+        trapRegistry.Register(
+            SubroutineAddress,
+            "SUB_MAIN",
+            TrapCategory.UserDefined,
             (cpu, bus, ctx) =>
             {
                 trapInvocationOrder.Add("MAIN");
@@ -864,7 +889,10 @@ public class TrapRegistryComprehensiveIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
-        trapRegistry.Register(CoutAddress, "COUT", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            CoutAddress,
+            "COUT",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 trapInvokeCount++;
@@ -932,7 +960,10 @@ public class TrapRegistryComprehensiveIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
-        trapRegistry.Register(CoutAddress, "COUT", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            CoutAddress,
+            "COUT",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 // Modify registers in the trap handler
@@ -952,7 +983,7 @@ public class TrapRegistryComprehensiveIntegrationTests
         machine.Cpu.Write8(addr++, 0x20); // JSR
         machine.Cpu.Write8(addr++, 0xED); // low byte $FDED
         machine.Cpu.Write8(addr++, 0xFD); // high byte $FDED
-        machine.Cpu.Write8(addr, 0xDB);   // STP
+        machine.Cpu.Write8(addr++, 0xDB); // STP
 
         machine.Cpu.Poke8(CoutAddress, 0x60);
 
@@ -967,11 +998,17 @@ public class TrapRegistryComprehensiveIntegrationTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0x42),
+            Assert.That(
+                cpu.Registers.A.GetByte(),
+                Is.EqualTo(0x42),
                 "Accumulator should have trap-set value $42");
-            Assert.That(cpu.Registers.X.GetByte(), Is.EqualTo(0x10),
+            Assert.That(
+                cpu.Registers.X.GetByte(),
+                Is.EqualTo(0x10),
                 "X register should have trap-set value $10");
-            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0x0305),
+            Assert.That(
+                machine.Cpu.GetPC(),
+                Is.EqualTo(0x0305),
                 "PC should return to instruction after JSR");
         });
 
@@ -1008,7 +1045,10 @@ public class TrapRegistryComprehensiveIntegrationTests
         var slotManager = machine.GetComponent<ISlotManager>()!;
         var trapRegistry = new TrapRegistry(slotManager, languageCard);
 
-        trapRegistry.Register(CoutAddress, "COUT", TrapCategory.MonitorRom,
+        trapRegistry.Register(
+            CoutAddress,
+            "COUT",
+            TrapCategory.MonitorRom,
             (cpu, bus, ctx) =>
             {
                 // Write $AA to $0500 via the bus
@@ -1042,7 +1082,9 @@ public class TrapRegistryComprehensiveIntegrationTests
         machine.Step(); // LDA $0500
 
         // Assert
-        Assert.That(cpu.Registers.A.GetByte(), Is.EqualTo(0xAA),
+        Assert.That(
+            cpu.Registers.A.GetByte(),
+            Is.EqualTo(0xAA),
             "Accumulator should contain value written by trap handler");
 
         machine.Step(); // STP
