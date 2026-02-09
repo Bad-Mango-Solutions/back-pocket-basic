@@ -85,6 +85,11 @@ public class TrapRegistryComprehensiveIntegrationTests
     /// </summary>
     private const ushort SubroutineAddress = 0x0400;
 
+    /// <summary>
+    /// Stack base address for the 65C02 ($0100).
+    /// </summary>
+    private const ushort StackBase = 0x0100;
+
     // ─── Basic Trap Invocation Tests ────────────────────────────────────────────
 
     /// <summary>
@@ -456,12 +461,12 @@ public class TrapRegistryComprehensiveIntegrationTests
                 // Push return address high byte, low byte, and status onto stack
                 // (same order as hardware interrupt push: PCH, PCL, P)
                 // RTI pulls in reverse: P, PCL, PCH
-                var pushAddr1 = cpu.PushByte(0x0100);
+                var pushAddr1 = cpu.PushByte(StackBase);
                 cpu.Write8(pushAddr1, (byte)(rtiReturnAddress >> 8)); // PCH = $03
-                var pushAddr2 = cpu.PushByte(0x0100);
+                var pushAddr2 = cpu.PushByte(StackBase);
                 cpu.Write8(pushAddr2, (byte)(rtiReturnAddress & 0xFF)); // PCL = $05
-                var pushAddr3 = cpu.PushByte(0x0100);
-                cpu.Write8(pushAddr3, 0x30); // Status: bits 4,5 set (standard 6502 state)
+                var pushAddr3 = cpu.PushByte(StackBase);
+                cpu.Write8(pushAddr3, (byte)(ProcessorStatusFlags.R | ProcessorStatusFlags.B));
 
                 return TrapResult.SuccessInterrupt(new Cycle(10));
             });
