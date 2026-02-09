@@ -85,9 +85,8 @@ public sealed class Cpu65C02 : CpuBase
     /// <inheritdoc/>
     public override void Reset()
     {
-        // Reset the scheduler's timing to cycle 0
-        EventContext.Scheduler.Reset();
-
+        // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
+        // The CPU only resets its own state (registers, halt reason, stop flag).
         Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
         HaltReason = HaltState.None;
         ClearStopRequest();
