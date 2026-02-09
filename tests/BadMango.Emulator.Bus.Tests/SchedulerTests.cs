@@ -670,6 +670,92 @@ public class SchedulerTests
     }
 
     /// <summary>
+    /// Verifies that cancelling a pre-reset handle does not prevent post-reset
+    /// events from dispatching, even though handle IDs may overlap.
+    /// </summary>
+    /// <remarks>
+    /// This test validates the fix for a bug where <see cref="Scheduler.Reset"/>
+    /// reset <c>nextHandleId</c> to 0, causing newly scheduled events to receive
+    /// handle IDs that matched previously cancelled handles. Those events were then
+    /// silently skipped during dispatch because they appeared in the cancelled set.
+    /// </remarks>
+    [Test]
+    public void Functional_PostResetEvents_NotAffectedByPreResetCancellations()
+    {
+        // Schedule an event and capture its handle
+        var preResetHandle = scheduler.ScheduleAt(
+            100ul, ScheduledEventKind.VideoBlank, 0, _ => { });
+
+        // Cancel it (adds handle ID to cancelledHandles)
+        scheduler.Cancel(preResetHandle);
+
+        // Reset the scheduler
+        scheduler.Reset();
+        scheduler.SetEventContext(eventContext);
+
+        // Schedule a new event — this must not collide with the cancelled handle
+        bool postResetEventFired = false;
+        scheduler.ScheduleAt(
+            50ul, ScheduledEventKind.VideoBlank, 0, _ => postResetEventFired = true);
+
+        // Advance past the scheduled cycle
+        scheduler.Advance(100);
+
+        Assert.That(
+            postResetEventFired,
+            Is.True,
+            "Post-reset event must not be skipped due to stale pre-reset cancellation");
+    }
+
+    /// <summary>
+    /// Verifies that the device reset pattern (cancel old handles + schedule new
+    /// events) works correctly after a scheduler reset.
+    /// </summary>
+    /// <remarks>
+    /// This simulates what <c>VideoDevice.Reset()</c> does: cancel stale VBlank
+    /// handles, then schedule fresh events. After a scheduler reset, the cancelled
+    /// handle IDs must not collide with newly assigned handle IDs.
+    /// </remarks>
+    [Test]
+    public void Functional_DeviceResetPattern_PostSchedulerReset()
+    {
+        // Simulate initial device scheduling
+        var vblankHandle = scheduler.ScheduleAt(
+            12480ul, ScheduledEventKind.VideoBlank, 0, _ => { });
+
+        // Advance partway
+        scheduler.Advance(5000);
+
+        // --- Simulate Machine.Reset() sequence ---
+
+        // 1. Reset scheduler (clears all events, resets cycle to 0)
+        scheduler.Reset();
+        scheduler.SetEventContext(eventContext);
+
+        // 2. Device reset: cancel old handles then reschedule
+        //    (VideoDevice.Reset() does this)
+        scheduler.Cancel(vblankHandle); // Cancel stale handle
+        bool vblankFired = false;
+        _ = scheduler.ScheduleAfter(
+            12480ul, ScheduledEventKind.VideoBlank, 0, _ => vblankFired = true);
+
+        // 3. Simulate CPU execution advancing past VBlank cycle
+        for (int i = 0; i < 2000; i++)
+        {
+            scheduler.Advance(7); // ~7 cycles per instruction
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                vblankFired,
+                Is.True,
+                "VBlank event must fire — must not be blocked by stale cancellation");
+            Assert.That((ulong)scheduler.Now, Is.EqualTo(14000ul));
+        });
+    }
+
+    /// <summary>
     /// Functional test: Validates device periodic timer behavior with CPU-driven timing.
     /// </summary>
     [Test]

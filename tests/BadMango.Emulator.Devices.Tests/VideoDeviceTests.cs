@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 using Moq;
 
@@ -568,6 +569,236 @@ public class VideoDeviceTests
         Assert.That(hasNonZero, Is.True, "Character 'A' should have non-zero pixel data");
     }
 
+    /// <summary>
+    /// Verifies that Initialize schedules a VBlank event on the scheduler.
+    /// </summary>
+    [Test]
+    public void Initialize_SchedulesVBlankEvent()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        Assert.That(scheduler.PendingEventCount, Is.GreaterThan(0), "VBlank event should be scheduled after initialization");
+    }
+
+    /// <summary>
+    /// Verifies that VBlank event fires at the correct cycle (CyclesPerFrame - VBlankDurationCycles).
+    /// </summary>
+    [Test]
+    public void VBlank_FiresAtCorrectCycle()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        bool vblankFired = false;
+        device.VBlankOccurred += () => vblankFired = true;
+
+        // Advance to just before VBlank should fire
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle - 1));
+        Assert.That(vblankFired, Is.False, "VBlank should not fire before its scheduled cycle");
+
+        // Advance one more cycle to trigger VBlank
+        scheduler.Advance(new Core.Cycle(1));
+        Assert.That(vblankFired, Is.True, "VBlank should fire at the scheduled cycle");
+    }
+
+    /// <summary>
+    /// Verifies that VBlankOccurred event is raised when VBlank fires.
+    /// </summary>
+    [Test]
+    public void VBlank_RaisesVBlankOccurredEvent()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        int vblankCount = 0;
+        device.VBlankOccurred += () => vblankCount++;
+
+        // Advance past VBlank start
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle));
+
+        Assert.That(vblankCount, Is.EqualTo(1), "VBlankOccurred should fire exactly once");
+    }
+
+    /// <summary>
+    /// Verifies that IsVerticalBlanking is set to true when VBlank starts.
+    /// </summary>
+    [Test]
+    public void VBlank_SetsVerticalBlankingTrue()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        Assert.That(device.IsVerticalBlanking, Is.False, "Should not be in VBL initially");
+
+        // Advance to VBlank start
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle));
+
+        Assert.That(device.IsVerticalBlanking, Is.True, "Should be in VBL after VBlank start fires");
+    }
+
+    /// <summary>
+    /// Verifies that IsVerticalBlanking is cleared when VBlank ends.
+    /// </summary>
+    [Test]
+    public void VBlank_ClearsVerticalBlankingWhenEnds()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        // Advance to VBlank start
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle));
+        Assert.That(device.IsVerticalBlanking, Is.True);
+
+        // Advance through VBlank duration
+        scheduler.Advance(new Core.Cycle(VideoDevice.VBlankDurationCycles));
+        Assert.That(device.IsVerticalBlanking, Is.False, "VBL should be cleared after VBlank duration");
+    }
+
+    /// <summary>
+    /// Verifies that VBlank reschedules itself for continuous operation.
+    /// </summary>
+    [Test]
+    public void VBlank_ReschedulesAfterCompletion()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        int vblankCount = 0;
+        device.VBlankOccurred += () => vblankCount++;
+
+        // Advance through a complete frame (VBlank start + VBlank end + next VBlank start)
+        scheduler.Advance(new Core.Cycle(VideoDevice.CyclesPerFrame));
+
+        // First VBlank should have fired
+        Assert.That(vblankCount, Is.EqualTo(1), "First VBlank should have fired");
+
+        // Advance through another complete frame
+        scheduler.Advance(new Core.Cycle(VideoDevice.CyclesPerFrame));
+
+        Assert.That(vblankCount, Is.EqualTo(2), "Second VBlank should have fired after rescheduling");
+    }
+
+    /// <summary>
+    /// Verifies that multiple VBlank cycles maintain correct timing.
+    /// </summary>
+    [Test]
+    public void VBlank_MaintainsCorrectTimingOverMultipleFrames()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        int vblankCount = 0;
+        device.VBlankOccurred += () => vblankCount++;
+
+        // Run through 5 complete frames
+        const int frameCount = 5;
+        scheduler.Advance(new Core.Cycle(VideoDevice.CyclesPerFrame * frameCount));
+
+        Assert.That(vblankCount, Is.EqualTo(frameCount), $"Should have {frameCount} VBlank events over {frameCount} frames");
+    }
+
+    /// <summary>
+    /// Verifies that RDVBL status register correctly reflects scheduler-driven VBlank state.
+    /// </summary>
+    [Test]
+    public void ReadC019_ReflectsSchedulerDrivenVBlankState()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        var busContext = CreateTestContext();
+
+        // Initially not in VBL (bit 7 = 1)
+        byte beforeVbl = dispatcher.Read(0x19, in busContext);
+        Assert.That(beforeVbl & 0x80, Is.EqualTo(0x80), "Bit 7 should be set when NOT in VBL");
+
+        // Advance to VBlank start
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle));
+
+        // Now in VBL (bit 7 = 0)
+        byte duringVbl = dispatcher.Read(0x19, in busContext);
+        Assert.That(duringVbl & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear during VBL");
+
+        // Advance past VBlank end
+        scheduler.Advance(new Core.Cycle(VideoDevice.VBlankDurationCycles));
+
+        // No longer in VBL (bit 7 = 1)
+        byte afterVbl = dispatcher.Read(0x19, in busContext);
+        Assert.That(afterVbl & 0x80, Is.EqualTo(0x80), "Bit 7 should be set after VBL ends");
+    }
+
+    /// <summary>
+    /// Verifies that Reset cancels pending VBlank events and reschedules.
+    /// </summary>
+    [Test]
+    public void Reset_ReschedulesVBlankEvents()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        int vblankCount = 0;
+        device.VBlankOccurred += () => vblankCount++;
+
+        // Advance partway through a frame
+        scheduler.Advance(new Core.Cycle(5000));
+
+        // Reset the device
+        device.Reset();
+
+        // VBlank should still be schedulable after reset
+        Assert.That(scheduler.PendingEventCount, Is.GreaterThan(0), "VBlank should be rescheduled after reset");
+    }
+
+    /// <summary>
+    /// Verifies that the scheduler observer reports VBlank event scheduling.
+    /// </summary>
+    [Test]
+    public void VBlank_IsObservableViaSchedulerEvents()
+    {
+        var scheduler = new Scheduler();
+        var mockSignals = new Mock<Core.Interfaces.Signaling.ISignalBus>();
+        var mockBus = new Mock<IMemoryBus>();
+        var eventContext = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(eventContext);
+
+        var scheduledEvents = new List<ScheduledEventKind>();
+        scheduler.EventScheduled += (handle, cycle, kind, priority, tag) => scheduledEvents.Add(kind);
+
+        device.Initialize(eventContext);
+
+        Assert.That(scheduledEvents, Has.Some.EqualTo(ScheduledEventKind.VideoBlank), "Scheduler should observe VideoBlank event scheduling");
+    }
+
+    /// <summary>
+    /// Verifies that the scheduler observer reports VBlank event consumption.
+    /// </summary>
+    [Test]
+    public void VBlank_ConsumptionIsObservableViaSchedulerEvents()
+    {
+        var scheduler = new Scheduler();
+        var mockSignals = new Mock<Core.Interfaces.Signaling.ISignalBus>();
+        var mockBus = new Mock<IMemoryBus>();
+        var eventContext = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(eventContext);
+
+        var consumedEvents = new List<ScheduledEventKind>();
+        scheduler.EventConsumed += (handle, cycle, kind) => consumedEvents.Add(kind);
+
+        device.Initialize(eventContext);
+
+        // Advance to trigger VBlank
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        scheduler.Advance(new Core.Cycle(vblankStartCycle));
+
+        Assert.That(consumedEvents, Has.Some.EqualTo(ScheduledEventKind.VideoBlank), "Scheduler should observe VideoBlank event consumption");
+    }
+
     private static BusAccess CreateTestContext()
     {
         return new(
@@ -594,5 +825,15 @@ public class VideoDeviceTests
             SourceId: 0,
             Cycle: 0,
             Flags: AccessFlags.NoSideEffects);
+    }
+
+    private static (Scheduler Scheduler, IEventContext Context) CreateSchedulerContext()
+    {
+        var scheduler = new Scheduler();
+        var mockSignals = new Mock<Core.Interfaces.Signaling.ISignalBus>();
+        var mockBus = new Mock<IMemoryBus>();
+        var eventContext = new EventContext(scheduler, mockSignals.Object, mockBus.Object);
+        scheduler.SetEventContext(eventContext);
+        return (scheduler, eventContext);
     }
 }

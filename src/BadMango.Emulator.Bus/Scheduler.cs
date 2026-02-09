@@ -222,8 +222,13 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
         eventQueue.Clear();
         cancelledHandles.Clear();
         now = 0;
-        nextSequence = 0;
-        nextHandleId = 0;
+
+        // Do NOT reset nextHandleId or nextSequence. Handle IDs and sequence
+        // numbers must remain monotonically increasing across resets to prevent
+        // stale cancellation collisions. If a device cancels an old handle after
+        // a reset and the handle ID counter were restarted at 0, newly scheduled
+        // events could receive the same ID as the cancelled handle, causing them
+        // to be incorrectly skipped during dispatch.
     }
 
     /// <summary>

@@ -51,19 +51,44 @@ public partial class VideoWindow : Window
     private const int CanonicalHeight = 384;
 
     /// <summary>
-    /// Target frame rate in frames per second.
-    /// </summary>
-    private const double TargetFrameRate = 60.0;
-
-    /// <summary>
     /// Number of frames between flash state toggles (~1.9 Hz at 60 fps).
     /// </summary>
     private const int FlashToggleFrames = 16;
 
+    /// <summary>
+    /// Base address of the text page snapshot range ($0400).
+    /// </summary>
+    private const int TextPageSnapshotBase = 0x0400;
+
+    /// <summary>
+    /// Size of the text page snapshot covering both text page ranges ($0400-$0BFF).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In 40-column mode, Page 1 uses main $0400-$07FF and Page 2 uses main $0800-$0BFF.
+    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF
+    /// (even columns from aux, odd columns from main). The 80-column firmware typically
+    /// uses PAGE1 addresses ($0400-$07FF) in both main and aux RAM — PAGE2 in 80-column
+    /// mode refers to $0400-$07FF in auxiliary RAM, not $0800.
+    /// </para>
+    /// <para>
+    /// We snapshot the full $0400-$0BFF range from both main and aux to cover all
+    /// page configurations.
+    /// </para>
+    /// </remarks>
+    private const int TextPageSnapshotSize = 0x0800;
+
     private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
-    private readonly DispatcherTimer refreshTimer;
+    private readonly DispatcherTimer fpsTimer;
     private readonly Stopwatch fpsStopwatch;
+
+    // Snapshot buffers for display memory captured at VBlank start.
+    // This prevents the renderer from seeing half-updated memory when the
+    // firmware is actively modifying text pages between frames.
+    private readonly byte[] mainMemorySnapshot = new byte[TextPageSnapshotSize];
+    private readonly byte[] auxMemorySnapshot = new byte[TextPageSnapshotSize];
+    private readonly object snapshotLock = new();
 
     private IMachine? machine;
     private IVideoDevice? videoDevice;
@@ -71,8 +96,11 @@ public partial class VideoWindow : Window
     private IExtended80ColumnDevice? extended80ColumnDevice;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
+    private ReadOnlyMemory<byte> mainRam;
     private Memory<byte> characterRom;
     private bool characterRomUpdatePending;
+    private int vblankPending;
+    private volatile bool snapshotValid;
 
     private int scale = 2;
     private bool showFps;
@@ -101,12 +129,12 @@ public partial class VideoWindow : Window
         // Set initial bitmap from PixelBuffer
         VideoImage.Source = pixelBuffer.Bitmap;
 
-        // Initialize refresh timer at ~60 Hz
-        refreshTimer = new DispatcherTimer(DispatcherPriority.Render)
+        // Initialize FPS timer at 1 Hz for FPS counter updates only
+        fpsTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(1000.0 / TargetFrameRate),
+            Interval = TimeSpan.FromSeconds(1),
         };
-        refreshTimer.Tick += OnRefreshTimer;
+        fpsTimer.Tick += OnFpsTimer;
 
         // Subscribe to window events
         Opened += OnWindowOpened;
@@ -183,6 +211,12 @@ public partial class VideoWindow : Window
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
         this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
+        // Get direct physical main RAM reference for snapshot capture.
+        // This bypasses all soft switch mapping (80STORE, PAGE2, RAMRD) to ensure
+        // the video snapshot always reads from the correct physical memory.
+        var mainMemoryProvider = machine.GetComponent<IMainMemoryProvider>();
+        this.mainRam = mainMemoryProvider?.MainRam ?? ReadOnlyMemory<byte>.Empty;
+
         // Look for CharacterDevice (preferred) or any ICharacterRomProvider
         this.characterDevice = machine.GetComponent<ICharacterDevice>();
         ICharacterRomProvider? charProvider = characterDevice ?? machine.GetComponent<ICharacterRomProvider>();
@@ -203,6 +237,12 @@ public partial class VideoWindow : Window
         {
             characterDevice.CharacterRomChanged += OnCharacterRomChanged;
         }
+
+        // Subscribe to VBlank event for frame-accurate rendering
+        if (videoDevice != null)
+        {
+            videoDevice.VBlankOccurred += OnVBlankOccurred;
+        }
     }
 
     /// <summary>
@@ -216,13 +256,20 @@ public partial class VideoWindow : Window
             characterDevice.CharacterRomChanged -= OnCharacterRomChanged;
         }
 
+        if (videoDevice != null)
+        {
+            videoDevice.VBlankOccurred -= OnVBlankOccurred;
+        }
+
         machine = null;
         memoryBus = null;
         videoDevice = null;
         characterDevice = null;
         extended80ColumnDevice = null;
         keyboardDevice = null;
+        mainRam = ReadOnlyMemory<byte>.Empty;
         characterRom = Memory<byte>.Empty;
+        snapshotValid = false;
     }
 
     /// <summary>
@@ -417,18 +464,114 @@ public partial class VideoWindow : Window
     {
         UpdateWindowSize();
         fpsStopwatch.Start();
-        refreshTimer.Start();
+        fpsTimer.Start();
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
-        refreshTimer.Stop();
+        fpsTimer.Stop();
         fpsStopwatch.Stop();
         pixelBuffer.Dispose();
     }
 
-    private void OnRefreshTimer(object? sender, EventArgs e)
+    /// <summary>
+    /// Called when the video device fires a VBlank event.
+    /// Captures a display memory snapshot and marshals the rendering call to the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This callback runs on the emulator thread during the scheduler dispatch,
+    /// meaning the CPU is NOT executing instructions at this point. We capture
+    /// a snapshot of the text page memory here to prevent the renderer from seeing
+    /// half-updated data when the firmware is actively modifying text pages.
+    /// </para>
+    /// <para>
+    /// The snapshot is captured synchronously before queuing the UI render, ensuring
+    /// the renderer always sees a consistent view of the display memory from the
+    /// exact moment of VBlank start.
+    /// </para>
+    /// </remarks>
+    private void OnVBlankOccurred()
     {
+        // Capture display memory snapshot on the emulator thread while CPU is paused.
+        // This is the key to preventing 80-column flicker: the firmware modifies
+        // PAGE1/PAGE2 buffers between VBlanks, but we capture a stable copy here.
+        CaptureDisplaySnapshot();
+
+        // Only queue a UI render if one isn't already pending
+        if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
+        {
+            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+        }
+    }
+
+    /// <summary>
+    /// Captures a snapshot of the text page display memory from both main and auxiliary RAM.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method captures the text page address range ($0400-$0BFF) from both main and
+    /// auxiliary memory. The snapshot is taken at VBlank start when the CPU is not actively
+    /// modifying video memory, ensuring the renderer sees a consistent frame.
+    /// </para>
+    /// <para>
+    /// Both main and auxiliary memory are read directly from their physical RAM backing
+    /// stores, bypassing all soft switch mapping (80STORE, PAGE2, RAMRD). This is critical
+    /// because when 80STORE is enabled, reads to $0400-$07FF through the memory bus may
+    /// be redirected to auxiliary RAM based on the PAGE2 state, causing the main memory
+    /// snapshot to contain auxiliary data (and vice versa). The video hardware on real
+    /// Apple IIe accesses VRAM directly without going through the MMU soft switch logic.
+    /// </para>
+    /// <para>
+    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF:
+    /// even columns come from auxiliary RAM and odd columns from main RAM. PAGE2 in
+    /// 80-column mode refers to $0400-$07FF in auxiliary RAM, not the $0800 page.
+    /// Both main and aux sources must be captured to prevent interleaving artifacts.
+    /// </para>
+    /// </remarks>
+    private void CaptureDisplaySnapshot()
+    {
+        lock (snapshotLock)
+        {
+            // Capture main memory text pages ($0400-$0BFF) directly from physical RAM,
+            // bypassing soft switch mapping that could redirect reads to aux memory.
+            if (!mainRam.IsEmpty
+                && mainRam.Length >= TextPageSnapshotBase + TextPageSnapshotSize)
+            {
+                mainRam.Span.Slice(TextPageSnapshotBase, TextPageSnapshotSize)
+                    .CopyTo(mainMemorySnapshot);
+            }
+            else if (memoryBus is not null)
+            {
+                // Fallback to bus reads if direct RAM access is unavailable
+                // or the physical memory is too small
+                for (int i = 0; i < TextPageSnapshotSize; i++)
+                {
+                    mainMemorySnapshot[i] = ReadMemoryByte((ushort)(TextPageSnapshotBase + i));
+                }
+            }
+
+            // Capture auxiliary memory text pages (same address range in aux RAM)
+            if (extended80ColumnDevice is not null)
+            {
+                for (int i = 0; i < TextPageSnapshotSize; i++)
+                {
+                    auxMemorySnapshot[i] = extended80ColumnDevice.ReadAuxRam(
+                        (ushort)(TextPageSnapshotBase + i));
+                }
+            }
+
+            snapshotValid = true;
+        }
+    }
+
+    /// <summary>
+    /// Processes a VBlank-triggered frame redraw on the UI thread.
+    /// </summary>
+    private void ProcessVBlankFrame()
+    {
+        Interlocked.Exchange(ref vblankPending, 0);
+
         // Update flash state
         flashFrameCounter++;
         if (flashFrameCounter >= FlashToggleFrames)
@@ -449,6 +592,10 @@ public partial class VideoWindow : Window
 
         // Update FPS counter
         frameCount++;
+    }
+
+    private void OnFpsTimer(object? sender, EventArgs e)
+    {
         if (fpsStopwatch.ElapsedMilliseconds >= 1000)
         {
             lastFps = frameCount / (fpsStopwatch.ElapsedMilliseconds / 1000.0);
@@ -493,25 +640,47 @@ public partial class VideoWindow : Window
         bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
         bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
 
-        // Get auxiliary memory reader for 80-column mode
-        // This reads directly from the Extended 80-Column device's auxiliary RAM
-        Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
-            ? extended80ColumnDevice.ReadAuxRam
-            : null;
+        if (snapshotValid)
+        {
+            // Use snapshot data — guaranteed consistent from VBlank capture.
+            // Lock to prevent a concurrent VBlank from overwriting the snapshot
+            // while the renderer is reading from it.
+            lock (snapshotLock)
+            {
+                renderer.RenderFrame(
+                    pixels,
+                    mode,
+                    ReadSnapshotMainByte,
+                    characterRom.Span,
+                    useAltCharSet,
+                    videoDevice.IsPage2,
+                    flashState,
+                    noFlash1,
+                    noFlash2,
+                    colorMode,
+                    extended80ColumnDevice is not null ? ReadSnapshotAuxByte : null);
+            }
+        }
+        else
+        {
+            // No snapshot available (e.g., force redraw) — fall back to live memory
+            Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
+                ? extended80ColumnDevice.ReadAuxRam
+                : null;
 
-        // Render frame using the Pocket2VideoRenderer with current color mode
-        renderer.RenderFrame(
-            pixels,
-            mode,
-            ReadMemoryByte,
-            characterRom.Span,
-            useAltCharSet,
-            videoDevice.IsPage2,
-            flashState,
-            noFlash1,
-            noFlash2,
-            colorMode,
-            readAuxMemory);
+            renderer.RenderFrame(
+                pixels,
+                mode,
+                ReadMemoryByte,
+                characterRom.Span,
+                useAltCharSet,
+                videoDevice.IsPage2,
+                flashState,
+                noFlash1,
+                noFlash2,
+                colorMode,
+                readAuxMemory);
+        }
 
         // Commit pixel buffer to bitmap
         pixelBuffer.Commit();
@@ -538,6 +707,40 @@ public partial class VideoWindow : Window
             Flags: AccessFlags.NoSideEffects);
 
         return memoryBus.Read8(access);
+    }
+
+    /// <summary>
+    /// Reads a byte from the main memory snapshot captured at VBlank.
+    /// </summary>
+    /// <param name="address">The memory address to read.</param>
+    /// <returns>The byte value from the snapshot, or from live memory if outside the snapshot range.</returns>
+    private byte ReadSnapshotMainByte(ushort address)
+    {
+        int offset = address - TextPageSnapshotBase;
+        if (offset >= 0 && offset < TextPageSnapshotSize)
+        {
+            return mainMemorySnapshot[offset];
+        }
+
+        // Address is outside snapshot range — fall back to live memory
+        return ReadMemoryByte(address);
+    }
+
+    /// <summary>
+    /// Reads a byte from the auxiliary memory snapshot captured at VBlank.
+    /// </summary>
+    /// <param name="address">The memory address to read.</param>
+    /// <returns>The byte value from the auxiliary memory snapshot, or 0 if outside range.</returns>
+    private byte ReadSnapshotAuxByte(ushort address)
+    {
+        int offset = address - TextPageSnapshotBase;
+        if (offset >= 0 && offset < TextPageSnapshotSize)
+        {
+            return auxMemorySnapshot[offset];
+        }
+
+        // Address is outside snapshot range — fall back to live aux memory
+        return extended80ColumnDevice?.ReadAuxRam(address) ?? 0;
     }
 
     private void UpdateWindowSize()

@@ -72,6 +72,9 @@ public sealed partial class MachineBuilder
             _ => throw new NotSupportedException($"CPU type '{profile.Cpu.Type}' is not supported."),
         };
 
+        // Store clock speed for CPU throttling (0 = unthrottled)
+        clockSpeedHz = profile.Cpu.ClockSpeed ?? 0;
+
         // Configure memory regions
         var memoryConfig = profile.Memory;
         if (!memoryConfig.UsesRegions)

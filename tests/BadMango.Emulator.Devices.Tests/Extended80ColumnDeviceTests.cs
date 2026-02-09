@@ -6,6 +6,11 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Cpu;
+using BadMango.Emulator.Core.Interfaces.Cpu;
+using BadMango.Emulator.Devices.Interfaces;
+
+using Moq;
 
 /// <summary>
 /// Unit tests for the <see cref="Extended80ColumnDevice"/> class.
@@ -449,6 +454,112 @@ public class Extended80ColumnDeviceTests
         // Now should read from aux (which is 0x00 since uninitialized)
         byte resultAux = page0Target.Read8(0x50, in readAccess);
         Assert.That(resultAux, Is.EqualTo(0x00), "Should read from aux with ALTZP on");
+    }
+
+    /// <summary>
+    /// Verifies that the Extended 80-Column Card extension registers an
+    /// <see cref="IMainMemoryProvider"/> component when configuring page 0,
+    /// so the video display subsystem can snapshot physical main RAM directly
+    /// and bypass soft switch routing.
+    /// </summary>
+    [Test]
+    public void WithExtended80ColumnDevice_RegistersMainMemoryProvider()
+    {
+        // Arrange: create a builder with main RAM physical memory and an Extended 80-Column device
+        var builder = new MachineBuilder();
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+
+        // Map main RAM on the bus so the builder has a valid region
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var mainRam = builder.GetPhysicalMemory("main-ram-48k")!;
+            var mainTarget = new RamTarget(mainRam.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                mainTarget.Capabilities,
+                mainTarget,
+                0);
+        });
+
+        // Add the extended 80-column device directly (no profile required)
+        builder.WithExtended80ColumnDevice();
+
+        // Act: build the machine with a mock CPU
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder
+            .WithCpuFactory(ctx => mockCpu.Object)
+            .Build();
+
+        // Assert: IMainMemoryProvider should be registered
+        var provider = machine.GetComponent<IMainMemoryProvider>();
+        Assert.That(provider, Is.Not.Null, "IMainMemoryProvider should be registered by Extended80Column extension");
+        Assert.That(provider!.MainRam.Length, Is.EqualTo(0xC000), "MainRam should be the 48KB physical memory");
+    }
+
+    /// <summary>
+    /// Verifies that the <see cref="IMainMemoryProvider"/> registered by the Extended
+    /// 80-Column Card extension reads directly from physical main RAM, not through
+    /// the bus. This ensures the video snapshot is immune to soft switch state.
+    /// </summary>
+    [Test]
+    public void WithExtended80ColumnDevice_MainMemoryProvider_ReadsPhysicalRam()
+    {
+        // Arrange
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+
+        // Write distinctive data directly to the physical memory
+        mainRamPhysical.AsSpan()[0x0400] = 0xC1; // 'A' in Apple II
+        mainRamPhysical.AsSpan()[0x0401] = 0xAE; // '.' in Apple II
+        mainRamPhysical.AsSpan()[0x0402] = 0xC2; // 'B' in Apple II
+        mainRamPhysical.AsSpan()[0x0403] = 0xAE; // '.' in Apple II
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder
+            .WithCpuFactory(ctx => mockCpu.Object)
+            .Build();
+
+        // Act: read through the provider
+        var provider = machine.GetComponent<IMainMemoryProvider>()!;
+
+        // Assert: reads physical RAM data directly
+        Assert.Multiple(() =>
+        {
+            Assert.That(provider.ReadMainRam(0x0400), Is.EqualTo(0xC1), "Should read 'A' from physical RAM");
+            Assert.That(provider.ReadMainRam(0x0401), Is.EqualTo(0xAE), "Should read '.' from physical RAM");
+            Assert.That(provider.ReadMainRam(0x0402), Is.EqualTo(0xC2), "Should read 'B' from physical RAM");
+            Assert.That(provider.ReadMainRam(0x0403), Is.EqualTo(0xAE), "Should read '.' from physical RAM");
+        });
     }
 
     private static BusAccess CreateTestContext(bool isSideEffectFree = false)
