@@ -15,6 +15,7 @@ using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
+using BadMango.Emulator.Systems;
 
 using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
@@ -96,6 +97,7 @@ public partial class VideoWindow : Window
     private IExtended80ColumnDevice? extended80ColumnDevice;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
+    private ReadOnlyMemory<byte> mainRam;
     private Memory<byte> characterRom;
     private bool characterRomUpdatePending;
     private int vblankPending;
@@ -210,6 +212,12 @@ public partial class VideoWindow : Window
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
         this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
+        // Get direct physical main RAM reference for snapshot capture.
+        // This bypasses all soft switch mapping (80STORE, PAGE2, RAMRD) to ensure
+        // the video snapshot always reads from the correct physical memory.
+        var mainRamComponent = machine.GetComponent<Pocket2eMachineBuilderExtensions.MainRamComponent>();
+        this.mainRam = mainRamComponent?.Memory.Memory ?? ReadOnlyMemory<byte>.Empty;
+
         // Look for CharacterDevice (preferred) or any ICharacterRomProvider
         this.characterDevice = machine.GetComponent<ICharacterDevice>();
         ICharacterRomProvider? charProvider = characterDevice ?? machine.GetComponent<ICharacterRomProvider>();
@@ -260,6 +268,7 @@ public partial class VideoWindow : Window
         characterDevice = null;
         extended80ColumnDevice = null;
         keyboardDevice = null;
+        mainRam = ReadOnlyMemory<byte>.Empty;
         characterRom = Memory<byte>.Empty;
         snapshotValid = false;
     }
@@ -507,6 +516,14 @@ public partial class VideoWindow : Window
     /// modifying video memory, ensuring the renderer sees a consistent frame.
     /// </para>
     /// <para>
+    /// Both main and auxiliary memory are read directly from their physical RAM backing
+    /// stores, bypassing all soft switch mapping (80STORE, PAGE2, RAMRD). This is critical
+    /// because when 80STORE is enabled, reads to $0400-$07FF through the memory bus may
+    /// be redirected to auxiliary RAM based on the PAGE2 state, causing the main memory
+    /// snapshot to contain auxiliary data (and vice versa). The video hardware on real
+    /// Apple IIe accesses VRAM directly without going through the MMU soft switch logic.
+    /// </para>
+    /// <para>
     /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF:
     /// even columns come from auxiliary RAM and odd columns from main RAM. PAGE2 in
     /// 80-column mode refers to $0400-$07FF in auxiliary RAM, not the $0800 page.
@@ -517,9 +534,18 @@ public partial class VideoWindow : Window
     {
         lock (snapshotLock)
         {
-            // Capture main memory text pages ($0400-$0BFF)
-            if (memoryBus is not null)
+            // Capture main memory text pages ($0400-$0BFF) directly from physical RAM,
+            // bypassing soft switch mapping that could redirect reads to aux memory.
+            if (!mainRam.IsEmpty
+                && mainRam.Length >= TextPageSnapshotBase + TextPageSnapshotSize)
             {
+                mainRam.Span.Slice(TextPageSnapshotBase, TextPageSnapshotSize)
+                    .CopyTo(mainMemorySnapshot);
+            }
+            else if (memoryBus is not null)
+            {
+                // Fallback to bus reads if direct RAM access is unavailable
+                // or the physical memory is too small
                 for (int i = 0; i < TextPageSnapshotSize; i++)
                 {
                     mainMemorySnapshot[i] = ReadMemoryByte((ushort)(TextPageSnapshotBase + i));
