@@ -576,4 +576,61 @@ public class MachineBuilderIntegrationTests
     /// </summary>
     /// <param name="Name">The component name.</param>
     private sealed record TestComponent(string Name);
+
+    // ─── TrapRegistry Build Order Tests ─────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that the <see cref="MachineBuilder"/> automatically creates and registers
+    /// a <see cref="ITrapRegistry"/> component during <see cref="MachineBuilder.Build"/>.
+    /// </summary>
+    [Test]
+    public void Build_CreatesAndRegistersTrapRegistryComponent()
+    {
+        var (_, ramTarget) = Create64KRam();
+        var rom = CreateStubRom();
+
+        var machine = CreateMinimalMachineBuilder()
+            .MapRegion(0x0000, 64 * 1024, ramTarget, RegionTag.Ram, PagePerms.All)
+            .WithRom(rom, 0xC000, "ROM")
+            .Build();
+
+        var trapRegistry = machine.GetComponent<ITrapRegistry>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(trapRegistry, Is.Not.Null,
+                "MachineBuilder.Build() should create a TrapRegistry component");
+            Assert.That(trapRegistry, Is.InstanceOf<TrapRegistry>(),
+                "Component should be a real TrapRegistry instance");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the <see cref="ITrapRegistry"/> is available as a component
+    /// before devices are initialized, so peripherals can register traps during
+    /// their initialization phase.
+    /// </summary>
+    [Test]
+    public void Build_TrapRegistryAvailableBeforeDeviceInit()
+    {
+        var (_, ramTarget) = Create64KRam();
+        var rom = CreateStubRom();
+        ITrapRegistry? registryDuringDeviceInit = null;
+
+        var machine = CreateMinimalMachineBuilder()
+            .MapRegion(0x0000, 64 * 1024, ramTarget, RegionTag.Ram, PagePerms.All)
+            .WithRom(rom, 0xC000, "ROM")
+            .BeforeDeviceInit(m =>
+            {
+                // This callback runs just before devices are initialized.
+                // The TrapRegistry should already be available.
+                registryDuringDeviceInit = m.GetComponent<ITrapRegistry>();
+            })
+            .Build();
+
+        Assert.That(registryDuringDeviceInit, Is.Not.Null,
+            "TrapRegistry should be available before device initialization");
+        Assert.That(registryDuringDeviceInit, Is.SameAs(machine.GetComponent<ITrapRegistry>()),
+            "Registry during device init should be the same instance as final component");
+    }
 }
