@@ -15,7 +15,6 @@ using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
-using BadMango.Emulator.Systems;
 
 using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
@@ -215,8 +214,8 @@ public partial class VideoWindow : Window
         // Get direct physical main RAM reference for snapshot capture.
         // This bypasses all soft switch mapping (80STORE, PAGE2, RAMRD) to ensure
         // the video snapshot always reads from the correct physical memory.
-        var mainRamComponent = machine.GetComponent<Pocket2eMachineBuilderExtensions.MainRamComponent>();
-        this.mainRam = mainRamComponent?.Memory.Memory ?? ReadOnlyMemory<byte>.Empty;
+        var mainMemoryProvider = machine.GetComponent<IMainMemoryProvider>();
+        this.mainRam = mainMemoryProvider?.MainRam ?? ReadOnlyMemory<byte>.Empty;
 
         // Look for CharacterDevice (preferred) or any ICharacterRomProvider
         this.characterDevice = machine.GetComponent<ICharacterDevice>();
