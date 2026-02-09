@@ -37,6 +37,13 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     private readonly Dictionary<TrapKey, TrapEntry> traps = [];
 
     /// <summary>
+    /// O(1) address-only index for fast pre-screening in the CPU hot loop.
+    /// Maps each trapped address to the number of traps registered at that address,
+    /// enabling reference-counted maintenance during register/unregister operations.
+    /// </summary>
+    private readonly Dictionary<Addr, int> trappedAddresses = [];
+
+    /// <summary>
     /// Category enable/disable state. Contains disabled categories.
     /// </summary>
     private readonly HashSet<TrapCategory> disabledCategories = [];
@@ -188,6 +195,9 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
 
         traps[key] = entry;
 
+        // Update address index
+        AddToAddressIndex(address);
+
         // Notify observers
         TrapRegistered?.Invoke(entry.ToTrapInfo());
     }
@@ -243,6 +253,9 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
 
         traps[key] = entry;
 
+        // Update address index
+        AddToAddressIndex(address);
+
         // Notify observers
         TrapRegistered?.Invoke(entry.ToTrapInfo());
     }
@@ -295,6 +308,7 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
         var removed = traps.Remove(key);
         if (removed)
         {
+            RemoveFromAddressIndex(address);
             TrapUnregistered?.Invoke(address, operation, memoryContext);
         }
 
@@ -326,6 +340,7 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
         foreach (var key in keysToRemove)
         {
             traps.Remove(key);
+            RemoveFromAddressIndex(key.Address);
             TrapUnregistered?.Invoke(key.Address, key.Operation, key.MemoryContext);
         }
     }
@@ -341,6 +356,7 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
         foreach (var key in keysToRemove)
         {
             traps.Remove(key);
+            RemoveFromAddressIndex(key.Address);
             TrapUnregistered?.Invoke(key.Address, key.Operation, key.MemoryContext);
         }
     }
@@ -393,6 +409,13 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsAddress(Addr address)
+    {
+        return trappedAddresses.ContainsKey(address);
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address)
     {
         return HasTrap(address, TrapOperation.Call);
@@ -402,7 +425,13 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address, TrapOperation operation)
     {
-        // Check if any trap exists at this address for any context
+        // Fast pre-check: if no trap exists at this address at all, skip the key scan
+        if (!trappedAddresses.ContainsKey(address))
+        {
+            return false;
+        }
+
+        // Check if any trap exists at this address for the specific operation
         return traps.Keys.Any(k => k.Address == address && k.Operation == operation);
     }
 
@@ -526,6 +555,7 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     public void Clear()
     {
         traps.Clear();
+        trappedAddresses.Clear();
         disabledCategories.Clear();
     }
 
@@ -603,6 +633,42 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Adds an address to the address index, incrementing its reference count.
+    /// </summary>
+    /// <param name="address">The address to add.</param>
+    private void AddToAddressIndex(Addr address)
+    {
+        if (trappedAddresses.TryGetValue(address, out var count))
+        {
+            trappedAddresses[address] = count + 1;
+        }
+        else
+        {
+            trappedAddresses[address] = 1;
+        }
+    }
+
+    /// <summary>
+    /// Removes an address from the address index, decrementing its reference count.
+    /// Removes the entry entirely when the count reaches zero.
+    /// </summary>
+    /// <param name="address">The address to remove.</param>
+    private void RemoveFromAddressIndex(Addr address)
+    {
+        if (trappedAddresses.TryGetValue(address, out var count))
+        {
+            if (count <= 1)
+            {
+                trappedAddresses.Remove(address);
+            }
+            else
+            {
+                trappedAddresses[address] = count - 1;
+            }
+        }
     }
 
     /// <summary>

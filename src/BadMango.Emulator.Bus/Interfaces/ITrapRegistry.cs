@@ -329,6 +329,22 @@ public interface ITrapRegistry
     TrapResult TryExecute(Addr address, TrapOperation operation, ICpu cpu, IMemoryBus bus, IEventContext context);
 
     /// <summary>
+    /// Checks whether any trap (of any operation type or memory context) is registered
+    /// at the specified address.
+    /// </summary>
+    /// <param name="address">The address to check.</param>
+    /// <returns>
+    /// <see langword="true"/> if any trap is registered at the address (regardless of
+    /// operation type, enabled state, or context); otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// This method is optimized for O(1) lookup and is intended as a fast pre-check
+    /// in the CPU hot loop before performing more expensive context resolution and
+    /// trap execution via <see cref="TryExecute(Addr, ICpu, IMemoryBus, IEventContext)"/>.
+    /// </remarks>
+    bool ContainsAddress(Addr address);
+
+    /// <summary>
     /// Checks if a call trap is registered at the specified address (any context).
     /// </summary>
     /// <param name="address">The address to check.</param>
