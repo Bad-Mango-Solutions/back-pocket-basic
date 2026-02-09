@@ -701,7 +701,9 @@ public class SchedulerTests
         // Advance past the scheduled cycle
         scheduler.Advance(100);
 
-        Assert.That(postResetEventFired, Is.True,
+        Assert.That(
+            postResetEventFired,
+            Is.True,
             "Post-reset event must not be skipped due to stale pre-reset cancellation");
     }
 
