@@ -30,11 +30,11 @@ using BadMango.Emulator.Systems;
 /// <item><description>Basic trap invocation on JSR and JMP targets</description></item>
 /// <item><description>Trap handler receiving correct CPU/bus state</description></item>
 /// <item><description>Multiple traps at different addresses firing sequentially</description></item>
-/// <item><description>RTI and None return methods</description></item>
+/// <item><description>RTS, RTI, and None return methods</description></item>
 /// <item><description>Language Card memory context switching</description></item>
 /// <item><description>Auxiliary memory context switching via RAMRD soft switch</description></item>
 /// <item><description>Trap enable/disable toggling</description></item>
-/// <item><description>Trap handler modifying CPU register state</description></item>
+/// <item><description>Trap handler modifying CPU register and memory state</description></item>
 /// </list>
 /// </remarks>
 [TestFixture]
@@ -405,6 +405,95 @@ public class TrapRegistryComprehensiveIntegrationTests
         // Execute STP at redirect target
         machine.Step();
         Assert.That(machine.Cpu.Halted, Is.True, "CPU should halt at redirect target");
+    }
+
+    /// <summary>
+    /// Verifies that a trap returning <see cref="TrapReturnMethod.Rti"/> correctly
+    /// pulls the processor status and return address from the stack, simulating
+    /// an interrupt handler return.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This test simulates an interrupt-style trap by manually setting up the
+    /// stack as if an interrupt had pushed status and return address, then
+    /// returning via RTI.
+    /// </para>
+    /// <para>
+    /// Test program:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>$0300: JMP $FDED — Jump to trap (handler pushes interrupt frame, returns via RTI)</description></item>
+    /// <item><description>$0305: STP — Halt (RTI returns here)</description></item>
+    /// </list>
+    /// </remarks>
+    [Test]
+    public void TrapHandler_WithRtiReturnMethod_RestoresStatusAndReturns()
+    {
+        // Arrange
+        var trapInvoked = false;
+        const ushort rtiReturnAddress = 0x0305;
+
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
+        var slotManager = machine.GetComponent<ISlotManager>()!;
+        var trapRegistry = new TrapRegistry(slotManager, languageCard);
+
+        // The trap handler pushes an interrupt frame onto the stack:
+        // status byte, then return address (low, high) - as the CPU would during an interrupt.
+        // Then it returns with RTI, which pulls status, then PC from the stack.
+        trapRegistry.Register(
+            CoutAddress,
+            "INT_HANDLER",
+            TrapCategory.MonitorRom,
+            (cpu, bus, ctx) =>
+            {
+                trapInvoked = true;
+
+                // Push return address high byte, low byte, and status onto stack
+                // (same order as hardware interrupt push: PCH, PCL, P)
+                // RTI pulls in reverse: P, PCL, PCH
+                var pushAddr1 = cpu.PushByte(0x0100);
+                cpu.Write8(pushAddr1, (byte)(rtiReturnAddress >> 8)); // PCH = $03
+                var pushAddr2 = cpu.PushByte(0x0100);
+                cpu.Write8(pushAddr2, (byte)(rtiReturnAddress & 0xFF)); // PCL = $05
+                var pushAddr3 = cpu.PushByte(0x0100);
+                cpu.Write8(pushAddr3, 0x30); // Status: bits 4,5 set (standard 6502 state)
+
+                return TrapResult.SuccessInterrupt(new Cycle(10));
+            });
+
+        var cpu = (Cpu65C02)machine.Cpu;
+        cpu.TrapRegistry = trapRegistry;
+        machine.Reset();
+
+        // Write test program: JMP $FDED; NOP; NOP; STP (STP at $0305)
+        ushort addr = TestProgramAddress;
+        machine.Cpu.Write8(addr++, 0x4C); // JMP
+        machine.Cpu.Write8(addr++, 0xED); // low byte $FDED
+        machine.Cpu.Write8(addr++, 0xFD); // high byte $FDED
+        machine.Cpu.Write8(addr++, 0xEA); // NOP (filler at $0303)
+        machine.Cpu.Write8(addr++, 0xEA); // NOP (filler at $0304)
+        machine.Cpu.Write8(addr, 0xDB);   // STP at $0305
+
+        // Act
+        machine.Cpu.SetPC(TestProgramAddress);
+        machine.Step(); // JMP $FDED
+        machine.Step(); // Trap fires, RTI pulls status + PC from stack
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(trapInvoked, Is.True, "Trap handler should have fired");
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(rtiReturnAddress),
+                "PC should be at RTI return address after trap");
+        });
+
+        machine.Step(); // STP
+        Assert.That(machine.Cpu.Halted, Is.True, "CPU should halt at RTI return target");
     }
 
     /// <summary>
