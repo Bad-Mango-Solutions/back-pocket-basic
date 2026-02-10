@@ -504,10 +504,16 @@ public class Pocket2VideoRendererTests
     }
 
     /// <summary>
-    /// Verifies Text80 mode with page 2 reads from correct addresses.
+    /// Verifies Text80 mode with page 2 flag still reads from page 1 addresses.
     /// </summary>
+    /// <remarks>
+    /// In 80-column mode, the PAGE2 soft switch does not select a different display
+    /// page address. The 80-column display always uses text page 1 addresses ($0400-$07FF)
+    /// in both main and auxiliary memory. The PAGE2 switch is repurposed by the 80-column
+    /// firmware (via 80STORE) for auxiliary memory bank selection, not display paging.
+    /// </remarks>
     [Test]
-    public void RenderFrame_Text80Page2_ReadsFromPage2Addresses()
+    public void RenderFrame_Text80Page2_StillReadsFromPage1Addresses()
     {
         var mainAddresses = new List<ushort>();
         var auxAddresses = new List<ushort>();
@@ -522,7 +528,7 @@ public class Pocket2VideoRendererTests
             },
             ReadOnlySpan<byte>.Empty,
             useAltCharSet: false,
-            isPage2: true, // Page 2 selected
+            isPage2: true, // Page 2 selected — should be ignored in 80-column mode
             flashState: false,
             noFlash1Enabled: false,
             noFlash2Enabled: true,
@@ -533,9 +539,15 @@ public class Pocket2VideoRendererTests
                 return 0xA0;
             });
 
-        // Verify addresses are in text page 2 range ($0800-$0BFF)
-        Assert.That(mainAddresses.All(addr => addr >= 0x0800 && addr < 0x0C00), Is.True);
-        Assert.That(auxAddresses.All(addr => addr >= 0x0800 && addr < 0x0C00), Is.True);
+        // In 80-column mode, PAGE2 is ignored — addresses should be in text page 1 range ($0400-$07FF)
+        Assert.That(
+            mainAddresses.All(addr => addr >= 0x0400 && addr < 0x0800),
+            Is.True,
+            "80-column mode should always use page 1 addresses in main memory");
+        Assert.That(
+            auxAddresses.All(addr => addr >= 0x0400 && addr < 0x0800),
+            Is.True,
+            "80-column mode should always use page 1 addresses in aux memory");
     }
 
     /// <summary>

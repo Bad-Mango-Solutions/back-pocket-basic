@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Bus.Tests;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Core.Signaling;
@@ -57,6 +58,58 @@ public class MachineTests
         machine.Reset();
 
         mockCpu.Verify(c => c.Reset(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that Reset resets peripheral devices so they can reschedule events.
+    /// </summary>
+    [Test]
+    public void Reset_ResetsPeripheralDevices()
+    {
+        var mockCpu = CreateMockCpu();
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("TestDevice");
+
+        var machine = CreateTestMachine(mockCpu);
+        machine.AddScheduledDevice(mockPeripheral.Object);
+
+        machine.Reset();
+
+        mockPeripheral.Verify(p => p.Reset(), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that Reset reschedules device events after clearing the scheduler.
+    /// </summary>
+    /// <remarks>
+    /// This tests the critical scenario where <see cref="Scheduler.Reset"/> clears
+    /// all events, and then device resets must reschedule them (e.g., VBLANK).
+    /// </remarks>
+    [Test]
+    public void Reset_DeviceEventsArePresentAfterReset()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+
+        // Create a peripheral that schedules an event during Reset
+        bool eventScheduled = false;
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("TestSchedulingDevice");
+        mockPeripheral.Setup(p => p.Reset()).Callback(() =>
+        {
+            machine.Scheduler.ScheduleAfter(100, ScheduledEventKind.DeviceTimer, 0, _ => { }, "test");
+            eventScheduled = true;
+        });
+
+        machine.AddScheduledDevice(mockPeripheral.Object);
+
+        machine.Reset();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventScheduled, Is.True, "Device Reset should have been called");
+            Assert.That(machine.Scheduler.PendingEventCount, Is.GreaterThan(0), "Device should have scheduled events after reset");
+        });
     }
 
     /// <summary>
@@ -123,19 +176,28 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that Step advances the scheduler.
+    /// Verifies that Step does not advance the scheduler directly,
+    /// since the CPU is responsible for advancing the scheduler internally
+    /// during <see cref="ICpu.Step()"/>.
     /// </summary>
     [Test]
-    public void Step_AdvancesScheduler()
+    public void Step_DoesNotDoubleAdvanceScheduler()
     {
         var mockCpu = CreateMockCpu();
-        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 10));
-
         var machine = CreateTestMachine(mockCpu);
+
+        // Setup CPU to report 10 cycles consumed.
+        // In production, Cpu65C02.Step() would have already advanced the scheduler
+        // by 10 cycles internally. The mock doesn't do this, so the scheduler stays at 0.
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 10));
 
         machine.Step();
 
-        Assert.That(machine.Now.Value, Is.EqualTo(10));
+        // Machine.Step() must NOT advance the scheduler itself — the scheduler should
+        // remain at 0 (since the mock CPU doesn't advance it). If Machine.Step() were
+        // to call Scheduler.Advance(10), the value would be 10, indicating a double-advance
+        // bug with the real Cpu65C02.
+        Assert.That(machine.Now.Value, Is.EqualTo(0));
     }
 
     /// <summary>
@@ -461,6 +523,130 @@ public class MachineTests
 
         // Should be paused after cancellation
         Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+    }
+
+    // ─── CPU Throttling Tests ───────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz defaults to zero (unthrottled).
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_DefaultsToZero()
+    {
+        var machine = CreateTestMachine();
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz can be set and retrieved.
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_CanBeSetAndRetrieved()
+    {
+        var machine = CreateTestMachine();
+        machine.ClockSpeedHz = 1_020_484;
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(1_020_484));
+    }
+
+    /// <summary>
+    /// Verifies that ClockSpeedHz can be changed at runtime.
+    /// </summary>
+    [Test]
+    public void ClockSpeedHz_CanBeChangedAtRuntime()
+    {
+        var machine = CreateTestMachine();
+        machine.ClockSpeedHz = 1_020_484;
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(1_020_484));
+
+        machine.ClockSpeedHz = 2_800_000; // IIgs fast mode
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(2_800_000));
+
+        machine.ClockSpeedHz = 0; // Unthrottled
+        Assert.That(machine.ClockSpeedHz, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies that throttling slows execution when clock speed is set.
+    /// </summary>
+    /// <remarks>
+    /// This test configures a very low clock speed so that 10,000 cycles
+    /// (the yield interval) should take significant wall-clock time. It then
+    /// verifies that execution completes in a time range consistent with
+    /// throttling rather than running flat-out.
+    /// </remarks>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
+    [Test]
+    public async Task RunAsync_WithThrottling_SlowsExecution()
+    {
+        var mockCpu = CreateMockCpu();
+        int stepCount = 0;
+
+        // Each step returns 100 cycles, so 100 steps = 10,000 cycles = 1 yield
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            stepCount++;
+            return new CpuStepResult(CpuRunState.Running, 100);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // Set clock speed to 100,000 Hz — 10,000 cycles should take 100ms
+        machine.ClockSpeedHz = 100_000;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            await machine.RunAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        stopwatch.Stop();
+
+        // At 100,000 Hz with 100 cycles/step, we get ~1000 steps/second.
+        // In 500ms, we expect ~500 steps. We use a generous upper bound of 2000
+        // to account for timer resolution, scheduling overhead, and CI variability.
+        // Without throttling, this same test would execute hundreds of thousands of steps.
+        Assert.That(stepCount, Is.LessThan(2000), "Throttling should limit step count");
+    }
+
+    /// <summary>
+    /// Verifies that unthrottled execution runs at maximum speed.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation of the test.</returns>
+    [Test]
+    public async Task RunAsync_WithoutThrottling_RunsAtFullSpeed()
+    {
+        var mockCpu = CreateMockCpu();
+        int stepCount = 0;
+
+        // Each step returns 100 cycles
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            stepCount++;
+            return new CpuStepResult(CpuRunState.Running, 100);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+
+        // No throttling (default ClockSpeedHz = 0)
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        try
+        {
+            await machine.RunAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Without throttling, we should execute a very large number of steps
+        Assert.That(stepCount, Is.GreaterThan(1000), "Without throttling, step count should be high");
     }
 
     private static Machine CreateTestMachine(Mock<ICpu>? mockCpu = null)

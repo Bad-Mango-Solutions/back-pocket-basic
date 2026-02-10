@@ -8,6 +8,7 @@ using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
+using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Emulation.Cpu;
 
 /// <summary>
@@ -649,7 +650,19 @@ public static class Pocket2eMachineBuilderExtensions
     /// </summary>
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
-    public sealed record MainRamComponent(PhysicalMemory Memory, RamTarget Target);
+    /// <remarks>
+    /// Implements <see cref="IMainMemoryProvider"/> to allow the video display subsystem
+    /// to access main RAM directly without going through soft switch routing.
+    /// </remarks>
+    public sealed record MainRamComponent(PhysicalMemory Memory, RamTarget Target)
+        : IMainMemoryProvider
+    {
+        /// <inheritdoc cref="IMainMemoryProvider.MainRam"/>
+        public ReadOnlyMemory<byte> MainRam => Memory.Memory;
+
+        /// <inheritdoc cref="IMainMemoryProvider.ReadMainRam(ushort)"/>
+        public byte ReadMainRam(ushort address) => Memory.AsReadOnlySpan()[address];
+    }
 
     /// <summary>
     /// Component wrapper for auxiliary RAM, allowing retrieval from the component bag.

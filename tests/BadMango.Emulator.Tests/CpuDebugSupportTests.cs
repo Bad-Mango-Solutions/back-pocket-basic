@@ -461,6 +461,11 @@ public class CpuDebugSupportTests : CpuTestBase
         Write(0x1000, 0xA9); // LDA #$42
         Write(0x1001, 0x42);
         Write(0x1002, 0xEA); // NOP
+
+        // Reset scheduler and CPU to ensure both runs start at cycle 0.
+        // In production, Machine.Reset() handles the scheduler reset;
+        // here we do it explicitly since tests use the CPU directly.
+        Cpu.EventContext.Scheduler.Reset();
         Cpu.Reset();
 
         // Execute without debugger
@@ -468,6 +473,7 @@ public class CpuDebugSupportTests : CpuTestBase
         ulong totalCyclesWithout = Cpu.GetCycles();
 
         // Reset and execute with debugger
+        Cpu.EventContext.Scheduler.Reset();
         Cpu.Reset();
         var listener = new TestDebugListener();
         Cpu.AttachDebugger(listener);

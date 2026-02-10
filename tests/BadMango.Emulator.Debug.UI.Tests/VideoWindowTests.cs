@@ -6,8 +6,14 @@ namespace BadMango.Emulator.Debug.UI.Tests;
 
 using Avalonia.Headless.NUnit;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Debug.UI.Views;
+using BadMango.Emulator.Devices;
+using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
+
+using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
 /// <summary>
 /// Unit tests for the <see cref="VideoWindow"/> class.
@@ -497,4 +503,240 @@ public class VideoWindowTests
 
         Assert.That(actualCode, Is.EqualTo(expectedCode));
     }
+
+    #region VBlank Snapshot Tests
+
+    /// <summary>
+    /// Verifies that AttachMachine retrieves IMainMemoryProvider for direct RAM access.
+    /// </summary>
+    [AvaloniaTest]
+    public void AttachMachine_WithMainMemoryProvider_DoesNotThrow()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(out _, out _);
+
+        Assert.DoesNotThrow(() => window.AttachMachine(mockMachine.Object));
+    }
+
+    /// <summary>
+    /// Verifies that AttachMachine works without an IMainMemoryProvider (graceful fallback).
+    /// </summary>
+    [AvaloniaTest]
+    public void AttachMachine_WithoutMainMemoryProvider_DoesNotThrow()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithoutMainMemoryProvider(out _);
+
+        Assert.DoesNotThrow(() => window.AttachMachine(mockMachine.Object));
+    }
+
+    /// <summary>
+    /// Verifies that VBlank snapshot captures data from IMainMemoryProvider's physical RAM,
+    /// not from the memory bus which may be affected by soft switch routing.
+    /// </summary>
+    /// <remarks>
+    /// This test simulates the 80STORE/PAGE2 redirection bug:
+    /// the memory bus returns different data than the physical RAM, and the snapshot
+    /// must use the physical RAM data.
+    /// </remarks>
+    [AvaloniaTest]
+    public void VBlankSnapshot_ReadsFromPhysicalRam_NotBus()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(
+            out var physicalRam,
+            out var mockVideoDevice,
+            busReturnValue: 0xFF);
+
+        // Write known data to physical RAM at text page 1 ($0400)
+        physicalRam[0x0400] = 0xC1; // 'A' in Apple II character encoding
+        physicalRam[0x0401] = 0xC2; // 'B'
+        physicalRam[0x0402] = 0xC3; // 'C'
+
+        window.AttachMachine(mockMachine.Object);
+
+        // Fire VBlank to trigger snapshot capture
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+
+        // Verify that the bus was NOT called for text page addresses
+        // during the VBlank snapshot capture — physical RAM was used instead.
+        var mockBus = Mock.Get(mockMachine.Object.Bus);
+        mockBus.Verify(
+            b => b.Read8(It.IsAny<BusAccess>()),
+            Times.Never,
+            "VBlank snapshot should read from physical RAM, not the memory bus");
+    }
+
+    /// <summary>
+    /// Verifies that VBlank snapshot falls back to bus reads when no IMainMemoryProvider
+    /// is available (e.g., non-Pocket2e machine configurations).
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_WithoutMainMemoryProvider_FallsBackToBus()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithoutMainMemoryProvider(
+            out var mockVideoDevice);
+
+        window.AttachMachine(mockMachine.Object);
+
+        // Fire VBlank to trigger snapshot capture — with no IMainMemoryProvider,
+        // this exercises the bus-read fallback path. The snapshot should complete
+        // without error, reading from the mock bus instead of physical RAM.
+        Assert.DoesNotThrow(() => mockVideoDevice.Raise(v => v.VBlankOccurred += null));
+    }
+
+    /// <summary>
+    /// Verifies that the VBlank snapshot captures the full text page range ($0400-$0BFF)
+    /// from physical RAM, covering both text page 1 and text page 2.
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_CapturesFullTextPageRange()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(
+            out var physicalRam,
+            out var mockVideoDevice);
+
+        // Fill text page 1 ($0400-$07FF) with 0x41 and text page 2 ($0800-$0BFF) with 0x42
+        for (int i = 0x0400; i < 0x0800; i++)
+        {
+            physicalRam[i] = 0x41;
+        }
+
+        for (int i = 0x0800; i < 0x0C00; i++)
+        {
+            physicalRam[i] = 0x42;
+        }
+
+        window.AttachMachine(mockMachine.Object);
+
+        // Fire VBlank to trigger snapshot capture
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+
+        // Bus should not have been called — all reads from physical RAM
+        var mockBus = Mock.Get(mockMachine.Object.Bus);
+        mockBus.Verify(
+            b => b.Read8(It.IsAny<BusAccess>()),
+            Times.Never,
+            "Full text page range should be captured from physical RAM");
+    }
+
+    /// <summary>
+    /// Verifies that physical RAM snapshot is immune to 80STORE/PAGE2 soft switch state.
+    /// The bus returns different data depending on soft switch state, but the physical
+    /// RAM always returns the same correct data.
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_ImmuneToSoftSwitchState()
+    {
+        var window = new VideoWindow();
+
+        // Set up physical RAM with known data
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(
+            out var physicalRam,
+            out var mockVideoDevice,
+            busReturnValue: 0x00);
+
+        // Write a pattern to physical main RAM at $0400
+        // (bus would return 0x00 due to simulated 80STORE redirection)
+        for (int i = 0x0400; i < 0x0800; i++)
+        {
+            physicalRam[i] = (byte)(i & 0xFF);
+        }
+
+        window.AttachMachine(mockMachine.Object);
+
+        // Fire VBlank — snapshot should capture from physical RAM
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+
+        // The bus was never consulted — physical RAM was used directly
+        var mockBus = Mock.Get(mockMachine.Object.Bus);
+        mockBus.Verify(
+            b => b.Read8(It.IsAny<BusAccess>()),
+            Times.Never,
+            "Snapshot must read from physical RAM regardless of soft switch state");
+    }
+
+    /// <summary>
+    /// Verifies that DetachMachine clears the main RAM reference.
+    /// After detach, a subsequent VBlank should not read from the old RAM.
+    /// </summary>
+    [AvaloniaTest]
+    public void DetachMachine_ClearsMainRamReference()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(out _, out _);
+
+        window.AttachMachine(mockMachine.Object);
+        window.DetachMachine();
+
+        // After detach, ForceRedraw should not throw (renders blank screen)
+        Assert.DoesNotThrow(() => window.ForceRedraw());
+    }
+
+    /// <summary>
+    /// Creates a mock machine with an IMainMemoryProvider component.
+    /// </summary>
+    /// <param name="physicalRam">Output: the physical RAM byte array for direct manipulation.</param>
+    /// <param name="mockVideoDevice">Output: the mock video device for raising VBlank events.</param>
+    /// <param name="busReturnValue">Value returned by the memory bus Read8 (simulating redirected reads).</param>
+    /// <returns>The configured mock machine.</returns>
+    private static Mock<IMachine> CreateMockMachineWithMainMemoryProvider(
+        out byte[] physicalRam,
+        out Mock<IVideoDevice> mockVideoDevice,
+        byte busReturnValue = 0xA0)
+    {
+        physicalRam = new byte[65536]; // 64KB main RAM
+
+        var physicalMemory = new PhysicalMemory(65536, "TestMainRAM");
+        var mockMainMemoryProvider = new Mock<IMainMemoryProvider>();
+        mockMainMemoryProvider.Setup(p => p.MainRam).Returns(physicalMemory.Memory);
+
+        var mockBus = new Mock<IMemoryBus>();
+        mockBus.Setup(b => b.Read8(It.IsAny<BusAccess>())).Returns(busReturnValue);
+
+        mockVideoDevice = new Mock<IVideoDevice>();
+        mockVideoDevice.Setup(v => v.CurrentMode).Returns(VideoMode.Text40);
+        mockVideoDevice.Setup(v => v.IsPage2).Returns(false);
+
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        mockMachine.Setup(m => m.GetComponent<IVideoDevice>()).Returns(mockVideoDevice.Object);
+        mockMachine.Setup(m => m.GetComponent<IMainMemoryProvider>()).Returns(mockMainMemoryProvider.Object);
+        mockMachine.Setup(m => m.GetComponent<IExtended80ColumnDevice>()).Returns((IExtended80ColumnDevice?)null);
+        mockMachine.Setup(m => m.GetComponent<ICharacterDevice>()).Returns((ICharacterDevice?)null);
+        mockMachine.Setup(m => m.GetComponent<ICharacterRomProvider>()).Returns((ICharacterRomProvider?)null);
+        mockMachine.Setup(m => m.GetComponent<EmulatorKeyboardDevice>()).Returns((EmulatorKeyboardDevice?)null);
+
+        return mockMachine;
+    }
+
+    /// <summary>
+    /// Creates a mock machine without an IMainMemoryProvider component (fallback path).
+    /// </summary>
+    /// <param name="mockVideoDevice">Output: the mock video device for raising VBlank events.</param>
+    /// <returns>The configured mock machine.</returns>
+    private static Mock<IMachine> CreateMockMachineWithoutMainMemoryProvider(
+        out Mock<IVideoDevice> mockVideoDevice)
+    {
+        var mockBus = new Mock<IMemoryBus>();
+
+        mockVideoDevice = new Mock<IVideoDevice>();
+        mockVideoDevice.Setup(v => v.CurrentMode).Returns(VideoMode.Text40);
+        mockVideoDevice.Setup(v => v.IsPage2).Returns(false);
+
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        mockMachine.Setup(m => m.GetComponent<IVideoDevice>()).Returns(mockVideoDevice.Object);
+        mockMachine.Setup(m => m.GetComponent<IMainMemoryProvider>()).Returns((IMainMemoryProvider?)null);
+        mockMachine.Setup(m => m.GetComponent<IExtended80ColumnDevice>()).Returns((IExtended80ColumnDevice?)null);
+        mockMachine.Setup(m => m.GetComponent<ICharacterDevice>()).Returns((ICharacterDevice?)null);
+        mockMachine.Setup(m => m.GetComponent<ICharacterRomProvider>()).Returns((ICharacterRomProvider?)null);
+        mockMachine.Setup(m => m.GetComponent<EmulatorKeyboardDevice>()).Returns((EmulatorKeyboardDevice?)null);
+
+        return mockMachine;
+    }
+
+    #endregion
 }

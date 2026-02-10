@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Core;
@@ -97,6 +98,9 @@ public sealed class Machine : IMachine
     public MachineState State => state;
 
     /// <inheritdoc />
+    public long ClockSpeedHz { get; set; }
+
+    /// <inheritdoc />
     public void Reset()
     {
         // Stop if running
@@ -111,12 +115,19 @@ public sealed class Machine : IMachine
         // Reset CPU
         Cpu.Reset();
 
-        // Reset slot manager if present
+        // Reset slot manager if present (resets slot cards)
         var slotManager = GetComponent<ISlotManager>();
         slotManager?.Reset();
 
-        // Reset scheduler
+        // Reset scheduler (clears all pending events and resets cycle counter)
         Scheduler.Reset();
+
+        // Reset all scheduled devices so they return to power-on state and
+        // reschedule their events (e.g., VideoDevice reschedules VBLANK).
+        // This must happen AFTER Scheduler.Reset() so that freshly scheduled
+        // events are not cleared, and AFTER the scheduler is at cycle 0 so
+        // events are scheduled relative to the start of the timeline.
+        ResetDevices();
 
         // Deassert RESET signal
         Signals.Deassert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
@@ -195,8 +206,10 @@ public sealed class Machine : IMachine
             Cpu.RequestStop();
         }
 
+        // CPU.Step() advances the scheduler internally — each code path
+        // in Cpu65C02.Step() calls Scheduler.Advance(cycles) before returning.
+        // Do NOT advance the scheduler again here to avoid double-advancement.
         var result = Cpu.Step();
-        Scheduler.Advance(result.CyclesConsumed);
 
         // Transition to paused after stepping
         SetState(MachineState.Paused);
@@ -309,7 +322,17 @@ public sealed class Machine : IMachine
     /// Initializes all scheduled devices with this machine as the event context.
     /// </summary>
     /// <remarks>
-    /// This is called by the builder after all components are assembled.
+    /// <para>
+    /// This is called once by the builder after all components are assembled.
+    /// Devices use this to store references to system services and schedule
+    /// their initial events.
+    /// </para>
+    /// <para>
+    /// For subsequent resets, use <see cref="ResetDevices"/> instead, which
+    /// calls each device's <see cref="IPeripheral.Reset"/> method to return
+    /// to power-on state and reschedule events without repeating one-time
+    /// initialization (ROM registration, swap group lookup, etc.).
+    /// </para>
     /// </remarks>
     internal void InitializeDevices()
     {
@@ -320,12 +343,53 @@ public sealed class Machine : IMachine
     }
 
     /// <summary>
-    /// Executes the main run loop asynchronously with periodic yields.
+    /// Resets all scheduled devices that implement <see cref="IPeripheral"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called during <see cref="Reset"/> after the scheduler is cleared.
+    /// Each device's <see cref="IPeripheral.Reset"/> restores power-on state
+    /// and reschedules any periodic events (e.g., VideoDevice reschedules VBLANK).
+    /// </para>
+    /// <para>
+    /// This is distinct from <see cref="InitializeDevices"/>, which performs
+    /// one-time setup during machine construction and should not be called again.
+    /// </para>
+    /// </remarks>
+    private void ResetDevices()
+    {
+        foreach (var device in scheduledDevices)
+        {
+            if (device is IPeripheral peripheral)
+            {
+                peripheral.Reset();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Executes the main run loop asynchronously with cycle-accurate throttling.
     /// </summary>
     /// <param name="cancellationToken">Token to cancel execution.</param>
+    /// <remarks>
+    /// <para>
+    /// When <see cref="ClockSpeedHz"/> is set to a positive value, the loop paces
+    /// CPU execution so that emulated cycles match wall-clock time at the configured
+    /// clock rate. For example, at 1,020,484 Hz (Apple IIe speed), the loop ensures
+    /// that 1,020,484 emulated cycles elapse per second of real time.
+    /// </para>
+    /// <para>
+    /// Throttling uses a <see cref="Stopwatch"/> to measure elapsed wall-clock time
+    /// and inserts delays when the CPU runs ahead of real time. The delay is applied
+    /// at each yield point (every <see cref="YieldIntervalCycles"/> cycles), providing
+    /// smooth pacing without excessive timer overhead.
+    /// </para>
+    /// </remarks>
     private async Task ExecuteLoopAsync(CancellationToken cancellationToken)
     {
         long cyclesSinceYield = 0;
+        var throttleStopwatch = Stopwatch.StartNew();
+        long throttleCycleBase = 0;
 
         while (state == MachineState.Running && !Cpu.IsStopRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -356,7 +420,33 @@ public sealed class Machine : IMachine
             cyclesSinceYield += (long)result.CyclesConsumed.Value;
             if (cyclesSinceYield >= YieldIntervalCycles)
             {
+                throttleCycleBase += cyclesSinceYield;
                 cyclesSinceYield = 0;
+
+                // Apply throttling if a clock speed is configured
+                long clockSpeed = ClockSpeedHz;
+                if (clockSpeed > 0)
+                {
+                    // Calculate how many milliseconds should have elapsed for the
+                    // cycles we've executed since the throttle window started
+                    double expectedMs = throttleCycleBase * 1000.0 / clockSpeed;
+                    double actualMs = throttleStopwatch.Elapsed.TotalMilliseconds;
+                    double aheadMs = expectedMs - actualMs;
+
+                    if (aheadMs >= 1.0)
+                    {
+                        // CPU is ahead of real time — delay to catch up
+                        await Task.Delay((int)aheadMs, cancellationToken).ConfigureAwait(false);
+                    }
+                    else if (aheadMs < -100.0)
+                    {
+                        // CPU fell significantly behind (e.g., debugger pause, GC stall).
+                        // Reset the throttle window to avoid a burst of catch-up cycles.
+                        throttleStopwatch.Restart();
+                        throttleCycleBase = 0;
+                    }
+                }
+
                 await Task.Yield();
             }
         }
