@@ -27,10 +27,10 @@ public class StorageAbstractionInterfaceTests
     }
 
     /// <summary>
-    /// Verifies that IStorageMedia exposes expected metrics and eventing members.
+    /// Verifies that IStorageMedia exposes base media metadata and eventing members.
     /// </summary>
     [Test]
-    public void IStorageMedia_HasMetricsDictionaryAndMediaChangedEvent()
+    public void IStorageMedia_HasSizeBytesAndMediaChangedEvent()
     {
         Assert.Multiple(() =>
         {
@@ -38,13 +38,9 @@ public class StorageAbstractionInterfaceTests
             Assert.That(metadataProperty, Is.Not.Null);
             Assert.That(metadataProperty!.PropertyType, Is.EqualTo(typeof(IReadOnlyDictionary<string, string>)));
 
-            var metricsProperty = typeof(IStorageMedia).GetProperty(nameof(IStorageMedia.Metrics));
-            Assert.That(metricsProperty, Is.Not.Null);
-            Assert.That(metricsProperty!.PropertyType, Is.EqualTo(typeof(MediaMetrics)));
-
-            var dictionaryMethod = typeof(IStorageMedia).GetMethod(nameof(IStorageMedia.GetMetricsDictionary));
-            Assert.That(dictionaryMethod, Is.Not.Null);
-            Assert.That(dictionaryMethod!.ReturnType, Is.EqualTo(typeof(Dictionary<string, object>)));
+            var sizeBytesProperty = typeof(IStorageMedia).GetProperty(nameof(IStorageMedia.SizeBytes));
+            Assert.That(sizeBytesProperty, Is.Not.Null);
+            Assert.That(sizeBytesProperty!.PropertyType, Is.EqualTo(typeof(long)));
 
             var mediaChangedEvent = typeof(IStorageMedia).GetEvent(nameof(IStorageMedia.MediaChanged));
             Assert.That(mediaChangedEvent, Is.Not.Null);
@@ -124,16 +120,23 @@ public class StorageAbstractionInterfaceTests
     }
 
     /// <summary>
-    /// Verifies metrics and event argument types expose dictionary conversion and expected properties.
+    /// Verifies block, track, nibble interfaces and event argument types expose expected members.
     /// </summary>
     [Test]
-    public void MetricsAndEventTypes_HaveExpectedMembers()
+    public void MediaKindInterfacesAndEventTypes_HaveExpectedMembers()
     {
         Assert.Multiple(() =>
         {
-            Assert.That(typeof(MediaMetrics).GetMethod(nameof(MediaMetrics.ToDictionary)), Is.Not.Null);
-            Assert.That(typeof(DriveMetrics).GetMethod(nameof(DriveMetrics.ToDictionary)), Is.Not.Null);
-            Assert.That(typeof(ControllerMetrics).GetMethod(nameof(ControllerMetrics.ToDictionary)), Is.Not.Null);
+            Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(IBlockMedia)), Is.True);
+            Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(ITrackSectorMedia)), Is.True);
+            Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(INibbleStreamMedia)), Is.True);
+
+            Assert.That(typeof(IBlockMedia).GetMethod(nameof(IBlockMedia.ReadBlock)), Is.Not.Null);
+            Assert.That(typeof(IBlockMedia).GetMethod(nameof(IBlockMedia.WriteBlock)), Is.Not.Null);
+            Assert.That(typeof(ITrackSectorMedia).GetMethod(nameof(ITrackSectorMedia.TryReadTrack)), Is.Not.Null);
+            Assert.That(typeof(ITrackSectorMedia).GetMethod(nameof(ITrackSectorMedia.TryWriteTrack)), Is.Not.Null);
+            Assert.That(typeof(INibbleStreamMedia).GetMethod(nameof(INibbleStreamMedia.TryReadNibbles)), Is.Not.Null);
+            Assert.That(typeof(INibbleStreamMedia).GetMethod(nameof(INibbleStreamMedia.TryWriteNibbles)), Is.Not.Null);
 
             var changeKindProperty = typeof(ControllerEventArgs).GetProperty(nameof(ControllerEventArgs.ChangeKind));
             Assert.That(changeKindProperty, Is.Not.Null);
