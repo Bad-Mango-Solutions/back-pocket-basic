@@ -15,7 +15,7 @@ public readonly record struct ControllerMetrics(int DriveCount, int ActiveDriveC
     /// Converts metrics to a serializable key/value representation.
     /// </summary>
     /// <returns>A dictionary containing all <see cref="ControllerMetrics"/> values.</returns>
-    public readonly Dictionary<string, object> ToDictionary()
+    public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object>
         {

@@ -25,7 +25,7 @@ public readonly record struct MediaMetrics(
     /// Converts metrics to a serializable key/value representation.
     /// </summary>
     /// <returns>A dictionary containing all <see cref="MediaMetrics"/> values.</returns>
-    public readonly Dictionary<string, object> ToDictionary()
+    public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object>
         {
