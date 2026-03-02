@@ -1,8 +1,10 @@
-// <copyright file="IController.cs" company="Bad Mango Solutions">
+// <copyright file="IStorageController.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Devices.Interfaces;
+
+using BadMango.Emulator.Devices.Storage;
 
 /// <summary>
 /// Host-side abstraction for a storage controller managing one or more drives.
@@ -17,7 +19,7 @@ namespace BadMango.Emulator.Devices.Interfaces;
 /// <see href="https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/specs/os/Disk%20II%20Controller%20Device%20Specification.md">Disk II Controller Device Specification</see>.
 /// </para>
 /// </remarks>
-public interface IController
+public interface IStorageController
 {
     /// <summary>
     /// Raised when a drive is added, removed, or has a major status transition.
@@ -27,7 +29,7 @@ public interface IController
     /// <summary>
     /// Gets the drives currently attached to the controller.
     /// </summary>
-    IReadOnlyList<IDrive> Drives { get; }
+    IReadOnlyList<IStorageDrive> Drives { get; }
 
     /// <summary>
     /// Gets strongly-typed metrics for host observability dashboards.
@@ -44,11 +46,11 @@ public interface IController
     /// Attaches a drive to the controller.
     /// </summary>
     /// <param name="drive">The drive to attach.</param>
-    void AttachDrive(IDrive drive);
+    void AttachDrive(IStorageDrive drive);
 
     /// <summary>
     /// Removes a drive from the controller.
     /// </summary>
     /// <param name="drive">The drive to remove.</param>
-    void RemoveDrive(IDrive drive);
+    void RemoveDrive(IStorageDrive drive);
 }

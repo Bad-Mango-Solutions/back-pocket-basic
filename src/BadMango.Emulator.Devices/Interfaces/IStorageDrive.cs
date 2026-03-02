@@ -1,8 +1,10 @@
-// <copyright file="IDrive.cs" company="Bad Mango Solutions">
+// <copyright file="IStorageDrive.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Devices.Interfaces;
+
+using BadMango.Emulator.Devices.Storage;
 
 /// <summary>
 /// Host-side abstraction of a disk drive mechanism.
@@ -17,7 +19,7 @@ namespace BadMango.Emulator.Devices.Interfaces;
 /// <see href="https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/specs/os/Disk%20II%20Controller%20Device%20Specification.md">Disk II Controller Device Specification</see>.
 /// </para>
 /// </remarks>
-public interface IDrive
+public interface IStorageDrive
 {
     /// <summary>
     /// Raised when media content or insertion/ejection state changes.
@@ -62,7 +64,7 @@ public interface IDrive
     /// <summary>
     /// Gets the currently attached media, when present.
     /// </summary>
-    IMedia? CurrentMedia { get; }
+    IStorageMedia? CurrentMedia { get; }
 
     /// <summary>
     /// Gets strongly-typed metrics for host observability dashboards.
@@ -79,7 +81,7 @@ public interface IDrive
     /// Inserts removable media into the drive.
     /// </summary>
     /// <param name="media">The media to insert.</param>
-    void InsertMedia(IMedia media);
+    void InsertMedia(IStorageMedia media);
 
     /// <summary>
     /// Ejects the currently inserted removable media.
@@ -90,5 +92,5 @@ public interface IDrive
     /// Attaches fixed media for non-removable drive configurations.
     /// </summary>
     /// <param name="media">The fixed media to attach.</param>
-    void AttachFixedMedia(IMedia media);
+    void AttachFixedMedia(IStorageMedia media);
 }

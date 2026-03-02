@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Devices.Interfaces;
 
+using BadMango.Emulator.Devices.Storage;
+
 /// <summary>
 /// Host-side tooling API for disk image creation and format conversion.
 /// </summary>
@@ -24,7 +26,7 @@ public interface IDiskImageTooling
     /// </summary>
     /// <param name="options">The image creation options.</param>
     /// <returns>The created media abstraction.</returns>
-    IMedia CreateBlankImage(DiskImageCreationOptions options);
+    IStorageMedia CreateBlankImage(DiskImageCreationOptions options);
 
     /// <summary>
     /// Converts source media into a target format and writes the result to the output stream.
@@ -32,5 +34,5 @@ public interface IDiskImageTooling
     /// <param name="source">The source media to convert.</param>
     /// <param name="targetFormat">The destination format identifier.</param>
     /// <param name="output">The output stream that receives converted image bytes.</param>
-    void ConvertImage(IMedia source, string targetFormat, Stream output);
+    void ConvertImage(IStorageMedia source, string targetFormat, Stream output);
 }

@@ -2,14 +2,16 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Devices.Interfaces;
+namespace BadMango.Emulator.Devices.Storage;
+
+using BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Event payload for controller drive topology or drive-state transitions.
 /// </summary>
 /// <param name="changeKind">The kind of drive transition being reported.</param>
 /// <param name="drive">The drive associated with the transition, when applicable.</param>
-public sealed class ControllerEventArgs(ControllerDriveChangeKind changeKind, IDrive? drive = null)
+public sealed class ControllerEventArgs(ControllerDriveChangeKind changeKind, IStorageDrive? drive = null)
     : EventArgs
 {
     /// <summary>
@@ -20,5 +22,5 @@ public sealed class ControllerEventArgs(ControllerDriveChangeKind changeKind, ID
     /// <summary>
     /// Gets the drive associated with the transition, when one exists.
     /// </summary>
-    public IDrive? Drive { get; } = drive;
+    public IStorageDrive? Drive { get; } = drive;
 }

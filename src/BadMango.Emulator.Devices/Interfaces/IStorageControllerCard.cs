@@ -1,4 +1,4 @@
-// <copyright file="IControllerCard.cs" company="Bad Mango Solutions">
+// <copyright file="IStorageControllerCard.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -11,7 +11,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This interface composes <see cref="IController"/> and <see cref="ISlotCard"/> so implementations can expose
+/// This interface composes <see cref="IStorageController"/> and <see cref="ISlotCard"/> so implementations can expose
 /// host-facing drive management while still participating in guest slot protocols such as
 /// ROM region exposure and $C0n0-$C0nF I/O handlers.
 /// </para>
@@ -21,6 +21,6 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <see cref="IPeripheral"/>.
 /// </para>
 /// </remarks>
-public interface IControllerCard : IController, ISlotCard
+public interface IStorageControllerCard : IStorageController, ISlotCard
 {
 }

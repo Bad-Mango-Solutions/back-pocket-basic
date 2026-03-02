@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices.Storage;
 
 /// <summary>
 /// Unit tests for host-side storage abstraction interface contracts.
@@ -13,83 +14,83 @@ using BadMango.Emulator.Bus.Interfaces;
 public class StorageAbstractionInterfaceTests
 {
     /// <summary>
-    /// Verifies that IControllerCard inherits from both IController and ISlotCard.
+    /// Verifies that IStorageControllerCard inherits from both IStorageController and ISlotCard.
     /// </summary>
     [Test]
-    public void IControllerCard_InheritsFromIControllerAndISlotCard()
+    public void IStorageControllerCard_InheritsFromIStorageControllerAndISlotCard()
     {
         Assert.Multiple(() =>
         {
-            Assert.That(typeof(IController).IsAssignableFrom(typeof(IControllerCard)), Is.True);
-            Assert.That(typeof(ISlotCard).IsAssignableFrom(typeof(IControllerCard)), Is.True);
+            Assert.That(typeof(IStorageController).IsAssignableFrom(typeof(IStorageControllerCard)), Is.True);
+            Assert.That(typeof(ISlotCard).IsAssignableFrom(typeof(IStorageControllerCard)), Is.True);
         });
     }
 
     /// <summary>
-    /// Verifies that IMedia exposes expected metrics and eventing members.
+    /// Verifies that IStorageMedia exposes expected metrics and eventing members.
     /// </summary>
     [Test]
-    public void IMedia_HasMetricsDictionaryAndMediaChangedEvent()
+    public void IStorageMedia_HasMetricsDictionaryAndMediaChangedEvent()
     {
         Assert.Multiple(() =>
         {
-            var metadataProperty = typeof(IMedia).GetProperty(nameof(IMedia.Metadata));
+            var metadataProperty = typeof(IStorageMedia).GetProperty(nameof(IStorageMedia.Metadata));
             Assert.That(metadataProperty, Is.Not.Null);
             Assert.That(metadataProperty!.PropertyType, Is.EqualTo(typeof(IReadOnlyDictionary<string, string>)));
 
-            var metricsProperty = typeof(IMedia).GetProperty(nameof(IMedia.Metrics));
+            var metricsProperty = typeof(IStorageMedia).GetProperty(nameof(IStorageMedia.Metrics));
             Assert.That(metricsProperty, Is.Not.Null);
             Assert.That(metricsProperty!.PropertyType, Is.EqualTo(typeof(MediaMetrics)));
 
-            var dictionaryMethod = typeof(IMedia).GetMethod(nameof(IMedia.GetMetricsDictionary));
+            var dictionaryMethod = typeof(IStorageMedia).GetMethod(nameof(IStorageMedia.GetMetricsDictionary));
             Assert.That(dictionaryMethod, Is.Not.Null);
             Assert.That(dictionaryMethod!.ReturnType, Is.EqualTo(typeof(Dictionary<string, object>)));
 
-            var mediaChangedEvent = typeof(IMedia).GetEvent(nameof(IMedia.MediaChanged));
+            var mediaChangedEvent = typeof(IStorageMedia).GetEvent(nameof(IStorageMedia.MediaChanged));
             Assert.That(mediaChangedEvent, Is.Not.Null);
             Assert.That(mediaChangedEvent!.EventHandlerType, Is.EqualTo(typeof(EventHandler)));
         });
     }
 
     /// <summary>
-    /// Verifies that IDrive exposes media state, metrics, and media change eventing.
+    /// Verifies that IStorageDrive exposes media state, metrics, and media change eventing.
     /// </summary>
     [Test]
-    public void IDrive_HasCurrentMediaMetricsAndMediaChangedEvent()
+    public void IStorageDrive_HasCurrentMediaMetricsAndMediaChangedEvent()
     {
         Assert.Multiple(() =>
         {
-            var currentMediaProperty = typeof(IDrive).GetProperty(nameof(IDrive.CurrentMedia));
+            var currentMediaProperty = typeof(IStorageDrive).GetProperty(nameof(IStorageDrive.CurrentMedia));
             Assert.That(currentMediaProperty, Is.Not.Null);
-            Assert.That(currentMediaProperty!.PropertyType, Is.EqualTo(typeof(IMedia)));
+            Assert.That(currentMediaProperty!.PropertyType, Is.EqualTo(typeof(IStorageMedia)));
 
-            var metricsProperty = typeof(IDrive).GetProperty(nameof(IDrive.Metrics));
+            var metricsProperty = typeof(IStorageDrive).GetProperty(nameof(IStorageDrive.Metrics));
             Assert.That(metricsProperty, Is.Not.Null);
             Assert.That(metricsProperty!.PropertyType, Is.EqualTo(typeof(DriveMetrics)));
 
-            var mediaChangedEvent = typeof(IDrive).GetEvent(nameof(IDrive.MediaChanged));
+            var mediaChangedEvent = typeof(IStorageDrive).GetEvent(nameof(IStorageDrive.MediaChanged));
             Assert.That(mediaChangedEvent, Is.Not.Null);
             Assert.That(mediaChangedEvent!.EventHandlerType, Is.EqualTo(typeof(EventHandler)));
         });
     }
 
     /// <summary>
-    /// Verifies that IController exposes drive collection, metrics, and drive change eventing.
+    /// Verifies that IStorageController exposes drive collection, metrics, and drive change eventing.
     /// </summary>
     [Test]
-    public void IController_HasDrivesMetricsAndDriveChangedEvent()
+    public void IStorageController_HasDrivesMetricsAndDriveChangedEvent()
     {
         Assert.Multiple(() =>
         {
-            var drivesProperty = typeof(IController).GetProperty(nameof(IController.Drives));
+            var drivesProperty = typeof(IStorageController).GetProperty(nameof(IStorageController.Drives));
             Assert.That(drivesProperty, Is.Not.Null);
-            Assert.That(drivesProperty!.PropertyType, Is.EqualTo(typeof(IReadOnlyList<IDrive>)));
+            Assert.That(drivesProperty!.PropertyType, Is.EqualTo(typeof(IReadOnlyList<IStorageDrive>)));
 
-            var metricsProperty = typeof(IController).GetProperty(nameof(IController.Metrics));
+            var metricsProperty = typeof(IStorageController).GetProperty(nameof(IStorageController.Metrics));
             Assert.That(metricsProperty, Is.Not.Null);
             Assert.That(metricsProperty!.PropertyType, Is.EqualTo(typeof(ControllerMetrics)));
 
-            var driveChangedEvent = typeof(IController).GetEvent(nameof(IController.DriveChanged));
+            var driveChangedEvent = typeof(IStorageController).GetEvent(nameof(IStorageController.DriveChanged));
             Assert.That(driveChangedEvent, Is.Not.Null);
             Assert.That(driveChangedEvent!.EventHandlerType, Is.EqualTo(typeof(EventHandler<ControllerEventArgs>)));
         });
@@ -105,7 +106,7 @@ public class StorageAbstractionInterfaceTests
         {
             var createMethod = typeof(IDiskImageTooling).GetMethod(nameof(IDiskImageTooling.CreateBlankImage));
             Assert.That(createMethod, Is.Not.Null);
-            Assert.That(createMethod!.ReturnType, Is.EqualTo(typeof(IMedia)));
+            Assert.That(createMethod!.ReturnType, Is.EqualTo(typeof(IStorageMedia)));
             Assert.That(createMethod.GetParameters(), Has.Length.EqualTo(1));
             Assert.That(createMethod.GetParameters()[0].ParameterType, Is.EqualTo(typeof(DiskImageCreationOptions)));
 
@@ -115,7 +116,7 @@ public class StorageAbstractionInterfaceTests
             Assert.That(convertMethod.GetParameters(), Has.Length.EqualTo(3));
             Assert.Multiple(() =>
             {
-                Assert.That(convertMethod.GetParameters()[0].ParameterType, Is.EqualTo(typeof(IMedia)));
+                Assert.That(convertMethod.GetParameters()[0].ParameterType, Is.EqualTo(typeof(IStorageMedia)));
                 Assert.That(convertMethod.GetParameters()[1].ParameterType, Is.EqualTo(typeof(string)));
                 Assert.That(convertMethod.GetParameters()[2].ParameterType, Is.EqualTo(typeof(Stream)));
             });
@@ -140,7 +141,7 @@ public class StorageAbstractionInterfaceTests
 
             var driveProperty = typeof(ControllerEventArgs).GetProperty(nameof(ControllerEventArgs.Drive));
             Assert.That(driveProperty, Is.Not.Null);
-            Assert.That(driveProperty!.PropertyType, Is.EqualTo(typeof(IDrive)));
+            Assert.That(driveProperty!.PropertyType, Is.EqualTo(typeof(IStorageDrive)));
         });
     }
 }

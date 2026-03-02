@@ -1,8 +1,10 @@
-// <copyright file="IMedia.cs" company="Bad Mango Solutions">
+// <copyright file="IStorageMedia.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Devices.Interfaces;
+
+using BadMango.Emulator.Devices.Storage;
 
 /// <summary>
 /// Host-side abstraction for disk media used by storage devices.
@@ -21,7 +23,7 @@ namespace BadMango.Emulator.Devices.Interfaces;
 /// Related open-source references include AppleWin, MAME, OpenEmulator, KEGS, CiderPress2, and DiskM8.
 /// </para>
 /// </remarks>
-public interface IMedia
+public interface IStorageMedia
 {
     /// <summary>
     /// Raised when media content or host-observable media state changes.
