@@ -21,6 +21,8 @@
     <File Path="BRANCH_MIGRATION.md" />
     <File Path="BRANCH_PROTECTION.md" />
     <File Path="CONTRIBUTING.md" />
+    <File Path="DISK-EMULATION-PRD.md" />
+    <File Path="DISK-IMPLEMENTATION-PLAN.md" />
     <File Path="IMPLEMENTATION_DEDUPLICATION.md" />
     <File Path="IMPLEMENTATION_SUMMARY.md" />
     <File Path="ISSUE_COMMENT.md" />
