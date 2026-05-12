@@ -84,7 +84,7 @@
                     <CheckBox Grid.Column="2" x:Name="PauseUpdatesCheckbox" Content="Pause Updates" VerticalAlignment="Center" />
                     
                     <TextBlock Grid.Column="4" Text="Search:" VerticalAlignment="Center" Margin="0,0,5,0" />
-                    <TextBox Grid.Column="5" x:Name="SearchTextBox" Watermark="Name or address..." />
+                    <TextBox Grid.Column="5" x:Name="SearchTextBox" PlaceholderText="Name or address..." />
                 </Grid>
             </Grid>
         </Border>
