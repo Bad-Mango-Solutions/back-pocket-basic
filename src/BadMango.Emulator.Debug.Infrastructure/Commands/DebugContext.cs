@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Storage.Formats;
 
 using Bus.Interfaces;
 
@@ -117,6 +118,9 @@ public sealed class DebugContext : IDebugContext
     /// <inheritdoc/>
     public IDebugPathResolver? PathResolver { get; private set; }
 
+    /// <inheritdoc/>
+    public DiskImageFactory? DiskImageFactory { get; private set; }
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>
@@ -126,6 +130,7 @@ public sealed class DebugContext : IDebugContext
     {
         var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
         context.AttachPathResolver(new DebugPathResolver());
+        context.AttachDiskImageFactory(new DiskImageFactory());
         return context;
     }
 
@@ -274,6 +279,16 @@ public sealed class DebugContext : IDebugContext
     {
         ArgumentNullException.ThrowIfNull(pathResolver);
         this.PathResolver = pathResolver;
+    }
+
+    /// <summary>
+    /// Attaches a disk image factory to this debug context.
+    /// </summary>
+    /// <param name="diskImageFactory">The disk image factory to attach.</param>
+    public void AttachDiskImageFactory(DiskImageFactory diskImageFactory)
+    {
+        ArgumentNullException.ThrowIfNull(diskImageFactory);
+        this.DiskImageFactory = diskImageFactory;
     }
 
     /// <summary>
