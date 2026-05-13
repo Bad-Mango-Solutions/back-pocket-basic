@@ -764,7 +764,10 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
 
     private static byte[] ReadBootData(DiskImageFactory factory, string sourcePath, ContainerKind destContainer)
     {
-        var open = factory.Open(sourcePath, forceReadOnly: true);
+        // Dispose the open result before returning so the boot source file's handle is
+        // released; otherwise the caller (and end users) cannot subsequently rename or
+        // delete that file until the process exits.
+        using var open = factory.Open(sourcePath, forceReadOnly: true);
 
         // Decide how many bytes of boot to copy based on the destination container.
         // 5.25" containers cover an entire track (4096 bytes = 16 sectors); pure block

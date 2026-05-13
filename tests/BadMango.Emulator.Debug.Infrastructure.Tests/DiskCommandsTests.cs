@@ -446,6 +446,53 @@ public sealed class DiskCommandsTests
         });
     }
 
+    /// <summary>
+    /// <c>disk-info</c> must release the file handle before returning so the user can
+    /// rename/delete the image afterwards. Verified by acquiring an exclusive
+    /// (<see cref="FileShare.None"/>) writable handle, which fails if any other handle
+    /// to the file is still open.
+    /// </summary>
+    [Test]
+    public void DiskInfo_DoesNotLeaveFileOpen()
+    {
+        var path = this.TempPath(".dsk");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "dos33"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        // FileShare.None requires no other open handle on the file. If disk-info
+        // had failed to dispose its DiskImageOpenResult, this would throw IOException
+        // (matching the user-reported "file is open in emudbg" rename failure).
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        });
+    }
+
+    /// <summary>
+    /// <c>disk-create --bootable</c> opens the boot source through the factory and must
+    /// release that handle before returning so the source file is not locked.
+    /// </summary>
+    [Test]
+    public void DiskCreate_Bootable_DoesNotLeaveSourceFileOpen()
+    {
+        var sourcePath = this.TempPath(".dsk");
+        var src = new DiskCreateCommand().Execute(this.debugContext, [sourcePath, "--format", "dos33"]);
+        Assert.That(src.Success, Is.True, src.Message);
+
+        var destPath = this.TempPath(".dsk");
+        var dest = new DiskCreateCommand().Execute(this.debugContext, [destPath, "--format", "dos33", "--bootable", sourcePath]);
+        Assert.That(dest.Success, Is.True, dest.Message);
+
+        // After disk-create --bootable returns, exclusive access to the source must succeed.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(sourcePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        });
+    }
+
     /// <summary><c>disk-info</c> reports HDV block image metadata.</summary>
     [Test]
     public void DiskInfo_OnHdv_ReportsBlockCount()
