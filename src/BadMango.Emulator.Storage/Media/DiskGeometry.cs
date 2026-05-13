@@ -28,11 +28,24 @@ public readonly record struct DiskGeometry(int TrackCount, int SectorsPerTrack, 
     /// (<see cref="TrackCount"/> × <see cref="SectorsPerTrack"/> × <see cref="BytesPerSector"/>).
     /// </summary>
     /// <value>The total user-data byte length for this geometry.</value>
-    public int TotalBytes => this.TrackCount * this.SectorsPerTrack * this.BytesPerSector;
+    /// <remarks>Computed in <see langword="checked"/> arithmetic and returned as <see cref="long"/> to avoid silent overflow on malformed values.</remarks>
+    public long TotalBytes => checked((long)this.TrackCount * this.SectorsPerTrack * this.BytesPerSector);
 
     /// <summary>
     /// Gets the number of quarter-track positions (<see cref="TrackCount"/> × 4).
     /// </summary>
     /// <value>The maximum quarter-track index plus one.</value>
-    public int QuarterTrackCount => this.TrackCount * 4;
+    /// <remarks>Computed in <see langword="checked"/> arithmetic to surface overflow on malformed values.</remarks>
+    public int QuarterTrackCount => checked(this.TrackCount * 4);
+
+    /// <summary>
+    /// Throws if any component of this geometry is non-positive.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">If <see cref="TrackCount"/>, <see cref="SectorsPerTrack"/>, or <see cref="BytesPerSector"/> is not positive.</exception>
+    public void ValidatePositive()
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(this.TrackCount, nameof(this.TrackCount));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(this.SectorsPerTrack, nameof(this.SectorsPerTrack));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(this.BytesPerSector, nameof(this.BytesPerSector));
+    }
 }

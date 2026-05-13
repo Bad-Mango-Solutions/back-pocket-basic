@@ -93,4 +93,21 @@ public class GcrEncoderTests
         var mask = GcrEncoder.DecodeTrack(nibbles, decoded);
         Assert.That(mask, Is.EqualTo(0));
     }
+
+    /// <summary>
+    /// Verifies that out-of-range <paramref name="volume"/> or <paramref name="track"/>
+    /// throws <see cref="ArgumentOutOfRangeException"/>.
+    /// </summary>
+    /// <param name="volume">Volume to attempt.</param>
+    /// <param name="track">Track to attempt.</param>
+    [TestCase(-1, 0)]
+    [TestCase(256, 0)]
+    [TestCase(0, -1)]
+    [TestCase(0, 256)]
+    public void EncodeTrack_OutOfRangeVolumeOrTrack_Throws(int volume, int track)
+    {
+        var sectors = new byte[16 * 256];
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        Assert.Throws<ArgumentOutOfRangeException>(() => GcrEncoder.EncodeTrack(volume, track, sectors, nibbles));
+    }
 }

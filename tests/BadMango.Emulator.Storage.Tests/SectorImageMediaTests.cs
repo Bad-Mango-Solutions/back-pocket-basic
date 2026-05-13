@@ -141,4 +141,31 @@ public class SectorImageMediaTests
         blocks.ReadBlock(123, read);
         Assert.That(read, Is.EqualTo(write));
     }
+
+    /// <summary>
+    /// Constructor rejects geometries whose sector count or sector size differs from the
+    /// 16 × 256 baseline that the GCR nibblizer and block view bake in.
+    /// </summary>
+    /// <param name="sectorsPerTrack">Sectors-per-track to attempt.</param>
+    /// <param name="bytesPerSector">Bytes-per-sector to attempt.</param>
+    [TestCase(13, 256)]
+    [TestCase(16, 128)]
+    [TestCase(15, 256)]
+    public void Construct_NonStandardGeometry_Throws(int sectorsPerTrack, int bytesPerSector)
+    {
+        using var backend = new RamStorageBackend(35 * sectorsPerTrack * bytesPerSector);
+        var geometry = new DiskGeometry(35, sectorsPerTrack, bytesPerSector, SectorOrder.Dos33);
+        Assert.Throws<ArgumentException>(() => new SectorImageMedia(backend, geometry));
+    }
+
+    /// <summary>
+    /// Constructor rejects geometries whose track count is non-positive.
+    /// </summary>
+    [Test]
+    public void Construct_NonPositiveTrackCount_Throws()
+    {
+        using var backend = new RamStorageBackend(ImageFixtures.FivePointTwoFiveBytes);
+        var geometry = new DiskGeometry(0, 16, 256, SectorOrder.Dos33);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SectorImageMedia(backend, geometry));
+    }
 }

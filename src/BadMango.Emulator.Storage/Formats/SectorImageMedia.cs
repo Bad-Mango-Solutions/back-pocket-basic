@@ -48,6 +48,26 @@ public sealed class SectorImageMedia
     {
         ArgumentNullException.ThrowIfNull(backing);
         ArgumentOutOfRangeException.ThrowIfNegative(backingOffset);
+        geometry.ValidatePositive();
+
+        // SectorImageMedia bakes 16-sector / 256-byte assumptions into the GCR
+        // nibblizer and the IBlockMedia view (which pairs ProDOS-logical sectors
+        // 2N and 2N+1 within a track). Reject geometries that would silently
+        // miscompute offsets.
+        if (geometry.SectorsPerTrack != SectorSkew.SectorsPerTrack)
+        {
+            throw new ArgumentException(
+                $"SectorImageMedia requires {SectorSkew.SectorsPerTrack} sectors per track; got {geometry.SectorsPerTrack}.",
+                nameof(geometry));
+        }
+
+        if (geometry.BytesPerSector != GcrEncoder.BytesPerSector)
+        {
+            throw new ArgumentException(
+                $"SectorImageMedia requires {GcrEncoder.BytesPerSector} bytes per sector; got {geometry.BytesPerSector}.",
+                nameof(geometry));
+        }
+
         if (backing.Length - backingOffset < geometry.TotalBytes)
         {
             throw new ArgumentException("Backing store too small for the requested geometry.", nameof(backing));
@@ -236,7 +256,7 @@ public sealed class SectorImageMedia
         public int BlockSize => SectorImageMedia.BlockSize;
 
         /// <inheritdoc />
-        public int BlockCount => this.parent.geometry.TotalBytes / SectorImageMedia.BlockSize;
+        public int BlockCount => checked((int)(this.parent.geometry.TotalBytes / SectorImageMedia.BlockSize));
 
         /// <inheritdoc />
         public bool IsReadOnly => this.parent.IsReadOnly;

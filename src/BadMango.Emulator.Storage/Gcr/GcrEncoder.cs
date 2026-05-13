@@ -88,13 +88,19 @@ public static class GcrEncoder
     /// <summary>
     /// Encodes a single 5.25" track to its nibble stream.
     /// </summary>
-    /// <param name="volume">Volume number written into address fields (DOS 3.3 default 254).</param>
-    /// <param name="track">Track number, used in address fields and clamped to <c>[0, 256)</c>.</param>
+    /// <param name="volume">Volume number written into address fields (DOS 3.3 default 254); must be in <c>[0, 256)</c>.</param>
+    /// <param name="track">Track number written into address fields; must be in <c>[0, 256)</c>.</param>
     /// <param name="sectorData">A buffer of <c>16 × <see cref="BytesPerSector"/> = 4096</c> bytes; sectors must already be in physical order.</param>
     /// <param name="destination">Destination nibble buffer; must be exactly <see cref="StandardTrackLength"/> bytes.</param>
+    /// <exception cref="ArgumentOutOfRangeException">If <paramref name="volume"/> or <paramref name="track"/> is outside <c>[0, 256)</c>.</exception>
     /// <exception cref="ArgumentException">If buffer lengths are incorrect.</exception>
     public static void EncodeTrack(int volume, int track, ReadOnlySpan<byte> sectorData, Span<byte> destination)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(volume);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(volume, 255);
+        ArgumentOutOfRangeException.ThrowIfNegative(track);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(track, 255);
+
         if (sectorData.Length != SectorSkew.SectorsPerTrack * BytesPerSector)
         {
             throw new ArgumentException($"sectorData must be {SectorSkew.SectorsPerTrack * BytesPerSector} bytes.", nameof(sectorData));
