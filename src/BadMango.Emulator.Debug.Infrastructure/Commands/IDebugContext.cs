@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Storage.Formats;
 
 using Bus.Interfaces;
 
@@ -114,4 +115,21 @@ public interface IDebugContext : ICommandContext
     /// </para>
     /// </remarks>
     IDebugPathResolver? PathResolver { get; }
+
+    /// <summary>
+    /// Gets the disk image factory used by debug commands that operate on disk images
+    /// (e.g. <c>disk create</c> / <c>disk info</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The factory exposes the same format detection and opener that runtime controllers
+    /// use, so that images authored by debug commands round-trip through the same code
+    /// path that real mounts use.
+    /// </para>
+    /// <para>
+    /// May be null if no factory has been attached to the debug context. Commands
+    /// should check for null and report a clear error in that case.
+    /// </para>
+    /// </remarks>
+    DiskImageFactory? DiskImageFactory { get; }
 }

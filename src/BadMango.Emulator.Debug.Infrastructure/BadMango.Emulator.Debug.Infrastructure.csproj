@@ -34,6 +34,7 @@
     <ProjectReference Include="..\BadMango.Emulator.Devices\BadMango.Emulator.Devices.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Emulation\BadMango.Emulator.Emulation.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
+    <ProjectReference Include="..\BadMango.Emulator.Storage\BadMango.Emulator.Storage.csproj" />
     <ProjectReference Include="..\BadMango.Emulator.Systems\BadMango.Emulator.Systems.csproj" />
   </ItemGroup>
 
