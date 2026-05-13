@@ -144,7 +144,9 @@ public class DiskImageFactory
 
         var geometry = new DiskGeometry(35, SectorSkew.SectorsPerTrack, GcrEncoder.BytesPerSector, order);
         var media = new SectorImageMedia(backend, geometry, backingOffset: 0, writeProtected: forceReadOnly);
-        return new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, sniffed, format, path, media.IsReadOnly);
+        var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, sniffed, format, path, media.IsReadOnly);
+        result.AttachBackend(backend);
+        return result;
     }
 
     private DiskImageOpenResult OpenDsk(string path, bool forceReadOnly)
@@ -172,7 +174,9 @@ public class DiskImageFactory
 
         var trackCount = (int)(backend.Length / GcrEncoder.StandardTrackLength);
         var media = new NibbleImageMedia(backend, trackCount, backingOffset: 0, writeProtected: forceReadOnly);
-        return new Image525Result(media, DiskImageFormat.NibbleImage, path, media.IsReadOnly);
+        var result = new Image525Result(media, DiskImageFormat.NibbleImage, path, media.IsReadOnly);
+        result.AttachBackend(backend);
+        return result;
     }
 
     private DiskImageOpenResult OpenHdv(string path, bool forceReadOnly)
@@ -186,7 +190,9 @@ public class DiskImageFactory
 
         var blockCount = (int)(backend.Length / 512);
         var media = new BlockImageMedia(backend, blockCount, blockSize: 512, backingOffset: 0, writeProtected: forceReadOnly);
-        return new ImageBlockResult(media, DiskImageFormat.HdvBlockImage, path, media.IsReadOnly);
+        var result = new ImageBlockResult(media, DiskImageFormat.HdvBlockImage, path, media.IsReadOnly);
+        result.AttachBackend(backend);
+        return result;
     }
 
     private DiskImageOpenResult OpenTwoImg(string path, bool forceReadOnly)
@@ -257,7 +263,9 @@ public class DiskImageFactory
 
                         var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
                         var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
-                        return new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
+                        var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
+                        result.AttachBackend(backend);
+                        return result;
                     }
 
                 case 2: // nibble
@@ -269,7 +277,9 @@ public class DiskImageFactory
 
                         var trackCount = header.DataLength / GcrEncoder.StandardTrackLength;
                         var media = new NibbleImageMedia(backend, trackCount, backingOffset: header.DataOffset, writeProtected: readOnly);
-                        return new Image525Result(media, DiskImageFormat.TwoImgNibble, path, media.IsReadOnly);
+                        var result = new Image525Result(media, DiskImageFormat.TwoImgNibble, path, media.IsReadOnly);
+                        result.AttachBackend(backend);
+                        return result;
                     }
 
                 default:

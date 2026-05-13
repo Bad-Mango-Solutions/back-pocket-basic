@@ -133,10 +133,13 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         DiskImageOpenResult open;
         try
         {
-            // Always open read-only to avoid leaking a writable file handle: DiskImageOpenResult
-            // is not IDisposable, so the underlying FileStorageBackend (which uses FileShare.None
-            // for writable opens) would otherwise lock the file for the lifetime of the process.
+            // Always open read-only to avoid leaking a writable file handle: the underlying
+            // FileStorageBackend uses FileShare.None for writable opens (and FileShare.Read
+            // for read-only opens), either of which would prevent the user from renaming or
+            // deleting the file with their OS until the process exits.
             // The intrinsic write-protect state is computed separately below.
+            // The result is disposed at the end of this method via the using declaration so
+            // the file handle is released as soon as 'disk info' completes.
             open = factory.Open(path, forceReadOnly: true);
         }
         catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
@@ -144,70 +147,73 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error($"Cannot identify '{path}': {ex.Message}");
         }
 
-        // Intrinsic write-protect: OS read-only attribute, OR 2MG header bit if present.
-        // We do NOT consult open.IsReadOnly because we forced read-only above, which would
-        // always report "yes" regardless of the file's true state.
-        var fileInfo = new FileInfo(path);
-        var osReadOnly = (fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly;
-        var intrinsicWriteProtected = osReadOnly || (twoImgHeader is TwoImgHeader hdr && hdr.IsWriteProtected);
-
-        var output = context.Output;
-        output.WriteLine();
-        output.WriteLine($"Disk image: {path}");
-        output.WriteLine($"  File size:        {fileInfo.Length} bytes");
-        output.WriteLine($"  Detected format:  {open.Format}");
-        output.WriteLine($"  Write-protected:  {(intrinsicWriteProtected ? "yes" : "no")}");
-
-        switch (open)
+        using (open)
         {
-            case Image525AndBlockResult both:
-                {
-                    var geom = both.TrackMedia.Geometry;
-                    output.WriteLine($"  Media kind:       5.25\" sector image (track + block views)");
-                    output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  Geometry:         {0} tracks x {1} sectors x {2} bytes/sector", geom.TrackCount, geom.SectorsPerTrack, geom.BytesPerSector));
-                    output.WriteLine($"  Sector order:     {both.SectorOrder}");
-                    output.WriteLine($"  Block count:      {both.BlockMedia.BlockCount} (512-byte blocks)");
-                    if (Path.GetExtension(path).Equals(".dsk", StringComparison.OrdinalIgnoreCase))
+            // Intrinsic write-protect: OS read-only attribute, OR 2MG header bit if present.
+            // We do NOT consult open.IsReadOnly because we forced read-only above, which would
+            // always report "yes" regardless of the file's true state.
+            var fileInfo = new FileInfo(path);
+            var osReadOnly = (fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly;
+            var intrinsicWriteProtected = osReadOnly || (twoImgHeader is TwoImgHeader hdr && hdr.IsWriteProtected);
+
+            var output = context.Output;
+            output.WriteLine();
+            output.WriteLine($"Disk image: {path}");
+            output.WriteLine($"  File size:        {fileInfo.Length} bytes");
+            output.WriteLine($"  Detected format:  {open.Format}");
+            output.WriteLine($"  Write-protected:  {(intrinsicWriteProtected ? "yes" : "no")}");
+
+            switch (open)
+            {
+                case Image525AndBlockResult both:
                     {
-                        output.WriteLine($"  .dsk sniffed:     {(both.WasOrderSniffed ? "yes (matched signature)" : "no (fell back to DOS)")}");
+                        var geom = both.TrackMedia.Geometry;
+                        output.WriteLine($"  Media kind:       5.25\" sector image (track + block views)");
+                        output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  Geometry:         {0} tracks x {1} sectors x {2} bytes/sector", geom.TrackCount, geom.SectorsPerTrack, geom.BytesPerSector));
+                        output.WriteLine($"  Sector order:     {both.SectorOrder}");
+                        output.WriteLine($"  Block count:      {both.BlockMedia.BlockCount} (512-byte blocks)");
+                        if (Path.GetExtension(path).Equals(".dsk", StringComparison.OrdinalIgnoreCase))
+                        {
+                            output.WriteLine($"  .dsk sniffed:     {(both.WasOrderSniffed ? "yes (matched signature)" : "no (fell back to DOS)")}");
+                        }
+
+                        break;
                     }
 
-                    break;
-                }
+                case Image525Result trackOnly:
+                    {
+                        var geom = trackOnly.Media.Geometry;
+                        output.WriteLine($"  Media kind:       5.25\" nibble image (track view only)");
+                        output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  Geometry:         {0} tracks", geom.TrackCount));
+                        break;
+                    }
 
-            case Image525Result trackOnly:
-                {
-                    var geom = trackOnly.Media.Geometry;
-                    output.WriteLine($"  Media kind:       5.25\" nibble image (track view only)");
-                    output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  Geometry:         {0} tracks", geom.TrackCount));
-                    break;
-                }
-
-            case ImageBlockResult blockOnly:
-                {
-                    output.WriteLine($"  Media kind:       block image");
-                    output.WriteLine($"  Block count:      {blockOnly.Media.BlockCount} ({blockOnly.Media.BlockSize}-byte blocks)");
-                    break;
-                }
-        }
-
-        // For 2MG images, report header metadata too.
-        if (twoImgHeader is TwoImgHeader header)
-        {
-            output.WriteLine($"  2MG creator:      {header.Creator}");
-            output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG header len:   {0} bytes", header.HeaderLength));
-            output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG payload:      offset {0}, length {1}", header.DataOffset, header.DataLength));
-            output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG format code:  {0} ({1})", header.Format, FormatCodeName(header.Format)));
-            output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG flags:        0x{0:X8}", header.Flags));
-            output.WriteLine($"  2MG write-prot:   {(header.IsWriteProtected ? "yes" : "no")}");
-            if (header.HasDosVolumeNumber)
-            {
-                output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG DOS volume:   {0}", header.DosVolumeNumber));
+                case ImageBlockResult blockOnly:
+                    {
+                        output.WriteLine($"  Media kind:       block image");
+                        output.WriteLine($"  Block count:      {blockOnly.Media.BlockCount} ({blockOnly.Media.BlockSize}-byte blocks)");
+                        break;
+                    }
             }
-        }
 
-        output.WriteLine();
-        return CommandResult.Ok();
+            // For 2MG images, report header metadata too.
+            if (twoImgHeader is TwoImgHeader header)
+            {
+                output.WriteLine($"  2MG creator:      {header.Creator}");
+                output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG header len:   {0} bytes", header.HeaderLength));
+                output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG payload:      offset {0}, length {1}", header.DataOffset, header.DataLength));
+                output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG format code:  {0} ({1})", header.Format, FormatCodeName(header.Format)));
+                output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG flags:        0x{0:X8}", header.Flags));
+                output.WriteLine($"  2MG write-prot:   {(header.IsWriteProtected ? "yes" : "no")}");
+                if (header.HasDosVolumeNumber)
+                {
+                    output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  2MG DOS volume:   {0}", header.DosVolumeNumber));
+                }
+            }
+
+            output.WriteLine();
+            return CommandResult.Ok();
+        }
     }
 
     private static byte[] ReadFirstBytes(string path, int count)
