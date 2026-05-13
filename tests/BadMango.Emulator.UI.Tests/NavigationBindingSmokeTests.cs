@@ -7,7 +7,6 @@ namespace BadMango.Emulator.UI.Tests;
 using System.Windows.Input;
 
 using Avalonia.Controls;
-using Avalonia.Data;
 using Avalonia.Headless.NUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
