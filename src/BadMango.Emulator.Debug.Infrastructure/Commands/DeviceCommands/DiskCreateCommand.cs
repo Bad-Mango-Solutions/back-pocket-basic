@@ -9,6 +9,7 @@ using System.Globalization;
 
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Storage.Formats;
+using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
 
 /// <summary>
@@ -41,33 +42,6 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
     private const int ThreePointFiveBlocks = 1600; // 800K
     private const int ThirtyTwoMBlocks = 65535; // ProDOS volume max
     private const int TwoImgHeaderLength = 64;
-
-    /// <summary>
-    /// Physical sector → DOS-3.3 logical sector (matches Storage.Gcr.SectorSkew internal table).
-    /// </summary>
-    private static readonly byte[] PhysicalToDosLogical =
-    {
-        0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4,
-        0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF,
-    };
-
-    /// <summary>
-    /// Physical sector → ProDOS logical sector.
-    /// </summary>
-    private static readonly byte[] ProDosLogicalFromPhysical =
-    {
-        0x0, 0x8, 0x1, 0x9, 0x2, 0xA, 0x3, 0xB,
-        0x4, 0xC, 0x5, 0xD, 0x6, 0xE, 0x7, 0xF,
-    };
-
-    /// <summary>
-    /// ProDOS logical sector → physical sector (inverse of <see cref="ProDosLogicalFromPhysical"/>).
-    /// </summary>
-    private static readonly byte[] ProDosLogicalToPhysical = InvertSkew(new byte[]
-    {
-        0x0, 0x8, 0x1, 0x9, 0x2, 0xA, 0x3, 0xB,
-        0x4, 0xC, 0x5, 0xD, 0x6, 0xE, 0x7, 0xF,
-    });
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskCreateCommand"/> class.
@@ -304,10 +278,6 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         {
             return CommandResult.Error($"Access denied writing '{path}': {ex.Message}");
         }
-
-        // Note: the round-trip property required by the AC ("DiskImageFactory.Open(path) accepts
-        // whatever disk create wrote") is verified by the unit tests rather than at runtime, to
-        // avoid leaving a file handle open on the freshly-written image.
 
         var summary = $"Created '{path}' ({bytes.Length} bytes, {DescribeFormat(container, format, sizeResult.BlockCount)}).";
         context.Output.WriteLine(summary);
@@ -576,14 +546,16 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
     {
         if (volumeName.Length is < 1 or > 15)
         {
-            throw new ArgumentException("ProDOS volume name must be 1..15 characters.");
+            throw new ArgumentException("ProDOS volume name must be 1..15 characters.", nameof(volumeName));
         }
 
         foreach (var c in volumeName)
         {
             if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.'))
             {
-                throw new ArgumentException("ProDOS volume name must contain only A-Z, 0-9, '.'.");
+                throw new ArgumentException(
+                    $"ProDOS volume name contains invalid character '{c}'. Must contain only A-Z, 0-9, '.'.",
+                    nameof(volumeName));
             }
         }
 
@@ -688,24 +660,12 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
     private static void WriteProDosLogicalSector(byte[] payload, int track, int proDosLogical, ReadOnlySpan<byte> source, SectorOrder backing)
     {
         // Convert ProDOS-logical sector to physical, then to backing-image logical for the file offset.
-        var physical = ProDosLogicalToPhysical[proDosLogical];
-        int backingLogical = backing == SectorOrder.Dos33
-            ? PhysicalToDosLogical[physical]
-            : ProDosLogicalFromPhysical[physical];
+        // Uses the public Storage.Gcr.SectorSkew helpers so the skew tables are not duplicated.
+        var physical = SectorSkew.LogicalToPhysical(SectorOrder.ProDos, proDosLogical);
+        var backingLogical = SectorSkew.PhysicalToLogical(backing, physical);
 
         var offset = ((track * 16) + backingLogical) * 256;
         source.CopyTo(payload.AsSpan(offset, 256));
-    }
-
-    private static byte[] InvertSkew(byte[] forward)
-    {
-        var inverse = new byte[forward.Length];
-        for (var i = 0; i < forward.Length; i++)
-        {
-            inverse[forward[i]] = (byte)i;
-        }
-
-        return inverse;
     }
 
     private static byte[] WrapTwoImg(byte[] payload, FormatKind format, SectorOrder? sectorOrder, int? volumeNumber)
