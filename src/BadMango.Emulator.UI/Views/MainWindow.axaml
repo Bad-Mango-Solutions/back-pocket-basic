@@ -57,7 +57,7 @@
                     <ItemsControl ItemsSource="{Binding NavigationItems}" Margin="8">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:NavigationItemViewModel">
-                                <Button Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                <Button Command="{Binding ((vm:MainWindowViewModel)DataContext).NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding Name}"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
