@@ -12,13 +12,13 @@ using BadMango.Emulator.Storage.Media;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Reads the sector at track-17 / block-2 (the standard DOS 3.3 VTOC location and the
-/// ProDOS root-directory location) and inspects it as if the image were each ordering
-/// in turn:
+/// Checks the DOS 3.3 VTOC location at track 17, sector 0 and also checks the ProDOS
+/// root-directory key block at block 2 (file offset 1024 in a ProDOS-ordered image),
+/// inspecting those inputs as appropriate for each ordering:
 /// </para>
 /// <list type="number">
-/// <item><description>If interpreting as DOS 3.3 yields a valid VTOC signature, choose <see cref="SectorOrder.Dos33"/>.</description></item>
-/// <item><description>Otherwise, if interpreting as ProDOS yields a root-directory signature, choose <see cref="SectorOrder.ProDos"/>.</description></item>
+/// <item><description>If interpreting track 17, sector 0 as DOS 3.3 yields a valid VTOC signature, choose <see cref="SectorOrder.Dos33"/>.</description></item>
+/// <item><description>Otherwise, if interpreting the image as ProDOS yields a root-directory signature at the ProDOS sniffing locations, choose <see cref="SectorOrder.ProDos"/>.</description></item>
 /// <item><description>Otherwise fall back to <see cref="SectorOrder.Dos33"/>.</description></item>
 /// </list>
 /// </remarks>

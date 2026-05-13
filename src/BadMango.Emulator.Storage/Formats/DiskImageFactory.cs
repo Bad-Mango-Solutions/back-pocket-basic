@@ -198,65 +198,88 @@ public class DiskImageFactory
         }
 
         var header = TwoImgHeader.Parse(headBytes);
+        if (header.HeaderLength < 64)
+        {
+            throw new InvalidDataException("2MG header length is invalid.");
+        }
+
+        if (header.DataOffset < 0)
+        {
+            throw new InvalidDataException("2MG data offset is invalid.");
+        }
+
+        if (header.DataLength < 0)
+        {
+            throw new InvalidDataException("2MG data length is invalid.");
+        }
+
+        if (header.DataOffset < header.HeaderLength)
+        {
+            throw new InvalidDataException("2MG data offset precedes the end of the header.");
+        }
+
         var readOnly = forceReadOnly || header.IsWriteProtected;
         var backend = this.OpenBackend(path, readOnly);
 
-        if (header.DataOffset + (long)header.DataLength > backend.Length)
+        try
+        {
+            if (header.DataOffset + (long)header.DataLength > backend.Length)
+            {
+                throw new InvalidDataException("2MG header points past end of file.");
+            }
+
+            switch (header.Format)
+            {
+                case 0: // DOS 3.3 sector order
+                case 1: // ProDOS sector order
+                    {
+                        var order = header.Format == 0 ? SectorOrder.Dos33 : SectorOrder.ProDos;
+                        var fmt = header.Format == 0 ? DiskImageFormat.TwoImgDos : DiskImageFormat.TwoImgProDos;
+                        if (header.DataLength % GcrEncoder.BytesPerSector != 0)
+                        {
+                            throw new InvalidDataException("2MG sector payload length is not a multiple of 256.");
+                        }
+
+                        int trackCount;
+                        int sectorsPerTrack = SectorSkew.SectorsPerTrack;
+                        if (header.DataLength == FivePointTwoFiveStandardBytes)
+                        {
+                            trackCount = 35;
+                        }
+                        else if (header.DataLength % (sectorsPerTrack * GcrEncoder.BytesPerSector) == 0)
+                        {
+                            trackCount = header.DataLength / (sectorsPerTrack * GcrEncoder.BytesPerSector);
+                        }
+                        else
+                        {
+                            throw new InvalidDataException("2MG sector payload does not represent whole 16-sector tracks.");
+                        }
+
+                        var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
+                        var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
+                        return new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
+                    }
+
+                case 2: // nibble
+                    {
+                        if (header.DataLength % GcrEncoder.StandardTrackLength != 0)
+                        {
+                            throw new InvalidDataException("2MG nibble payload is not a multiple of the standard track length.");
+                        }
+
+                        var trackCount = header.DataLength / GcrEncoder.StandardTrackLength;
+                        var media = new NibbleImageMedia(backend, trackCount, backingOffset: header.DataOffset, writeProtected: readOnly);
+                        return new Image525Result(media, DiskImageFormat.TwoImgNibble, path, media.IsReadOnly);
+                    }
+
+                default:
+                    throw new InvalidDataException($"Unknown 2MG format code {header.Format}.");
+            }
+        }
+        catch
         {
             backend.Dispose();
-            throw new InvalidDataException("2MG header points past end of file.");
-        }
-
-        switch (header.Format)
-        {
-            case 0: // DOS 3.3 sector order
-            case 1: // ProDOS sector order
-                {
-                    var order = header.Format == 0 ? SectorOrder.Dos33 : SectorOrder.ProDos;
-                    var fmt = header.Format == 0 ? DiskImageFormat.TwoImgDos : DiskImageFormat.TwoImgProDos;
-                    if (header.DataLength % GcrEncoder.BytesPerSector != 0)
-                    {
-                        backend.Dispose();
-                        throw new InvalidDataException("2MG sector payload length is not a multiple of 256.");
-                    }
-
-                    int trackCount;
-                    int sectorsPerTrack = SectorSkew.SectorsPerTrack;
-                    if (header.DataLength == FivePointTwoFiveStandardBytes)
-                    {
-                        trackCount = 35;
-                    }
-                    else if (header.DataLength % (sectorsPerTrack * GcrEncoder.BytesPerSector) == 0)
-                    {
-                        trackCount = header.DataLength / (sectorsPerTrack * GcrEncoder.BytesPerSector);
-                    }
-                    else
-                    {
-                        backend.Dispose();
-                        throw new InvalidDataException("2MG sector payload does not represent whole 16-sector tracks.");
-                    }
-
-                    var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
-                    var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
-                    return new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
-                }
-
-            case 2: // nibble
-                {
-                    if (header.DataLength % GcrEncoder.StandardTrackLength != 0)
-                    {
-                        backend.Dispose();
-                        throw new InvalidDataException("2MG nibble payload is not a multiple of the standard track length.");
-                    }
-
-                    var trackCount = header.DataLength / GcrEncoder.StandardTrackLength;
-                    var media = new NibbleImageMedia(backend, trackCount, backingOffset: header.DataOffset, writeProtected: readOnly);
-                    return new Image525Result(media, DiskImageFormat.TwoImgNibble, path, media.IsReadOnly);
-                }
-
-            default:
-                backend.Dispose();
-                throw new InvalidDataException($"Unknown 2MG format code {header.Format}.");
+            throw;
         }
     }
 }

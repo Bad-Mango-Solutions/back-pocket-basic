@@ -8,7 +8,7 @@ namespace BadMango.Emulator.Storage.Media;
 /// Track-addressed 5.25" disk media (Disk II view).
 /// </summary>
 /// <remarks>
-/// Quarter-track addressing covers 0…139 (4 positions per of 35 tracks). Implementations
+/// Quarter-track addressing covers 0…139 (4 positions per track across 35 tracks). Implementations
 /// over sector-image backings translate quarter-tracks to whole tracks and synthesize the
 /// raw nibble stream via a GCR 6-and-2 nibblizer; nibble-image backings (<c>.nib</c>,
 /// <c>.woz</c>) return cached nibbles directly.
