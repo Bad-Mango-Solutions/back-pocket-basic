@@ -8,6 +8,7 @@ using System.Globalization;
 
 using BadMango.Emulator.Devices;
 using BadMango.Emulator.Storage.Formats;
+using BadMango.Emulator.Storage.Media;
 
 /// <summary>
 /// Reports format / geometry / write-protect / sniffed-order metadata for a disk image
@@ -177,6 +178,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
                             output.WriteLine($"  .dsk sniffed:     {(both.WasOrderSniffed ? "yes (matched signature)" : "no (fell back to DOS)")}");
                         }
 
+                        WriteProDosVolumeNameIfPresent(output, both.BlockMedia, open.Format);
                         break;
                     }
 
@@ -190,8 +192,9 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
 
                 case ImageBlockResult blockOnly:
                     {
-                        output.WriteLine($"  Media kind:       block image");
+                        output.WriteLine($"  Media kind:       {DescribeBlockMediaKind(blockOnly.Media.BlockCount)}");
                         output.WriteLine($"  Block count:      {blockOnly.Media.BlockCount} ({blockOnly.Media.BlockSize}-byte blocks)");
+                        WriteProDosVolumeNameIfPresent(output, blockOnly.Media, open.Format);
                         break;
                     }
             }
@@ -245,4 +248,83 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         2 => "nibble",
         _ => "unknown",
     };
+
+    /// <summary>
+    /// Returns a human-readable description of a pure block image based on its block count
+    /// (e.g. an 800K 3.5" floppy is reported as such rather than as a generic "block image").
+    /// </summary>
+    private static string DescribeBlockMediaKind(int blockCount) => blockCount switch
+    {
+        1600 => "3.5\" block image (800K)",
+        _ => "block image",
+    };
+
+    /// <summary>
+    /// If the supplied block media looks like a ProDOS-formatted volume, writes the
+    /// volume name reported by its volume directory key block (block 2) to <paramref name="output"/>.
+    /// </summary>
+    /// <remarks>
+    /// For untyped containers (e.g. <c>.hdv</c>) we still attempt the read because a
+    /// well-formed ProDOS volume header is self-identifying via its 0xF storage type.
+    /// Any I/O or parse failure is silently ignored so non-ProDOS images simply omit
+    /// the line.
+    /// </remarks>
+    private static void WriteProDosVolumeNameIfPresent(TextWriter output, IBlockMedia media, DiskImageFormat format)
+    {
+        if (media.BlockCount < 3 || media.BlockSize != 512)
+        {
+            return;
+        }
+
+        // Only attempt for formats that may carry a ProDOS volume directory.
+        if (format != DiskImageFormat.ProDosSectorImage
+            && format != DiskImageFormat.TwoImgProDos
+            && format != DiskImageFormat.HdvBlockImage)
+        {
+            return;
+        }
+
+        var keyBlock = new byte[512];
+        try
+        {
+            media.ReadBlock(2, keyBlock);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentOutOfRangeException)
+        {
+            return;
+        }
+
+        // Volume directory key block: prev_pointer == 0 at offset 0..1, storage_type
+        // nibble 0xF at offset 4 high nibble, name length 1..15 in low nibble.
+        if (keyBlock[0] != 0 || keyBlock[1] != 0)
+        {
+            return;
+        }
+
+        var typeAndLen = keyBlock[4];
+        if ((typeAndLen & 0xF0) != 0xF0)
+        {
+            return;
+        }
+
+        var nameLen = typeAndLen & 0x0F;
+        if (nameLen is < 1 or > 15)
+        {
+            return;
+        }
+
+        var name = new char[nameLen];
+        for (var i = 0; i < nameLen; i++)
+        {
+            var c = (char)keyBlock[5 + i];
+            if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.'))
+            {
+                return;
+            }
+
+            name[i] = c;
+        }
+
+        output.WriteLine($"  Volume name:      {new string(name)}");
+    }
 }

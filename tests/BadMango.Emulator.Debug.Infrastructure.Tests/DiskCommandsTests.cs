@@ -512,6 +512,72 @@ public sealed class DiskCommandsTests
         });
     }
 
+    /// <summary>
+    /// <c>disk-info</c> on a 3.5" 800K ProDOS-formatted 2MG image must report a 3.5"
+    /// block image rather than a 5.25" sector image (regression test for the bug where
+    /// a 200-track "5.25" sector image (track + block views)" line was emitted instead).
+    /// Also asserts that the ProDOS volume name is reported.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnThreePointFiveProDosTwoImg_ReportsBlockImageAndVolumeName()
+    {
+        var path = this.TempPath(".2mg");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--size", "3.5", "--volume-name", "BLANK35"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var output = this.outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Does.Contain("TwoImgProDos"));
+            Assert.That(output, Does.Not.Contain("5.25\""), "3.5\" disks must not be reported as 5.25\".");
+            Assert.That(output, Does.Contain("3.5\" block image"));
+            Assert.That(output, Does.Contain("Block count:      1600"));
+            Assert.That(output, Does.Contain("Volume name:      BLANK35"));
+        });
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> reports the ProDOS volume name for a 5.25" ProDOS 2MG image.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnFivePointTwoFiveProDosTwoImg_ReportsVolumeName()
+    {
+        var path = this.TempPath(".2mg");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "MYVOL"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var output = this.outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Does.Contain("TwoImgProDos"));
+            Assert.That(output, Does.Contain("5.25\" sector image"));
+            Assert.That(output, Does.Contain("Volume name:      MYVOL"));
+        });
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> reports the ProDOS volume name for a ProDOS-formatted .hdv image.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnProDosHdv_ReportsVolumeName()
+    {
+        var path = this.TempPath(".hdv");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", "3.5", "--format", "prodos", "--volume-name", "BIGVOL"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var output = this.outputWriter.ToString();
+        Assert.That(output, Does.Contain("Volume name:      BIGVOL"));
+    }
+
     /// <summary>Both subcommands return an error when no DiskImageFactory is attached.</summary>
     [Test]
     public void Subcommands_RequireFactoryOnContext()
