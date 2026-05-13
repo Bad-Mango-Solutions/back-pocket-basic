@@ -121,6 +121,26 @@ public sealed class DiskCommandsTests
         });
     }
 
+    /// <summary><c>disk-create</c> advertises every supported flag through its <c>Options</c> list so <c>help</c> works.</summary>
+    [Test]
+    public void DiskCreate_OptionsListAdvertisesAllFlags()
+    {
+        var names = new DiskCreateCommand().Options.Select(o => o.Name).ToList();
+        Assert.That(names, Is.EquivalentTo(new[] { "--size", "--format", "--bootable", "--volume-name", "--volume-number" }));
+    }
+
+    /// <summary><c>disk-create</c> writes via a temp file + rename, leaving no leftover staging file on success.</summary>
+    [Test]
+    public void DiskCreate_DoesNotLeaveStagingFile()
+    {
+        var path = this.TempPath(".dsk");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "dos33"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var leftover = Directory.GetFiles(this.tempRoot, "*.tmp", SearchOption.TopDirectoryOnly);
+        Assert.That(leftover, Is.Empty, "Atomic write should not leave any *.tmp staging file behind.");
+    }
+
     /// <summary><c>disk create</c> with no arguments is rejected with usage.</summary>
     [Test]
     public void DiskCreate_NoArgs_ReturnsError()
@@ -401,6 +421,28 @@ public sealed class DiskCommandsTests
             Assert.That(output, Does.Contain("TwoImgProDos"));
             Assert.That(output, Does.Contain("2MG creator:      BMSL"));
             Assert.That(output, Does.Contain("2MG format code:  1"));
+        });
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> opens read-only so it doesn't take the file's exclusive write share.
+    /// Another reader must still be able to open the file after <c>disk-info</c> returns.
+    /// </summary>
+    [Test]
+    public void DiskInfo_DoesNotBlockOtherReaders()
+    {
+        var path = this.TempPath(".dsk");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "dos33"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        // After disk-info, another reader (FileShare.Read) must still succeed. If disk-info
+        // had taken a writable handle (FileShare.None), this would throw IOException.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         });
     }
 

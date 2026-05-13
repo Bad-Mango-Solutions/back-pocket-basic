@@ -133,30 +133,30 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         DiskImageOpenResult open;
         try
         {
-            // Open without forcing read-only so the reported write-protect flag reflects
-            // the image's intrinsic state (e.g. the 2MG header bit) rather than our open mode.
-            open = factory.Open(path);
+            // Always open read-only to avoid leaking a writable file handle: DiskImageOpenResult
+            // is not IDisposable, so the underlying FileStorageBackend (which uses FileShare.None
+            // for writable opens) would otherwise lock the file for the lifetime of the process.
+            // The intrinsic write-protect state is computed separately below.
+            open = factory.Open(path, forceReadOnly: true);
         }
-        catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or UnauthorizedAccessException or IOException)
+        catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
         {
-            // Fall back to a forced read-only open so disk-info still works on read-only
-            // backing files and reports as much metadata as possible.
-            try
-            {
-                open = factory.Open(path, forceReadOnly: true);
-            }
-            catch (Exception inner) when (inner is InvalidDataException or NotSupportedException)
-            {
-                return CommandResult.Error($"Cannot identify '{path}': {inner.Message}");
-            }
+            return CommandResult.Error($"Cannot identify '{path}': {ex.Message}");
         }
+
+        // Intrinsic write-protect: OS read-only attribute, OR 2MG header bit if present.
+        // We do NOT consult open.IsReadOnly because we forced read-only above, which would
+        // always report "yes" regardless of the file's true state.
+        var fileInfo = new FileInfo(path);
+        var osReadOnly = (fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly;
+        var intrinsicWriteProtected = osReadOnly || (twoImgHeader is TwoImgHeader hdr && hdr.IsWriteProtected);
 
         var output = context.Output;
         output.WriteLine();
         output.WriteLine($"Disk image: {path}");
-        output.WriteLine($"  File size:        {new FileInfo(path).Length} bytes");
+        output.WriteLine($"  File size:        {fileInfo.Length} bytes");
         output.WriteLine($"  Detected format:  {open.Format}");
-        output.WriteLine($"  Write-protected:  {(open.IsReadOnly ? "yes" : "no")}");
+        output.WriteLine($"  Write-protected:  {(intrinsicWriteProtected ? "yes" : "no")}");
 
         switch (open)
         {

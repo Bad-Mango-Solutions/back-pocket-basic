@@ -90,7 +90,39 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         "is the only way to produce a bootable output.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new CommandOption(
+            "--size",
+            null,
+            "5.25|3.5|32M|<blocks>",
+            "Image geometry. '5.25' = 280 blocks (140K), '3.5' = 1600 blocks (800K), '32M' = 65535 blocks. Defaults to 5.25 for sector containers and 32M for .hdv.",
+            null),
+        new CommandOption(
+            "--format",
+            null,
+            "raw|dos33|prodos",
+            "Filesystem to author. 'raw' zero-fills only; 'dos33' writes a VTOC + empty catalog on a 35-track image; 'prodos' writes a volume directory and bitmap.",
+            "raw"),
+        new CommandOption(
+            "--bootable",
+            null,
+            "path",
+            "Path to a source disk image whose boot region (track 0 / blocks 0..1) is copied into the new image. Required for bootable output until a Disk II controller exists.",
+            null),
+        new CommandOption(
+            "--volume-name",
+            null,
+            "string",
+            "ProDOS volume name (1..15 chars, A-Z / 0-9 / '.'). Ignored for 'raw' and 'dos33'.",
+            "BLANK"),
+        new CommandOption(
+            "--volume-number",
+            null,
+            "int",
+            "DOS 3.3 volume number (1..254). Ignored for 'raw' and 'prodos'.",
+            "254"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
@@ -268,7 +300,36 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
                 Directory.CreateDirectory(dir);
             }
 
-            File.WriteAllBytes(path, bytes);
+            // Atomic write: stage the bytes in a sibling temp file then rename into place,
+            // so a crash or full disk mid-write leaves the target file absent rather than
+            // partially-written. Using the same directory keeps the rename on one volume.
+            var stagingDir = string.IsNullOrEmpty(dir) ? "." : dir;
+            var tempPath = Path.Combine(stagingDir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllBytes(tempPath, bytes);
+                File.Move(tempPath, path);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (IOException)
+                    {
+                        // Best effort.
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Best effort.
+                    }
+                }
+
+                throw;
+            }
         }
         catch (IOException ex)
         {
