@@ -110,7 +110,8 @@
                           HeadersVisibility="Column"
                           CanUserReorderColumns="True"
                           CanUserResizeColumns="True"
-                          CanUserSortColumns="True">
+                          CanUserSortColumns="True"
+                          x:CompileBindings="False">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Addr" Binding="{Binding Address}" Width="70" />
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />

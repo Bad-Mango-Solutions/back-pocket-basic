@@ -86,7 +86,8 @@
                           HeadersVisibility="Column"
                           CanUserReorderColumns="True"
                           CanUserResizeColumns="True"
-                          CanUserSortColumns="True">
+                          CanUserSortColumns="True"
+                          x:CompileBindings="False">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Handle" Binding="{Binding Handle}" Width="80" />
                         <DataGridTextColumn Header="Device" Binding="{Binding DeviceName}" Width="*" />
