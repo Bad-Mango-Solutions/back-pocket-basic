@@ -9,9 +9,24 @@ using BadMango.Emulator.Storage.Media;
 /// <summary>
 /// Open result for an image that exposes only an <see cref="IBlockMedia"/> view (e.g. <c>.hdv</c>).
 /// </summary>
-/// <param name="Media">The block-addressed view.</param>
-/// <param name="FormatX">Detected format.</param>
-/// <param name="PathX">Source path.</param>
-/// <param name="ReadOnly">Whether the image was opened read-only.</param>
-public sealed record ImageBlockResult(IBlockMedia Media, DiskImageFormat FormatX, string PathX, bool ReadOnly)
-    : DiskImageOpenResult(FormatX, PathX, ReadOnly);
+public sealed record ImageBlockResult : DiskImageOpenResult
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ImageBlockResult"/> class.
+    /// </summary>
+    /// <param name="media">The block-addressed view.</param>
+    /// <param name="format">Detected format.</param>
+    /// <param name="path">Source path.</param>
+    /// <param name="isReadOnly">Whether the image was opened read-only.</param>
+    public ImageBlockResult(IBlockMedia media, DiskImageFormat format, string path, bool isReadOnly)
+        : base(format, path, isReadOnly)
+    {
+        this.Media = media;
+    }
+
+    /// <summary>
+    /// Gets the block-addressed view.
+    /// </summary>
+    /// <value>The block view of the underlying image.</value>
+    public IBlockMedia Media { get; }
+}
