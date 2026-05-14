@@ -126,7 +126,7 @@ public sealed class DiskCommandsTests
     public void DiskCreate_OptionsListAdvertisesAllFlags()
     {
         var names = new DiskCreateCommand().Options.Select(o => o.Name).ToList();
-        Assert.That(names, Is.EquivalentTo(new[] { "--size", "--format", "--bootable", "--volume-name", "--volume-number" }));
+        Assert.That(names, Is.EquivalentTo(new[] { "--size", "--format", "--bootable", "--volume-name", "--volume-number", "--only-uppercase" }));
     }
 
     /// <summary><c>disk-create</c> writes via a temp file + rename, leaving no leftover staging file on success.</summary>
@@ -614,6 +614,195 @@ public sealed class DiskCommandsTests
 
         var output = this.outputWriter.ToString();
         Assert.That(output, Does.Contain("ProDosSectorImage"));
+    }
+
+    /// <summary>
+    /// <c>--size</c> accepts <c>140K</c> / <c>140k</c> as case-insensitive aliases for
+    /// <c>5.25</c> (280 blocks) and <c>800K</c> / <c>800k</c> as aliases for <c>3.5</c>
+    /// (1600 blocks).
+    /// </summary>
+    /// <param name="sizeArg">The case-variant size alias to pass via <c>--size</c>.</param>
+    [TestCase("140K")]
+    [TestCase("140k")]
+    public void DiskCreate_Size140KAlias_Produces525Image(string sizeArg)
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", sizeArg, "--format", "prodos", "--volume-name", "BLANK"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (Image525AndBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        Assert.That(open.BlockMedia.BlockCount, Is.EqualTo(280));
+    }
+
+    /// <summary><c>--size 800K</c> (case-insensitive) produces an 800K (1600 block) image.</summary>
+    /// <param name="sizeArg">The case-variant 800K alias to pass via <c>--size</c>.</param>
+    [TestCase("800K")]
+    [TestCase("800k")]
+    public void DiskCreate_Size800KAlias_Produces35Image(string sizeArg)
+    {
+        var path = this.TempPath(".hdv");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", sizeArg, "--format", "prodos", "--volume-name", "BLANK"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (ImageBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        Assert.That(open.Media.BlockCount, Is.EqualTo(1600));
+    }
+
+    /// <summary>
+    /// <c>--size NM</c> (1..32 megabytes, case-insensitive) selects an N-megabyte ProDOS
+    /// volume. <c>32M</c> remains clamped at the ProDOS maximum of 65535 blocks.
+    /// </summary>
+    /// <param name="sizeArg">The megabyte alias to pass via <c>--size</c>.</param>
+    /// <param name="expectedBlocks">The expected total block count of the resulting image.</param>
+    [TestCase("1M", 2048)]
+    [TestCase("2m", 4096)]
+    [TestCase("4M", 8192)]
+    [TestCase("8m", 16384)]
+    [TestCase("16M", 32768)]
+    [TestCase("32M", 65535)]
+    [TestCase("32m", 65535)]
+    public void DiskCreate_SizeMegabyteAlias_ProducesMatchingBlockCount(string sizeArg, int expectedBlocks)
+    {
+        var path = this.TempPath(".hdv");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", sizeArg, "--format", "prodos", "--volume-name", "BIG"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (ImageBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        Assert.That(open.Media.BlockCount, Is.EqualTo(expectedBlocks));
+    }
+
+    /// <summary>An out-of-range megabyte alias is rejected with a helpful error.</summary>
+    /// <param name="sizeArg">An out-of-range megabyte alias.</param>
+    [TestCase("0M")]
+    [TestCase("33M")]
+    [TestCase("64M")]
+    public void DiskCreate_SizeMegabyteOutOfRange_ReturnsError(string sizeArg)
+    {
+        var path = this.TempPath(".hdv");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", sizeArg, "--format", "prodos", "--volume-name", "BIG"]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("--size"));
+        });
+    }
+
+    /// <summary>
+    /// A lowercase ProDOS volume name is accepted, the on-disk bytes are stored as
+    /// uppercase, and the Tech Note 25 case-bit field at offset 0x1A of the volume
+    /// directory header (block-relative offset 0x1E..0x1F) is populated with the
+    /// validity flag (bit 15) plus per-character lowercase bits.
+    /// </summary>
+    [Test]
+    public void DiskCreate_LowercaseVolumeName_StoresUppercaseAndCaseBits()
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "MyVol"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (Image525AndBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        var keyBlock = new byte[512];
+        open.BlockMedia.ReadBlock(2, keyBlock);
+
+        var name = System.Text.Encoding.ASCII.GetString(keyBlock, 5, 5);
+        var caseField = (ushort)(keyBlock[0x1E] | (keyBlock[0x1F] << 8));
+
+        // Expected bits: M=0, y=1 (bit 13), V=0, o=1 (bit 11), l=1 (bit 10) plus the
+        // valid-flag bit 15. That is 0x8000 | (1 << 13) | (1 << 11) | (1 << 10) = 0xAC00.
+        const ushort expectedCaseField = 0x8000 | (1 << 13) | (1 << 11) | (1 << 10);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(name, Is.EqualTo("MYVOL"), "On-disk volume name bytes must be uppercase.");
+            Assert.That(keyBlock[4] & 0x0F, Is.EqualTo(5));
+            Assert.That(caseField, Is.EqualTo(expectedCaseField));
+        });
+    }
+
+    /// <summary>
+    /// An all-uppercase volume name leaves the Tech Note 25 case-bit field zero so older
+    /// ProDOS tools that pre-date the case-bit convention continue to round-trip.
+    /// </summary>
+    [Test]
+    public void DiskCreate_UppercaseVolumeName_LeavesCaseFieldZero()
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "PLAIN"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (Image525AndBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        var keyBlock = new byte[512];
+        open.BlockMedia.ReadBlock(2, keyBlock);
+
+        var caseField = (ushort)(keyBlock[0x1E] | (keyBlock[0x1F] << 8));
+        Assert.That(caseField, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// <c>--only-uppercase</c> rejects a lowercase volume name with a clear error and
+    /// does not write the destination file.
+    /// </summary>
+    [Test]
+    public void DiskCreate_OnlyUppercase_RejectsLowercaseVolumeName()
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "MyVol", "--only-uppercase"]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("--only-uppercase"));
+            Assert.That(File.Exists(path), Is.False, "No file should be written when the name is rejected.");
+        });
+    }
+
+    /// <summary>
+    /// <c>--only-uppercase</c> with an uppercase name still writes a zero case-bit field,
+    /// matching the legacy on-disk layout.
+    /// </summary>
+    [Test]
+    public void DiskCreate_OnlyUppercaseWithUppercaseName_LeavesCaseFieldZero()
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "PLAIN", "--only-uppercase"]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        var open = (Image525AndBlockResult)new DiskImageFactory().Open(path, forceReadOnly: true);
+        var keyBlock = new byte[512];
+        open.BlockMedia.ReadBlock(2, keyBlock);
+
+        var caseField = (ushort)(keyBlock[0x1E] | (keyBlock[0x1F] << 8));
+        Assert.That(caseField, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> renders the original mixed-case volume name back from the on-disk
+    /// uppercase bytes plus the Tech Note 25 case-bit field.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnLowercaseVolumeName_RestoresMixedCase()
+    {
+        var path = this.TempPath(".po");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "MyVol"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var info = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(info.Success, Is.True, info.Message);
+
+        var output = this.outputWriter.ToString();
+        Assert.That(output, Does.Contain("Volume name:      MyVol"));
+    }
+
+    /// <summary>An invalid first character (digit) in the volume name is rejected.</summary>
+    [Test]
+    public void DiskCreate_VolumeNameStartingWithDigit_ReturnsError()
+    {
+        var path = this.TempPath(".po");
+        var result = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "prodos", "--volume-name", "1bad"]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("must start with a letter"));
+        });
     }
 
     private string TempPath(string ext)

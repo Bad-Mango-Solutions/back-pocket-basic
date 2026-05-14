@@ -17,9 +17,9 @@ using BadMango.Emulator.Storage.Media;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Implements <c>disk create &lt;path&gt; [--size 5.25|3.5|32M|&lt;blocks&gt;]
+/// Implements <c>disk create &lt;path&gt; [--size 5.25|140K|3.5|800K|1M..32M|&lt;blocks&gt;]
 /// [--format raw|dos33|prodos] [--bootable &lt;bootimage&gt;] [--volume-name &lt;name&gt;]
-/// [--volume-number &lt;n&gt;]</c>.
+/// [--volume-number &lt;n&gt;] [--only-uppercase]</c>.
 /// </para>
 /// <para>
 /// The container is selected from the file extension (<c>.dsk</c> / <c>.do</c> /
@@ -31,6 +31,12 @@ using BadMango.Emulator.Storage.Media;
 /// The <c>dos33</c> format additionally writes a DOS 3.3 VTOC and an empty catalog
 /// track on a 35-track 5.25" image. The <c>prodos</c> format writes a ProDOS volume
 /// directory plus the volume bitmap sized for the chosen geometry.
+/// </para>
+/// <para>
+/// ProDOS volume names are case-insensitive on disk; lowercase characters supplied
+/// via <c>--volume-name</c> are stored as uppercase plus a Tech Note 25 case-bit map
+/// at offset 0x1A of the volume directory header. Pass <c>--only-uppercase</c> to
+/// reject lowercase input and emit a zero (legacy) case-bit field.
 /// </para>
 /// </remarks>
 [DeviceDebugCommand]
@@ -73,8 +79,8 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
 
     /// <inheritdoc/>
     public override string Usage =>
-        "disk-create <path> [--size 5.25|3.5|32M|<blocks>] [--format raw|dos33|prodos] " +
-        "[--bootable <bootimage>] [--volume-name <name>] [--volume-number <n>]";
+        "disk-create <path> [--size 5.25|140K|3.5|800K|1M..32M|<blocks>] [--format raw|dos33|prodos] " +
+        "[--bootable <bootimage>] [--volume-name <name>] [--volume-number <n>] [--only-uppercase]";
 
     /// <inheritdoc/>
     public string Synopsis => this.Usage;
@@ -87,7 +93,9 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         "5.25\" image; 'prodos' writes a ProDOS volume directory plus a sized volume bitmap. " +
         "When '--bootable' is supplied, the boot blocks of the supplied source image are " +
         "copied into the new image; until a Disk II controller is implemented, --bootable " +
-        "is the only way to produce a bootable output.";
+        "is the only way to produce a bootable output. ProDOS volume names accept lowercase " +
+        "input and are stored uppercase with a ProDOS Tech Note 25 case-bit map; pass " +
+        "--only-uppercase to reject lowercase characters and emit no case-bit map.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
@@ -95,8 +103,8 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         new CommandOption(
             "--size",
             null,
-            "5.25|3.5|32M|<blocks>",
-            "Image geometry. '5.25' = 280 blocks (140K), '3.5' = 1600 blocks (800K), '32M' = 65535 blocks. Defaults to 5.25 for sector containers and 32M for .hdv.",
+            "5.25|140K|3.5|800K|1M..32M|<blocks>",
+            "Image geometry (case-insensitive). '5.25' or '140K' = 280 blocks (140K), '3.5' or '800K' = 1600 blocks (800K), '1M'..'32M' selects an N-megabyte ProDOS volume (capped at 65535 blocks). Defaults to 5.25 for sector containers and 32M for .hdv.",
             null),
         new CommandOption(
             "--format",
@@ -114,7 +122,7 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
             "--volume-name",
             null,
             "string",
-            "ProDOS volume name (1..15 chars, A-Z / 0-9 / '.'). Ignored for 'raw' and 'dos33'.",
+            "ProDOS volume name (1..15 chars, A-Z / a-z / 0-9 / '.'). Lowercase letters are preserved via the volume header case-bit map (ProDOS Tech Note 25). Ignored for 'raw' and 'dos33'.",
             "BLANK"),
         new CommandOption(
             "--volume-number",
@@ -122,6 +130,12 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
             "int",
             "DOS 3.3 volume number (1..254). Ignored for 'raw' and 'prodos'.",
             "254"),
+        new CommandOption(
+            "--only-uppercase",
+            null,
+            "flag",
+            "Reject lowercase letters in --volume-name and write no Tech Note 25 case-bit map. Use for compatibility with very old ProDOS tooling.",
+            null),
     ];
 
     /// <inheritdoc/>
@@ -133,6 +147,8 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         "disk-create boot.dsk --format dos33 --bootable master.dsk",
         "disk-create big.hdv --size 32M --format prodos --volume-name BIG",
         "disk-create wrapped.2mg --format prodos --volume-name BLANK",
+        "disk-create mixed.po --format prodos --volume-name MyVol",
+        "disk-create medium.hdv --size 8M --format prodos --volume-name Apps",
     ];
 
     /// <inheritdoc/>
@@ -164,6 +180,7 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         string? bootableArg = null;
         string? volumeName = null;
         int? volumeNumber = null;
+        bool onlyUppercase = false;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -214,6 +231,9 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
                     }
 
                     volumeNumber = vn;
+                    break;
+                case "--only-uppercase":
+                    onlyUppercase = true;
                     break;
                 default:
                     return CommandResult.Error($"Unknown option: '{opt}'.");
@@ -285,7 +305,7 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         byte[] bytes;
         try
         {
-            bytes = AuthorImage(container, format, sizeResult.Geometry, sizeResult.BlockCount, volumeName, volumeNumber, bootData);
+            bytes = AuthorImage(container, format, sizeResult.Geometry, sizeResult.BlockCount, volumeName, volumeNumber, onlyUppercase, bootData);
         }
         catch (ArgumentException ex)
         {
@@ -389,24 +409,41 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
             _ => "5.25",
         };
 
-        switch (sizeArg.ToLowerInvariant())
+        var normalized = sizeArg.ToLowerInvariant();
+        switch (normalized)
         {
             case "5.25":
+            case "140k":
                 return (DiskGeometry.Standard525Dos, FivePointTwoFiveBlocks, null);
             case "3.5":
+            case "800k":
                 return (null, ThreePointFiveBlocks, null);
-            case "32m":
-                return (null, ThirtyTwoMBlocks, null);
-            default:
-                if (int.TryParse(sizeArg, NumberStyles.Integer, CultureInfo.InvariantCulture, out var blocks)
-                    && blocks > 0
-                    && blocks <= ThirtyTwoMBlocks)
-                {
-                    return (null, blocks, null);
-                }
-
-                return (null, 0, $"--size must be one of '5.25', '3.5', '32M' or a block count in 1..{ThirtyTwoMBlocks}; got '{sizeArg}'.");
         }
+
+        // Megabyte aliases: 1M..32M (case-insensitive). Each megabyte is 2048 512-byte blocks.
+        // The maximum ProDOS volume size is 65535 blocks, so 32M is clamped from 65536 to 65535
+        // to match the long-standing behaviour of the literal '32M' alias.
+        if (normalized.Length >= 2 && normalized[^1] == 'm'
+            && int.TryParse(normalized.AsSpan(0, normalized.Length - 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out var megabytes)
+            && megabytes is >= 1 and <= 32)
+        {
+            var blocksFromMb = megabytes * (1024 * 1024 / BlockSize);
+            if (blocksFromMb > ThirtyTwoMBlocks)
+            {
+                blocksFromMb = ThirtyTwoMBlocks;
+            }
+
+            return (null, blocksFromMb, null);
+        }
+
+        if (int.TryParse(sizeArg, NumberStyles.Integer, CultureInfo.InvariantCulture, out var blocks)
+            && blocks > 0
+            && blocks <= ThirtyTwoMBlocks)
+        {
+            return (null, blocks, null);
+        }
+
+        return (null, 0, $"--size must be one of '5.25'/'140K', '3.5'/'800K', '1M'..'32M' (case-insensitive) or a block count in 1..{ThirtyTwoMBlocks}; got '{sizeArg}'.");
     }
 
     private static string? ValidateCompatibility(ContainerKind container, FormatKind format, DiskGeometry? geom, int blockCount)
@@ -477,6 +514,7 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         int blockCount,
         string? volumeName,
         int? volumeNumber,
+        bool onlyUppercase,
         byte[]? bootData)
     {
         // Compute payload size and the on-disk sector order (only meaningful for 5.25"
@@ -531,7 +569,7 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
                     throw new ArgumentException("--format prodos requires a ProDOS-ordered container.");
                 }
 
-                WriteProDosStructures(payload, volumeName ?? "BLANK", geom is null ? blockCount : FivePointTwoFiveBlocks, sectorOrder);
+                WriteProDosStructures(payload, volumeName ?? "BLANK", geom is null ? blockCount : FivePointTwoFiveBlocks, sectorOrder, onlyUppercase);
                 break;
         }
 
@@ -603,20 +641,66 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         // with the following: T=0, S=0 in real INIT layouts; we leave it as zero).
     }
 
-    private static void WriteProDosStructures(byte[] payload, string volumeName, int totalBlocks, SectorOrder? sectorOrder)
+    private static void WriteProDosStructures(byte[] payload, string volumeName, int totalBlocks, SectorOrder? sectorOrder, bool onlyUppercase)
     {
         if (volumeName.Length is < 1 or > 15)
         {
             throw new ArgumentException("ProDOS volume name must be 1..15 characters.", nameof(volumeName));
         }
 
-        foreach (var c in volumeName)
+        // Validate the supplied (display-cased) name. The first character must be a letter
+        // (per the ProDOS specification); subsequent characters may also be digits or '.'.
+        // Lowercase is accepted unless --only-uppercase forces the legacy uppercase-only rule.
+        for (var i = 0; i < volumeName.Length; i++)
         {
-            if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.'))
+            var c = volumeName[i];
+            var isLetter = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+            var isDigit = c >= '0' && c <= '9';
+            var isDot = c == '.';
+
+            if (i == 0)
+            {
+                if (!isLetter)
+                {
+                    throw new ArgumentException(
+                        $"ProDOS volume name must start with a letter; got '{c}'.",
+                        nameof(volumeName));
+                }
+            }
+            else if (!(isLetter || isDigit || isDot))
             {
                 throw new ArgumentException(
-                    $"ProDOS volume name contains invalid character '{c}'. Must contain only A-Z, 0-9, '.'.",
+                    $"ProDOS volume name contains invalid character '{c}'. Must contain only A-Z, a-z, 0-9, '.'.",
                     nameof(volumeName));
+            }
+
+            if (onlyUppercase && c >= 'a' && c <= 'z')
+            {
+                throw new ArgumentException(
+                    $"ProDOS volume name contains lowercase character '{c}' but --only-uppercase was specified.",
+                    nameof(volumeName));
+            }
+        }
+
+        // Compute the Tech Note 25 case-bit field, then upper-case the on-disk bytes.
+        // Bit 15 is the "case bits valid" flag; bits 14..0 select case for characters
+        // 0..14 of the name, with a set bit meaning "display this character lowercase".
+        // When --only-uppercase is set we leave the field as zero so that older ProDOS
+        // tooling that pre-dates Tech Note 25 sees a plain uppercase name.
+        ushort caseBits = 0;
+        if (!onlyUppercase)
+        {
+            for (var i = 0; i < volumeName.Length; i++)
+            {
+                if (volumeName[i] >= 'a' && volumeName[i] <= 'z')
+                {
+                    caseBits |= (ushort)(1 << (14 - i));
+                }
+            }
+
+            if (caseBits != 0)
+            {
+                caseBits |= 0x8000;
             }
         }
 
@@ -637,11 +721,22 @@ public sealed class DiskCreateCommand : CommandHandlerBase, ICommandHelp
         keyBlock[4] = (byte)(0xF0 | volumeName.Length); // storage_type=F (vol header) | name_length
         for (var i = 0; i < volumeName.Length; i++)
         {
-            keyBlock[5 + i] = (byte)volumeName[i];
+            var c = volumeName[i];
+            if (c >= 'a' && c <= 'z')
+            {
+                c = (char)(c - ('a' - 'A'));
+            }
+
+            keyBlock[5 + i] = (byte)c;
         }
 
         // 0x14..0x1B reserved (zeros)
-        // 0x1C..0x1F creation date+time (zeros)
+        // 0x1C..0x1F creation date+time (zeros). The 16-bit Tech Note 25 case-bit field
+        // overlays the time word at block-relative offset 0x1E..0x1F (entry-relative
+        // offset 0x1A..0x1B). It is left zero for purely uppercase names so the "no
+        // case data" sentinel from Tech Note 25 (high bit clear) is honoured.
+        keyBlock[0x1E] = (byte)(caseBits & 0xFF);
+        keyBlock[0x1F] = (byte)((caseBits >> 8) & 0xFF);
         keyBlock[0x20] = 0; // ProDOS version
         keyBlock[0x21] = 0; // min ProDOS version
         keyBlock[0x22] = 0xC3; // access (read/write/destroy/rename)
