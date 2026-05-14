@@ -234,6 +234,46 @@ public class DiskImageFactoryTests
     }
 
     /// <summary>
+    /// A 2MG image with a ProDOS payload larger than the 5.25" standard (e.g. an 800K
+    /// 3.5" disk) must open as a pure block image, not as a multi-hundred-track 5.25"
+    /// sector image. Regression test for the bug where 'disk info' on a 3.5" ProDOS
+    /// 2MG reported "5.25" sector image (track + block views)".
+    /// </summary>
+    [Test]
+    public void Open_TwoImgProDos3Point5_OpensAsBlockImage()
+    {
+        var payload = new byte[1600 * 512]; // 800K (3.5" ProDOS volume)
+        var image = Build2Mg(payload, format: 1, flags: 0u);
+        var path = this.Temp(image, ".2mg");
+
+        var factory = new DiskImageFactory();
+        var result = factory.Open(path);
+        Assert.That(result, Is.InstanceOf<ImageBlockResult>(), "3.5\"-sized ProDOS 2MG must not expose a 5.25\" track view.");
+        var block = (ImageBlockResult)result;
+        Assert.Multiple(() =>
+        {
+            Assert.That(block.Format, Is.EqualTo(DiskImageFormat.TwoImgProDos));
+            Assert.That(block.Media.BlockCount, Is.EqualTo(1600));
+            Assert.That(block.Media.BlockSize, Is.EqualTo(512));
+        });
+    }
+
+    /// <summary>
+    /// 2MG format code 0 (DOS 3.3) is only valid at the 5.25" 35-track payload size.
+    /// Any larger payload is rejected with a clear error.
+    /// </summary>
+    [Test]
+    public void Open_TwoImgDos_NonStandardSize_ThrowsInvalidData()
+    {
+        var payload = new byte[1600 * 512];
+        var image = Build2Mg(payload, format: 0, flags: 0u);
+        var path = this.Temp(image, ".2mg");
+
+        var factory = new DiskImageFactory();
+        Assert.Throws<InvalidDataException>(() => factory.Open(path));
+    }
+
+    /// <summary>
     /// Mock-friendly seam: an <see cref="I525Media"/> Moq can be wrapped in an
     /// <see cref="Image525Result"/> and consumed via the factory's result type per PRD §7.
     /// </summary>

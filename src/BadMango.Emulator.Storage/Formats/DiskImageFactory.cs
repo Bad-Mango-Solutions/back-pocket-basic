@@ -246,26 +246,44 @@ public class DiskImageFactory
                             throw new InvalidDataException("2MG sector payload length is not a multiple of 256.");
                         }
 
-                        int trackCount;
                         int sectorsPerTrack = SectorSkew.SectorsPerTrack;
-                        if (header.DataLength == FivePointTwoFiveStandardBytes)
+                        int trackBytes = sectorsPerTrack * GcrEncoder.BytesPerSector; // 4096
+
+                        // 5.25" sector images: standard 35-track layout, or other 16-sector-track
+                        // layouts strictly smaller than an 800K 3.5" payload (e.g. 40-track .po-ordered
+                        // 2MG fixtures). Anything 800K or larger is treated as a 3.5"/HD-class block image
+                        // because exposing a multi-hundred-track 5.25" view is nonsensical (per PR #227).
+                        const int ThreePointFiveBytes = 1600 * 512; // 819200
+                        if (header.DataLength > 0
+                            && header.DataLength < ThreePointFiveBytes
+                            && header.DataLength % trackBytes == 0)
                         {
-                            trackCount = 35;
-                        }
-                        else if (header.DataLength % (sectorsPerTrack * GcrEncoder.BytesPerSector) == 0)
-                        {
-                            trackCount = header.DataLength / (sectorsPerTrack * GcrEncoder.BytesPerSector);
-                        }
-                        else
-                        {
-                            throw new InvalidDataException("2MG sector payload does not represent whole 16-sector tracks.");
+                            var trackCount = header.DataLength / trackBytes;
+                            var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
+                            var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
+                            var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
+                            result.AttachBackend(backend);
+                            return result;
                         }
 
-                        var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
-                        var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
-                        var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
-                        result.AttachBackend(backend);
-                        return result;
+                        // Larger payloads (e.g. 800K 3.5" or hard-disk-sized ProDOS volumes) are not 5.25" disks
+                        // and must not be exposed via a track view. DOS 3.3 only ever existed on 5.25" media,
+                        // so format code 0 at a non-5.25" size is invalid.
+                        if (header.Format == 0)
+                        {
+                            throw new InvalidDataException($"2MG DOS 3.3 payload must be {FivePointTwoFiveStandardBytes} bytes; got {header.DataLength}.");
+                        }
+
+                        if (header.DataLength % 512 != 0)
+                        {
+                            throw new InvalidDataException("2MG ProDOS payload is not a multiple of 512 bytes.");
+                        }
+
+                        var blockCount = header.DataLength / 512;
+                        var blockMedia = new BlockImageMedia(backend, blockCount, blockSize: 512, backingOffset: header.DataOffset, writeProtected: readOnly);
+                        var blockResult = new ImageBlockResult(blockMedia, fmt, path, blockMedia.IsReadOnly);
+                        blockResult.AttachBackend(backend);
+                        return blockResult;
                     }
 
                 case 2: // nibble
