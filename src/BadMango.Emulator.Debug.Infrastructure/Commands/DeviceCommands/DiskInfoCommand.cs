@@ -29,6 +29,16 @@ using BadMango.Emulator.Storage.Media;
 [DeviceDebugCommand]
 public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
 {
+    private static readonly byte[] Dos33BootBlockSignature =
+    [
+        0x01, 0xA5, 0x27, 0xC9, 0x09,
+    ];
+
+    private static readonly byte[] ProDosBootBlockSignature =
+    [
+        0x01, 0x38, 0xB0, 0x03,
+    ];
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskInfoCommand"/> class.
     /// </summary>
@@ -49,9 +59,9 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Reports the format DiskImageFactory would pick for the supplied image, the " +
-        "geometry, the write-protect flag, the sniffed .dsk sector ordering (per PRD " +
-        "§10 decision 5) and any 2MG header metadata. The image is opened read-only and " +
-        "is not mounted on any controller.";
+        "geometry, the write-protect flag, whether the image is bootable, the sniffed " +
+        ".dsk sector ordering (per PRD §10 decision 5) and any 2MG header metadata. The " +
+        "image is opened read-only and is not mounted on any controller.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -163,6 +173,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             output.WriteLine($"  File size:        {fileInfo.Length} bytes");
             output.WriteLine($"  Detected format:  {open.Format}");
             output.WriteLine($"  Write-protected:  {(intrinsicWriteProtected ? "yes" : "no")}");
+            output.WriteLine($"  Bootable:         {DescribeBootability(open, context.Error)}");
 
             switch (open)
             {
@@ -268,6 +279,93 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         1600 => "3.5\" block image (800K)",
         _ => "block image",
     };
+
+    /// <summary>
+    /// Returns a human-readable description of whether <paramref name="open"/> is bootable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both Disk II (5.25") and SmartPort (3.5" / hard disk) bootstrap by loading the first
+    /// sector / block of the medium to <c>$0800</c> and jumping to <c>$0801</c>. The Disk II
+    /// <c>$C600</c> controller ROM does this unconditionally — it does not itself inspect
+    /// the loaded sector — so execution starts at the disk-supplied loader code at
+    /// <c>$0801</c>. We therefore identify bootability by matching known Apple boot1
+    /// signatures in block 0:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// ProDOS 8 (<i>Beneath Apple ProDOS</i>, ch. 2; Apple II Tech Note ProDOS #21,
+    /// "Boot Block Format"): block 0 (the PBOOT loader) begins with
+    /// <c>$01 $38 $B0 $03 ...</c>, matched at block offset 0.
+    /// </description></item>
+    /// <item><description>
+    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): block 0 begins
+    /// <c>$01 $A5 $27 $C9 $09 ...</c>, where execution at <c>$0801</c> starts with
+    /// <c>$A5 $27 ...</c>; matched at block offset 0.
+    /// </description></item>
+    /// <item><description>
+    /// Freshly-formatted media that remains all <c>$00</c>/<c>$FF</c> does not match either
+    /// signature and is reported as not bootable.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// This signature-based check intentionally avoids the previous
+    /// "any non-zero/non-<c>$FF</c> first byte" heuristic, which could report arbitrary
+    /// garbage as bootable.
+    /// </para>
+    /// <para>
+    /// For sector- and block-image opens we read block 0 via <see cref="IBlockMedia"/>; the
+    /// first 256 bytes of block 0 always correspond to physical track 0 / sector 0 of the
+    /// medium regardless of on-disk sector ordering, so the same check applies uniformly to
+    /// <c>.dsk</c>, <c>.do</c>, <c>.po</c>, <c>.2mg</c>, and <c>.hdv</c>. For nibble-only
+    /// opens (<c>.nib</c>, <c>.woz</c>) we report <c>unknown (nibble image)</c> rather
+    /// than spinning up a GCR decoder inside the debug command.
+    /// </para>
+    /// </remarks>
+    private static string DescribeBootability(DiskImageOpenResult open, TextWriter errorLog)
+    {
+        IBlockMedia? blockMedia = open switch
+        {
+            Image525AndBlockResult both => both.BlockMedia,
+            ImageBlockResult blockOnly => blockOnly.Media,
+            _ => null,
+        };
+
+        if (blockMedia is null)
+        {
+            return "unknown (nibble image)";
+        }
+
+        if (blockMedia.BlockCount < 1 || blockMedia.BlockSize < 1)
+        {
+            return "unknown (no boot block)";
+        }
+
+        var block = new byte[blockMedia.BlockSize];
+        try
+        {
+            blockMedia.ReadBlock(0, block);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort metadata: any IBlockMedia implementation may surface its own
+            // exception types. Log and report unknown rather than aborting 'disk info'.
+            errorLog.WriteLine($"disk-info: could not read boot block: {ex.GetType().Name}: {ex.Message}");
+            return "unknown (boot block unreadable)";
+        }
+
+        if (block.AsSpan().StartsWith(ProDosBootBlockSignature))
+        {
+            return "yes";
+        }
+
+        if (block.AsSpan().StartsWith(Dos33BootBlockSignature))
+        {
+            return "yes";
+        }
+
+        return "no";
+    }
 
     /// <summary>
     /// Attempts to read the ProDOS volume name from block 2 of <paramref name="media"/>.
