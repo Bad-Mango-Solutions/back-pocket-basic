@@ -228,7 +228,12 @@ public static class DeviceFactoryRegistry
 
     private static void RecordSkip(Type deviceType, string reason)
     {
-        var key = deviceType.FullName ?? deviceType.Name;
+        // Prefer FullName (namespace + nested-type chain). Fall back to
+        // AssemblyQualifiedName to avoid collisions for distinct types that happen to
+        // share a simple name; only fall back to Name as a last resort.
+        var key = deviceType.FullName
+                  ?? deviceType.AssemblyQualifiedName
+                  ?? deviceType.Name;
         skippedDeviceTypes[key] = reason;
     }
 }
