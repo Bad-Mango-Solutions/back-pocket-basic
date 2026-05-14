@@ -44,7 +44,19 @@ using Serilog;
 /// eject flushes first and rejects on flush failure (FR-R2); hot-swap resets per-drive
 /// state (FR-R3); mid-motor insertion resets the settling timer (FR-R4).</description></item>
 /// </list>
+/// <para>
+/// The class is annotated with <see cref="DeviceTypeAttribute"/> so that the auto-discovery
+/// scan in <see cref="DeviceFactoryRegistry"/> recognises it as the canonical
+/// <c>disk-ii-compatible</c> slot card. It does not have a public parameterless constructor
+/// — it requires an injected <see cref="ILogger"/> and (typically) a boot ROM — so the
+/// registry deliberately skips this type and instead auto-registers the simpler
+/// <see cref="DiskIIControllerStub"/> as the fallback factory; the skip is reported via
+/// <see cref="DeviceFactoryRegistry.SkippedDeviceTypes"/>. The configured / image-bearing
+/// path registers a custom <c>Func&lt;MachineBuilder, JsonElement?, ISlotCard&gt;</c> that
+/// constructs <see cref="DiskIIController"/> with its dependencies.
+/// </para>
 /// </remarks>
+[DeviceType("disk-ii-compatible")]
 public sealed class DiskIIController : ISlotCard, IDiskController
 {
     /// <summary>

@@ -138,6 +138,52 @@ public class DeviceFactoryRegistryTests
             Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("Video"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("POCKETWATCH"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("PocketWatch"));
+            Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("DISK-II-COMPATIBLE"));
+            Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("Disk-II-Compatible"));
         });
+    }
+
+    /// <summary>
+    /// Verifies that EnsureInitialized discovers the Disk II compatible slot card factory
+    /// (provided by <see cref="DiskIIControllerStub"/>, which has a public parameterless constructor).
+    /// </summary>
+    [Test]
+    public void EnsureInitialized_DiscoversDiskIIFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("disk-ii-compatible"));
+    }
+
+    /// <summary>
+    /// Verifies that the Disk II factory creates a slot card whose <see cref="IPeripheral.DeviceType"/>
+    /// matches the Disk II controller contract.
+    /// </summary>
+    [Test]
+    public void DiskIIFactory_CreatesDiskIISlotCard()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        var factory = DeviceFactoryRegistry.SlotCardFactories["disk-ii-compatible"];
+        var card = factory(null!, null);
+
+        Assert.That(card, Is.Not.Null);
+        Assert.That(card, Is.InstanceOf<ISlotCard>());
+        Assert.That(card.DeviceType, Is.EqualTo("DiskII"));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DeviceFactoryRegistry.SkippedDeviceTypes"/> reports the full
+    /// <see cref="DiskIIController"/> as excluded with a reason explaining the constructor
+    /// requirement, so callers can log a clear diagnostic instead of dropping the device silently.
+    /// </summary>
+    [Test]
+    public void EnsureInitialized_ReportsDiskIIControllerAsSkipped()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        var key = typeof(DiskIIController).FullName!;
+        Assert.That(DeviceFactoryRegistry.SkippedDeviceTypes, Does.ContainKey(key));
+        Assert.That(DeviceFactoryRegistry.SkippedDeviceTypes[key], Does.Contain("constructor"));
     }
 }

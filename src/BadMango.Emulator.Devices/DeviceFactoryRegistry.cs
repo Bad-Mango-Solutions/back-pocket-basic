@@ -27,6 +27,18 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>Have a public parameterless constructor</description></item>
 /// </list>
 /// </para>
+/// <para>
+/// Types annotated with <see cref="DeviceTypeAttribute"/> that cannot be auto-instantiated
+/// (for example, controllers that require an injected logger or other dependencies) are
+/// recorded in <see cref="SkippedDeviceTypes"/> so that callers can log a clear diagnostic
+/// rather than silently dropping the device. The Disk II controller is one such case:
+/// <see cref="DiskIIController"/> is reported as skipped, while the parameterless
+/// <see cref="DiskIIControllerStub"/> sharing the same <c>disk-ii-compatible</c> type id
+/// is registered as the auto-discovered factory. A configured factory that builds the
+/// real controller (with logger, boot ROM, and disk images) can replace the stub
+/// entry on the <see cref="MachineBuilder"/> via
+/// <see cref="MachineBuilder.RegisterSlotCardFactory(string, Func{MachineBuilder, JsonElement?, ISlotCard})"/>.
+/// </para>
 /// </remarks>
 public static class DeviceFactoryRegistry
 {
@@ -38,6 +50,9 @@ public static class DeviceFactoryRegistry
 
     private static readonly Dictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> slotCardFactories
         = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, string> skippedDeviceTypes
+        = new(StringComparer.Ordinal);
 #pragma warning restore SA1311
 
     private static bool isInitialized;
@@ -61,6 +76,23 @@ public static class DeviceFactoryRegistry
     /// </value>
     public static IReadOnlyDictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> SlotCardFactories
         => slotCardFactories;
+
+    /// <summary>
+    /// Gets the device types that were discovered (annotated with <see cref="DeviceTypeAttribute"/>)
+    /// but excluded from auto-registration, together with a human-readable reason.
+    /// </summary>
+    /// <value>
+    /// A dictionary keyed by the assembly-qualified-ish display name of the skipped device
+    /// type (<see cref="Type.FullName"/>), mapping to the diagnostic reason — for example
+    /// <c>"requires constructor dependencies (no public parameterless constructor); register
+    /// a configured factory on MachineBuilder instead"</c>. Callers that have an
+    /// <see cref="Serilog.ILogger"/> available (for example, the application bootstrap or an
+    /// Autofac module) should iterate this collection after calling
+    /// <see cref="EnsureInitialized"/> and emit a warning per entry so that misconfigured
+    /// devices fail loudly rather than silently.
+    /// </value>
+    public static IReadOnlyDictionary<string, string> SkippedDeviceTypes
+        => skippedDeviceTypes;
 
     /// <summary>
     /// Ensures device factories are discovered and registered.
@@ -152,11 +184,20 @@ public static class DeviceFactoryRegistry
 
     private static void RegisterMotherboardFactory(string typeId, Type deviceType)
     {
-        // Find parameterless constructor
+        // Find parameterless constructor first so that "needs custom factory" is reported
+        // even when another type with the same typeId is already registered.
         var constructor = deviceType.GetConstructor(Type.EmptyTypes);
         if (constructor is null)
         {
-            // Device type doesn't have a parameterless constructor - skip
+            RecordSkip(deviceType, "requires constructor dependencies (no public parameterless constructor); register a configured factory on MachineBuilder instead");
+            return;
+        }
+
+        // If another type already supplied a working factory for this typeId, keep it
+        // and record this one as skipped so the duplicate doesn't silently win.
+        if (motherboardFactories.ContainsKey(typeId))
+        {
+            RecordSkip(deviceType, $"duplicate motherboard device type id '{typeId}'; another type is already registered");
             return;
         }
 
@@ -165,14 +206,29 @@ public static class DeviceFactoryRegistry
 
     private static void RegisterSlotCardFactory(string typeId, Type deviceType)
     {
-        // Find parameterless constructor
+        // Find parameterless constructor first so that "needs custom factory" is reported
+        // even when another type with the same typeId is already registered.
         var constructor = deviceType.GetConstructor(Type.EmptyTypes);
         if (constructor is null)
         {
-            // Device type doesn't have a parameterless constructor - skip
+            RecordSkip(deviceType, "requires constructor dependencies (no public parameterless constructor); register a configured factory on MachineBuilder instead");
+            return;
+        }
+
+        // If another type already supplied a working factory for this typeId, keep it
+        // and record this one as skipped so the duplicate doesn't silently win.
+        if (slotCardFactories.ContainsKey(typeId))
+        {
+            RecordSkip(deviceType, $"duplicate slot card type id '{typeId}'; another type is already registered");
             return;
         }
 
         slotCardFactories[typeId] = (_, _) => (ISlotCard)constructor.Invoke(null);
+    }
+
+    private static void RecordSkip(Type deviceType, string reason)
+    {
+        var key = deviceType.FullName ?? deviceType.Name;
+        skippedDeviceTypes[key] = reason;
     }
 }

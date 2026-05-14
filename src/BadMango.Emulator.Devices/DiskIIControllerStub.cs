@@ -24,7 +24,16 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>$C0nA-$C0nB: Drive 1/2 select</description></item>
 /// <item><description>$C0nC-$C0nF: Q6/Q7 data latch control</description></item>
 /// </list>
+/// <para>
+/// This stub satisfies the auto-discovery contract on <see cref="DeviceFactoryRegistry"/>
+/// (it is annotated with <see cref="DeviceTypeAttribute"/> and exposes a public
+/// parameterless constructor), so a Disk II controller is always discoverable for the
+/// no-config / no-image case. The full <see cref="DiskIIController"/> takes constructor
+/// dependencies and is registered through a configured factory path instead; the
+/// registry surfaces this distinction via <see cref="DeviceFactoryRegistry.SkippedDeviceTypes"/>.
+/// </para>
 /// </remarks>
+[DeviceType("disk-ii-compatible")]
 public sealed class DiskIIControllerStub : ISlotCard
 {
     private readonly SlotIOHandlers handlers = new();
