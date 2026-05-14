@@ -136,7 +136,8 @@ public sealed class DiskRuntimeCommandsTests
             QuarterTrack: 12,
             WriteProtect: true,
             HasMedia: true,
-            MountedImagePath: "/tmp/img.dsk"));
+            MountedImagePath: "/tmp/img.dsk",
+            Geometry: DiskGeometry.Standard525Dos));
         ctl.Setup(c => c.GetDriveSnapshot(1)).Returns(EmptySnapshot());
 
         var result = new DiskListCommand().Execute(this.debugContext, []);
@@ -149,7 +150,13 @@ public sealed class DiskRuntimeCommandsTests
             Assert.That(output, Does.Contain("Drive 1: mounted '/tmp/img.dsk'"));
             Assert.That(output, Does.Contain("write-protect=yes"));
             Assert.That(output, Does.Contain("quarter-track=12"));
+            Assert.That(output, Does.Contain("geometry: 35 tracks × 16 sectors × 256 bytes"));
+            Assert.That(output, Does.Contain("Dos33"));
+            Assert.That(output, Does.Contain("143360 bytes total"));
             Assert.That(output, Does.Contain("Drive 2: empty"));
+
+            // Empty drive must NOT print a geometry line.
+            Assert.That(output, Does.Not.Contain("Drive 2: empty\n      geometry"));
         });
     }
 

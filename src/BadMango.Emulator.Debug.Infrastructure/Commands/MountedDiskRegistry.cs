@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Storage.Formats;
+using BadMango.Emulator.Storage.Media;
 
 /// <summary>
 /// Tracks the <see cref="DiskImageOpenResult"/> handles owned by the debug-console
@@ -15,7 +16,7 @@ using BadMango.Emulator.Storage.Formats;
 /// <para>
 /// The runtime <c>disk insert</c> subcommand opens an image through
 /// <see cref="DiskImageFactory.Open"/> and mounts the resulting media into a live
-/// <see cref="Storage.Media.IDiskController"/>. The <see cref="DiskImageOpenResult"/>
+/// <see cref="IDiskController"/>. The <see cref="DiskImageOpenResult"/>
 /// owns the underlying storage backend (and therefore the open <see cref="FileStream"/>);
 /// disposing it closes the file. Because the controller keeps the media reference for
 /// the lifetime of the mount, the result cannot simply be wrapped in <c>using</c>: the

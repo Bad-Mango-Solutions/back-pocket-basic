@@ -150,6 +150,17 @@ public sealed class DiskListCommand : CommandHandlerBase, ICommandHelp
                     YesNo(snap.Selected),
                     YesNo(snap.MotorOn),
                     snap.QuarterTrack));
+                if (snap.Geometry is { } geom)
+                {
+                    output.WriteLine(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "      geometry: {0} tracks × {1} sectors × {2} bytes ({3}, {4} bytes total)",
+                        geom.TrackCount,
+                        geom.SectorsPerTrack,
+                        geom.BytesPerSector,
+                        geom.SectorOrder,
+                        geom.TotalBytes));
+                }
             }
         }
 
