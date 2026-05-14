@@ -354,7 +354,8 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// <summary>
     /// Returns whether <paramref name="c"/> is a legal character at the given position of a
     /// ProDOS volume name. The first character must be an upper-case letter; subsequent
-    /// characters may also be digits or <c>'.'</c>.
+    /// characters may also be digits or <c>'.'</c>. Lowercase letters are not currently
+    /// accepted (the case-bit map at offset 0x1A of the volume header is not consulted).
     /// </summary>
     private static bool IsValidProDosVolumeNameChar(char c, bool isFirst)
     {
