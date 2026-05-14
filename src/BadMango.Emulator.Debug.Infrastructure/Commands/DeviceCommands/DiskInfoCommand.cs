@@ -29,6 +29,16 @@ using BadMango.Emulator.Storage.Media;
 [DeviceDebugCommand]
 public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
 {
+    private static readonly byte[] Dos33BootBlockSignature =
+    [
+        0x01, 0xA5, 0x27, 0xC9, 0x09,
+    ];
+
+    private static readonly byte[] ProDosBootBlockSignature =
+    [
+        0x01, 0x38, 0xB0, 0x03,
+    ];
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskInfoCommand"/> class.
     /// </summary>
@@ -278,35 +288,30 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// Both Disk II (5.25") and SmartPort (3.5" / hard disk) bootstrap by loading the first
     /// sector / block of the medium to <c>$0800</c> and jumping to <c>$0801</c>. The Disk II
     /// <c>$C600</c> controller ROM does this unconditionally — it does not itself inspect
-    /// the loaded sector — so the byte at <c>$0800</c> is consumed by the loader code
-    /// stamped onto the disk (the "boot1" stage), not by the ROM. The convention shared by
-    /// every Apple-supplied bootable disk is therefore:
+    /// the loaded sector — so execution starts at the disk-supplied loader code at
+    /// <c>$0801</c>. We therefore identify bootability by matching known Apple boot1
+    /// signatures in block 0:
     /// </para>
     /// <list type="bullet">
     /// <item><description>
-    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): track 0 / sector 0
-    /// begins with <c>$01</c>, used by the boot1 loader as the count of additional sectors
-    /// to chain-load before transferring control to DOS proper.
-    /// </description></item>
-    /// <item><description>
     /// ProDOS 8 (<i>Beneath Apple ProDOS</i>, ch. 2; Apple II Tech Note ProDOS #21,
-    /// "Boot Block Format"): block 0 (the PBOOT loader) begins with the byte sequence
-    /// <c>$01 $38 $B0 $03 $4C ...</c>, again starting with <c>$01</c>.
+    /// "Boot Block Format"): block 0 (the PBOOT loader) begins with
+    /// <c>$01 $38 $B0 $03 ...</c>, matched at block offset 0.
     /// </description></item>
     /// <item><description>
-    /// SmartPort firmware bootstrap (Apple II Startup Sequence Reference, §10): block 0 is
-    /// documented to start with <c>DB $01</c> as the boot block indicator before the
-    /// loader code itself.
+    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): block 0 begins
+    /// <c>$01 $A5 $27 $C9 $09 ...</c>, where execution at <c>$0801</c> starts with
+    /// <c>$A5 $27 ...</c>; matched at block offset 0.
+    /// </description></item>
+    /// <item><description>
+    /// Freshly-formatted media that remains all <c>$00</c>/<c>$FF</c> does not match either
+    /// signature and is reported as not bootable.
     /// </description></item>
     /// </list>
     /// <para>
-    /// Conversely, a freshly-formatted (or never-written) disk leaves the boot region as
-    /// either all <c>$00</c> bytes (causing a <c>BRK</c> at <c>$0801</c>) or all <c>$FF</c>
-    /// bytes (causing the CPU to execute <c>SBC</c>-absolute on garbage). Neither boots.
-    /// We therefore report <c>yes</c> when the first byte of block 0 is in the range
-    /// <c>$01..$FE</c> and <c>no</c> when it is <c>$00</c> or <c>$FF</c>. This matches the
-    /// "<c>$00</c> = not bootable, <c>$01..$FF</c> = bootable" indicator semantics already
-    /// documented for slot-card scan in §4.3 of the same reference.
+    /// This signature-based check intentionally avoids the previous
+    /// "any non-zero/non-<c>$FF</c> first byte" heuristic, which could report arbitrary
+    /// garbage as bootable.
     /// </para>
     /// <para>
     /// For sector- and block-image opens we read block 0 via <see cref="IBlockMedia"/>; the
@@ -349,8 +354,17 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             return "unknown (boot block unreadable)";
         }
 
-        var indicator = block[0];
-        return indicator is 0x00 or 0xFF ? "no" : "yes";
+        if (block.AsSpan().StartsWith(ProDosBootBlockSignature))
+        {
+            return "yes";
+        }
+
+        if (block.AsSpan().StartsWith(Dos33BootBlockSignature))
+        {
+            return "yes";
+        }
+
+        return "no";
     }
 
     /// <summary>

@@ -68,7 +68,7 @@ The File Manager is called with X,A pointing to a 24-byte parameter block:
 | $05    | SECTOR   | Sector number |
 | $06    | VOLNUM   | Volume number (0 = any) |
 | $07    | DESSION  | Drive number (1 or 2) |
-| $08    | SLOT     | Slot number × 16 |
+| $08    | SLOT     | Slot number ï¿½ 16 |
 | $09    | FTYPE    | File type |
 | $0A-$0B| FIESSION | File length |
 | $0C-$0D| LOADESSION| Load address |
@@ -125,7 +125,7 @@ RWTS (Read/Write Track/Sector) is the low-level disk driver.
 | Offset | Name     | Description |
 |--------|----------|-------------|
 | $00    | TBESSION | Table type ($01 = IOB) |
-| $01    | SLOT     | Slot number × 16 |
+| $01    | SLOT     | Slot number ï¿½ 16 |
 | $02    | DRIVE    | Drive number (1 or 2) |
 | $03    | VOL      | Expected volume (0 = any) |
 | $04    | TRACK    | Track number (0-34) |
@@ -265,6 +265,25 @@ DOS 3.3 adds commands to BASIC by intercepting the input line:
 | 17    | 1-15   | Catalog sectors (linked list) |
 | Other | Other  | File data |
 
+### Boot Sector 0 (Track 0, Sector 0)
+
+The Disk II controller ROM reads T0/S0 to `$0800` and jumps unconditionally to `$0801`. The DOS 3.3
+boot sector therefore begins with:
+
+| Block offset | Byte | Description |
+|-------------|------|-------------|
+| `$00`       | `$01` | Sector-chain count â€” number of additional sectors to load before transferring control to DOS proper |
+| `$01`       | `$A5` | First opcode executed at `$0801` (`LDA $27`, zero page) |
+| `$02`       | `$27` | Operand of `LDA $27` |
+| `$03`       | `$C9` | `CMP #$09` opcode |
+| `$04`       | `$09` | Operand of `CMP #$09` |
+| `$05`â€“`$FF` | â€¦    | Remainder of the Boot 1 loader |
+
+**Bootability signature (offsets 0â€“4):** `01 A5 27 C9 09`
+
+A freshly initialised or blank disk leaves T0/S0 as all-`$00` bytes; no valid boot sector is
+present and the disk is not bootable.
+
 ### Volume Table of Contents (Track 17, Sector 0)
 
 | Offset | Description |
@@ -327,7 +346,7 @@ Each T/S list sector contains pointers to data sectors:
 | $B3D2   | RWESSION | Current track |
 | $B3D3   | RWESSION | Current sector |
 | $B3F4   | PRESSION | Previous track position |
-| $B7E8   | SLOT     | Current slot × 16 |
+| $B7E8   | SLOT     | Current slot ï¿½ 16 |
 | $B7EA   | BUFPTR   | Buffer pointer |
 | $B7EB   | RESSION  | Active drive |
 | $B7EC   | TOESSION | Track number for RWTS |
