@@ -913,7 +913,7 @@ public class MachineBuilderTests
             },
         };
 
-        System.Text.Json.JsonElement? capturedConfig = System.Text.Json.JsonDocument.Parse("{}").RootElement;
+        System.Text.Json.JsonElement? capturedConfig = default;
         bool factoryCalled = false;
         var fakeCard = new FakeSlotCard();
 
@@ -958,9 +958,22 @@ public class MachineBuilderTests
     /// </summary>
     private sealed class FakeSlotCard : ISlotCard
     {
+        private readonly string deviceType;
+
+        public FakeSlotCard()
+            : this(nameof(FakeSlotCard).ToLowerInvariant())
+        {
+        }
+
+        public FakeSlotCard(string deviceType)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(deviceType);
+            this.deviceType = deviceType;
+        }
+
         public string Name => "FakeSlotCard";
 
-        public string DeviceType => "fakediskii";
+        public string DeviceType => this.deviceType;
 
         public PeripheralKind Kind => PeripheralKind.SlotCard;
 
