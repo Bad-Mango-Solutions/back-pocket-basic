@@ -247,10 +247,19 @@ public class DiskImageFactory
                         }
 
                         int sectorsPerTrack = SectorSkew.SectorsPerTrack;
-                        if (header.DataLength == FivePointTwoFiveStandardBytes)
+                        int trackBytes = sectorsPerTrack * GcrEncoder.BytesPerSector; // 4096
+
+                        // 5.25" sector images: standard 35-track layout, or other 16-sector-track
+                        // layouts strictly smaller than an 800K 3.5" payload (e.g. 40-track .po-ordered
+                        // 2MG fixtures). Anything 800K or larger is treated as a 3.5"/HD-class block image
+                        // because exposing a multi-hundred-track 5.25" view is nonsensical (per PR #227).
+                        const int ThreePointFiveBytes = 1600 * 512; // 819200
+                        if (header.DataLength > 0
+                            && header.DataLength < ThreePointFiveBytes
+                            && header.DataLength % trackBytes == 0)
                         {
-                            // Standard 35-track 5.25" payload: expose both the 5.25" track view and a block view.
-                            var geometry = new DiskGeometry(35, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
+                            var trackCount = header.DataLength / trackBytes;
+                            var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
                             var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
                             var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
                             result.AttachBackend(backend);

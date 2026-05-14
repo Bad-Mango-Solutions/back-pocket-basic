@@ -169,6 +169,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
                 case Image525AndBlockResult both:
                     {
                         var geom = both.TrackMedia.Geometry;
+                        var volumeName = TryReadProDosVolumeName(both.BlockMedia, open.Format, context.Error);
                         output.WriteLine($"  Media kind:       5.25\" sector image (track + block views)");
                         output.WriteLine(string.Format(CultureInfo.InvariantCulture, "  Geometry:         {0} tracks x {1} sectors x {2} bytes/sector", geom.TrackCount, geom.SectorsPerTrack, geom.BytesPerSector));
                         output.WriteLine($"  Sector order:     {both.SectorOrder}");
@@ -178,7 +179,11 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
                             output.WriteLine($"  .dsk sniffed:     {(both.WasOrderSniffed ? "yes (matched signature)" : "no (fell back to DOS)")}");
                         }
 
-                        WriteProDosVolumeNameIfPresent(output, both.BlockMedia, open.Format);
+                        if (volumeName is not null)
+                        {
+                            output.WriteLine($"  Volume name:      {volumeName}");
+                        }
+
                         break;
                     }
 
@@ -192,9 +197,14 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
 
                 case ImageBlockResult blockOnly:
                     {
+                        var volumeName = TryReadProDosVolumeName(blockOnly.Media, open.Format, context.Error);
                         output.WriteLine($"  Media kind:       {DescribeBlockMediaKind(blockOnly.Media.BlockCount)}");
                         output.WriteLine($"  Block count:      {blockOnly.Media.BlockCount} ({blockOnly.Media.BlockSize}-byte blocks)");
-                        WriteProDosVolumeNameIfPresent(output, blockOnly.Media, open.Format);
+                        if (volumeName is not null)
+                        {
+                            output.WriteLine($"  Volume name:      {volumeName}");
+                        }
+
                         break;
                     }
             }
@@ -260,20 +270,29 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     };
 
     /// <summary>
-    /// If the supplied block media looks like a ProDOS-formatted volume, writes the
-    /// volume name reported by its volume directory key block (block 2) to <paramref name="output"/>.
+    /// Attempts to read the ProDOS volume name from block 2 of <paramref name="media"/>.
+    /// Returns the parsed name, or <see langword="null"/> if the block does not look like
+    /// a valid ProDOS volume directory key block (or the read fails).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// For untyped containers (e.g. <c>.hdv</c>) we still attempt the read because a
-    /// well-formed ProDOS volume header is self-identifying via its 0xF storage type.
-    /// Any I/O or parse failure is silently ignored so non-ProDOS images simply omit
-    /// the line.
+    /// well-formed ProDOS volume header is self-identifying via its <c>0xF</c> storage type
+    /// nibble. Any I/O failure is logged to <paramref name="errorLog"/> and treated as
+    /// "no name available" so non-ProDOS images simply omit the line.
+    /// </para>
+    /// <para>
+    /// Per the ProDOS technical reference, a volume name is 1..15 characters, the first
+    /// must be an upper-case letter, and remaining characters are letters, digits, or
+    /// <c>'.'</c>. Lowercase support via the volume header's case-bit map is not yet
+    /// implemented.
+    /// </para>
     /// </remarks>
-    private static void WriteProDosVolumeNameIfPresent(TextWriter output, IBlockMedia media, DiskImageFormat format)
+    private static string? TryReadProDosVolumeName(IBlockMedia media, DiskImageFormat format, TextWriter errorLog)
     {
         if (media.BlockCount < 3 || media.BlockSize != 512)
         {
-            return;
+            return null;
         }
 
         // Only attempt for formats that may carry a ProDOS volume directory.
@@ -281,7 +300,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             && format != DiskImageFormat.TwoImgProDos
             && format != DiskImageFormat.HdvBlockImage)
         {
-            return;
+            return null;
         }
 
         var keyBlock = new byte[512];
@@ -289,42 +308,66 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         {
             media.ReadBlock(2, keyBlock);
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentOutOfRangeException)
+        catch (Exception ex)
         {
-            return;
+            // Best-effort optional metadata. Any IBlockMedia implementation may surface
+            // its own exception types (IOException, ObjectDisposedException, etc.). Log
+            // and continue rather than aborting 'disk info'.
+            errorLog.WriteLine($"disk-info: could not read ProDOS volume directory key block: {ex.GetType().Name}: {ex.Message}");
+            return null;
         }
 
         // Volume directory key block: prev_pointer == 0 at offset 0..1, storage_type
         // nibble 0xF at offset 4 high nibble, name length 1..15 in low nibble.
         if (keyBlock[0] != 0 || keyBlock[1] != 0)
         {
-            return;
+            return null;
         }
 
         var typeAndLen = keyBlock[4];
         if ((typeAndLen & 0xF0) != 0xF0)
         {
-            return;
+            return null;
         }
 
         var nameLen = typeAndLen & 0x0F;
         if (nameLen is < 1 or > 15)
         {
-            return;
+            return null;
         }
 
         var name = new char[nameLen];
         for (var i = 0; i < nameLen; i++)
         {
             var c = (char)keyBlock[5 + i];
-            if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.'))
+            if (!IsValidProDosVolumeNameChar(c, isFirst: i == 0))
             {
-                return;
+                return null;
             }
 
             name[i] = c;
         }
 
-        output.WriteLine($"  Volume name:      {new string(name)}");
+        return new string(name);
+    }
+
+    /// <summary>
+    /// Returns whether <paramref name="c"/> is a legal character at the given position of a
+    /// ProDOS volume name. The first character must be an upper-case letter; subsequent
+    /// characters may also be digits or <c>'.'</c>.
+    /// </summary>
+    private static bool IsValidProDosVolumeNameChar(char c, bool isFirst)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return true;
+        }
+
+        if (isFirst)
+        {
+            return false;
+        }
+
+        return (c >= '0' && c <= '9') || c == '.';
     }
 }
