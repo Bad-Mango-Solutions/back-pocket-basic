@@ -70,3 +70,22 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **Compatible with the target framework.** Ensure that all dependencies are compatible with .NET 10.0 (net10.0). The project may also accept packages compatible with net6.0 or netstandard2.0 as they are compatible with net10.0, but prefer net10.0-specific packages when available.
 - **Properly licensed.** Verify that all third-party libraries comply with the project's licensing requirements. The repository in general should only use libraries that are licensed under permissive licenses (e.g., MIT, Apache 2.0). We use the MIT License for this repository, so any compatible license is acceptable.
 - **Necessary and not redundant.** Avoid adding unnecessary dependencies that bloat the project or duplicate existing functionality.
+- **Preferred libraries.** When introducing a new dependency in one of these areas, prefer the established choice already used in the codebase:
+  - **Logging:** [Serilog](https://serilog.net/) (`Serilog.ILogger`).
+  - **Dependency injection:** [Autofac](https://autofac.org/).
+  - **Mocking in tests:** [Moq](https://github.com/devlooped/moq).
+
+## Logging
+- **Use Serilog `ILogger`.** All new code that needs to log MUST take `Serilog.ILogger` as a constructor parameter and store it in a `private readonly` field. Call `logger.ForContext<TThis>()` once in the constructor when a per-class context is desired.
+- **Do not use `System.Diagnostics.Trace` or `System.Diagnostics.Debug` for application logging.** They are not testable, are not configurable, and bypass the configured Serilog sinks. Reserve `Debug.Assert`-style invariants for genuine programmer-error checks only.
+- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The frontend application projects (e.g. `BadMango.Emulator.UI`, `BadMango.Basic.Console`) are responsible for configuring `Log.Logger` and registering an `ILogger` instance with Autofac at startup.
+- **Make classes DI-friendly.** Constructors should accept their collaborators (including the `ILogger`) as parameters; avoid `new`-ing services or loggers internally so consumers can substitute test doubles.
+- **Log outside hot loops.** Logging belongs at well-defined boundaries (configuration, mount/eject, error paths, lifecycle transitions). Do not log per CPU cycle, per scan-line, per emitted nibble, or inside any other timing-sensitive inner loop. Lift logging out of the loop or guard it with `logger.IsEnabled(LogEventLevel.Verbose)` when verbose detail is genuinely needed.
+- **Use structured logging.** Prefer `logger.Warning("Foo {Bar} failed because {Reason}.", bar, reason)` over interpolated or concatenated strings so messages remain queryable.
+
+## Testing helpers
+- **Use `BadMango.Unit.Components` for shared test utilities.** All new test projects should reference `tests/BadMango.Unit.Components/BadMango.Unit.Components.csproj`.
+  - **`Generator`** — random data generation. Use `Generator.Log()` to obtain a preconfigured `Mock<ILogger>` whose `ForContext` chain returns the same mock, which is the canonical way to inject a logger into a class under test.
+  - **`UnitExtensions`** — Serilog sink extension that pipes log events to NUnit's `TestContext.Out`. Configure with `new LoggerConfiguration().WriteTo.NUnit()` when a real Serilog pipeline is needed inside a test.
+  - **`NUnitContextSink`** — the underlying Serilog sink used by `WriteTo.NUnit()`.
+  - **`UnitTest.InconclusiveIfCI`** — marks a test inconclusive when running in CI; pair with `PerformanceTestAttribute` for timing-sensitive cases.

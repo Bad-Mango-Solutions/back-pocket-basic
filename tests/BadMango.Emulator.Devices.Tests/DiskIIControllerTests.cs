@@ -12,8 +12,11 @@ using BadMango.Emulator.Storage.Backends;
 using BadMango.Emulator.Storage.Formats;
 using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
+using BadMango.Unit.Components;
 
 using Moq;
+
+using Serilog;
 
 /// <summary>
 /// Unit tests for the working <see cref="DiskIIController"/> (PRD §11 row 6).
@@ -30,7 +33,7 @@ public class DiskIIControllerTests
     [Test]
     public void Controller_AdvertisesDiskIIDeviceType()
     {
-        var card = new DiskIIController();
+        var card = new DiskIIController(NewLoggerMock().Object);
 
         Assert.Multiple(() =>
         {
@@ -49,12 +52,12 @@ public class DiskIIControllerTests
     [Test]
     public void BootRom_OnlyPublishedWhenSupplied()
     {
-        var noRom = new DiskIIController();
+        var noRom = new DiskIIController(NewLoggerMock().Object);
         Assert.That(noRom.ROMRegion, Is.Null);
 
         var bytes = new byte[DiskIIBootRom.RomSize];
         bytes[0] = 0x20; // sentinel
-        var withRom = new DiskIIController(new DiskIIBootRom(bytes));
+        var withRom = new DiskIIController(NewLoggerMock().Object, new DiskIIBootRom(bytes));
         Assert.That(withRom.ROMRegion, Is.Not.Null);
     }
 
@@ -346,17 +349,63 @@ public class DiskIIControllerTests
     [Test]
     public void Constructor_RejectsNegativeSettleCycles()
     {
+        var logger = NewLoggerMock().Object;
         Assert.Multiple(() =>
         {
-            Assert.That(() => new DiskIIController(motorSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
-            Assert.That(() => new DiskIIController(trackStepSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(() => new DiskIIController(logger, motorSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(() => new DiskIIController(logger, trackStepSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
         });
     }
 
+    /// <summary>
+    /// Verifies that a null logger is rejected, since the controller takes its
+    /// logger via DI and has no <see cref="System.Diagnostics.Trace"/> fallback.
+    /// </summary>
+    [Test]
+    public void Constructor_RejectsNullLogger()
+    {
+        Assert.That(() => new DiskIIController(logger: null!), Throws.TypeOf<ArgumentNullException>());
+    }
+
+    /// <summary>
+    /// Verifies that when a sector-image flush throws, the controller writes a
+    /// warning entry on the injected Serilog logger rather than swallowing it
+    /// silently (FR-D8 — surfaced as warnings).
+    /// </summary>
+    [Test]
+    public void FlushFailure_LogsWarningOnInjectedLogger()
+    {
+        var media = new ThrowingWriteMedia();
+        var loggerMock = NewLoggerMock();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(
+            motorSettleCycles: 0,
+            loggerMock: loggerMock);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        // Stage a dirty byte so the next motor-off triggers a flush.
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(10));
+        _ = dispatcher.Read(0xEF, in ctx); // Q7H — write enable
+        _ = dispatcher.Read(0xED, in ctx); // Q6H — load
+        WriteSoft(dispatcher, 0xED, 0xAA, ctx);
+        WriteSoft(dispatcher, 0xEC, 0x55, ctx); // Q6L write — shift one byte out
+        _ = dispatcher.Read(0xE8, in ctx); // motor off — triggers Drive525.Flush
+
+        loggerMock.Verify(
+            l => l.Warning(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<int>()),
+            Times.AtLeastOnce);
+    }
+
+    private static Mock<ILogger> NewLoggerMock() => Generator.Log();
+
     private static (DiskIIController Controller, IOPageDispatcher Dispatcher, BusAccess Context, Scheduler Scheduler, Mock<I525Media> Media) BuildHarness(
-        int motorSettleCycles = DiskIIController.DefaultMotorSettleCycles)
+        int motorSettleCycles = DiskIIController.DefaultMotorSettleCycles,
+        Mock<ILogger>? loggerMock = null)
     {
         var controller = new DiskIIController(
+            logger: (loggerMock ?? NewLoggerMock()).Object,
             bootRom: new DiskIIBootRom(BlankBootRom),
             motorSettleCycles: motorSettleCycles);
         controller.SlotNumber = 6;

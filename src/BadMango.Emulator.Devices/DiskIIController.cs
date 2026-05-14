@@ -4,13 +4,13 @@
 
 namespace BadMango.Emulator.Devices;
 
-using System.Diagnostics;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
+
+using Serilog;
 
 /// <summary>
 /// Working Disk II controller — replaces the body of <see cref="DiskIIControllerStub"/>
@@ -37,7 +37,7 @@ using BadMango.Emulator.Storage.Media;
 /// settling, ~30 ms track-step settling (FR-D7).</description></item>
 /// <item><description>Sector-backed writes mark the track dirty; flush on motor-off,
 /// drive-deselect, eject, or <see cref="Flush"/>; nibble-backed writes go straight
-/// through (FR-D8). Parse failures are surfaced via <see cref="WarningSink"/>.</description></item>
+/// through (FR-D8). Parse failures are logged via the injected Serilog logger.</description></item>
 /// <item><description>Boot ROM loaded from a user-supplied 256-byte P5A image (FR-D9).</description></item>
 /// <item><description>Per-drive debug surface via <see cref="GetDriveSnapshot"/> (FR-D10).</description></item>
 /// <item><description>Async-safe mount/eject deferred to the next scheduler turn (FR-R1);
@@ -72,6 +72,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private readonly IBusTarget expansionRomRegion;
     private readonly int motorSettleCycles;
     private readonly int trackStepSettleCycles;
+    private readonly ILogger logger;
 
     // Controller-level state
     private int currentDrive;          // 0 or 1
@@ -88,6 +89,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskIIController"/> class.
     /// </summary>
+    /// <param name="logger">
+    /// Serilog logger used for non-fatal diagnostic output (missing boot code at
+    /// <c>$Cn00</c>, sector-image write-back parse failures, etc.). Required so
+    /// the controller can be wired through Autofac without a fallback global
+    /// logger; tests should pass <c>Generator.Log().Object</c> from
+    /// <c>BadMango.Unit.Components</c>.
+    /// </param>
     /// <param name="bootRom">
     /// Optional <see cref="DiskIIBootRom"/> exposed at <c>$Cn00–$CnFF</c>. When
     /// <see langword="null"/>, no slot ROM is published; another card (e.g. the
@@ -96,14 +104,19 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     /// </param>
     /// <param name="motorSettleCycles">Cycles to wait after motor-on before reads return live data (defaults to ~1 ms at 1 MHz).</param>
     /// <param name="trackStepSettleCycles">Cycles a track-step adds to head settle (defaults to ~30 ms at 1 MHz).</param>
+    /// <exception cref="ArgumentNullException">If <paramref name="logger"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">If a settle-cycle parameter is negative.</exception>
     public DiskIIController(
+        ILogger logger,
         DiskIIBootRom? bootRom = null,
         int motorSettleCycles = DefaultMotorSettleCycles,
         int trackStepSettleCycles = DefaultTrackStepSettleCycles)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentOutOfRangeException.ThrowIfNegative(motorSettleCycles);
         ArgumentOutOfRangeException.ThrowIfNegative(trackStepSettleCycles);
 
+        this.logger = logger.ForContext<DiskIIController>();
         this.motorSettleCycles = motorSettleCycles;
         this.trackStepSettleCycles = trackStepSettleCycles;
         romRegion = bootRom;
@@ -131,14 +144,6 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         handlers.Set(0x0E, Q7LAccess, Q7LAccessWrite);
         handlers.Set(0x0F, Q7HAccess, Q7HAccessWrite);
     }
-
-    /// <summary>
-    /// Optional warning sink invoked when the controller surfaces a non-fatal
-    /// condition (e.g. missing boot code at <c>$Cn00</c>, sector-image write-back
-    /// parse failure). Defaults to <see cref="Trace.TraceWarning(string)"/>.
-    /// </summary>
-    /// <value>Callback that receives a single human-readable warning string.</value>
-    public Action<string> WarningSink { get; set; } = static msg => Trace.TraceWarning(msg);
 
     /// <inheritdoc />
     public string Name => "Disk II Controller";
@@ -215,8 +220,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                 var first = eventContext.Bus.Read8(in probe);
                 if (first == 0xFF)
                 {
-                    WarningSink(
-                        $"DiskII (slot {SlotNumber}): no boot ROM supplied and ${addr:X4} reads $FF; system boot ROM will not boot from this slot.");
+                    logger.Warning(
+                        "DiskII (slot {Slot}): no boot ROM supplied and ${Addr:X4} reads $FF; system boot ROM will not boot from this slot.",
+                        SlotNumber,
+                        addr);
                 }
             }
             catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
@@ -246,11 +253,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             try
             {
-                drives[i].Flush(WarningSink);
+                drives[i].Flush(logger);
             }
             catch (Exception ex) when (ex is InvalidOperationException or IOException)
             {
-                WarningSink($"DiskII (slot {SlotNumber}): drive {i + 1} flush during reset failed: {ex.Message}");
+                logger.Warning(ex, "DiskII (slot {Slot}): drive {Drive} flush during reset failed.", SlotNumber, i + 1);
             }
         }
 
@@ -310,7 +317,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException)
         {
-            WarningSink($"DiskII (slot {SlotNumber}): eject of drive {driveIndex + 1} rejected — flush failed: {ex.Message}");
+            logger.Warning(ex, "DiskII (slot {Slot}): eject of drive {Drive} rejected — flush failed.", SlotNumber, driveIndex + 1);
             return false;
         }
 
@@ -334,7 +341,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     public void Flush(int driveIndex)
     {
         ValidateDriveIndex(driveIndex);
-        drives[driveIndex].Flush(WarningSink);
+        drives[driveIndex].Flush(logger);
     }
 
     /// <inheritdoc />
@@ -442,7 +449,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             // Track changed → flush the previous track if it was dirty (FR-D8) and
             // trigger a track-step settling delay (FR-D7).
-            drive.OnTrackChanging(WarningSink);
+            drive.OnTrackChanging(logger);
             drive.QuarterTrack = newQuarter;
             ScheduleTrackStepSettle(drive);
         }
@@ -506,7 +513,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (!on)
         {
             // FR-D8: motor-off triggers a flush.
-            drives[currentDrive].Flush(WarningSink);
+            drives[currentDrive].Flush(logger);
             motorOn = false;
             CancelDriftEvent();
             return;
@@ -570,7 +577,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
 
         // FR-D8: drive deselect flushes the outgoing drive.
-        drives[currentDrive].Flush(WarningSink);
+        drives[currentDrive].Flush(logger);
         currentDrive = index;
         if (motorOn && context is not null)
         {
@@ -841,7 +848,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         var drive = drives[driveIndex];
 
         // FR-R3: hot-swap resets per-drive state so the next sector read starts cleanly.
-        drive.Flush(WarningSink);
+        drive.Flush(logger);
         drive.ResetTransientState();
         drive.Media = media;
         drive.ImagePath = imagePath;
@@ -927,16 +934,16 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             SpinPosition %= len;
         }
 
-        public void OnTrackChanging(Action<string> warningSink)
+        public void OnTrackChanging(ILogger logger)
         {
             // Flush dirty nibbles for the outgoing track before stepping away.
-            Flush(warningSink);
+            Flush(logger);
             CachedTrack = null;
             CachedQuarterTrack = -1;
             IsTrackDirty = false;
         }
 
-        public void Flush(Action<string> warningSink)
+        public void Flush(ILogger logger)
         {
             try
             {
@@ -944,7 +951,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException)
             {
-                warningSink($"DiskII: write-back of quarter-track {CachedQuarterTrack} failed: {ex.Message}");
+                logger.Warning(ex, "DiskII: write-back of quarter-track {QuarterTrack} failed.", CachedQuarterTrack);
                 IsTrackDirty = false;
             }
         }
