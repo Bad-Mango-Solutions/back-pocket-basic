@@ -113,9 +113,22 @@ public sealed class DiskEjectCommand : CommandHandlerBase, ICommandHelp
         // Release any DiskImageOpenResult the runtime insert path tracked for this drive
         // so the underlying file handle is closed instead of leaking until process exit.
         // Safe no-op if the medium was mounted by some other path (e.g. a profile load).
-        if (context is IDebugContext debugContext)
+        // The Disk II hardware has no latch interlock — opening the drive door during a
+        // read is always physically permitted — so a torn-down registry must NOT crash
+        // the emulator. Consult IsDisposed first, and swallow any ObjectDisposedException
+        // raised by a teardown race (logging-only) so the eject still completes cleanly.
+        if (context is IDebugContext debugContext && !debugContext.MountedDisks.IsDisposed)
         {
-            debugContext.MountedDisks.Release(slot, driveIndex);
+            try
+            {
+                debugContext.MountedDisks.Release(slot, driveIndex);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Registry was disposed between the IsDisposed check and the Release
+                // call. The controller eject already happened; the file handle will be
+                // reclaimed by the registry's own Dispose path. Don't fail the command.
+            }
         }
 
         context.Output.WriteLine($"Ejected slot {slot} drive {drive}.");

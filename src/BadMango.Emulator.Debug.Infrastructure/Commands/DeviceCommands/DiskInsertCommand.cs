@@ -190,7 +190,46 @@ public sealed class DiskInsertCommand : CommandHandlerBase, ICommandHelp
         // to the debug-context-owned MountedDiskRegistry so its lifetime follows the
         // mount: re-mounting the same drive disposes the prior entry, eject disposes
         // this one, and tearing down the debug context disposes anything still held.
-        debugContext.MountedDisks.Track(slot, driveIndex, open);
+        // Defend against a torn-down registry (e.g. after DebugContext.Dispose) so the
+        // user sees a CommandResult.Error rather than an unhandled ObjectDisposedException.
+        if (debugContext.MountedDisks.IsDisposed)
+        {
+            // Roll back the mount we just performed and release the file handle so we
+            // don't leave a dangling reference on the controller.
+            try
+            {
+                controller.Eject(driveIndex);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                // Best-effort rollback; the controller error is reported below.
+                _ = ex;
+            }
+
+            open.Dispose();
+            return CommandResult.Error("Mount tracking is unavailable: the debug context has been disposed.");
+        }
+
+        try
+        {
+            debugContext.MountedDisks.Track(slot, driveIndex, open);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Lost a teardown race after the IsDisposed check above. Roll back the same
+            // way as the explicit IsDisposed branch.
+            try
+            {
+                controller.Eject(driveIndex);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                _ = ex;
+            }
+
+            open.Dispose();
+            return CommandResult.Error("Mount tracking is unavailable: the debug context was disposed during insert.");
+        }
 
         var summary = writeProtect
             ? $"Inserted '{path}' (write-protected) into slot {slot} drive {drive}."

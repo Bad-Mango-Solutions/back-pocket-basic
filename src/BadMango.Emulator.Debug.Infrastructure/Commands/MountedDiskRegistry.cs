@@ -39,6 +39,20 @@ public sealed class MountedDiskRegistry : IDisposable
     public int Count => this.entries.Count;
 
     /// <summary>
+    /// Gets a value indicating whether <see cref="Dispose"/> has been called.
+    /// </summary>
+    /// <remarks>
+    /// Callers (notably the <c>disk eject</c> path) should consult this before invoking
+    /// <see cref="Track"/> or <see cref="Release"/> when they would otherwise translate
+    /// a thrown <see cref="ObjectDisposedException"/> into an emulator crash. The Disk II
+    /// hardware itself has no latch interlock — opening the door during a read is always
+    /// permitted (just unsafe for the data) — so eject paths must remain crash-free even
+    /// when the surrounding registry has already been torn down.
+    /// </remarks>
+    /// <value><see langword="true"/> once <see cref="Dispose"/> has run.</value>
+    public bool IsDisposed => this.disposed;
+
+    /// <summary>
     /// Records the <see cref="DiskImageOpenResult"/> that backs the medium just mounted at
     /// <paramref name="slot"/> / <paramref name="driveIndex"/>. If a prior open result was
     /// already tracked at the same key, it is disposed first to release its file handle.

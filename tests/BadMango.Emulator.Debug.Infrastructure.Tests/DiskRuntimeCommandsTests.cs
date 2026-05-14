@@ -558,6 +558,92 @@ public sealed class DiskRuntimeCommandsTests
         Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
     }
 
+    /// <summary>
+    /// <see cref="MountedDiskRegistry.IsDisposed"/> reflects the registry's disposed state
+    /// — <see langword="false"/> until <see cref="MountedDiskRegistry.Dispose"/> runs,
+    /// then <see langword="true"/> permanently. <see cref="MountedDiskRegistry.Clear"/>
+    /// does NOT mark the registry disposed.
+    /// </summary>
+    [Test]
+    public void MountedDiskRegistry_IsDisposed_ReflectsLifecycle()
+    {
+        using var registry = new MountedDiskRegistry();
+        Assert.That(registry.IsDisposed, Is.False);
+
+        registry.Clear();
+        Assert.That(registry.IsDisposed, Is.False, "Clear must not mark the registry disposed.");
+
+        registry.Dispose();
+        Assert.That(registry.IsDisposed, Is.True);
+
+        // Idempotent.
+        registry.Dispose();
+        Assert.That(registry.IsDisposed, Is.True);
+    }
+
+    /// <summary>
+    /// Ejecting through a debug context whose <see cref="MountedDiskRegistry"/> has
+    /// already been disposed must still complete cleanly: the controller's media
+    /// reference is dropped (Disk II has no latch interlock) and the command must NOT
+    /// crash with <see cref="ObjectDisposedException"/>.
+    /// </summary>
+    [Test]
+    public void DiskEject_DisposedRegistry_DoesNotCrashAndStillSucceeds()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        ctl.Setup(c => c.Eject(0)).Returns(true);
+
+        // Force the registry into a disposed state before issuing eject.
+        this.debugContext.MountedDisks.Dispose();
+        Assert.That(this.debugContext.MountedDisks.IsDisposed, Is.True);
+
+        CommandResult? result = null;
+        Assert.DoesNotThrow(() => result = new DiskEjectCommand().Execute(this.debugContext, ["6:1"]));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.Success, Is.True, result.Message);
+            Assert.That(this.outputWriter.ToString(), Does.Contain("Ejected slot 6 drive 1"));
+        });
+        ctl.Verify(c => c.Eject(0), Times.Once);
+    }
+
+    /// <summary>
+    /// Inserting through a debug context whose <see cref="MountedDiskRegistry"/> has
+    /// already been disposed must surface a clean <see cref="CommandResult.Error"/>
+    /// rather than crashing with <see cref="ObjectDisposedException"/>.
+    /// </summary>
+    [Test]
+    public void DiskInsert_DisposedRegistry_ReturnsCleanError()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var path = this.WriteBlankSectorImage(".dsk");
+
+        this.debugContext.MountedDisks.Dispose();
+
+        CommandResult? result = null;
+        Assert.DoesNotThrow(() => result = new DiskInsertCommand().Execute(this.debugContext, ["6:1", path]));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("disposed"));
+        });
+
+        // Rollback: the controller must NOT remain holding the media reference.
+        ctl.Verify(c => c.Eject(0), Times.Once);
+
+        // And the file handle must be released so the file is no longer locked.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        });
+    }
+
     private static (Mock<ISlotCard> Card, Mock<IDiskController> Controller) MakeMockController(int slot, int driveCount)
     {
         // Single mock object that implements both ISlotCard (for GetCard) and IDiskController
