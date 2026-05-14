@@ -25,16 +25,6 @@ using System.Runtime.CompilerServices;
 /// </remarks>
 public static class ProcessorStatusFlagsHelpers
 {
-    // Flag bit masks
-    private const byte CarryBit = 0x01;        // Bit 0
-    private const byte ZeroBit = 0x02;         // Bit 1
-    private const byte InterruptBit = 0x04;    // Bit 2
-    private const byte DecimalBit = 0x08;      // Bit 3
-    private const byte IndexSizeBit = 0x10;    // Bit 4 (X flag - 65816/65832)
-    private const byte MemorySizeBit = 0x20;   // Bit 5 (M flag - 65816/65832)
-    private const byte OverflowBit = 0x40;     // Bit 6
-    private const byte NegativeBit = 0x80;     // Bit 7
-
     #region Carry Flag (C)
 
     /// <param name="p">The processor status flags.</param>
@@ -289,4 +279,14 @@ public static class ProcessorStatusFlagsHelpers
     }
 
     #endregion
+
+    // Flag bit masks
+    private const byte CarryBit = 0x01;        // Bit 0
+    private const byte ZeroBit = 0x02;         // Bit 1
+    private const byte InterruptBit = 0x04;    // Bit 2
+    private const byte DecimalBit = 0x08;      // Bit 3
+    private const byte IndexSizeBit = 0x10;    // Bit 4 (X flag - 65816/65832)
+    private const byte MemorySizeBit = 0x20;   // Bit 5 (M flag - 65816/65832)
+    private const byte OverflowBit = 0x40;     // Bit 6
+    private const byte NegativeBit = 0x80;     // Bit 7
 }
