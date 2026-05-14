@@ -283,9 +283,10 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// </para>
     /// <para>
     /// Per the ProDOS technical reference, a volume name is 1..15 characters, the first
-    /// must be an upper-case letter, and remaining characters are letters, digits, or
-    /// <c>'.'</c>. Lowercase support via the volume header's case-bit map is not yet
-    /// implemented.
+    /// must be a letter, and remaining characters are letters, digits, or <c>'.'</c>.
+    /// On-disk bytes are always uppercase; if the case-bit map at offset 0x1A of the
+    /// volume header (ProDOS Tech Note 25) is present (bit 15 set), the corresponding
+    /// characters are reported back in lowercase.
     /// </para>
     /// </remarks>
     private static string? TryReadProDosVolumeName(IBlockMedia media, DiskImageFormat format, TextWriter errorLog)
@@ -336,6 +337,14 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             return null;
         }
 
+        // Tech Note 25 case-bit field at block-relative offset 0x1E..0x1F (entry-relative
+        // 0x1A..0x1B). Bit 15 indicates the field is valid; bits 14..0 select case for
+        // characters 0..14, with a set bit meaning the corresponding character should be
+        // displayed in lowercase. When the high bit is clear we leave the on-disk bytes
+        // untouched (legacy/uppercase-only volumes).
+        var caseField = (ushort)(keyBlock[0x1E] | (keyBlock[0x1F] << 8));
+        var caseBitsValid = (caseField & 0x8000) != 0;
+
         var name = new char[nameLen];
         for (var i = 0; i < nameLen; i++)
         {
@@ -343,6 +352,11 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             if (!IsValidProDosVolumeNameChar(c, isFirst: i == 0))
             {
                 return null;
+            }
+
+            if (caseBitsValid && c >= 'A' && c <= 'Z' && (caseField & (1 << (14 - i))) != 0)
+            {
+                c = (char)(c + ('a' - 'A'));
             }
 
             name[i] = c;
@@ -354,8 +368,9 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// <summary>
     /// Returns whether <paramref name="c"/> is a legal character at the given position of a
     /// ProDOS volume name. The first character must be an upper-case letter; subsequent
-    /// characters may also be digits or <c>'.'</c>. Lowercase letters are not currently
-    /// accepted (the case-bit map at offset 0x1A of the volume header is not consulted).
+    /// characters may also be digits or <c>'.'</c>. Validation runs against the on-disk
+    /// (uppercase) bytes; lowercase rendering is handled separately via the case-bit map
+    /// at offset 0x1A of the volume header.
     /// </summary>
     private static bool IsValidProDosVolumeNameChar(char c, bool isFirst)
     {
