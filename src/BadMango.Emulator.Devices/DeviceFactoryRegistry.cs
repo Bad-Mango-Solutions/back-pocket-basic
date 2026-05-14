@@ -77,6 +77,12 @@ public static class DeviceFactoryRegistry
         = new(StringComparer.Ordinal);
 #pragma warning restore SA1311
 
+    /// <summary>
+    /// Lazily-constructed sink-less Serilog logger used as a fallback when
+    /// <see cref="LoggerFactory"/> has not been configured. It silently discards all events,
+    /// which keeps device construction working in tests and bootstrap-light callers
+    /// without the registry ever touching the global <c>Log.Logger</c> facade.
+    /// </summary>
     private static readonly Lazy<ILogger> SilentLoggerInstance = new(
         () => new LoggerConfiguration().CreateLogger(),
         LazyThreadSafetyMode.ExecutionAndPublication);
