@@ -155,8 +155,11 @@ public sealed class DiskRuntimeCommandsTests
             Assert.That(output, Does.Contain("143360 bytes total"));
             Assert.That(output, Does.Contain("Drive 2: empty"));
 
-            // Empty drive must NOT print a geometry line.
-            Assert.That(output, Does.Not.Contain("Drive 2: empty\n      geometry"));
+            // Empty drive must NOT print a geometry line — exactly one "geometry:"
+            // line is expected (for the mounted drive 1). Counting occurrences avoids
+            // baking platform-specific line endings into the assertion.
+            var geometryLineCount = System.Text.RegularExpressions.Regex.Matches(output, @"\bgeometry:").Count;
+            Assert.That(geometryLineCount, Is.EqualTo(1));
         });
     }
 
