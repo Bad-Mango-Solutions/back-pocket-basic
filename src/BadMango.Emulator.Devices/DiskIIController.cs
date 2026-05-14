@@ -362,7 +362,8 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             QuarterTrack: drive.QuarterTrack,
             WriteProtect: drive.Media?.IsReadOnly ?? false,
             HasMedia: drive.Media is not null,
-            MountedImagePath: drive.ImagePath);
+            MountedImagePath: drive.ImagePath,
+            Geometry: drive.Media?.Geometry);
     }
 
     private static void ValidateDriveIndex(int driveIndex)

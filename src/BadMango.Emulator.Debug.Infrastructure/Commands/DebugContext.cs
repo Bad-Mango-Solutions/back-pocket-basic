@@ -27,7 +27,7 @@ using Core.Interfaces.Cpu;
 /// for bus-oriented debugging. Commands use the bus directly for memory operations.
 /// </para>
 /// </remarks>
-public sealed class DebugContext : IDebugContext
+public sealed class DebugContext : IDebugContext, IDisposable
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugContext"/> class.
@@ -120,6 +120,9 @@ public sealed class DebugContext : IDebugContext
 
     /// <inheritdoc/>
     public DiskImageFactory? DiskImageFactory { get; private set; }
+
+    /// <inheritdoc/>
+    public MountedDiskRegistry MountedDisks { get; } = new();
 
     /// <summary>
     /// Creates a debug context using the standard console streams.
@@ -294,6 +297,12 @@ public sealed class DebugContext : IDebugContext
     /// <summary>
     /// Detaches all emulator components from this debug context.
     /// </summary>
+    /// <remarks>
+    /// Disposes any retained <see cref="DiskImageOpenResult"/> handles tracked in
+    /// <see cref="MountedDisks"/>, releasing every file backend opened by the runtime
+    /// <c>disk insert</c> path. The registry itself remains usable for subsequent
+    /// re-attachment.
+    /// </remarks>
     public void DetachSystem()
     {
         this.Cpu = null;
@@ -302,5 +311,17 @@ public sealed class DebugContext : IDebugContext
         this.MachineInfo = null;
         this.TracingListener = null;
         this.Machine = null;
+
+        // Mounted-disk file handles only make sense while a machine is attached;
+        // release them eagerly so the host filesystem is not still holding the
+        // image files after the machine goes away. Use Clear (not Dispose) so the
+        // registry remains usable if a new machine is attached on top.
+        this.MountedDisks.Clear();
     }
+
+    /// <summary>
+    /// Disposes the <see cref="MountedDisks"/> registry and therefore every retained
+    /// <see cref="DiskImageOpenResult"/> (and its underlying file handle).
+    /// </summary>
+    public void Dispose() => this.MountedDisks.Dispose();
 }

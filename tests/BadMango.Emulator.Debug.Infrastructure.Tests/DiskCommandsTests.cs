@@ -44,6 +44,7 @@ public sealed class DiskCommandsTests
     {
         this.outputWriter.Dispose();
         this.errorWriter.Dispose();
+        this.debugContext.Dispose();
         try
         {
             if (Directory.Exists(this.tempRoot))

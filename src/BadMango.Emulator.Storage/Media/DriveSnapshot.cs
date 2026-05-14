@@ -10,7 +10,9 @@ namespace BadMango.Emulator.Storage.Media;
 /// <remarks>
 /// Mirrors the per-drive debug surface required by PRD §6.2 FR-D10:
 /// <c>motor</c>, <c>phase</c>, <c>quarterTrack</c>, <c>selected</c>, <c>writeProtect</c>,
-/// <c>mountedImagePath</c>.
+/// <c>mountedImagePath</c>, plus the inserted medium's <see cref="DiskGeometry"/> so the
+/// debug-console <c>disk list</c> command (PRD §6.5 FR-DC3) can surface track / sector
+/// counts and on-disk sector ordering without re-opening the image.
 /// </remarks>
 /// <param name="Selected">Whether this drive is the currently selected drive on the controller.</param>
 /// <param name="MotorOn">Whether the motor is energized for this drive.</param>
@@ -19,6 +21,11 @@ namespace BadMango.Emulator.Storage.Media;
 /// <param name="WriteProtect">Whether the inserted medium is reporting write-protect.</param>
 /// <param name="HasMedia">Whether a medium is currently inserted.</param>
 /// <param name="MountedImagePath">Path that produced the inserted medium, or <see langword="null"/> if unknown / empty.</param>
+/// <param name="Geometry">
+/// Geometry of the inserted medium when available, otherwise <see langword="null"/>.
+/// Empty drives report <see langword="null"/>; mounted drives whose media exposes
+/// <see cref="I525Media.Geometry"/> report a populated value.
+/// </param>
 public readonly record struct DriveSnapshot(
     bool Selected,
     bool MotorOn,
@@ -26,4 +33,5 @@ public readonly record struct DriveSnapshot(
     int QuarterTrack,
     bool WriteProtect,
     bool HasMedia,
-    string? MountedImagePath);
+    string? MountedImagePath,
+    DiskGeometry? Geometry = null);
