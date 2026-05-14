@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 using BadMango.Emulator.Storage.Formats;
+using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
 
 /// <summary>
@@ -602,14 +603,19 @@ public sealed class DiskCommandsTests
     [Test]
     public void DiskInfo_OnBootableDos33Dsk_ReportsBootable()
     {
-        // Author a source DOS 3.3 image with recognizable 6502 boot bytes at T0/S0.
+        // Author a source DOS 3.3 image with the real DOS boot opcode signature at $0801.
         var sourcePath = this.TempPath(".dsk");
         var src = new DiskCreateCommand().Execute(this.debugContext, [sourcePath, "--format", "dos33"]);
         Assert.That(src.Success, Is.True, src.Message);
 
         var srcBytes = File.ReadAllBytes(sourcePath);
-        srcBytes[0] = 0xA9; // LDA #imm — a plausible 6502 boot byte.
-        srcBytes[1] = 0xFE;
+        srcBytes[0] = 0x01;
+        srcBytes[1] = 0xA5;
+        srcBytes[2] = 0x27;
+        srcBytes[3] = 0xC9;
+        srcBytes[4] = 0x09;
+        srcBytes[5] = 0xD0;
+        srcBytes[6] = 0x18;
         File.WriteAllBytes(sourcePath, srcBytes);
 
         var destPath = this.TempPath(".dsk");
@@ -640,6 +646,43 @@ public sealed class DiskCommandsTests
         Assert.That(result.Success, Is.True, result.Message);
 
         Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         no"));
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> reports nibble-only images as <c>unknown (nibble image)</c>
+    /// because no block view is available for boot-block inspection.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnNibImage_ReportsBootabilityUnknown()
+    {
+        var path = this.TempPath(".nib");
+        File.WriteAllBytes(path, new byte[35 * GcrEncoder.StandardTrackLength]);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         unknown (nibble image)"));
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> logs boot-block read failures and continues reporting metadata.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnBootBlockReadFailure_ReportsUnknownAndContinues()
+    {
+        var path = this.TempPath(".hdv");
+        File.WriteAllBytes(path, new byte[512]);
+        this.debugContext.AttachDiskImageFactory(new ThrowingBootBlockFactory());
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         unknown (boot block unreadable)"));
+            Assert.That(this.errorWriter.ToString(), Does.Contain("disk-info: could not read boot block"));
+            Assert.That(this.outputWriter.ToString(), Does.Contain("Detected format:  HdvBlockImage"));
+        });
     }
 
     /// <summary>Both subcommands return an error when no DiskImageFactory is attached.</summary>
@@ -874,5 +917,37 @@ public sealed class DiskCommandsTests
         var path = Path.Combine(this.tempRoot, $"img-{Guid.NewGuid():N}{ext}");
         this.tempFiles.Add(path);
         return path;
+    }
+
+    private sealed class ThrowingBootBlockFactory : DiskImageFactory
+    {
+        /// <inheritdoc/>
+        public override DiskImageOpenResult Open(string path, bool forceReadOnly = false)
+            => new ImageBlockResult(new ThrowingBlockMedia(), DiskImageFormat.HdvBlockImage, path, isReadOnly: true);
+    }
+
+    private sealed class ThrowingBlockMedia : IBlockMedia
+    {
+        /// <inheritdoc/>
+        public int BlockSize => 512;
+
+        /// <inheritdoc/>
+        public int BlockCount => 1;
+
+        /// <inheritdoc/>
+        public bool IsReadOnly => true;
+
+        /// <inheritdoc/>
+        public void ReadBlock(int blockIndex, Span<byte> destination)
+            => throw new IOException("Synthetic boot-block read failure.");
+
+        /// <inheritdoc/>
+        public void WriteBlock(int blockIndex, ReadOnlySpan<byte> source)
+            => throw new InvalidOperationException("Read-only test media.");
+
+        /// <inheritdoc/>
+        public void Flush()
+        {
+        }
     }
 }
