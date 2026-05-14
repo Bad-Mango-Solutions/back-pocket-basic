@@ -80,6 +80,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private bool q6High;
     private bool q7High;
     private byte dataLatch;            // last byte returned to / received from CPU
+    private bool dataLatchValid;       // true once the head has produced (or written) a byte
     private byte writeShift;           // staged byte for write-load (Q6=1,Q7=1)
 
     private IEventContext? context;
@@ -266,6 +267,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         q6High = false;
         q7High = false;
         dataLatch = 0;
+        dataLatchValid = false;
         writeShift = 0;
         CancelDriftEvent();
 
@@ -310,7 +312,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return false;
         }
 
-        // FR-R2: flush first; if flush fails, reject the eject.
+        // FR-R2: flush first; if flush fails, reject the eject. We do a *probe*
+        // flush here so callers immediately learn that the eject was refused, but
+        // the authoritative flush happens inside the deferred callback so any
+        // writes the CPU performs in the gap between Eject() and ApplyEject (the
+        // FR-R1 "no half-state mid-byte" window) are also persisted.
         try
         {
             drive.FlushOrThrow();
@@ -608,9 +614,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            // On real Disk II hardware, writing to $C0EC with Q7 high simply clocks
+            // the *already-latched* byte (loaded via Q6=1,Q7=1) out to the head; the
+            // value of the STA itself is ignored on the data path. Reusing it here
+            // would silently corrupt the on-disk contents.
             if (q7High)
             {
-                writeShift = value;
                 ShiftWriteByte();
             }
 
@@ -712,7 +721,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         return LatchedOrFloating();
     }
 
-    private byte LatchedOrFloating() => dataLatch == 0 ? FloatingByte : dataLatch;
+    private byte LatchedOrFloating() => dataLatchValid ? dataLatch : FloatingByte;
 
     private void AdvanceSpinAndLatch()
     {
@@ -725,6 +734,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         if (drive.Media is null)
         {
             dataLatch = FloatingByte;
+            dataLatchValid = true;
             return;
         }
 
@@ -750,6 +760,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
 
         dataLatch = drive.CachedTrack![drive.SpinPosition];
+        dataLatchValid = true;
 
         ScheduleDriftEvent(drive);
     }
@@ -864,6 +875,21 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private void ApplyEject(int driveIndex)
     {
         var drive = drives[driveIndex];
+
+        // Re-flush in case the CPU dirtied the cached track between Eject() and
+        // this deferred callback (FR-R1/FR-R2 — no half-state mid-byte means we
+        // also can't drop a freshly written nibble at the swap point). We've
+        // already validated up-front that flush succeeds, so a failure here is
+        // unexpected; log it as a warning rather than crashing the scheduler.
+        try
+        {
+            drive.FlushOrThrow();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            logger.Warning(ex, "DiskII (slot {Slot}): deferred-eject flush of drive {Drive} failed; data may be lost.", SlotNumber, driveIndex + 1);
+        }
+
         drive.ResetTransientState();
         drive.Media = null;
         drive.ImagePath = null;
