@@ -29,14 +29,14 @@ using BadMango.Emulator.Storage.Media;
 [DeviceDebugCommand]
 public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
 {
-    private static readonly byte[] Dos33BootOpcodeSignature =
+    private static readonly byte[] Dos33BootBlockSignature =
     [
-        0xA5, 0x27, 0xC9, 0x09, 0xD0, 0x18,
+        0x01, 0xA5, 0x27, 0xC9, 0x09,
     ];
 
     private static readonly byte[] ProDosBootBlockSignature =
     [
-        0x01, 0x38, 0xB0, 0x03, 0x4C,
+        0x01, 0x38, 0xB0, 0x03,
     ];
 
     /// <summary>
@@ -294,14 +294,14 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// </para>
     /// <list type="bullet">
     /// <item><description>
-    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): execution at
-    /// <c>$0801</c> starts with <c>$A5 $27 $C9 $09 $D0 $18 ...</c>, so we match that opcode
-    /// sequence at block offset 1.
-    /// </description></item>
-    /// <item><description>
     /// ProDOS 8 (<i>Beneath Apple ProDOS</i>, ch. 2; Apple II Tech Note ProDOS #21,
     /// "Boot Block Format"): block 0 (the PBOOT loader) begins with
-    /// <c>$01 $38 $B0 $03 $4C ...</c>, matched at block offset 0.
+    /// <c>$01 $38 $B0 $03 ...</c>, matched at block offset 0.
+    /// </description></item>
+    /// <item><description>
+    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): block 0 begins
+    /// <c>$01 $A5 $27 $C9 $09 ...</c>, where execution at <c>$0801</c> starts with
+    /// <c>$A5 $27 ...</c>; matched at block offset 0.
     /// </description></item>
     /// <item><description>
     /// Freshly-formatted media that remains all <c>$00</c>/<c>$FF</c> does not match either
@@ -359,8 +359,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             return "yes";
         }
 
-        if (block.Length > Dos33BootOpcodeSignature.Length
-            && block.AsSpan(1, Dos33BootOpcodeSignature.Length).SequenceEqual(Dos33BootOpcodeSignature))
+        if (block.AsSpan().StartsWith(Dos33BootBlockSignature))
         {
             return "yes";
         }

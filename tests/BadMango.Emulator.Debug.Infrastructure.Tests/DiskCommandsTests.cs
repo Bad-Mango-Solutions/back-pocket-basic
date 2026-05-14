@@ -614,8 +614,6 @@ public sealed class DiskCommandsTests
         srcBytes[2] = 0x27;
         srcBytes[3] = 0xC9;
         srcBytes[4] = 0x09;
-        srcBytes[5] = 0xD0;
-        srcBytes[6] = 0x18;
         File.WriteAllBytes(sourcePath, srcBytes);
 
         var destPath = this.TempPath(".dsk");
@@ -948,6 +946,7 @@ public sealed class DiskCommandsTests
         /// <inheritdoc/>
         public void Flush()
         {
+            // No-op: test media does not buffer writes.
         }
     }
 }
