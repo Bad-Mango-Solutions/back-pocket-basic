@@ -339,6 +339,20 @@ public class DiskIIControllerTests
         });
     }
 
+    /// <summary>
+    /// Verifies that the constructor rejects negative settle-cycle parameters
+    /// (defensive guard on the public surface).
+    /// </summary>
+    [Test]
+    public void Constructor_RejectsNegativeSettleCycles()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(() => new DiskIIController(motorSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(() => new DiskIIController(trackStepSettleCycles: -1), Throws.TypeOf<ArgumentOutOfRangeException>());
+        });
+    }
+
     private static (DiskIIController Controller, IOPageDispatcher Dispatcher, BusAccess Context, Scheduler Scheduler, Mock<I525Media> Media) BuildHarness(
         int motorSettleCycles = DiskIIController.DefaultMotorSettleCycles)
     {

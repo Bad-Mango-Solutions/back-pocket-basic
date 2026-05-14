@@ -423,7 +423,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
         var media = drive.Media;
         var qtCount = media is not null ? media.Geometry.QuarterTrackCount : 4 * 35;
-        var maxQuarter = (2 * (qtCount / 4)) - 2;
+
+        // FR-D4: clamp at track 0 and `2 * trackCount - 2`, i.e. the last even
+        // quarter-track since the stepper moves in two-quarter-track increments.
+        var trackCount = qtCount / 4;
+        var maxQuarter = (2 * trackCount) - 2;
         var newQuarter = drive.QuarterTrack + delta;
         if (newQuarter < 0)
         {
@@ -693,13 +697,15 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             // During settling, return the previously latched byte (or floating $FF
             // when nothing has been latched yet). FR-D7.
-            return dataLatch == 0 ? FloatingByte : dataLatch;
+            return LatchedOrFloating();
         }
 
         // For non-data-read modes (write enable, write load), reads return whatever
         // is on the floating bus; we return the last latched byte for determinism.
-        return dataLatch == 0 ? FloatingByte : dataLatch;
+        return LatchedOrFloating();
     }
+
+    private byte LatchedOrFloating() => dataLatch == 0 ? FloatingByte : dataLatch;
 
     private void AdvanceSpinAndLatch()
     {
