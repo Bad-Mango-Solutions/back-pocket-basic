@@ -132,4 +132,16 @@ public interface IDebugContext : ICommandContext
     /// </para>
     /// </remarks>
     DiskImageFactory? DiskImageFactory { get; }
+
+    /// <summary>
+    /// Gets the registry that owns the <see cref="DiskImageOpenResult"/> handles produced
+    /// by the runtime <c>disk insert</c> path so their underlying file backends can be
+    /// released on eject, re-mount, or context teardown instead of leaking until process
+    /// exit.
+    /// </summary>
+    /// <value>
+    /// The mounted-disk registry. Always non-<see langword="null"/> on a fresh
+    /// <see cref="DebugContext"/>; lifetime follows the context itself.
+    /// </value>
+    MountedDiskRegistry MountedDisks { get; }
 }

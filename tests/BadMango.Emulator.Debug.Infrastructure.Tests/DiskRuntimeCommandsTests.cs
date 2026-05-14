@@ -55,6 +55,7 @@ public sealed class DiskRuntimeCommandsTests
     {
         this.outputWriter.Dispose();
         this.errorWriter.Dispose();
+        this.debugContext.Dispose();
         try
         {
             if (Directory.Exists(this.tempRoot))
@@ -426,14 +427,136 @@ public sealed class DiskRuntimeCommandsTests
         });
     }
 
-    private static DriveSnapshot EmptySnapshot() => new(
-        Selected: false,
-        MotorOn: false,
-        PhaseLatch: 0,
-        QuarterTrack: 0,
-        WriteProtect: false,
-        HasMedia: false,
-        MountedImagePath: null);
+    /// <summary>
+    /// <c>disk insert</c> registers the open result with the debug context's
+    /// <see cref="MountedDiskRegistry"/> so the file handle can be released later.
+    /// </summary>
+    [Test]
+    public void DiskInsert_TracksOpenResultInRegistry()
+    {
+        var (card, _) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var path = this.WriteBlankSectorImage(".dsk");
+
+        Assert.That(this.debugContext.MountedDisks.Count, Is.Zero);
+        var result = new DiskInsertCommand().Execute(this.debugContext, ["6:1", path]);
+        Assert.That(result.Success, Is.True, result.Message);
+        Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
+    }
+
+    /// <summary>
+    /// Re-inserting on the same drive disposes the prior open result rather than leaking
+    /// its file handle.
+    /// </summary>
+    [Test]
+    public void DiskInsert_ReplacingPriorMount_DisposesPriorOpen()
+    {
+        var (card, _) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var first = this.WriteBlankSectorImage(".dsk");
+        var second = this.WriteBlankSectorImage(".dsk");
+
+        Assert.That(new DiskInsertCommand().Execute(this.debugContext, ["6:1", first]).Success, Is.True);
+        Assert.That(new DiskInsertCommand().Execute(this.debugContext, ["6:1", second]).Success, Is.True);
+
+        // Still exactly one tracked entry for this drive — the prior open was disposed.
+        Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
+
+        // And the prior file is no longer locked: we can take an exclusive (FileShare.None)
+        // handle on it. If the prior open had leaked, FileStorageBackend's FileShare.None
+        // hold would still be active and this would throw IOException.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(first, FileMode.Open, FileAccess.Read, FileShare.None);
+        });
+    }
+
+    /// <summary>
+    /// A successful eject releases the registry entry (and therefore the file handle) for
+    /// the targeted drive.
+    /// </summary>
+    [Test]
+    public void DiskEject_Success_ReleasesRegistryEntry()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        ctl.Setup(c => c.Eject(0)).Returns(true);
+
+        var path = this.WriteBlankSectorImage(".dsk");
+        Assert.That(new DiskInsertCommand().Execute(this.debugContext, ["6:1", path]).Success, Is.True);
+        Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
+
+        Assert.That(new DiskEjectCommand().Execute(this.debugContext, ["6:1"]).Success, Is.True);
+        Assert.That(this.debugContext.MountedDisks.Count, Is.Zero);
+
+        // Underlying file is no longer locked by the now-disposed open result.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        });
+    }
+
+    /// <summary>
+    /// Disposing the <see cref="DebugContext"/> disposes every retained open result so
+    /// the host filesystem no longer holds the image files.
+    /// </summary>
+    [Test]
+    public void DebugContext_Dispose_ReleasesAllRetainedOpens()
+    {
+        var path = this.WriteBlankSectorImage(".dsk");
+
+        // Use a freshly-scoped context so disposing it does not interfere with TearDown.
+        var dispatcher = new CommandDispatcher();
+        using (var output = new StringWriter())
+        using (var error = new StringWriter())
+        {
+            var ctx = new DebugContext(dispatcher, output, error);
+            ctx.AttachDiskImageFactory(new DiskImageFactory());
+            var localManager = new Mock<ISlotManager>();
+            var localMachine = new Mock<IMachine>();
+            localMachine.Setup(m => m.GetComponent<ISlotManager>()).Returns(localManager.Object);
+            ctx.AttachMachine(localMachine.Object);
+
+            var (card, _) = MakeMockController(slot: 6, driveCount: 2);
+            localManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+            Assert.That(new DiskInsertCommand().Execute(ctx, ["6:1", path]).Success, Is.True);
+            Assert.That(ctx.MountedDisks.Count, Is.EqualTo(1));
+
+            ctx.Dispose();
+            Assert.That(ctx.MountedDisks.Count, Is.Zero);
+        }
+
+        // After the context is disposed, the file is no longer locked.
+        Assert.DoesNotThrow(() =>
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        });
+    }
+
+    /// <summary>
+    /// <see cref="DebugContext.DetachSystem"/> clears the registry (releasing handles)
+    /// but leaves it usable for a subsequent re-attach.
+    /// </summary>
+    [Test]
+    public void DetachSystem_ClearsRegistry_ButLeavesItUsable()
+    {
+        var (card, _) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var path = this.WriteBlankSectorImage(".dsk");
+
+        Assert.That(new DiskInsertCommand().Execute(this.debugContext, ["6:1", path]).Success, Is.True);
+        Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
+
+        this.debugContext.DetachSystem();
+        Assert.That(this.debugContext.MountedDisks.Count, Is.Zero);
+
+        // Reattach and re-insert: registry must still accept new entries.
+        this.debugContext.AttachMachine(this.machine.Object);
+        var second = this.WriteBlankSectorImage(".dsk");
+        Assert.That(new DiskInsertCommand().Execute(this.debugContext, ["6:1", second]).Success, Is.True);
+        Assert.That(this.debugContext.MountedDisks.Count, Is.EqualTo(1));
+    }
 
     private static (Mock<ISlotCard> Card, Mock<IDiskController> Controller) MakeMockController(int slot, int driveCount)
     {
@@ -448,6 +571,15 @@ public sealed class DiskRuntimeCommandsTests
         ctlMock.SetupGet(c => c.DriveCount).Returns(driveCount);
         return (cardMock, ctlMock);
     }
+
+    private static DriveSnapshot EmptySnapshot() => new(
+        Selected: false,
+        MotorOn: false,
+        PhaseLatch: 0,
+        QuarterTrack: 0,
+        WriteProtect: false,
+        HasMedia: false,
+        MountedImagePath: null);
 
     /// <summary>
     /// Writes a blank 35-track DOS 3.3 ordered sector image to a temp file and returns its

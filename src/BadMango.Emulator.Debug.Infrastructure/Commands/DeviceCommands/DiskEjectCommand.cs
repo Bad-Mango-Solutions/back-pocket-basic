@@ -110,6 +110,14 @@ public sealed class DiskEjectCommand : CommandHandlerBase, ICommandHelp
                 : CommandResult.Error($"Slot {slot} drive {drive} is already empty.");
         }
 
+        // Release any DiskImageOpenResult the runtime insert path tracked for this drive
+        // so the underlying file handle is closed instead of leaking until process exit.
+        // Safe no-op if the medium was mounted by some other path (e.g. a profile load).
+        if (context is IDebugContext debugContext)
+        {
+            debugContext.MountedDisks.Release(slot, driveIndex);
+        }
+
         context.Output.WriteLine($"Ejected slot {slot} drive {drive}.");
         return CommandResult.Ok();
     }

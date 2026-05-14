@@ -185,12 +185,13 @@ public sealed class DiskInsertCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error($"Mount rejected: {ex.Message}");
         }
 
-        // Intentionally do NOT dispose 'open' here: the mounted media references the
-        // backend that 'open' owns, so disposing would close the file handle out from
-        // under the controller. The handle is released when the medium is ejected and
-        // ultimately reclaimed at process exit (consistent with the existing memory
-        // note for DiskImageFactory.Open lifetimes — see also disk-info, which only
-        // disposes because it never mounts).
+        // The mounted media references the file backend that 'open' owns; disposing
+        // 'open' would close the file handle out from under the controller. Hand 'open'
+        // to the debug-context-owned MountedDiskRegistry so its lifetime follows the
+        // mount: re-mounting the same drive disposes the prior entry, eject disposes
+        // this one, and tearing down the debug context disposes anything still held.
+        debugContext.MountedDisks.Track(slot, driveIndex, open);
+
         var summary = writeProtect
             ? $"Inserted '{path}' (write-protected) into slot {slot} drive {drive}."
             : $"Inserted '{path}' into slot {slot} drive {drive}.";
