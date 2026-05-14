@@ -782,6 +782,160 @@ public class MachineBuilderTests
         Assert.That(ex!.Message, Does.Contain("unknown-handler"));
     }
 
+    /// <summary>
+    /// Verifies that <see cref="MachineBuilder.FromProfile"/> passes the optional per-card
+    /// <see cref="System.Text.Json.JsonElement"/> configuration blob through to the registered
+    /// slot-card factory. This is the plumbing required by config-driven cards such as the
+    /// Disk II controller and SmartPort.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCardFactory_ReceivesConfigBlob()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Parse a config blob that the fake "diskii"-style factory will require.
+        using var configDoc = System.Text.Json.JsonDocument.Parse(
+            "{\"drive1\":\"foo.dsk\",\"drive2\":\"bar.dsk\"}");
+        var configElement = configDoc.RootElement.Clone();
+
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
+            {
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                    },
+                ],
+            },
+            Devices = new()
+            {
+                Slots = new()
+                {
+                    Enabled = true,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 6,
+                            Type = "fakediskii",
+                            Config = configElement,
+                        },
+                    ],
+                },
+            },
+        };
+
+        System.Text.Json.JsonElement? capturedConfig = null;
+        int callCount = 0;
+        var fakeCard = new FakeSlotCard();
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+
+        builder.RegisterSlotCardFactory("fakediskii", (_, cfg) =>
+        {
+            callCount++;
+            capturedConfig = cfg;
+            return fakeCard;
+        });
+
+        builder.FromProfile(profile);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callCount, Is.EqualTo(1), "Slot-card factory should be invoked exactly once.");
+            Assert.That(capturedConfig.HasValue, Is.True, "Factory should receive the config blob from SlotCardProfile.Config.");
+            Assert.That(capturedConfig!.Value.GetProperty("drive1").GetString(), Is.EqualTo("foo.dsk"));
+            Assert.That(capturedConfig!.Value.GetProperty("drive2").GetString(), Is.EqualTo("bar.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that slot-card factories registered without per-card configuration still
+    /// receive a <see langword="null"/> <see cref="System.Text.Json.JsonElement"/> when the
+    /// profile entry omits the <c>config</c> property. This guards the "ignore the config
+    /// argument" adaptation of legacy parameterless registrations.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCardFactory_ReceivesNullConfig_WhenProfileOmitsConfig()
+    {
+        var mockCpu = CreateMockCpu();
+
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
+            {
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                    },
+                ],
+            },
+            Devices = new()
+            {
+                Slots = new()
+                {
+                    Enabled = true,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 4,
+                            Type = "fakecard",
+
+                            // No Config specified - factory should receive null.
+                        },
+                    ],
+                },
+            },
+        };
+
+        System.Text.Json.JsonElement? capturedConfig = System.Text.Json.JsonDocument.Parse("{}").RootElement;
+        bool factoryCalled = false;
+        var fakeCard = new FakeSlotCard();
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+
+        builder.RegisterSlotCardFactory("fakecard", (_, cfg) =>
+        {
+            factoryCalled = true;
+            capturedConfig = cfg;
+            return fakeCard;
+        });
+
+        builder.FromProfile(profile);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(factoryCalled, Is.True);
+            Assert.That(capturedConfig.HasValue, Is.False, "Factory should receive null when profile omits config.");
+        });
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();
@@ -794,5 +948,44 @@ public class MachineBuilderTests
     private sealed class TestComponent
     {
         public string Name { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Minimal <see cref="ISlotCard"/> implementation used by slot-card factory tests
+    /// to verify that <see cref="MachineBuilder.RegisterSlotCardFactory"/> and
+    /// <see cref="MachineBuilder.FromProfile"/> plumb the per-card configuration blob
+    /// through to the factory.
+    /// </summary>
+    private sealed class FakeSlotCard : ISlotCard
+    {
+        public string Name => "FakeSlotCard";
+
+        public string DeviceType => "fakediskii";
+
+        public PeripheralKind Kind => PeripheralKind.SlotCard;
+
+        public int SlotNumber { get; set; }
+
+        public SlotIOHandlers? IOHandlers => null;
+
+        public IBusTarget? ROMRegion => null;
+
+        public IBusTarget? ExpansionROMRegion => null;
+
+        public void Initialize(IEventContext context)
+        {
+        }
+
+        public void Reset()
+        {
+        }
+
+        public void OnExpansionROMSelected()
+        {
+        }
+
+        public void OnExpansionROMDeselected()
+        {
+        }
     }
 }
