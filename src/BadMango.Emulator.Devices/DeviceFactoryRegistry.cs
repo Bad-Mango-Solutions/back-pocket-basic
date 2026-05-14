@@ -265,9 +265,9 @@ public static class DeviceFactoryRegistry
     }
 
     /// <summary>
-    /// Finds the public constructor with the most parameters whose arguments the registry
-    /// can satisfy (parameterless wins over multi-arg only when no resolvable multi-arg
-    /// ctor exists).
+    /// Finds a public constructor the registry can satisfy, preferring a parameterless
+    /// constructor when one exists; otherwise, selects the resolvable public constructor
+    /// with the most parameters.
     /// </summary>
     private static ConstructorInfo? FindResolvableConstructor(Type deviceType)
     {
