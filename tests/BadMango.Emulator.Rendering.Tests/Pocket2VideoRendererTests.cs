@@ -1291,6 +1291,14 @@ public class Pocket2VideoRendererTests
     [Test]
     public void RenderFrame_Performance_CompletesInReasonableTime()
     {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("CI"),
+                "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Assert.Inconclusive("Performance test skipped in CI environment.");
+        }
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         // Simulate 1 second at 60 fps
