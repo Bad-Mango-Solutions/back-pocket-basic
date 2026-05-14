@@ -49,9 +49,9 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Reports the format DiskImageFactory would pick for the supplied image, the " +
-        "geometry, the write-protect flag, the sniffed .dsk sector ordering (per PRD " +
-        "§10 decision 5) and any 2MG header metadata. The image is opened read-only and " +
-        "is not mounted on any controller.";
+        "geometry, the write-protect flag, whether the image is bootable, the sniffed " +
+        ".dsk sector ordering (per PRD §10 decision 5) and any 2MG header metadata. The " +
+        "image is opened read-only and is not mounted on any controller.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -163,6 +163,7 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
             output.WriteLine($"  File size:        {fileInfo.Length} bytes");
             output.WriteLine($"  Detected format:  {open.Format}");
             output.WriteLine($"  Write-protected:  {(intrinsicWriteProtected ? "yes" : "no")}");
+            output.WriteLine($"  Bootable:         {DescribeBootability(open, context.Error)}");
 
             switch (open)
             {
@@ -268,6 +269,89 @@ public sealed class DiskInfoCommand : CommandHandlerBase, ICommandHelp
         1600 => "3.5\" block image (800K)",
         _ => "block image",
     };
+
+    /// <summary>
+    /// Returns a human-readable description of whether <paramref name="open"/> is bootable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both Disk II (5.25") and SmartPort (3.5" / hard disk) bootstrap by loading the first
+    /// sector / block of the medium to <c>$0800</c> and jumping to <c>$0801</c>. The Disk II
+    /// <c>$C600</c> controller ROM does this unconditionally — it does not itself inspect
+    /// the loaded sector — so the byte at <c>$0800</c> is consumed by the loader code
+    /// stamped onto the disk (the "boot1" stage), not by the ROM. The convention shared by
+    /// every Apple-supplied bootable disk is therefore:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// Apple DOS 3.3 (<i>Beneath Apple DOS</i>, Worth &amp; Lechner, App. C): track 0 / sector 0
+    /// begins with <c>$01</c>, used by the boot1 loader as the count of additional sectors
+    /// to chain-load before transferring control to DOS proper.
+    /// </description></item>
+    /// <item><description>
+    /// ProDOS 8 (<i>Beneath Apple ProDOS</i>, ch. 2; Apple II Tech Note ProDOS #21,
+    /// "Boot Block Format"): block 0 (the PBOOT loader) begins with the byte sequence
+    /// <c>$01 $38 $B0 $03 $4C ...</c>, again starting with <c>$01</c>.
+    /// </description></item>
+    /// <item><description>
+    /// SmartPort firmware bootstrap (Apple II Startup Sequence Reference, §10): block 0 is
+    /// documented to start with <c>DB $01</c> as the boot block indicator before the
+    /// loader code itself.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// Conversely, a freshly-formatted (or never-written) disk leaves the boot region as
+    /// either all <c>$00</c> bytes (causing a <c>BRK</c> at <c>$0801</c>) or all <c>$FF</c>
+    /// bytes (causing the CPU to execute <c>SBC</c>-absolute on garbage). Neither boots.
+    /// We therefore report <c>yes</c> when the first byte of block 0 is in the range
+    /// <c>$01..$FE</c> and <c>no</c> when it is <c>$00</c> or <c>$FF</c>. This matches the
+    /// "<c>$00</c> = not bootable, <c>$01..$FF</c> = bootable" indicator semantics already
+    /// documented for slot-card scan in §4.3 of the same reference.
+    /// </para>
+    /// <para>
+    /// For sector- and block-image opens we read block 0 via <see cref="IBlockMedia"/>; the
+    /// first 256 bytes of block 0 always correspond to physical track 0 / sector 0 of the
+    /// medium regardless of on-disk sector ordering, so the same check applies uniformly to
+    /// <c>.dsk</c>, <c>.do</c>, <c>.po</c>, <c>.2mg</c>, and <c>.hdv</c>. For nibble-only
+    /// opens (<c>.nib</c>, <c>.woz</c>) we report <c>unknown (nibble image)</c> rather
+    /// than spinning up a GCR decoder inside the debug command.
+    /// </para>
+    /// </remarks>
+    private static string DescribeBootability(DiskImageOpenResult open, TextWriter errorLog)
+    {
+        IBlockMedia? blockMedia = open switch
+        {
+            Image525AndBlockResult both => both.BlockMedia,
+            ImageBlockResult blockOnly => blockOnly.Media,
+            _ => null,
+        };
+
+        if (blockMedia is null)
+        {
+            return "unknown (nibble image)";
+        }
+
+        if (blockMedia.BlockCount < 1 || blockMedia.BlockSize < 1)
+        {
+            return "unknown (no boot block)";
+        }
+
+        var block = new byte[blockMedia.BlockSize];
+        try
+        {
+            blockMedia.ReadBlock(0, block);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort metadata: any IBlockMedia implementation may surface its own
+            // exception types. Log and report unknown rather than aborting 'disk info'.
+            errorLog.WriteLine($"disk-info: could not read boot block: {ex.GetType().Name}: {ex.Message}");
+            return "unknown (boot block unreadable)";
+        }
+
+        var indicator = block[0];
+        return indicator is 0x00 or 0xFF ? "no" : "yes";
+    }
 
     /// <summary>
     /// Attempts to read the ProDOS volume name from block 2 of <paramref name="media"/>.

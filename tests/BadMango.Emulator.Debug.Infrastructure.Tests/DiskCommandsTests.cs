@@ -578,6 +578,70 @@ public sealed class DiskCommandsTests
         Assert.That(output, Does.Contain("Volume name:      BIGVOL"));
     }
 
+    /// <summary>
+    /// <c>disk-info</c> reports <c>Bootable: no</c> for a freshly-authored DOS 3.3 disk
+    /// (block 0 is all zeros — the boot ROM would <c>BRK</c> at <c>$0801</c>).
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnNonBootableDos33Dsk_ReportsNotBootable()
+    {
+        var path = this.TempPath(".dsk");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--format", "dos33"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         no"));
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> reports <c>Bootable: yes</c> after <c>disk-create --bootable</c>
+    /// has copied a real boot sector into block 0.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnBootableDos33Dsk_ReportsBootable()
+    {
+        // Author a source DOS 3.3 image with recognizable 6502 boot bytes at T0/S0.
+        var sourcePath = this.TempPath(".dsk");
+        var src = new DiskCreateCommand().Execute(this.debugContext, [sourcePath, "--format", "dos33"]);
+        Assert.That(src.Success, Is.True, src.Message);
+
+        var srcBytes = File.ReadAllBytes(sourcePath);
+        srcBytes[0] = 0xA9; // LDA #imm — a plausible 6502 boot byte.
+        srcBytes[1] = 0xFE;
+        File.WriteAllBytes(sourcePath, srcBytes);
+
+        var destPath = this.TempPath(".dsk");
+        var dest = new DiskCreateCommand().Execute(this.debugContext, [destPath, "--format", "dos33", "--bootable", sourcePath]);
+        Assert.That(dest.Success, Is.True, dest.Message);
+
+        // Reset the captured output so we only inspect the disk-info output below.
+        this.outputWriter.GetStringBuilder().Clear();
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [destPath]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         yes"));
+    }
+
+    /// <summary>
+    /// <c>disk-info</c> reports <c>Bootable: no</c> for a freshly-authored ProDOS .hdv —
+    /// the ProDOS structures at blocks 2..N do not write a boot block at block 0.
+    /// </summary>
+    [Test]
+    public void DiskInfo_OnNonBootableProDosHdv_ReportsNotBootable()
+    {
+        var path = this.TempPath(".hdv");
+        var c = new DiskCreateCommand().Execute(this.debugContext, [path, "--size", "3.5", "--format", "prodos", "--volume-name", "BLANK"]);
+        Assert.That(c.Success, Is.True, c.Message);
+
+        var result = new DiskInfoCommand().Execute(this.debugContext, [path]);
+        Assert.That(result.Success, Is.True, result.Message);
+
+        Assert.That(this.outputWriter.ToString(), Does.Contain("Bootable:         no"));
+    }
+
     /// <summary>Both subcommands return an error when no DiskImageFactory is attached.</summary>
     [Test]
     public void Subcommands_RequireFactoryOnContext()
