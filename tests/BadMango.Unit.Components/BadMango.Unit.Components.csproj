@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>BadMango.Emulator.Rendering.Tests</RootNamespace>
+    <RootNamespace>BadMango.Unit.Components</RootNamespace>
+    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -36,11 +37,6 @@
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BadMango.Unit.Components\BadMango.Unit.Components.csproj" />
-    <ProjectReference Include="..\..\src\BadMango.Emulator.Rendering\BadMango.Emulator.Rendering.csproj" />
   </ItemGroup>
 
   <ItemGroup>

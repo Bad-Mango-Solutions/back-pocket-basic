@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Rendering.Tests;
 
 using BadMango.Emulator.Devices;
 
+using Unit.Components;
+
 /// <summary>
 /// Unit tests for the <see cref="Pocket2VideoRenderer"/> class.
 /// </summary>
@@ -1289,16 +1291,9 @@ public class Pocket2VideoRendererTests
     /// Verifies rendering completes in reasonable time (performance baseline).
     /// </summary>
     [Test]
+    [PerformanceTest]
     public void RenderFrame_Performance_CompletesInReasonableTime()
     {
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("CI"),
-                "true",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            Assert.Inconclusive("Performance test skipped in CI environment.");
-        }
-
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         // Simulate 1 second at 60 fps

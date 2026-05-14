@@ -146,6 +146,7 @@
     <Project Path="tests/BadMango.Emulator.Tests/BadMango.Emulator.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.TextEditor.Tests/BadMango.Emulator.TextEditor.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.UI.Tests/BadMango.Emulator.UI.Tests.csproj" />
+    <Project Path="tests/BadMango.Unit.Components/BadMango.Unit.Components.csproj" Id="104016b7-89ad-4ae1-89a3-c8ff8ad08594" />
   </Folder>
   <Folder Name="/wiki/">
     <File Path="wiki/6502-Emulation.md" />
