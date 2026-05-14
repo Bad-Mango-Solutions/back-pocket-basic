@@ -36,17 +36,18 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["l"];
 
     /// <inheritdoc/>
-    public override string Usage => "load <filename> [address]";
+    public override string Usage => "load <filename> [address] [offset] [length]";
 
     /// <inheritdoc/>
-    public string Synopsis => "load <filename> [address]";
+    public string Synopsis => "load <filename> [address] [offset] [length]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Loads a binary file into memory starting at the specified address. " +
         "The file is read as raw bytes and written using debug write (no I/O side " +
-        "effects). By default loads to $0000. Reports the number of bytes loaded " +
-        "and the address range written.";
+        "effects). By default loads to $0000. Optionally, an offset into the file " +
+        "and a length (in bytes) may be specified to load only a portion of the " +
+        "file. Reports the number of bytes loaded and the address range written.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -54,10 +55,12 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "load program.bin $800            Load file at $0800",
-        "load rom.bin $F000               Load ROM image at $F000",
-        "load data.bin                    Load file at $0000 (default)",
-        "load library://roms/test.bin $800  Load from library directory",
+        "load program.bin $800                       Load file at $0800",
+        "load rom.bin $F000                          Load ROM image at $F000",
+        "load data.bin                               Load file at $0000 (default)",
+        "load library://roms/test.bin $800           Load from library directory",
+        "load library://disks/image.dsk $800 $0 $100 Load first $100 bytes at $0800",
+        "load image.dsk $800 $200                    Load from offset $200 to end at $0800",
     ];
 
     /// <inheritdoc/>
@@ -85,7 +88,7 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
 
         if (args.Length == 0)
         {
-            return CommandResult.Error("Filename required. Usage: load <filename> [address]");
+            return CommandResult.Error("Filename required. Usage: load <filename> [address] [offset] [length]");
         }
 
         string filename = args[0];
@@ -94,6 +97,23 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
         if (args.Length > 1 && !TryParseAddress(args[1], out startAddress))
         {
             return CommandResult.Error($"Invalid address: '{args[1]}'. Use hex format ($1234 or 0x1234) or decimal.");
+        }
+
+        uint fileOffset = 0;
+        if (args.Length > 2 && !TryParseAddress(args[2], out fileOffset))
+        {
+            return CommandResult.Error($"Invalid offset: '{args[2]}'. Use hex format ($1234 or 0x1234) or decimal.");
+        }
+
+        uint? requestedLength = null;
+        if (args.Length > 3)
+        {
+            if (!TryParseAddress(args[3], out uint parsedLength))
+            {
+                return CommandResult.Error($"Invalid length: '{args[3]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            }
+
+            requestedLength = parsedLength;
         }
 
         // Resolve the path using the path resolver if available
@@ -119,14 +139,33 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
 
         try
         {
-            byte[] data = File.ReadAllBytes(resolvedPath);
+            byte[] fileData = File.ReadAllBytes(resolvedPath);
 
-            if (data.Length == 0)
+            if (fileData.Length == 0)
             {
                 string errorMessage = resolvedPath != filename
                     ? $"File is empty: '{filename}' (resolved to '{resolvedPath}')"
                     : $"File is empty: '{filename}'";
                 return CommandResult.Error(errorMessage);
+            }
+
+            // Validate offset is within file bounds
+            if (fileOffset >= (uint)fileData.Length)
+            {
+                return CommandResult.Error($"Offset ${fileOffset:X4} is past end of file (file size: ${fileData.Length:X4}).");
+            }
+
+            uint available = (uint)fileData.Length - fileOffset;
+            uint length = requestedLength ?? available;
+
+            if (length == 0)
+            {
+                return CommandResult.Error("Length must be greater than zero.");
+            }
+
+            if (length > available)
+            {
+                return CommandResult.Error($"Requested length ${length:X4} exceeds bytes available from offset ${fileOffset:X4} (available: ${available:X4}).");
             }
 
             // Calculate memory size from bus page count
@@ -138,22 +177,22 @@ public sealed class LoadCommand : CommandHandlerBase, ICommandHelp
                 return CommandResult.Error($"Address ${startAddress:X4} is out of range (memory size: ${memorySize:X4}).");
             }
 
-            if (startAddress + (uint)data.Length > memorySize)
+            if (startAddress + length > memorySize)
             {
-                return CommandResult.Error($"File would exceed memory bounds. Start: ${startAddress:X4}, Size: {data.Length}, Memory size: ${memorySize:X4}");
+                return CommandResult.Error($"Data would exceed memory bounds. Start: ${startAddress:X4}, Size: {length}, Memory size: ${memorySize:X4}");
             }
 
             // Write data to memory
-            for (int i = 0; i < data.Length; i++)
+            for (uint i = 0; i < length; i++)
             {
-                WriteByte(debugContext.Bus, startAddress + (uint)i, data[i]);
+                WriteByte(debugContext.Bus, startAddress + i, fileData[fileOffset + i]);
             }
 
             // Show resolved path if different from original
             string displayPath = resolvedPath != filename
                 ? $"'{filename}' (resolved to '{resolvedPath}')"
                 : $"'{filename}'";
-            debugContext.Output.WriteLine($"Loaded {data.Length} bytes from {displayPath} to ${startAddress:X4}-${startAddress + (uint)data.Length - 1:X4}");
+            debugContext.Output.WriteLine($"Loaded {length} bytes from {displayPath} to ${startAddress:X4}-${startAddress + length - 1:X4}");
 
             return CommandResult.Ok();
         }
