@@ -456,7 +456,7 @@ SmartPort block 0 contains a ProDOS PBOOT boot block. The SmartPort firmware loa
 $0800:  $01             ; Boot block indicator
 $0801:  $38             ; SEC — first executed opcode (ProDOS PBOOT)
 $0802:  $B0 $03         ; BCS +3
-$0803:  $4C ...         ; JMP (error path if carry clear)
+$0804:  $4C ...         ; JMP (error path if carry clear)
         ; ... remainder of PBOOT loader
 ```
 
