@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Text.Json;
+
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
@@ -56,7 +58,7 @@ public sealed partial class MachineBuilder
     private readonly List<Action<IMachine>> afterSoftSwitchHandlerRegistrationCallbacks = [];
     private readonly Dictionary<string, Func<MachineBuilder, IBusTarget>> compositeHandlerFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardDeviceFactories = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> slotCardFactories = new(StringComparer.OrdinalIgnoreCase);
 
     // Track physical memory instances created from profile
     private readonly Dictionary<string, PhysicalMemory> physicalMemoryBlocks = new(StringComparer.OrdinalIgnoreCase);
@@ -419,7 +421,11 @@ public sealed partial class MachineBuilder
     /// Registers a factory function for creating slot cards from profiles.
     /// </summary>
     /// <param name="cardType">The card type identifier (e.g., "pocketwatch", "disk-ii-compatible").</param>
-    /// <param name="factory">A factory function that creates the <see cref="ISlotCard"/>.</param>
+    /// <param name="factory">
+    /// A factory function that creates the <see cref="ISlotCard"/>. The second parameter is the
+    /// optional <see cref="JsonElement"/> taken from <see cref="SlotCardProfile.Config"/>; factories
+    /// that do not need per-card configuration may simply ignore it.
+    /// </param>
     /// <returns>This builder instance for method chaining.</returns>
     /// <exception cref="ArgumentNullException">
     /// Thrown when <paramref name="cardType"/> or <paramref name="factory"/> is <see langword="null"/>.
@@ -428,7 +434,9 @@ public sealed partial class MachineBuilder
     /// <para>
     /// Slot card factories are used by <see cref="FromProfile"/> when processing the
     /// <c>devices.slots.cards</c> section. Each card entry in the profile specifies a type
-    /// that is matched against registered factories.
+    /// that is matched against registered factories. The card entry's <c>config</c> JSON blob
+    /// is passed through to the factory as the second argument so cards such as Disk II or
+    /// SmartPort can consume per-card configuration.
     /// </para>
     /// <para>
     /// If no factory is registered for a card type declared in a profile, the card is
@@ -439,10 +447,10 @@ public sealed partial class MachineBuilder
     /// Example:
     /// </para>
     /// <code>
-    /// builder.RegisterSlotCardFactory("pocketwatch", _ => new PocketWatchCard());
+    /// builder.RegisterSlotCardFactory("pocketwatch", (_, _) =&gt; new PocketWatchCard());
     /// </code>
     /// </remarks>
-    public MachineBuilder RegisterSlotCardFactory(string cardType, Func<MachineBuilder, ISlotCard> factory)
+    public MachineBuilder RegisterSlotCardFactory(string cardType, Func<MachineBuilder, JsonElement?, ISlotCard> factory)
     {
         ArgumentNullException.ThrowIfNull(cardType, nameof(cardType));
         ArgumentNullException.ThrowIfNull(factory, nameof(factory));

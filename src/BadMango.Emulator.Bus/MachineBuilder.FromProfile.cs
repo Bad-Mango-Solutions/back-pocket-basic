@@ -697,8 +697,8 @@ public sealed partial class MachineBuilder
             return;
         }
 
-        // Create the card instance
-        var card = factory(this);
+        // Create the card instance, passing the optional per-card config blob through to the factory.
+        var card = factory(this, cardEntry.Config);
 
         // Add as a pending slot card (will be installed during build when SlotManager is available)
         AddComponent(new PendingSlotCardFromProfile(cardEntry.Slot, card));

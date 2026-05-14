@@ -113,7 +113,7 @@ public class DeviceFactoryRegistryTests
         DeviceFactoryRegistry.EnsureInitialized();
 
         var factory = DeviceFactoryRegistry.SlotCardFactories["pocketwatch"];
-        var card = factory(null!);
+        var card = factory(null!, null);
 
         Assert.That(card, Is.Not.Null);
         Assert.That(card, Is.InstanceOf<ISlotCard>());

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices;
 
 using System.Reflection;
+using System.Text.Json;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -35,7 +36,7 @@ public static class DeviceFactoryRegistry
     private static readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardFactories
         = new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories
+    private static readonly Dictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> slotCardFactories
         = new(StringComparer.OrdinalIgnoreCase);
 #pragma warning restore SA1311
 
@@ -51,8 +52,14 @@ public static class DeviceFactoryRegistry
     /// <summary>
     /// Gets the discovered slot card factories.
     /// </summary>
-    /// <value>A dictionary mapping type IDs to slot card factory functions.</value>
-    public static IReadOnlyDictionary<string, Func<MachineBuilder, ISlotCard>> SlotCardFactories
+    /// <value>
+    /// A dictionary mapping type IDs to slot card factory delegates of shape
+    /// <c>Func&lt;MachineBuilder, JsonElement?, ISlotCard&gt;</c>. The second argument is the
+    /// optional per-card <see cref="JsonElement"/> taken from
+    /// <see cref="Core.Configuration.SlotCardProfile.Config"/>; auto-discovered factories that
+    /// do not require configuration ignore it.
+    /// </value>
+    public static IReadOnlyDictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> SlotCardFactories
         => slotCardFactories;
 
     /// <summary>
@@ -166,6 +173,6 @@ public static class DeviceFactoryRegistry
             return;
         }
 
-        slotCardFactories[typeId] = _ => (ISlotCard)constructor.Invoke(null);
+        slotCardFactories[typeId] = (_, _) => (ISlotCard)constructor.Invoke(null);
     }
 }
