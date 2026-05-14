@@ -557,6 +557,24 @@ ProDOS pathnames follow these rules:
 | 3-5   | Volume directory (continuation) |
 | 6     | Volume bitmap start |
 
+### Boot Block (Block 0)
+
+The SmartPort / ProDOS bootstrap loads block 0 to `$0800` and jumps unconditionally to `$0801`.
+The ProDOS PBOOT loader therefore begins with:
+
+| Block offset | Byte | Description |
+|-------------|------|-------------|
+| `$00`       | `$01` | Boot block indicator |
+| `$01`       | `$38` | `SEC` — first opcode executed at `$0801` |
+| `$02`       | `$B0` | `BCS` opcode |
+| `$03`       | `$03` | Branch offset |
+| `$04`–`$1FF`| …    | Remainder of the PBOOT loader (block 0) and stage-2 loader (block 1) |
+
+**Bootability signature (offsets 0–3):** `01 38 B0 03`
+
+A freshly initialised or blank volume leaves block 0 as all-`$00` bytes; no valid boot block is
+present and the volume is not bootable.
+
 ### Volume Directory Format (Block 2)
 
 | Offset | Size | Description |
