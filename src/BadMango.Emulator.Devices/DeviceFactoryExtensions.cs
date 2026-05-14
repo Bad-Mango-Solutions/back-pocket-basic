@@ -70,7 +70,7 @@ public static class DeviceFactoryExtensions
         /// </remarks>
         public MachineBuilder RegisterPocketWatchCardFactory()
         {
-            return builder.RegisterSlotCardFactory("pocketwatch", _ => new PocketWatchCard());
+            return builder.RegisterSlotCardFactory("pocketwatch", (_, _) => new PocketWatchCard());
         }
 
         /// <summary>
