@@ -40,7 +40,13 @@
                 "size": "0x1000",
                 "required": true,
                 "on_verification_fail": "stop"
-            }
+            },
+            {
+            	"name": "a2-enh-diskii-s6-rom",
+            	"source": "library://roms/a2-diskii-p6.rom",
+            	"size": "0x100",
+            	"required": true
+        	}
         ],
         "physical": [
             {
@@ -168,6 +174,7 @@
                     "slot": 6,
                     "type": "disk-ii-compatible",
                     "config": {
+                    	"rom": "a2-enh-diskii-s6-rom",
                         "drive1": null,
                         "drive2": null
                     }
