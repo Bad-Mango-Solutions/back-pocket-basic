@@ -253,17 +253,49 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
-    /// Verifies that <see cref="DiskIIController.Mount"/> defers the actual swap to
-    /// the next scheduler turn (FR-R1).
+    /// Verifies that <see cref="DiskIIController.Mount"/> applies immediately when the
+    /// controller is idle (motor off), so a pre-boot insert is observable through
+    /// <see cref="DiskIIController.GetDriveSnapshot"/> without requiring the scheduler
+    /// to tick. This is the contract behind the debug-console <c>disk insert</c>
+    /// command working before the machine has booted.
     /// </summary>
     [Test]
-    public void Mount_IsDeferredToNextSchedulerTurn()
+    public void Mount_AppliesImmediately_WhenControllerIsIdle()
     {
         var media = new Mock<I525Media>();
         media.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
         media.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
 
-        var (controller, _, _, scheduler, _) = BuildHarness();
+        var (controller, _, _, _, _) = BuildHarness();
+
+        // Motor is off (the harness builds an idle controller); the mount must be
+        // visible without any scheduler.Advance().
+        controller.Mount(0, media.Object, "library://disks/test.dsk");
+
+        var snap = controller.GetDriveSnapshot(0);
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.HasMedia, Is.True);
+            Assert.That(snap.MountedImagePath, Is.EqualTo("library://disks/test.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> defers the actual swap to
+    /// the next scheduler turn when the motor is on (FR-R1) so the controller never
+    /// observes a half-mounted drive mid-byte while a transfer is in flight.
+    /// </summary>
+    [Test]
+    public void Mount_IsDeferredToNextSchedulerTurn_WhenMotorIsOn()
+    {
+        var media = new Mock<I525Media>();
+        media.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        media.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness();
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        Assume.That(controller.IsMotorOn, Is.True);
+
         controller.Mount(0, media.Object, "library://disks/test.dsk");
 
         // Before the scheduler runs, the drive should still be empty.
@@ -278,6 +310,76 @@ public class DiskIIControllerTests
             Assert.That(postSnap.HasMedia, Is.True);
             Assert.That(postSnap.MountedImagePath, Is.EqualTo("library://disks/test.dsk"));
         });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> over a drive that already
+    /// has a disk mounted implicitly ejects the prior disk and replaces it with the
+    /// new medium (the operator-facing equivalent of physically swapping the
+    /// diskette). The new media and image path replace the prior values.
+    /// </summary>
+    [Test]
+    public void Mount_OverExistingDisk_ImplicitlyEjectsAndReplaces()
+    {
+        var first = new Mock<I525Media>();
+        first.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        first.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var second = new Mock<I525Media>();
+        second.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        second.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var (controller, _, _, _, _) = BuildHarness();
+        controller.Mount(0, first.Object, "library://disks/first.dsk");
+        Assume.That(controller.GetDriveSnapshot(0).MountedImagePath, Is.EqualTo("library://disks/first.dsk"));
+
+        controller.Mount(0, second.Object, "library://disks/second.dsk");
+
+        var snap = controller.GetDriveSnapshot(0);
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.HasMedia, Is.True);
+            Assert.That(snap.MountedImagePath, Is.EqualTo("library://disks/second.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> over an existing dirty disk
+    /// whose flush fails is rejected with a clear <see cref="InvalidOperationException"/>
+    /// (FR-R2 applied to the implicit eject), and that the prior disk remains mounted
+    /// untouched so the operator can react.
+    /// </summary>
+    [Test]
+    public void Mount_OverExistingDirtyDisk_RejectsWhenFlushFails()
+    {
+        var thrower = new ThrowingWriteMedia();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, thrower);
+        scheduler.Advance(new Cycle(2));
+
+        // Dirty the cached track so the implicit-eject flush will throw. We leave the
+        // motor on intentionally — the implicit-eject probe-flush in Mount runs up
+        // front and must short-circuit before any state changes (deferred or not).
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(10));
+        _ = dispatcher.Read(0xEF, in ctx); // Q7H — write enable
+        _ = dispatcher.Read(0xED, in ctx); // Q6H — load
+        WriteSoft(dispatcher, 0xED, 0xAA, ctx);
+        WriteSoft(dispatcher, 0xEC, 0x55, ctx); // Q6L write — shifts byte out
+
+        var replacement = new Mock<I525Media>();
+        replacement.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        replacement.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            controller.Mount(0, replacement.Object, "library://disks/replacement.dsk"));
+
+        // The prior disk must still be mounted; even if the deferred swap had been
+        // queued, advancing the scheduler must not change the drive contents because
+        // the implicit-eject flush rejected the mount before scheduling anything.
+        scheduler.Advance(new Cycle(2));
+        Assert.That(controller.GetDriveSnapshot(0).HasMedia, Is.True);
     }
 
     /// <summary>

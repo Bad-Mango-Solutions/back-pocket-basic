@@ -294,11 +294,40 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         ValidateDriveIndex(driveIndex);
         ArgumentNullException.ThrowIfNull(media);
 
+        // Re-insert over an existing mount implies an eject of the current disk first
+        // (the operator-facing equivalent of physically swapping the diskette). FR-R2:
+        // the implicit eject must flush the current disk; if that flush fails, reject
+        // the mount and leave the prior disk untouched so the operator can react.
+        var existingDrive = drives[driveIndex];
+        if (existingDrive.Media is not null)
+        {
+            try
+            {
+                existingDrive.FlushOrThrow();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException)
+            {
+                logger.Warning(
+                    ex,
+                    "DiskII (slot {Slot}): implicit eject of drive {Drive} for re-insert rejected — flush of currently mounted disk failed.",
+                    SlotNumber,
+                    driveIndex + 1);
+                throw new InvalidOperationException(
+                    $"Cannot mount over existing disk in drive {driveIndex + 1}: flush of currently mounted disk failed: {ex.Message}",
+                    ex);
+            }
+        }
+
         // FR-R1: defer the actual swap to the next scheduler turn so the controller
-        // never observes a half-mounted drive mid-byte. If no scheduler is wired yet
-        // (e.g. unit tests that haven't called Initialize), apply immediately —
-        // tests are explicit about not running CPU during construction.
-        if (context is null)
+        // never observes a half-mounted drive mid-byte. The half-byte hazard only
+        // exists while the controller is actively transferring (motor on with a wired
+        // scheduler); in any other state we apply the mount immediately so it is
+        // observable without requiring a scheduler tick. This matters before the
+        // machine has booted (the scheduler is wired but not running) — otherwise the
+        // pre-boot insert would be queued behind a tick that never fires before the
+        // boot path samples drive 1, and the machine would fall back to the diskless
+        // Applesoft prompt instead of booting from the inserted image.
+        if (context is null || !motorOn)
         {
             ApplyMount(driveIndex, media, imagePath);
             return;
@@ -338,7 +367,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return false;
         }
 
-        if (context is null)
+        if (context is null || !motorOn)
         {
             ApplyEject(driveIndex);
             return true;

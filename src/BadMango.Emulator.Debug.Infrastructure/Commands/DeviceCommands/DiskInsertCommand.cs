@@ -75,9 +75,14 @@ public sealed class DiskInsertCommand : CommandHandlerBase, ICommandHelp
 
     /// <inheritdoc/>
     public string? SideEffects =>
-        "Opens the image file and mounts it into the controller. The mount is deferred " +
-        "to the next scheduler turn (PRD FR-R1) so the controller never observes a " +
-        "half-mounted drive mid-byte.";
+        "Opens the image file and mounts it into the controller. When the controller " +
+        "is actively transferring (motor on), the swap is deferred to the next " +
+        "scheduler turn (PRD FR-R1) so the controller never observes a half-mounted " +
+        "drive mid-byte; otherwise the mount is applied immediately so the image is " +
+        "visible to a subsequent boot before the machine has started. If the targeted " +
+        "drive already has a removable disk mounted, the prior disk is implicitly " +
+        "ejected (flush-before-eject, PRD FR-R2) before the new image is mounted; if " +
+        "that flush fails the insert is rejected and the prior disk remains mounted.";
 
     /// <inheritdoc/>
     public IReadOnlyList<string> SeeAlso { get; } = ["disk", "disk-list", "disk-eject", "disk-flush"];
