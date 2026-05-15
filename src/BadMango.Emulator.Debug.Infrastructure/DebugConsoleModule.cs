@@ -156,6 +156,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<DeviceTypesCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<ProfileCommand>()
             .As<ICommandHandler>()
             .SingleInstance();

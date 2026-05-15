@@ -24,6 +24,14 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>$C0nA-$C0nB: Drive 1/2 select</description></item>
 /// <item><description>$C0nC-$C0nF: Q6/Q7 data latch control</description></item>
 /// </list>
+/// <para>
+/// This stub is retained for tests and for legacy direct instantiation, but is no
+/// longer auto-discovered as a slot card factory: the canonical
+/// <c>disk-ii-compatible</c> registration is owned by the full
+/// <see cref="DiskIIController"/>, which the registry constructs by resolving its
+/// constructor dependencies (notably <see cref="Serilog.ILogger"/> via
+/// <see cref="DeviceFactoryRegistry.LoggerFactory"/>).
+/// </para>
 /// </remarks>
 public sealed class DiskIIControllerStub : ISlotCard
 {

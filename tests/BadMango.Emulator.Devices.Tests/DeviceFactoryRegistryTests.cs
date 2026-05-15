@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
+using BadMango.Unit.Components;
 
 /// <summary>
 /// Unit tests for the <see cref="DeviceFactoryRegistry"/> class.
@@ -138,6 +139,69 @@ public class DeviceFactoryRegistryTests
             Assert.That(DeviceFactoryRegistry.MotherboardDeviceFactories, Does.ContainKey("Video"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("POCKETWATCH"));
             Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("PocketWatch"));
+            Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("DISK-II-COMPATIBLE"));
+            Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("Disk-II-Compatible"));
         });
+    }
+
+    /// <summary>
+    /// Verifies that EnsureInitialized discovers the Disk II compatible slot card factory.
+    /// The full <see cref="DiskIIController"/> is the registered implementation; the
+    /// registry resolves its <see cref="Serilog.ILogger"/> dependency at invocation time.
+    /// </summary>
+    [Test]
+    public void EnsureInitialized_DiscoversDiskIIFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        Assert.That(DeviceFactoryRegistry.SlotCardFactories, Does.ContainKey("disk-ii-compatible"));
+    }
+
+    /// <summary>
+    /// Verifies that the Disk II factory produces the full <see cref="DiskIIController"/>
+    /// (not the stub), demonstrating that the registry can satisfy constructor
+    /// dependencies (here, an injected <see cref="Serilog.ILogger"/>).
+    /// </summary>
+    [Test]
+    public void DiskIIFactory_CreatesFullDiskIIController()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+
+        var factory = DeviceFactoryRegistry.SlotCardFactories["disk-ii-compatible"];
+        var card = factory(null!, null);
+
+        Assert.That(card, Is.Not.Null);
+        Assert.That(card, Is.InstanceOf<DiskIIController>());
+        Assert.That(card.DeviceType, Is.EqualTo("DiskII"));
+    }
+
+    /// <summary>
+    /// Verifies that the configurable <see cref="DeviceFactoryRegistry.LoggerFactory"/>
+    /// is consulted when the registry constructs a device that takes an injected logger.
+    /// </summary>
+    [Test]
+    public void DiskIIFactory_UsesConfiguredLoggerFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+        var loggerMock = Generator.Log();
+        var requestedTypes = new List<Type>();
+        var previous = DeviceFactoryRegistry.LoggerFactory;
+        DeviceFactoryRegistry.LoggerFactory = t =>
+        {
+            requestedTypes.Add(t);
+            return loggerMock.Object;
+        };
+        try
+        {
+            var factory = DeviceFactoryRegistry.SlotCardFactories["disk-ii-compatible"];
+            var card = factory(null!, null);
+
+            Assert.That(card, Is.InstanceOf<DiskIIController>());
+            Assert.That(requestedTypes, Does.Contain(typeof(DiskIIController)));
+        }
+        finally
+        {
+            DeviceFactoryRegistry.LoggerFactory = previous;
+        }
     }
 }

@@ -44,7 +44,18 @@ using Serilog;
 /// eject flushes first and rejects on flush failure (FR-R2); hot-swap resets per-drive
 /// state (FR-R3); mid-motor insertion resets the settling timer (FR-R4).</description></item>
 /// </list>
+/// <para>
+/// The class is annotated with <see cref="DeviceTypeAttribute"/> so the auto-discovery
+/// scan in <see cref="DeviceFactoryRegistry"/> registers it as the canonical
+/// <c>disk-ii-compatible</c> slot card factory. Although the constructor has no
+/// parameterless overload (it requires an injected <see cref="ILogger"/> plus optional
+/// boot ROM and settle-cycle parameters that all carry default values), the registry
+/// resolves the logger via <see cref="DeviceFactoryRegistry.LoggerFactory"/> at
+/// invocation time and supplies defaults for the rest, so the controller is
+/// available out-of-the-box from any auto-discovery call site.
+/// </para>
 /// </remarks>
+[DeviceType("disk-ii-compatible")]
 public sealed class DiskIIController : ISlotCard, IDiskController
 {
     /// <summary>
