@@ -62,6 +62,62 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Verifies that <see cref="DiskIIController.LoadBootRom"/> publishes the boot ROM
+    /// region after construction, so the profile-driven build path can wire the
+    /// user-supplied ROM via <c>config.rom</c> without resorting to a constructor parameter.
+    /// </summary>
+    [Test]
+    public void LoadBootRom_PublishesBootRomRegion()
+    {
+        var controller = new DiskIIController(NewLoggerMock().Object);
+        Assert.That(controller.ROMRegion, Is.Null, "Pre-condition: no ROM at construction.");
+
+        var bytes = new byte[DiskIIBootRom.RomSize];
+        bytes[0] = 0xA9; // sentinel: LDA #imm
+        bytes[1] = 0x55;
+
+        controller.LoadBootRom(bytes);
+
+        Assert.That(controller.ROMRegion, Is.Not.Null);
+
+        // Read $Cn00..$Cn01 through the published bus target to confirm the bytes survive.
+        var probe = new BusAccess(
+            Address: 0xC600,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.ROMRegion!.Read8(0x00, in probe), Is.EqualTo((byte)0xA9));
+            Assert.That(controller.ROMRegion!.Read8(0x01, in probe), Is.EqualTo((byte)0x55));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.LoadBootRom"/> rejects a payload that is
+    /// not exactly <see cref="DiskIIBootRom.RomSize"/> bytes, surfacing the same contract
+    /// the constructor enforces so misconfigured profiles fail loudly rather than silently
+    /// truncating or padding the ROM.
+    /// </summary>
+    [Test]
+    public void LoadBootRom_RejectsWrongSize()
+    {
+        var controller = new DiskIIController(NewLoggerMock().Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentNullException>(() => controller.LoadBootRom(null!));
+            Assert.Throws<ArgumentException>(() => controller.LoadBootRom(new byte[DiskIIBootRom.RomSize - 1]));
+            Assert.Throws<ArgumentException>(() => controller.LoadBootRom(new byte[DiskIIBootRom.RomSize + 1]));
+        });
+    }
+
+    /// <summary>
     /// Verifies that an even-then-odd phase sequence steps the head one half-track
     /// (two quarter-tracks) per valid magnet transition (FR-D4).
     /// </summary>

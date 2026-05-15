@@ -79,11 +79,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
     private readonly SlotIOHandlers handlers = new();
     private readonly Drive525[] drives = new Drive525[DriveCountValue];
-    private readonly IBusTarget? romRegion;
     private readonly IBusTarget expansionRomRegion;
     private readonly int motorSettleCycles;
     private readonly int trackStepSettleCycles;
     private readonly ILogger logger;
+
+    private IBusTarget? romRegion;
 
     // Controller-level state
     private int currentDrive;          // 0 or 1
@@ -243,6 +244,24 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                 // Bus may not have the slot ROM region mapped at all in some test setups; that's fine.
             }
         }
+    }
+
+    /// <summary>
+    /// Loads the user-supplied 256-byte P5A boot ROM image, replacing whatever ROM (if any)
+    /// was provided to the constructor. Intended for the profile-driven build path where
+    /// the slot-card factory itself has no access to the <c>rom-images</c> table; the
+    /// <see cref="MachineBuilder"/> resolves the ROM from <c>config.rom</c> and pushes
+    /// the bytes in via this method before the <see cref="ISlotManager"/> installs the card.
+    /// </summary>
+    /// <param name="bootRomBytes">A 256-byte buffer containing the P5A boot ROM payload.</param>
+    /// <exception cref="ArgumentNullException">If <paramref name="bootRomBytes"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// If <paramref name="bootRomBytes"/> is not exactly <see cref="DiskIIBootRom.RomSize"/> bytes.
+    /// </exception>
+    public void LoadBootRom(byte[] bootRomBytes)
+    {
+        ArgumentNullException.ThrowIfNull(bootRomBytes);
+        romRegion = new DiskIIBootRom(bootRomBytes);
     }
 
     /// <inheritdoc />

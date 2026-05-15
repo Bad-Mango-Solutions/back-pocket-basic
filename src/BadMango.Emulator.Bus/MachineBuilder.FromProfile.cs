@@ -116,7 +116,7 @@ public sealed partial class MachineBuilder
         {
             foreach (var cardEntry in profile.Devices.Slots.Cards)
             {
-                ConfigureSlotCard(cardEntry);
+                ConfigureSlotCard(cardEntry, romImages);
             }
         }
 
@@ -400,6 +400,80 @@ public sealed partial class MachineBuilder
         }
     }
 
+    /// <summary>
+    /// Applies card-specific ROM bindings declared via <see cref="SlotCardProfile.Config"/>.
+    /// Currently recognises a single <c>"rom"</c> string property naming an entry in
+    /// <c>memory.rom-images</c>; the bytes are loaded and pushed into the card via
+    /// reflection on a public <c>LoadBootRom(byte[])</c> method (mirroring the
+    /// motherboard-device <c>LoadCharacterRom</c>/<c>LoadExpansionRom</c> plumbing so
+    /// the bus assembly does not need to take a compile-time dependency on individual
+    /// device implementations).
+    /// </summary>
+    /// <param name="card">The freshly constructed slot card.</param>
+    /// <param name="cardEntry">The profile entry describing the slot card.</param>
+    /// <param name="romImages">The ROM image lookup table built from <c>memory.rom-images</c>.</param>
+    /// <exception cref="InvalidOperationException">
+    /// If <c>config.rom</c> references an unknown ROM image, the loaded ROM does not
+    /// match the declared <c>size</c>, or the card type does not expose a
+    /// <c>LoadBootRom(byte[])</c> method to receive the bytes.
+    /// </exception>
+    private static void LoadSlotCardRoms(
+        ISlotCard card,
+        SlotCardProfile cardEntry,
+        Dictionary<string, RomImageInfo> romImages)
+    {
+        if (cardEntry.Config is not { } config ||
+            !config.TryGetProperty("rom", out var romProp) ||
+            romProp.ValueKind != System.Text.Json.JsonValueKind.String)
+        {
+            return;
+        }
+
+        string? romName = romProp.GetString();
+        if (string.IsNullOrEmpty(romName))
+        {
+            return;
+        }
+
+        if (!romImages.TryGetValue(romName, out var romInfo))
+        {
+            throw new InvalidOperationException(
+                $"Slot {cardEntry.Slot} card '{cardEntry.Type}' references ROM image '{romName}', " +
+                $"but no entry with that name was declared in 'memory.rom-images'.");
+        }
+
+        byte[] romData = LoadRomData(romInfo);
+
+        if (romData.Length > romInfo.Size)
+        {
+            romData = romData.Take((int)romInfo.Size).ToArray();
+        }
+        else if (romData.Length < romInfo.Size)
+        {
+            throw new InvalidOperationException(
+                $"Slot card boot ROM '{romInfo.Source}' is too small ({romData.Length} bytes). " +
+                $"Expected {romInfo.Size} bytes for ROM image '{romName}'.");
+        }
+
+        // Use reflection to call LoadBootRom(byte[]) so the Bus assembly stays decoupled
+        // from individual device implementations. The same pattern is used by
+        // LoadDeviceRoms for character / expansion ROMs.
+        MethodInfo? loadMethod = card.GetType().GetMethod(
+            "LoadBootRom",
+            BindingFlags.Public | BindingFlags.Instance,
+            [typeof(byte[])]);
+
+        if (loadMethod is null)
+        {
+            throw new InvalidOperationException(
+                $"Slot {cardEntry.Slot} card '{cardEntry.Type}' (type '{card.GetType().FullName}') " +
+                $"does not implement the required 'LoadBootRom(byte[])' method, but a boot ROM " +
+                $"'{romName}' was configured.");
+        }
+
+        loadMethod.Invoke(card, [romData]);
+    }
+
     private void CreatePhysicalMemory(
         PhysicalMemoryProfile physicalProfile,
         Dictionary<string, RomImageInfo> romImages,
@@ -679,7 +753,7 @@ public sealed partial class MachineBuilder
         });
     }
 
-    private void ConfigureSlotCard(SlotCardProfile cardEntry)
+    private void ConfigureSlotCard(SlotCardProfile cardEntry, Dictionary<string, RomImageInfo> romImages)
     {
         // Validate slot number
         if (cardEntry.Slot < 1 || cardEntry.Slot > 7)
@@ -699,6 +773,11 @@ public sealed partial class MachineBuilder
 
         // Create the card instance, passing the optional per-card config blob through to the factory.
         var card = factory(this, cardEntry.Config);
+
+        // Apply per-card ROM bindings declared in config (e.g. `"rom": "<rom-image-name>"`)
+        // before the card is installed so that ISlotManager.GetSlotRomRegion sees the
+        // populated ROMRegion the first time the CPU reads $Cn00.
+        LoadSlotCardRoms(card, cardEntry, romImages);
 
         // Add as a pending slot card (will be installed during build when SlotManager is available)
         AddComponent(new PendingSlotCardFromProfile(cardEntry.Slot, card));
