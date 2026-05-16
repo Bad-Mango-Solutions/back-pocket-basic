@@ -738,8 +738,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
-            // Transitioning to read mode: invalidate the byte-ready spin-position record
-            // so the first data-read after a write session is not gated by a stale value.
+            // On a true high→low transition (entering read mode), invalidate the
+            // byte-ready spin-position record so the first data-read after a write
+            // session is not suppressed by a stale value. The guard is intentionally
+            // checked before clearing q7High so that it tests the *previous* state.
             if (q7High)
             {
                 lastReadSpinPosition = -1;
@@ -755,6 +757,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            // Same high→low transition guard as Q7LAccess.
             if (q7High)
             {
                 lastReadSpinPosition = -1;
