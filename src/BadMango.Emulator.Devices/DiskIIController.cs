@@ -79,11 +79,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
     private readonly SlotIOHandlers handlers = new();
     private readonly Drive525[] drives = new Drive525[DriveCountValue];
-    private readonly IBusTarget? romRegion;
     private readonly IBusTarget expansionRomRegion;
     private readonly int motorSettleCycles;
     private readonly int trackStepSettleCycles;
     private readonly ILogger logger;
+
+    private IBusTarget? romRegion;
 
     // Controller-level state
     private int currentDrive;          // 0 or 1
@@ -93,6 +94,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private byte dataLatch;            // last byte returned to / received from CPU
     private bool dataLatchValid;       // true once the head has produced (or written) a byte
     private byte writeShift;           // staged byte for write-load (Q6=1,Q7=1)
+    private int lastReadSpinPosition = -1; // SpinPosition observed at the previous data-read; used to gate the byte-ready high bit
 
     private IEventContext? context;
     private EventHandle driftHandle;
@@ -245,6 +247,24 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
     }
 
+    /// <summary>
+    /// Loads the user-supplied 256-byte P5A boot ROM image, replacing whatever ROM (if any)
+    /// was provided to the constructor. Intended for the profile-driven build path where
+    /// the slot-card factory itself has no access to the <c>rom-images</c> table; the
+    /// <see cref="MachineBuilder"/> resolves the ROM from <c>config.rom</c> and pushes
+    /// the bytes in via this method before the <see cref="ISlotManager"/> installs the card.
+    /// </summary>
+    /// <param name="bootRomBytes">A 256-byte buffer containing the P5A boot ROM payload.</param>
+    /// <exception cref="ArgumentNullException">If <paramref name="bootRomBytes"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// If <paramref name="bootRomBytes"/> is not exactly <see cref="DiskIIBootRom.RomSize"/> bytes.
+    /// </exception>
+    public void LoadBootRom(byte[] bootRomBytes)
+    {
+        ArgumentNullException.ThrowIfNull(bootRomBytes);
+        romRegion = new DiskIIBootRom(bootRomBytes);
+    }
+
     /// <inheritdoc />
     public void OnExpansionROMSelected()
     {
@@ -280,6 +300,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         dataLatch = 0;
         dataLatchValid = false;
         writeShift = 0;
+        lastReadSpinPosition = -1;
         CancelDriftEvent();
 
         for (var i = 0; i < drives.Length; i++)
@@ -294,11 +315,44 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         ValidateDriveIndex(driveIndex);
         ArgumentNullException.ThrowIfNull(media);
 
+        // Re-insert over an existing mount implies an eject of the current disk first
+        // (the operator-facing equivalent of physically swapping the diskette). FR-R2:
+        // the implicit eject must flush the current disk; if that flush fails, reject
+        // the mount and leave the prior disk untouched so the operator can react.
+        var existingDrive = drives[driveIndex];
+        if (existingDrive.Media is not null)
+        {
+            try
+            {
+                existingDrive.FlushOrThrow();
+            }
+            catch (Exception ex)
+            {
+                logger.Warning(
+                    ex,
+                    "DiskII (slot {Slot}): implicit eject of drive {Drive} for re-insert rejected — flush of currently mounted disk failed.",
+                    SlotNumber,
+                    driveIndex + 1);
+                throw new InvalidOperationException(
+                    $"Cannot mount over existing disk in drive {driveIndex + 1}: flush of currently mounted disk failed: {ex.Message}",
+                    ex);
+            }
+
+            // Flush succeeded — physically eject the existing disk so the drive is
+            // empty before the new mount is applied (immediately or deferred).
+            ApplyEject(driveIndex);
+        }
+
         // FR-R1: defer the actual swap to the next scheduler turn so the controller
-        // never observes a half-mounted drive mid-byte. If no scheduler is wired yet
-        // (e.g. unit tests that haven't called Initialize), apply immediately —
-        // tests are explicit about not running CPU during construction.
-        if (context is null)
+        // never observes a half-mounted drive mid-byte. The half-byte hazard only
+        // exists while the controller is actively transferring (motor on with a wired
+        // scheduler); in any other state we apply the mount immediately so it is
+        // observable without requiring a scheduler tick. This matters before the
+        // machine has booted (the scheduler is wired but not running) — otherwise the
+        // pre-boot insert would be queued behind a tick that never fires before the
+        // boot path samples drive 1, and the machine would fall back to the diskless
+        // Applesoft prompt instead of booting from the inserted image.
+        if (context is null || !motorOn)
         {
             ApplyMount(driveIndex, media, imagePath);
             return;
@@ -332,13 +386,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             drive.FlushOrThrow();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        catch (Exception ex)
         {
             logger.Warning(ex, "DiskII (slot {Slot}): eject of drive {Drive} rejected — flush failed.", SlotNumber, driveIndex + 1);
             return false;
         }
 
-        if (context is null)
+        if (context is null || !motorOn)
         {
             ApplyEject(driveIndex);
             return true;
@@ -375,6 +429,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             HasMedia: drive.Media is not null,
             MountedImagePath: drive.ImagePath,
             Geometry: drive.Media?.Geometry);
+    }
+
+    /// <inheritdoc />
+    public I525Media? GetMedia(int driveIndex)
+    {
+        ValidateDriveIndex(driveIndex);
+        return drives[driveIndex].Media;
     }
 
     private static void ValidateDriveIndex(int driveIndex)
@@ -528,6 +589,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return;
         }
 
+        // Any motor-state transition invalidates the byte-ready spin-position
+        // record: the spin advance model restarts when the motor turns on/off.
+        lastReadSpinPosition = -1;
+
         if (!on)
         {
             // FR-D8: motor-off triggers a flush.
@@ -597,6 +662,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         // FR-D8: drive deselect flushes the outgoing drive.
         drives[currentDrive].Flush(logger);
         currentDrive = index;
+
+        // Changing drives invalidates the spin-position recorded for byte-ready gating:
+        // the new drive's position has no relation to the old one.
+        lastReadSpinPosition = -1;
+
         if (motorOn && context is not null)
         {
             drives[currentDrive].LastUpdateCycle = context.Now;
@@ -668,6 +738,15 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            // On a true high→low transition (entering read mode), invalidate the
+            // byte-ready spin-position record so the first data-read after a write
+            // session is not suppressed by a stale value. The guard is intentionally
+            // checked before clearing q7High so that it tests the *previous* state.
+            if (q7High)
+            {
+                lastReadSpinPosition = -1;
+            }
+
             q7High = false;
         }
 
@@ -678,6 +757,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            // Same high→low transition guard as Q7LAccess.
+            if (q7High)
+            {
+                lastReadSpinPosition = -1;
+            }
+
             q7High = false;
         }
     }
@@ -721,11 +806,32 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return FloatingByte;
         }
 
-        if (context is not null && drives[currentDrive].SettleUntil > context.Now)
+        var current = drives[currentDrive];
+        if (context is not null && current.SettleUntil > context.Now)
         {
             // During settling, return the previously latched byte (or floating $FF
             // when nothing has been latched yet). FR-D7.
             return LatchedOrFloating();
+        }
+
+        // Model the Disk II shift-register byte-ready behavior in read mode
+        // (Q6=0, Q7=0). On real hardware the data register's high bit is set only
+        // when a complete nibble has just been clocked in; consecutive reads
+        // between byte boundaries see bit 7 cleared because the next byte is
+        // still shifting in. The P5A boot ROM relies on this with its
+        // `LDA $C08C,X / BPL *-3` timing loop. We approximate this by tracking
+        // whether SpinPosition advanced since the previous read: when it did,
+        // the byte is "fresh" and bit 7 reflects the actual nibble (every GCR
+        // nibble has bit 7 set); when it didn't, the firmware is polling faster
+        // than bytes arrive and we report bit 7 cleared so the BPL loop spins.
+        if (!q6High && !q7High && dataLatchValid && !ctx.IsSideEffectFree)
+        {
+            if (current.SpinPosition == lastReadSpinPosition)
+            {
+                return (byte)(dataLatch & 0x7F);
+            }
+
+            lastReadSpinPosition = current.SpinPosition;
         }
 
         // For non-data-read modes (write enable, write load), reads return whatever
@@ -876,6 +982,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.Media = media;
         drive.ImagePath = imagePath;
 
+        // Reset byte-ready gating: the new disk's spin position has no relation
+        // to what was recorded for the previous disk or drive session.
+        if (driveIndex == currentDrive)
+        {
+            lastReadSpinPosition = -1;
+        }
+
         // FR-R4: insertion during an active motor cycle resets the settling timer.
         if (motorOn && driveIndex == currentDrive && context is not null)
         {
@@ -905,6 +1018,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.ResetTransientState();
         drive.Media = null;
         drive.ImagePath = null;
+
+        // Reset byte-ready gating for the now-empty drive.
+        if (driveIndex == currentDrive)
+        {
+            lastReadSpinPosition = -1;
+        }
     }
 
     /// <summary>

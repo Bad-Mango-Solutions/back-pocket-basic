@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 using System.Globalization;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Storage.Formats;
 using BadMango.Emulator.Storage.Media;
 
 /// <summary>
@@ -152,6 +153,49 @@ internal static class DiskRuntimeHelpers
         }
 
         controller = disk;
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the <see cref="SectorImageMedia"/> backing the image currently mounted
+    /// at <paramref name="slot"/> / <paramref name="driveIndex"/> by looking up the
+    /// retained <see cref="DiskImageOpenResult"/> in <see cref="IDebugContext.MountedDisks"/>.
+    /// </summary>
+    /// <param name="context">The command context (must be an <see cref="IDebugContext"/>).</param>
+    /// <param name="slot">1-based slot number (1..7).</param>
+    /// <param name="driveIndex">0-based drive index within the controller.</param>
+    /// <param name="sectorImage">When successful, the backing sector image with direct-image read access.</param>
+    /// <param name="error">When unsuccessful, a human-readable error suitable for the console.</param>
+    /// <returns><see langword="true"/> when a sector image is available for the requested drive.</returns>
+    public static bool TryGetSectorImage(
+        ICommandContext context,
+        int slot,
+        int driveIndex,
+        out SectorImageMedia? sectorImage,
+        out string? error)
+    {
+        sectorImage = null;
+        error = null;
+
+        if (context is not IDebugContext debugContext)
+        {
+            error = "Debug context required for this command.";
+            return false;
+        }
+
+        if (!debugContext.MountedDisks.TryGet(slot, driveIndex, out var open) || open is null)
+        {
+            error = $"No tracked image for slot {slot} drive {driveIndex + 1}; direct-image access requires a debug-console mount.";
+            return false;
+        }
+
+        if (open is not Image525AndBlockResult sectorResult || sectorResult.SectorImage is null)
+        {
+            error = $"Mounted image for slot {slot} drive {driveIndex + 1} is not a sector image; direct-image access is unavailable.";
+            return false;
+        }
+
+        sectorImage = sectorResult.SectorImage;
         return true;
     }
 }

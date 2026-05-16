@@ -259,4 +259,161 @@ public partial class DebugCommandsTests
             Assert.That(ReadByte(bus, 0x0E01), Is.EqualTo(0x88));
         });
     }
+
+    /// <summary>
+    /// Verifies that PokeCommand file mode reads bytes from a text file using
+    /// the same format as interactive mode, ignoring blank lines and trailing
+    /// whitespace.
+    /// </summary>
+    [Test]
+    public void PokeCommand_FileMode_WritesBytesFromFile()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"poke_file_mode_{Guid.NewGuid():N}.txt");
+        try
+        {
+            // Note: trailing whitespace and a blank line are intentional.
+            File.WriteAllText(
+                tempFile,
+                "1000: a2 20   \n1002: a2 00   \n1004: a2 03   \n1006: c9 00   \n1008: b0 0a   \n\n");
+
+            debugContext.AttachPathResolver(new DebugPathResolver());
+
+            var command = new PokeCommand();
+            var result = command.Execute(debugContext, ["$0000", "-f", tempFile]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True, result.Message);
+                Assert.That(ReadByte(bus, 0x1000), Is.EqualTo(0xA2));
+                Assert.That(ReadByte(bus, 0x1001), Is.EqualTo(0x20));
+                Assert.That(ReadByte(bus, 0x1002), Is.EqualTo(0xA2));
+                Assert.That(ReadByte(bus, 0x1003), Is.EqualTo(0x00));
+                Assert.That(ReadByte(bus, 0x1004), Is.EqualTo(0xA2));
+                Assert.That(ReadByte(bus, 0x1005), Is.EqualTo(0x03));
+                Assert.That(ReadByte(bus, 0x1006), Is.EqualTo(0xC9));
+                Assert.That(ReadByte(bus, 0x1007), Is.EqualTo(0x00));
+                Assert.That(ReadByte(bus, 0x1008), Is.EqualTo(0xB0));
+                Assert.That(ReadByte(bus, 0x1009), Is.EqualTo(0x0A));
+                Assert.That(outputWriter.ToString(), Does.Contain("File poke mode"));
+                Assert.That(outputWriter.ToString(), Does.Contain("File mode complete"));
+            });
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand file mode treats a single hex digit as an
+    /// invalid byte representation and stops reading at that point.
+    /// </summary>
+    [Test]
+    public void PokeCommand_FileMode_StopsAtFirstInvalidByteRepresentation()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"poke_file_mode_{Guid.NewGuid():N}.txt");
+        try
+        {
+            // The "0" on the third line is a single hex digit, which is not a
+            // valid byte representation; reading must stop there.
+            File.WriteAllText(
+                tempFile,
+                "10fd: aa\n10fe: bb\n10ff: 0\n1100: cc\n");
+
+            debugContext.AttachPathResolver(new DebugPathResolver());
+
+            var command = new PokeCommand();
+            var result = command.Execute(debugContext, ["$0000", "-f", tempFile]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True, result.Message);
+                Assert.That(ReadByte(bus, 0x10FD), Is.EqualTo(0xAA));
+                Assert.That(ReadByte(bus, 0x10FE), Is.EqualTo(0xBB));
+
+                // Nothing should have been written at or after the invalid line.
+                Assert.That(ReadByte(bus, 0x10FF), Is.EqualTo(0x00));
+                Assert.That(ReadByte(bus, 0x1100), Is.EqualTo(0x00));
+            });
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand file mode treats a two-digit hex byte as valid
+    /// even when it appears on a line resembling the invalid case.
+    /// </summary>
+    [Test]
+    public void PokeCommand_FileMode_AcceptsTwoDigitHexByteAtEnd()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"poke_file_mode_{Guid.NewGuid():N}.txt");
+        try
+        {
+            File.WriteAllText(tempFile, "10ff: 0a\n");
+
+            debugContext.AttachPathResolver(new DebugPathResolver());
+
+            var command = new PokeCommand();
+            var result = command.Execute(debugContext, ["$0000", "-f", tempFile]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True, result.Message);
+                Assert.That(ReadByte(bus, 0x10FF), Is.EqualTo(0x0A));
+            });
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand file mode returns an error when the file does
+    /// not exist.
+    /// </summary>
+    [Test]
+    public void PokeCommand_FileMode_ReturnsError_WhenFileMissing()
+    {
+        debugContext.AttachPathResolver(new DebugPathResolver());
+
+        var command = new PokeCommand();
+        var missingPath = Path.Combine(Path.GetTempPath(), $"poke_missing_{Guid.NewGuid():N}.txt");
+        var result = command.Execute(debugContext, ["$1000", "-f", missingPath]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("File not found"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that PokeCommand file mode returns an error when no file path
+    /// argument is supplied.
+    /// </summary>
+    [Test]
+    public void PokeCommand_FileMode_ReturnsError_WhenPathMissing()
+    {
+        var command = new PokeCommand();
+        var result = command.Execute(debugContext, ["$1000", "-f"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("File path required"));
+        });
+    }
 }

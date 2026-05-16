@@ -183,6 +183,6 @@ public partial class DebugCommandsTests
     public void BusLogCommand_HasCorrectAliases()
     {
         var command = new BusLogCommand();
-        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl", "trace" }));
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl" }));
     }
 }

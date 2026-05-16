@@ -95,6 +95,52 @@ public class GcrEncoderTests
     }
 
     /// <summary>
+    /// Verifies that the 6-and-2 auxiliary ("low two bits") byte at the start
+    /// of the data field carries the low two bits of <em>sector byte 0</em>,
+    /// matching the real Apple II RWTS POSTNIB16 layout. A previous bug
+    /// reversed this ordering (aux byte 0 carried bits for sector byte 85),
+    /// which produced sectors whose top 6 bits decoded correctly but whose
+    /// bottom 2 bits were permuted in groups of 86.
+    /// </summary>
+    [Test]
+    public void EncodeTrack_DataFieldAuxBytes_AreInRwtsOrder()
+    {
+        // Sector 0, byte 0 = 0x02 (low2 = 10), byte 86 = 0x01 (low2 = 01),
+        // byte 172 = 0x03 (low2 = 11). All other bytes zero. Each pair is
+        // bit-reversed (low-bit-first) per the Apple II convention before
+        // packing into twoBit[0] at shifts 0, 2, and 4 respectively:
+        //   reversed(10) = 01 at shift 0 -> 0x01
+        //   reversed(01) = 10 at shift 2 -> 0x08
+        //   reversed(11) = 11 at shift 4 -> 0x30
+        // twoBit[0] = 0x39, and xorChain[0] = twoBit[0] ^ 0 = 0x39.
+        var sectors = new byte[16 * 256];
+        sectors[0] = 0x02;
+        sectors[86] = 0x01;
+        sectors[172] = 0x03;
+
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        GcrEncoder.EncodeTrack(254, 0, sectors, nibbles);
+
+        // Find sector-0's data field: 48 gap + 14 addr + 5 gap = 67 bytes in,
+        // then 3 bytes of data prologue.
+        const int sector0DataStart = 48 + 14 + 5 + 3;
+        var firstAuxNibble = nibbles[sector0DataStart];
+        var read = GcrEncoder.GetReadTable();
+        var firstAux6Bit = read[firstAuxNibble];
+
+        Assert.That(firstAux6Bit, Is.Not.EqualTo((byte)0xFF), "First aux nibble must translate via the read table.");
+        Assert.That(firstAux6Bit, Is.EqualTo((byte)0x39), "First aux 6-bit value must encode the low two bits of sector bytes 0, 86, 172 (not byte 85's bits).");
+
+        // And a full round-trip must still recover the original sector.
+        var decoded = new byte[16 * 256];
+        var mask = GcrEncoder.DecodeTrack(nibbles, decoded);
+        Assert.That(mask & 1, Is.EqualTo(1), "Sector 0 must decode.");
+        Assert.That(decoded[0], Is.EqualTo((byte)0x02));
+        Assert.That(decoded[86], Is.EqualTo((byte)0x01));
+        Assert.That(decoded[172], Is.EqualTo((byte)0x03));
+    }
+
+    /// <summary>
     /// Verifies that out-of-range <paramref name="volume"/> or <paramref name="track"/>
     /// throws <see cref="ArgumentOutOfRangeException"/>.
     /// </summary>

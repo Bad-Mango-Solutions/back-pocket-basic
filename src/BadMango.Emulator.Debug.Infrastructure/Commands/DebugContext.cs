@@ -107,6 +107,15 @@ public sealed class DebugContext : IDebugContext, IDisposable
     public TracingDebugListener? TracingListener { get; private set; }
 
     /// <inheritdoc/>
+    public CompositeDebugStepListener? StepListener { get; private set; }
+
+    /// <inheritdoc/>
+    public BreakpointManager Breakpoints { get; } = new();
+
+    /// <inheritdoc/>
+    public WatchpointManager Watchpoints { get; } = new();
+
+    /// <inheritdoc/>
     public bool IsSystemAttached => this.Cpu is not null && this.Bus is not null && this.Disassembler is not null;
 
     /// <inheritdoc/>
@@ -226,12 +235,26 @@ public sealed class DebugContext : IDebugContext, IDisposable
         ArgumentNullException.ThrowIfNull(disassembler);
         ArgumentNullException.ThrowIfNull(machineInfo);
 
+        // If a composite listener is already wired from a previous AttachMachine call
+        // (e.g. profile reload), tear down the old debugger attachment before
+        // overwriting this.Cpu — otherwise the outgoing CPU is left with a dangling
+        // listener and the managers remain attached to the stale CPU.
+        if (this.StepListener is not null)
+        {
+            this.Breakpoints.Detach();
+            this.Watchpoints.Detach();
+            this.Cpu?.DetachDebugger();
+            this.StepListener = null;
+        }
+
         this.Machine = machine;
         this.Cpu = machine.Cpu;
         this.Bus = machine.Bus;
         this.Disassembler = disassembler;
         this.MachineInfo = machineInfo;
         this.TracingListener = tracingListener;
+
+        WireDebuggingManagers();
     }
 
     /// <summary>
@@ -305,6 +328,12 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// </remarks>
     public void DetachSystem()
     {
+        // Tear down debugger-side managers before the CPU/Machine references go away.
+        this.Breakpoints.Detach();
+        this.Watchpoints.Detach();
+        this.Cpu?.DetachDebugger();
+        this.StepListener = null;
+
         this.Cpu = null;
         this.Bus = null;
         this.Disassembler = null;
@@ -324,4 +353,40 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <see cref="DiskImageOpenResult"/> (and its underlying file handle).
     /// </summary>
     public void Dispose() => this.MountedDisks.Dispose();
+
+    /// <summary>
+    /// Wires the composite debug listener, breakpoint manager, and watchpoint
+    /// manager to the currently attached CPU and machine. Does nothing if
+    /// <see cref="Cpu"/> is <see langword="null"/>.
+    /// Callers are responsible for tearing down any previous attachment before
+    /// invoking this method (see <see cref="DetachSystem"/>).
+    /// </summary>
+    private void WireDebuggingManagers()
+    {
+        if (this.Cpu is null)
+        {
+            return;
+        }
+
+        // Build a composite listener so tracing and watchpoints (and any other
+        // observers added later) can coexist on the CPU's single debugger slot.
+        var composite = new CompositeDebugStepListener();
+        if (this.TracingListener is not null)
+        {
+            composite.Add(this.TracingListener);
+        }
+
+        this.Watchpoints.Attach(this.Cpu);
+        composite.Add(this.Watchpoints);
+
+        this.Cpu.AttachDebugger(composite);
+        this.StepListener = composite;
+
+        // Wire breakpoints if the machine exposes a trap registry.
+        var registry = this.Machine?.GetComponent<Bus.Interfaces.ITrapRegistry>();
+        if (registry is not null)
+        {
+            this.Breakpoints.Attach(this.Cpu, registry);
+        }
+    }
 }

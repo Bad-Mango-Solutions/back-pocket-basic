@@ -11,8 +11,11 @@ using BadMango.Emulator.Storage.Backends;
 using BadMango.Emulator.Storage.Formats;
 using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
+using BadMango.Unit.Components;
 
 using Moq;
+
+using Serilog;
 
 /// <summary>
 /// Unit tests for the runtime <see cref="DiskListCommand"/>, <see cref="DiskInsertCommand"/>,
@@ -28,6 +31,7 @@ public sealed class DiskRuntimeCommandsTests
     private StringWriter errorWriter = null!;
     private Mock<IMachine> machine = null!;
     private Mock<ISlotManager> slotManager = null!;
+    private ILogger logger = null!;
 
     /// <summary>Sets up per-test fixtures including a mocked machine + slot manager.</summary>
     [SetUp]
@@ -38,6 +42,7 @@ public sealed class DiskRuntimeCommandsTests
 
         this.outputWriter = new StringWriter();
         this.errorWriter = new StringWriter();
+        this.logger = Generator.Log().Object;
 
         var dispatcher = new CommandDispatcher();
         this.debugContext = new DebugContext(dispatcher, this.outputWriter, this.errorWriter);
@@ -654,6 +659,199 @@ public sealed class DiskRuntimeCommandsTests
         });
     }
 
+    /// <summary><see cref="DiskDumpTrackCommand"/> and <see cref="DiskReadSectorCommand"/> carry the auto-registration attribute.</summary>
+    [Test]
+    public void DiagnosticSubcommands_AreMarkedForAutoRegistration()
+    {
+        var attr = typeof(BadMango.Emulator.Devices.DeviceDebugCommandAttribute);
+        Assert.Multiple(() =>
+        {
+            Assert.That(typeof(DiskDumpTrackCommand).GetCustomAttributes(attr, inherit: false), Is.Not.Empty);
+            Assert.That(typeof(DiskReadSectorCommand).GetCustomAttributes(attr, inherit: false), Is.Not.Empty);
+        });
+    }
+
+    /// <summary>The parent <c>disk</c> command routes <c>dump-track</c> and <c>read-sector</c>.</summary>
+    [Test]
+    public void DiskCommand_RoutesDiagnosticSubcommands()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+        ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(EmptySnapshot() with { HasMedia = true });
+
+        var parent = new DiskCommand();
+        var result = parent.Execute(this.debugContext, ["dump-track", "6:1", "--track", "0", "--length", "16"]);
+
+        Assert.That(result.Success, Is.True, result.Message);
+        Assert.That(this.outputWriter.ToString(), Does.Contain("track 0"));
+    }
+
+    /// <summary><c>disk dump-track</c> prints the requested slice as a hex+ASCII dump.</summary>
+    [Test]
+    public void DiskDumpTrack_PrintsTrackBytesAsHexAscii()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+        var buffer = new byte[GcrEncoder.StandardTrackLength];
+        buffer[0] = 0xD5;
+        buffer[1] = 0xAA;
+        buffer[2] = 0x96;
+        var media = new InMemoryMedia(buffer, DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+        ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(EmptySnapshot() with { HasMedia = true });
+
+        var result = new DiskDumpTrackCommand().Execute(this.debugContext, ["6:1", "--track", "0", "--length", "16"]);
+
+        Assert.That(result.Success, Is.True, result.Message);
+        var output = this.outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Does.Contain("track 0 (quarter-track 0)"));
+            Assert.That(output, Does.Contain("D5 AA 96"));
+            Assert.That(output, Does.Contain("0000:"));
+        });
+    }
+
+    /// <summary><c>disk dump-track</c> defaults to the drive's current head position when no track is specified.</summary>
+    [Test]
+    public void DiskDumpTrack_DefaultsToCurrentQuarterTrack()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+        ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(new DriveSnapshot(
+            Selected: true,
+            MotorOn: true,
+            PhaseLatch: 0,
+            QuarterTrack: 9,
+            WriteProtect: false,
+            HasMedia: true,
+            MountedImagePath: null));
+
+        var result = new DiskDumpTrackCommand().Execute(this.debugContext, ["6:1", "--length", "16"]);
+
+        Assert.That(result.Success, Is.True, result.Message);
+        Assert.That(this.outputWriter.ToString(), Does.Contain("quarter-track 9"));
+    }
+
+    /// <summary><c>disk dump-track</c> rejects an empty drive with a clear error.</summary>
+    [Test]
+    public void DiskDumpTrack_EmptyDrive_ReturnsError()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        ctl.Setup(c => c.GetMedia(0)).Returns((I525Media?)null);
+
+        var result = new DiskDumpTrackCommand().Execute(this.debugContext, ["6:1", "--track", "0"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("empty"));
+        });
+    }
+
+    /// <summary><c>disk dump-track</c> validates the quarter-track range.</summary>
+    [Test]
+    public void DiskDumpTrack_TrackOutOfRange_ReturnsError()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+
+        var result = new DiskDumpTrackCommand().Execute(this.debugContext, ["6:1", "--track", "999"]);
+        Assert.That(result.Success, Is.False);
+    }
+
+    /// <summary><c>disk read-sector</c> decodes and prints a sector that was just encoded by <see cref="GcrEncoder"/>.</summary>
+    [Test]
+    public void DiskReadSector_DecodesEncodedSector()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+        // Build a single-track nibble stream with a well-known marker byte in sector 0.
+        var sectors = new byte[16 * GcrEncoder.BytesPerSector];
+        for (var i = 0; i < GcrEncoder.BytesPerSector; i++)
+        {
+            sectors[i] = (byte)i;
+        }
+
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        GcrEncoder.EncodeTrack(volume: 254, track: 0, sectors, nibbles);
+        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+
+        var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0", "0"]);
+
+        Assert.That(result.Success, Is.True, result.Message);
+        var output = this.outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Does.Contain("physical sector 0"));
+            Assert.That(output, Does.Contain("0000:"));
+
+            // First byte is 0x00, second 0x01, ... so the second hex line should begin "0010: 10 11 ..."
+            Assert.That(output, Does.Contain("0010: 10 11 12 13"));
+        });
+    }
+
+    /// <summary><c>disk read-sector --logical</c> translates through the medium's sector order.</summary>
+    [Test]
+    public void DiskReadSector_LogicalFlag_UsesSectorSkew()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+        var sectors = new byte[16 * GcrEncoder.BytesPerSector];
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        GcrEncoder.EncodeTrack(volume: 254, track: 0, sectors, nibbles);
+        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+
+        // DOS 3.3 logical sector 1 maps to physical sector 7.
+        var expectedPhysical = SectorSkew.LogicalToPhysical(SectorOrder.Dos33, 1);
+
+        var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0", "1", "--logical"]);
+
+        Assert.That(result.Success, Is.True, result.Message);
+        Assert.That(this.outputWriter.ToString(), Does.Contain($"physical {expectedPhysical}"));
+    }
+
+    /// <summary><c>disk read-sector</c> reports a clear error when decoding fails.</summary>
+    [Test]
+    public void DiskReadSector_UnreadableSector_ReturnsError()
+    {
+        var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
+        this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
+        // All-zero nibble stream contains no valid prologue: nothing decodes.
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
+        ctl.Setup(c => c.GetMedia(0)).Returns(media);
+
+        var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0", "0"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("Failed to decode"));
+        });
+    }
+
+    /// <summary><c>disk read-sector</c> rejects bad arguments.</summary>
+    [Test]
+    public void DiskReadSector_BadArgs_ReturnsError()
+    {
+        var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0"]);
+        Assert.That(result.Success, Is.False);
+    }
+
     private static (Mock<ISlotCard> Card, Mock<IDiskController> Controller) MakeMockController(int slot, int driveCount)
     {
         // Single mock object that implements both ISlotCard (for GetCard) and IDiskController
@@ -687,5 +885,60 @@ public sealed class DiskRuntimeCommandsTests
         var path = Path.Combine(this.tempRoot, $"img-{Guid.NewGuid():N}{ext}");
         File.WriteAllBytes(path, new byte[35 * 16 * 256]);
         return path;
+    }
+
+    /// <summary>
+    /// Minimal in-memory <see cref="I525Media"/> used to drive the diagnostic commands
+    /// against a single deterministic track buffer without needing the on-disk image
+    /// loader. Track 0 reads return the buffer contents; all other tracks read as zeros.
+    /// Writes are rejected: the media is declared read-only and any write attempt is
+    /// logged as an error via the injected <see cref="ILogger"/>.
+    /// </summary>
+    private sealed class InMemoryMedia : I525Media
+    {
+        private readonly byte[] track0;
+        private readonly DiskGeometry geometry;
+        private readonly ILogger logger;
+
+        public InMemoryMedia(byte[] track0, DiskGeometry geometry, ILogger logger)
+        {
+            this.track0 = track0;
+            this.geometry = geometry;
+            this.logger = logger;
+        }
+
+        public DiskGeometry Geometry => this.geometry;
+
+        public int OptimalTrackLength => this.track0.Length;
+
+        public bool IsReadOnly => true;
+
+        public void ReadTrack(int quarterTrack, Span<byte> destination)
+        {
+            if (destination.Length != this.OptimalTrackLength)
+            {
+                throw new ArgumentException("destination length mismatch", nameof(destination));
+            }
+
+            if (quarterTrack == 0)
+            {
+                this.track0.AsSpan().CopyTo(destination);
+            }
+            else
+            {
+                destination.Clear();
+            }
+        }
+
+        public void WriteTrack(int quarterTrack, ReadOnlySpan<byte> source)
+        {
+            this.logger.Error(
+                "InMemoryMedia: WriteTrack called on read-only in-memory media (quarter-track {QuarterTrack}); write discarded.",
+                quarterTrack);
+        }
+
+        public void Flush()
+        {
+        }
     }
 }

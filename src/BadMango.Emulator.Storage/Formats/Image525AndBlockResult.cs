@@ -30,12 +30,38 @@ public sealed record Image525AndBlockResult : DiskImageOpenResult
         DiskImageFormat format,
         string path,
         bool isReadOnly)
+        : this(trackMedia, blockMedia, sectorOrder, wasOrderSniffed, format, path, isReadOnly, sectorImage: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Image525AndBlockResult"/> class with a
+    /// reference to the underlying <see cref="SectorImageMedia"/> for direct-image access.
+    /// </summary>
+    /// <param name="trackMedia">Track-addressed view (via the GCR nibblizer).</param>
+    /// <param name="blockMedia">Block-addressed view (via the inverse skew).</param>
+    /// <param name="sectorOrder">Sector order of the underlying backing image (sniffed for <c>.dsk</c>).</param>
+    /// <param name="wasOrderSniffed">Whether <paramref name="sectorOrder"/> was determined by sniffing rather than by extension.</param>
+    /// <param name="format">Detected format.</param>
+    /// <param name="path">Source path.</param>
+    /// <param name="isReadOnly">Whether the image was opened read-only.</param>
+    /// <param name="sectorImage">Optional reference to the backing <see cref="SectorImageMedia"/> for direct-image (non-nibble) sector access.</param>
+    public Image525AndBlockResult(
+        I525Media trackMedia,
+        IBlockMedia blockMedia,
+        SectorOrder sectorOrder,
+        bool wasOrderSniffed,
+        DiskImageFormat format,
+        string path,
+        bool isReadOnly,
+        SectorImageMedia? sectorImage)
         : base(format, path, isReadOnly)
     {
         this.TrackMedia = trackMedia;
         this.BlockMedia = blockMedia;
         this.SectorOrder = sectorOrder;
         this.WasOrderSniffed = wasOrderSniffed;
+        this.SectorImage = sectorImage;
     }
 
     /// <summary>Gets the track-addressed view of the image.</summary>
@@ -53,4 +79,15 @@ public sealed record Image525AndBlockResult : DiskImageOpenResult
     /// <summary>Gets a value indicating whether the sector order was determined by sniffing.</summary>
     /// <value><see langword="true"/> for ambiguous <c>.dsk</c> images that were sniffed; <see langword="false"/> when the order is fixed by the extension.</value>
     public bool WasOrderSniffed { get; }
+
+    /// <summary>
+    /// Gets the underlying <see cref="SectorImageMedia"/> backing this result, when the
+    /// image was opened as a sector image (every <c>.dsk</c>/<c>.do</c>/<c>.po</c>/2MG-sector path).
+    /// </summary>
+    /// <value>
+    /// The shared <see cref="SectorImageMedia"/> instance whose
+    /// <see cref="SectorImageMedia.ReadSectorPhysical"/> method exposes direct-image bytes
+    /// for diagnostic tooling, or <see langword="null"/> when no sector image is available.
+    /// </value>
+    public SectorImageMedia? SectorImage { get; }
 }

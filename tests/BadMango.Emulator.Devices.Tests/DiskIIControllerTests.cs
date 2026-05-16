@@ -62,6 +62,62 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Verifies that <see cref="DiskIIController.LoadBootRom"/> publishes the boot ROM
+    /// region after construction, so the profile-driven build path can wire the
+    /// user-supplied ROM via <c>config.rom</c> without resorting to a constructor parameter.
+    /// </summary>
+    [Test]
+    public void LoadBootRom_PublishesBootRomRegion()
+    {
+        var controller = new DiskIIController(NewLoggerMock().Object);
+        Assert.That(controller.ROMRegion, Is.Null, "Pre-condition: no ROM at construction.");
+
+        var bytes = new byte[DiskIIBootRom.RomSize];
+        bytes[0] = 0xA9; // sentinel: LDA #imm
+        bytes[1] = 0x55;
+
+        controller.LoadBootRom(bytes);
+
+        Assert.That(controller.ROMRegion, Is.Not.Null);
+
+        // Read $Cn00..$Cn01 through the published bus target to confirm the bytes survive.
+        var probe = new BusAccess(
+            Address: 0xC600,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.ROMRegion!.Read8(0x00, in probe), Is.EqualTo((byte)0xA9));
+            Assert.That(controller.ROMRegion!.Read8(0x01, in probe), Is.EqualTo((byte)0x55));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.LoadBootRom"/> rejects a payload that is
+    /// not exactly <see cref="DiskIIBootRom.RomSize"/> bytes, surfacing the same contract
+    /// the constructor enforces so misconfigured profiles fail loudly rather than silently
+    /// truncating or padding the ROM.
+    /// </summary>
+    [Test]
+    public void LoadBootRom_RejectsWrongSize()
+    {
+        var controller = new DiskIIController(NewLoggerMock().Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentNullException>(() => controller.LoadBootRom(null!));
+            Assert.Throws<ArgumentException>(() => controller.LoadBootRom(new byte[DiskIIBootRom.RomSize - 1]));
+            Assert.Throws<ArgumentException>(() => controller.LoadBootRom(new byte[DiskIIBootRom.RomSize + 1]));
+        });
+    }
+
+    /// <summary>
     /// Verifies that an even-then-odd phase sequence steps the head one half-track
     /// (two quarter-tracks) per valid magnet transition (FR-D4).
     /// </summary>
@@ -253,17 +309,49 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
-    /// Verifies that <see cref="DiskIIController.Mount"/> defers the actual swap to
-    /// the next scheduler turn (FR-R1).
+    /// Verifies that <see cref="DiskIIController.Mount"/> applies immediately when the
+    /// controller is idle (motor off), so a pre-boot insert is observable through
+    /// <see cref="DiskIIController.GetDriveSnapshot"/> without requiring the scheduler
+    /// to tick. This is the contract behind the debug-console <c>disk insert</c>
+    /// command working before the machine has booted.
     /// </summary>
     [Test]
-    public void Mount_IsDeferredToNextSchedulerTurn()
+    public void Mount_AppliesImmediately_WhenControllerIsIdle()
     {
         var media = new Mock<I525Media>();
         media.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
         media.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
 
-        var (controller, _, _, scheduler, _) = BuildHarness();
+        var (controller, _, _, _, _) = BuildHarness();
+
+        // Motor is off (the harness builds an idle controller); the mount must be
+        // visible without any scheduler.Advance().
+        controller.Mount(0, media.Object, "library://disks/test.dsk");
+
+        var snap = controller.GetDriveSnapshot(0);
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.HasMedia, Is.True);
+            Assert.That(snap.MountedImagePath, Is.EqualTo("library://disks/test.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> defers the actual swap to
+    /// the next scheduler turn when the motor is on (FR-R1) so the controller never
+    /// observes a half-mounted drive mid-byte while a transfer is in flight.
+    /// </summary>
+    [Test]
+    public void Mount_IsDeferredToNextSchedulerTurn_WhenMotorIsOn()
+    {
+        var media = new Mock<I525Media>();
+        media.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        media.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness();
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        Assume.That(controller.IsMotorOn, Is.True);
+
         controller.Mount(0, media.Object, "library://disks/test.dsk");
 
         // Before the scheduler runs, the drive should still be empty.
@@ -278,6 +366,76 @@ public class DiskIIControllerTests
             Assert.That(postSnap.HasMedia, Is.True);
             Assert.That(postSnap.MountedImagePath, Is.EqualTo("library://disks/test.dsk"));
         });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> over a drive that already
+    /// has a disk mounted implicitly ejects the prior disk and replaces it with the
+    /// new medium (the operator-facing equivalent of physically swapping the
+    /// diskette). The new media and image path replace the prior values.
+    /// </summary>
+    [Test]
+    public void Mount_OverExistingDisk_ImplicitlyEjectsAndReplaces()
+    {
+        var first = new Mock<I525Media>();
+        first.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        first.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var second = new Mock<I525Media>();
+        second.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        second.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        var (controller, _, _, _, _) = BuildHarness();
+        controller.Mount(0, first.Object, "library://disks/first.dsk");
+        Assume.That(controller.GetDriveSnapshot(0).MountedImagePath, Is.EqualTo("library://disks/first.dsk"));
+
+        controller.Mount(0, second.Object, "library://disks/second.dsk");
+
+        var snap = controller.GetDriveSnapshot(0);
+        Assert.Multiple(() =>
+        {
+            Assert.That(snap.HasMedia, Is.True);
+            Assert.That(snap.MountedImagePath, Is.EqualTo("library://disks/second.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="DiskIIController.Mount"/> over an existing dirty disk
+    /// whose flush fails is rejected with a clear <see cref="InvalidOperationException"/>
+    /// (FR-R2 applied to the implicit eject), and that the prior disk remains mounted
+    /// untouched so the operator can react.
+    /// </summary>
+    [Test]
+    public void Mount_OverExistingDirtyDisk_RejectsWhenFlushFails()
+    {
+        var thrower = new ThrowingWriteMedia();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, thrower);
+        scheduler.Advance(new Cycle(2));
+
+        // Dirty the cached track so the implicit-eject flush will throw. We leave the
+        // motor on intentionally — the implicit-eject probe-flush in Mount runs up
+        // front and must short-circuit before any state changes (deferred or not).
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(10));
+        _ = dispatcher.Read(0xEF, in ctx); // Q7H — write enable
+        _ = dispatcher.Read(0xED, in ctx); // Q6H — load
+        WriteSoft(dispatcher, 0xED, 0xAA, ctx);
+        WriteSoft(dispatcher, 0xEC, 0x55, ctx); // Q6L write — shifts byte out
+
+        var replacement = new Mock<I525Media>();
+        replacement.SetupGet(m => m.Geometry).Returns(DiskGeometry.Standard525Dos);
+        replacement.SetupGet(m => m.OptimalTrackLength).Returns(GcrEncoder.StandardTrackLength);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            controller.Mount(0, replacement.Object, "library://disks/replacement.dsk"));
+
+        // The prior disk must still be mounted; even if the deferred swap had been
+        // queued, advancing the scheduler must not change the drive contents because
+        // the implicit-eject flush rejected the mount before scheduling anything.
+        scheduler.Advance(new Cycle(2));
+        Assert.That(controller.GetDriveSnapshot(0).HasMedia, Is.True);
     }
 
     /// <summary>
@@ -396,6 +554,53 @@ public class DiskIIControllerTests
         loggerMock.Verify(
             l => l.Warning(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<int>()),
             Times.AtLeastOnce);
+    }
+
+    /// <summary>
+    /// Verifies that the data-register's high bit (bit 7) models the Disk II
+    /// "byte-ready" behavior the P5A boot ROM depends on: consecutive reads of
+    /// <c>$C0EC</c> that occur faster than one nibble per <see cref="DiskIIController.CyclesPerByte"/>
+    /// must report bit 7 cleared (so the boot ROM's <c>LDA $C08C,X / BPL *-3</c>
+    /// loop spins) and only return the full nibble once the head has advanced
+    /// to a fresh byte. Without this gating the BPL loop would fall through on
+    /// every read (every GCR nibble has bit 7 set), trapping the boot ROM on
+    /// whatever byte happens to be under the head when the loop starts.
+    /// </summary>
+    [Test]
+    public void Q6L_ByteReadyHighBit_GatesRapidPollsBetweenBytes()
+    {
+        var backing = new RamStorageBackend(DiskGeometry.Standard525Dos.TotalBytes);
+        var sector = new SectorImageMedia(backing, DiskGeometry.Standard525Dos);
+        var media = sector.As525Media();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+
+        // First $C0EC read primes the latch with a fresh nibble.
+        var first = dispatcher.Read(0xEC, in ctx);
+
+        // A rapid follow-up read at the same spin position must clear bit 7 so
+        // the boot ROM's BPL polling loop continues spinning, even when the
+        // underlying nibble has bit 7 set (every valid GCR nibble does).
+        scheduler.Advance(new Cycle(4));
+        var poll = dispatcher.Read(0xEC, in ctx);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(first & 0x80, Is.EqualTo(0x80), "Fresh nibble should report bit 7 set.");
+            Assert.That(poll & 0x80, Is.EqualTo(0), "Repeated poll between bytes must report bit 7 cleared.");
+            Assert.That(poll & 0x7F, Is.EqualTo(first & 0x7F), "Low 7 bits of the polled value should match the latched nibble.");
+        });
+
+        // After a full byte time elapses, the next read must surface a fresh
+        // nibble with bit 7 set again so the BPL loop can fall through.
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        var fresh = dispatcher.Read(0xEC, in ctx);
+        Assert.That(fresh & 0x80, Is.EqualTo(0x80), "Next byte time should re-arm the byte-ready high bit.");
     }
 
     private static Mock<ILogger> NewLoggerMock() => Generator.Log();

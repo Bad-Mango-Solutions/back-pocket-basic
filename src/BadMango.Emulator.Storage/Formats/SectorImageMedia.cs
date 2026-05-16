@@ -115,7 +115,33 @@ public sealed class SectorImageMedia
     /// </summary>
     public void Flush() => this.backing.Flush();
 
-    private void ReadSectorPhysical(int track, int physicalSector, Span<byte> destination)
+    /// <summary>
+    /// Reads a single physical sector directly from the backing image bytes, bypassing the
+    /// GCR nibblizer.
+    /// </summary>
+    /// <param name="track">Whole-track index (0..<see cref="DiskGeometry.TrackCount"/> - 1).</param>
+    /// <param name="physicalSector">Physical sector index (0..<see cref="DiskGeometry.SectorsPerTrack"/> - 1) in on-disk order.</param>
+    /// <param name="destination">Destination buffer; at least <see cref="DiskGeometry.BytesPerSector"/> bytes are written.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="track"/> or <paramref name="physicalSector"/> is out of range, or <paramref name="destination"/> is too small.</exception>
+    /// <remarks>
+    /// Exposes a side-effect-free path debug tooling uses to compare decoded sectors
+    /// against the ground-truth backing image.
+    /// </remarks>
+    public void ReadSectorPhysical(int track, int physicalSector, Span<byte> destination)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(track);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(track, this.geometry.TrackCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(physicalSector);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(physicalSector, this.geometry.SectorsPerTrack);
+        if (destination.Length < this.geometry.BytesPerSector)
+        {
+            throw new ArgumentOutOfRangeException(nameof(destination), $"Destination must be at least {this.geometry.BytesPerSector} bytes.");
+        }
+
+        this.ReadSectorPhysicalCore(track, physicalSector, destination);
+    }
+
+    private void ReadSectorPhysicalCore(int track, int physicalSector, Span<byte> destination)
     {
         var logical = SectorSkew.PhysicalToLogical(this.geometry.SectorOrder, physicalSector);
         var offset = this.backingOffset + ((((long)track * this.geometry.SectorsPerTrack) + logical) * this.geometry.BytesPerSector);
@@ -133,7 +159,7 @@ public sealed class SectorImageMedia
     {
         // Convert to the physical sector, then to the backing-image logical sector.
         var physical = SectorSkew.LogicalToPhysical(SectorOrder.ProDos, proDosLogical);
-        this.ReadSectorPhysical(track, physical, destination);
+        this.ReadSectorPhysicalCore(track, physical, destination);
     }
 
     private void WriteSectorLogicalProDos(int track, int proDosLogical, ReadOnlySpan<byte> source)
@@ -183,7 +209,7 @@ public sealed class SectorImageMedia
             Span<byte> trackSectors = stackalloc byte[SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector];
             for (var phys = 0; phys < SectorSkew.SectorsPerTrack; phys++)
             {
-                this.parent.ReadSectorPhysical(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
+                this.parent.ReadSectorPhysicalCore(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
             }
 
             GcrEncoder.EncodeTrack(this.parent.Volume, track, trackSectors, destination);
@@ -217,7 +243,7 @@ public sealed class SectorImageMedia
             // not corrupted on disk.
             for (var phys = 0; phys < SectorSkew.SectorsPerTrack; phys++)
             {
-                this.parent.ReadSectorPhysical(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
+                this.parent.ReadSectorPhysicalCore(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
             }
 
             var decoded = GcrEncoder.DecodeTrack(source, trackSectors);
