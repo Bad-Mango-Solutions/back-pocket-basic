@@ -94,6 +94,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     private byte dataLatch;            // last byte returned to / received from CPU
     private bool dataLatchValid;       // true once the head has produced (or written) a byte
     private byte writeShift;           // staged byte for write-load (Q6=1,Q7=1)
+    private int lastReadSpinPosition = -1; // SpinPosition observed at the previous data-read; used to gate the byte-ready high bit
 
     private IEventContext? context;
     private EventHandle driftHandle;
@@ -299,6 +300,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         dataLatch = 0;
         dataLatchValid = false;
         writeShift = 0;
+        lastReadSpinPosition = -1;
         CancelDriftEvent();
 
         for (var i = 0; i < drives.Length; i++)
@@ -423,6 +425,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             HasMedia: drive.Media is not null,
             MountedImagePath: drive.ImagePath,
             Geometry: drive.Media?.Geometry);
+    }
+
+    /// <inheritdoc />
+    public I525Media? GetMedia(int driveIndex)
+    {
+        ValidateDriveIndex(driveIndex);
+        return drives[driveIndex].Media;
     }
 
     private static void ValidateDriveIndex(int driveIndex)
@@ -769,11 +778,32 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return FloatingByte;
         }
 
-        if (context is not null && drives[currentDrive].SettleUntil > context.Now)
+        var current = drives[currentDrive];
+        if (context is not null && current.SettleUntil > context.Now)
         {
             // During settling, return the previously latched byte (or floating $FF
             // when nothing has been latched yet). FR-D7.
             return LatchedOrFloating();
+        }
+
+        // Model the Disk II shift-register byte-ready behavior in read mode
+        // (Q6=0, Q7=0). On real hardware the data register's high bit is set only
+        // when a complete nibble has just been clocked in; consecutive reads
+        // between byte boundaries see bit 7 cleared because the next byte is
+        // still shifting in. The P5A boot ROM relies on this with its
+        // `LDA $C08C,X / BPL *-3` timing loop. We approximate this by tracking
+        // whether SpinPosition advanced since the previous read: when it did,
+        // the byte is "fresh" and bit 7 reflects the actual nibble (every GCR
+        // nibble has bit 7 set); when it didn't, the firmware is polling faster
+        // than bytes arrive and we report bit 7 cleared so the BPL loop spins.
+        if (!q6High && !q7High && dataLatchValid && !ctx.IsSideEffectFree)
+        {
+            if (current.SpinPosition == lastReadSpinPosition)
+            {
+                return (byte)(dataLatch & 0x7F);
+            }
+
+            lastReadSpinPosition = current.SpinPosition;
         }
 
         // For non-data-read modes (write enable, write load), reads return whatever

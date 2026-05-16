@@ -74,6 +74,40 @@ public interface IDebugContext : ICommandContext
     TracingDebugListener? TracingListener { get; }
 
     /// <summary>
+    /// Gets the composite CPU step listener that fans out debug callbacks to
+    /// every registered observer (tracing, watchpoints, etc.).
+    /// </summary>
+    /// <remarks>
+    /// May be <see langword="null"/> when no system is attached. Commands that want
+    /// to observe instruction execution should add themselves here rather than
+    /// calling <see cref="Core.Interfaces.Cpu.ICpu.AttachDebugger"/> directly, so
+    /// they do not displace other observers.
+    /// </remarks>
+    CompositeDebugStepListener? StepListener { get; }
+
+    /// <summary>
+    /// Gets the breakpoint manager for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// Breakpoints are implemented as <see cref="Bus.TrapOperation.Call"/> traps
+    /// on the active <see cref="Bus.Interfaces.ITrapRegistry"/>. Always non-<see langword="null"/>
+    /// on a fresh <see cref="DebugContext"/>; the manager is fully wired only after
+    /// a system is attached.
+    /// </remarks>
+    BreakpointManager Breakpoints { get; }
+
+    /// <summary>
+    /// Gets the watchpoint manager for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// Watchpoints are implemented as a <see cref="Core.Interfaces.Debugging.IDebugStepListener"/>
+    /// that inspects each instruction's effective address. Always non-<see langword="null"/>
+    /// on a fresh <see cref="DebugContext"/>; the manager is fully wired only after
+    /// a system is attached.
+    /// </remarks>
+    WatchpointManager Watchpoints { get; }
+
+    /// <summary>
     /// Gets a value indicating whether a system is attached to this debug context.
     /// </summary>
     /// <remarks>

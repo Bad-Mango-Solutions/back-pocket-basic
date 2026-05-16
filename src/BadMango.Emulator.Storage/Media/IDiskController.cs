@@ -63,4 +63,18 @@ public interface IDiskController
     /// <param name="driveIndex">Zero-based drive index.</param>
     /// <returns>The drive snapshot, mirroring PRD FR-D10's debug surface.</returns>
     DriveSnapshot GetDriveSnapshot(int driveIndex);
+
+    /// <summary>
+    /// Returns the medium currently mounted in the indicated drive, or <see langword="null"/>
+    /// when the drive is empty.
+    /// </summary>
+    /// <param name="driveIndex">Zero-based drive index.</param>
+    /// <returns>The mounted <see cref="I525Media"/>, or <see langword="null"/> if empty.</returns>
+    /// <remarks>
+    /// Intended for debug-console inspection commands (e.g. <c>disk dump-track</c>,
+    /// <c>disk read-sector</c>) that need direct access to the live nibble stream without
+    /// going through the controller's bus-side read path. Production runtime code should
+    /// continue to use the soft-switch surface instead of reaching for the media directly.
+    /// </remarks>
+    I525Media? GetMedia(int driveIndex);
 }

@@ -290,15 +290,17 @@ public static class GcrEncoder
             twoBit[idx] |= (byte)(reversed << shift);
         }
 
-        // Step 2: XOR-chain encode (sixBit then twoBit, but written little-low first
-        // i.e. twoBit reversed then sixBit). Then translate via WriteTable.
+        // Step 2: XOR-chain encode. The 86 two-bit bytes are emitted first in
+        // their natural index order (twoBit[0] first, twoBit[85] last) so the
+        // first aux nibble on disk carries the low bits of sector byte 0 — the
+        // layout the real Apple II RWTS POSTNIB16 routine expects when it walks
+        // its aux buffer from X=85 down to X=0 while Y advances 0..255.
         Span<byte> xorChain = stackalloc byte[343];
         byte last = 0;
 
-        // Write the 86 two-bit bytes first, in reverse order.
         for (var i = 0; i < 86; i++)
         {
-            var b = twoBit[85 - i];
+            var b = twoBit[i];
             xorChain[i] = (byte)(b ^ last);
             last = b;
         }
@@ -338,14 +340,15 @@ public static class GcrEncoder
             xorChain[i] = v;
         }
 
-        // Inverse XOR chain.
+        // Inverse XOR chain. Aux bytes are stored in their natural index order
+        // (matches WriteDataField above and the real Apple II RWTS layout).
         Span<byte> twoBit = stackalloc byte[86];
         Span<byte> sixBit = stackalloc byte[256];
         byte last = 0;
         for (var i = 0; i < 86; i++)
         {
             last ^= xorChain[i];
-            twoBit[85 - i] = last;
+            twoBit[i] = last;
         }
 
         for (var i = 0; i < 256; i++)

@@ -80,6 +80,20 @@ public sealed class TracingDebugListener : IDebugStepListener
     public long InstructionCount { get; private set; }
 
     /// <summary>
+    /// Gets or sets an optional predicate restricting which program counter values
+    /// produce trace output.
+    /// </summary>
+    /// <remarks>
+    /// When non-null, an instruction is only recorded or written if the predicate
+    /// returns <see langword="true"/> for the executed instruction's PC. This is
+    /// useful for narrowing trace output to a specific address range while diagnosing
+    /// later boot stages without rebuilding the listener. A <see langword="null"/>
+    /// value disables filtering and traces every instruction (subject to
+    /// <see cref="IsEnabled"/>).
+    /// </remarks>
+    public Predicate<uint>? AddressFilter { get; set; }
+
+    /// <summary>
     /// Formats a trace record as a single line of text.
     /// </summary>
     /// <param name="record">The trace record to format.</param>
@@ -244,6 +258,12 @@ public sealed class TracingDebugListener : IDebugStepListener
     public void OnAfterStep(in DebugStepEventArgs eventData)
     {
         if (!isEnabled)
+        {
+            return;
+        }
+
+        var filter = AddressFilter;
+        if (filter is not null && !filter(eventData.PC))
         {
             return;
         }

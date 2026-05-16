@@ -148,6 +148,18 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<TraceCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<BreakCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.RegisterType<WatchCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<FaultCommand>()
             .As<ICommandHandler>()
             .SingleInstance();
@@ -243,10 +255,10 @@ public class DebugConsoleModule : Module
             (IMachine machine, IDisassembler disassembler, MachineInfo info) =
                 MachineFactory.CreateDebugSystem(profile, pathResolver);
 
-            // Attach the tracing listener to the CPU
-            machine.Cpu.AttachDebugger(tracingListener);
-
-            // Attach the full machine with all debug components
+            // Attach the full machine with all debug components. The context
+            // wires the tracing listener (and watchpoint manager) onto the CPU
+            // via a composite listener, and connects the breakpoint manager to
+            // the machine's trap registry.
             context.AttachMachine(machine, disassembler, info, tracingListener);
 
             return context;

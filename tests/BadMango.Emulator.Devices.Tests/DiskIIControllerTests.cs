@@ -556,6 +556,53 @@ public class DiskIIControllerTests
             Times.AtLeastOnce);
     }
 
+    /// <summary>
+    /// Verifies that the data-register's high bit (bit 7) models the Disk II
+    /// "byte-ready" behavior the P5A boot ROM depends on: consecutive reads of
+    /// <c>$C0EC</c> that occur faster than one nibble per <see cref="DiskIIController.CyclesPerByte"/>
+    /// must report bit 7 cleared (so the boot ROM's <c>LDA $C08C,X / BPL *-3</c>
+    /// loop spins) and only return the full nibble once the head has advanced
+    /// to a fresh byte. Without this gating the BPL loop would fall through on
+    /// every read (every GCR nibble has bit 7 set), trapping the boot ROM on
+    /// whatever byte happens to be under the head when the loop starts.
+    /// </summary>
+    [Test]
+    public void Q6L_ByteReadyHighBit_GatesRapidPollsBetweenBytes()
+    {
+        var backing = new RamStorageBackend(DiskGeometry.Standard525Dos.TotalBytes);
+        var sector = new SectorImageMedia(backing, DiskGeometry.Standard525Dos);
+        var media = sector.As525Media();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+
+        // First $C0EC read primes the latch with a fresh nibble.
+        var first = dispatcher.Read(0xEC, in ctx);
+
+        // A rapid follow-up read at the same spin position must clear bit 7 so
+        // the boot ROM's BPL polling loop continues spinning, even when the
+        // underlying nibble has bit 7 set (every valid GCR nibble does).
+        scheduler.Advance(new Cycle(4));
+        var poll = dispatcher.Read(0xEC, in ctx);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(first & 0x80, Is.EqualTo(0x80), "Fresh nibble should report bit 7 set.");
+            Assert.That(poll & 0x80, Is.EqualTo(0), "Repeated poll between bytes must report bit 7 cleared.");
+            Assert.That(poll & 0x7F, Is.EqualTo(first & 0x7F), "Low 7 bits of the polled value should match the latched nibble.");
+        });
+
+        // After a full byte time elapses, the next read must surface a fresh
+        // nibble with bit 7 set again so the BPL loop can fall through.
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        var fresh = dispatcher.Read(0xEC, in ctx);
+        Assert.That(fresh & 0x80, Is.EqualTo(0x80), "Next byte time should re-arm the byte-ready high bit.");
+    }
+
     private static Mock<ILogger> NewLoggerMock() => Generator.Log();
 
     private static (DiskIIController Controller, IOPageDispatcher Dispatcher, BusAccess Context, Scheduler Scheduler, Mock<I525Media> Media) BuildHarness(

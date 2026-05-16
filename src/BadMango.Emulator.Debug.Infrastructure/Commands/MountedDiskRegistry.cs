@@ -78,6 +78,30 @@ public sealed class MountedDiskRegistry : IDisposable
     }
 
     /// <summary>
+    /// Attempts to retrieve the open result currently tracked for the given drive without
+    /// removing it from the registry.
+    /// </summary>
+    /// <param name="slot">1-based slot number (1..7).</param>
+    /// <param name="driveIndex">0-based drive index within the controller.</param>
+    /// <param name="open">When the method returns, the tracked open result, or <see langword="null"/> when no entry exists.</param>
+    /// <returns><see langword="true"/> when a tracked entry was found; otherwise <see langword="false"/>.</returns>
+    /// <remarks>
+    /// Returns <see langword="false"/> when the registry has already been disposed instead of
+    /// throwing, so debug commands that consult the registry do not crash if the surrounding
+    /// <see cref="DebugContext"/> is being torn down concurrently.
+    /// </remarks>
+    public bool TryGet(int slot, int driveIndex, out DiskImageOpenResult? open)
+    {
+        if (this.disposed)
+        {
+            open = null;
+            return false;
+        }
+
+        return this.entries.TryGetValue((slot, driveIndex), out open);
+    }
+
+    /// <summary>
     /// Disposes and removes the open result tracked for the given drive, releasing its
     /// underlying file handle. Safe to call when no entry exists.
     /// </summary>

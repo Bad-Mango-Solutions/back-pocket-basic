@@ -144,7 +144,7 @@ public class DiskImageFactory
 
         var geometry = new DiskGeometry(35, SectorSkew.SectorsPerTrack, GcrEncoder.BytesPerSector, order);
         var media = new SectorImageMedia(backend, geometry, backingOffset: 0, writeProtected: forceReadOnly);
-        var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, sniffed, format, path, media.IsReadOnly);
+        var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, sniffed, format, path, media.IsReadOnly, media);
         result.AttachBackend(backend);
         return result;
     }
@@ -261,7 +261,7 @@ public class DiskImageFactory
                             var trackCount = header.DataLength / trackBytes;
                             var geometry = new DiskGeometry(trackCount, sectorsPerTrack, GcrEncoder.BytesPerSector, order);
                             var media = new SectorImageMedia(backend, geometry, backingOffset: header.DataOffset, writeProtected: readOnly, volume: header.DosVolumeNumber);
-                            var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly);
+                            var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, false, fmt, path, media.IsReadOnly, media);
                             result.AttachBackend(backend);
                             return result;
                         }

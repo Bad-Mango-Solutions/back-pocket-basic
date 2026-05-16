@@ -28,7 +28,7 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
     }
 
     /// <inheritdoc/>
-    public override IReadOnlyList<string> Aliases { get; } = ["bl", "trace"];
+    public override IReadOnlyList<string> Aliases { get; } = ["bl"];
 
     /// <inheritdoc/>
     public override string Usage => "buslog [on|off|show|clear]";
