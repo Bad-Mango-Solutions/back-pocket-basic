@@ -235,6 +235,18 @@ public sealed class DebugContext : IDebugContext, IDisposable
         ArgumentNullException.ThrowIfNull(disassembler);
         ArgumentNullException.ThrowIfNull(machineInfo);
 
+        // If a composite listener is already wired from a previous AttachMachine call
+        // (e.g. profile reload), tear down the old debugger attachment before
+        // overwriting this.Cpu — otherwise the outgoing CPU is left with a dangling
+        // listener and the managers remain attached to the stale CPU.
+        if (this.StepListener is not null)
+        {
+            this.Breakpoints.Detach();
+            this.Watchpoints.Detach();
+            this.Cpu?.DetachDebugger();
+            this.StepListener = null;
+        }
+
         this.Machine = machine;
         this.Cpu = machine.Cpu;
         this.Bus = machine.Bus;
@@ -344,9 +356,10 @@ public sealed class DebugContext : IDebugContext, IDisposable
 
     /// <summary>
     /// Wires the composite debug listener, breakpoint manager, and watchpoint
-    /// manager to the currently attached CPU and machine. Safe to call multiple
-    /// times; only does work once both <see cref="Cpu"/> and <see cref="Machine"/>
-    /// are present.
+    /// manager to the currently attached CPU and machine. Does nothing if
+    /// <see cref="Cpu"/> is <see langword="null"/>.
+    /// Callers are responsible for tearing down any previous attachment before
+    /// invoking this method (see <see cref="DetachSystem"/>).
     /// </summary>
     private void WireDebuggingManagers()
     {

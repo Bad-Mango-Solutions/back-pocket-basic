@@ -206,7 +206,7 @@ public sealed class DiskReadSectorCommand : CommandHandlerBase, ICommandHelp
 
         if (volume)
         {
-            return this.ExecuteVolumeCompare(context, slot, drive, media, sectorImage!, geometry, trackLength);
+            return ExecuteVolumeCompare(context, slot, drive, media, sectorImage!, geometry, trackLength);
         }
 
         if (track >= geometry.TrackCount)
@@ -278,7 +278,7 @@ public sealed class DiskReadSectorCommand : CommandHandlerBase, ICommandHelp
         return CommandResult.Ok();
     }
 
-    private CommandResult ExecuteVolumeCompare(
+    private static CommandResult ExecuteVolumeCompare(
         ICommandContext context,
         int slot,
         int drive,

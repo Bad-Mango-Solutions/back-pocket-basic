@@ -11,8 +11,11 @@ using BadMango.Emulator.Storage.Backends;
 using BadMango.Emulator.Storage.Formats;
 using BadMango.Emulator.Storage.Gcr;
 using BadMango.Emulator.Storage.Media;
+using BadMango.Unit.Components;
 
 using Moq;
+
+using Serilog;
 
 /// <summary>
 /// Unit tests for the runtime <see cref="DiskListCommand"/>, <see cref="DiskInsertCommand"/>,
@@ -28,6 +31,7 @@ public sealed class DiskRuntimeCommandsTests
     private StringWriter errorWriter = null!;
     private Mock<IMachine> machine = null!;
     private Mock<ISlotManager> slotManager = null!;
+    private ILogger logger = null!;
 
     /// <summary>Sets up per-test fixtures including a mocked machine + slot manager.</summary>
     [SetUp]
@@ -38,6 +42,7 @@ public sealed class DiskRuntimeCommandsTests
 
         this.outputWriter = new StringWriter();
         this.errorWriter = new StringWriter();
+        this.logger = Generator.Log().Object;
 
         var dispatcher = new CommandDispatcher();
         this.debugContext = new DebugContext(dispatcher, this.outputWriter, this.errorWriter);
@@ -672,7 +677,7 @@ public sealed class DiskRuntimeCommandsTests
     {
         var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
         this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
-        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
         ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(EmptySnapshot() with { HasMedia = true });
 
@@ -694,7 +699,7 @@ public sealed class DiskRuntimeCommandsTests
         buffer[0] = 0xD5;
         buffer[1] = 0xAA;
         buffer[2] = 0x96;
-        var media = new InMemoryMedia(buffer, DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(buffer, DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
         ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(EmptySnapshot() with { HasMedia = true });
 
@@ -717,7 +722,7 @@ public sealed class DiskRuntimeCommandsTests
         var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
         this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
 
-        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
         ctl.Setup(c => c.GetDriveSnapshot(0)).Returns(new DriveSnapshot(
             Selected: true,
@@ -757,7 +762,7 @@ public sealed class DiskRuntimeCommandsTests
     {
         var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
         this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
-        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
 
         var result = new DiskDumpTrackCommand().Execute(this.debugContext, ["6:1", "--track", "999"]);
@@ -780,7 +785,7 @@ public sealed class DiskRuntimeCommandsTests
 
         var nibbles = new byte[GcrEncoder.StandardTrackLength];
         GcrEncoder.EncodeTrack(volume: 254, track: 0, sectors, nibbles);
-        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
 
         var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0", "0"]);
@@ -807,7 +812,7 @@ public sealed class DiskRuntimeCommandsTests
         var sectors = new byte[16 * GcrEncoder.BytesPerSector];
         var nibbles = new byte[GcrEncoder.StandardTrackLength];
         GcrEncoder.EncodeTrack(volume: 254, track: 0, sectors, nibbles);
-        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(nibbles, DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
 
         // DOS 3.3 logical sector 1 maps to physical sector 7.
@@ -825,8 +830,9 @@ public sealed class DiskRuntimeCommandsTests
     {
         var (card, ctl) = MakeMockController(slot: 6, driveCount: 2);
         this.slotManager.Setup(m => m.GetCard(6)).Returns(card.Object);
+
         // All-zero nibble stream contains no valid prologue: nothing decodes.
-        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos);
+        var media = new InMemoryMedia(new byte[GcrEncoder.StandardTrackLength], DiskGeometry.Standard525Dos, this.logger);
         ctl.Setup(c => c.GetMedia(0)).Returns(media);
 
         var result = new DiskReadSectorCommand().Execute(this.debugContext, ["6:1", "0", "0"]);
@@ -885,23 +891,27 @@ public sealed class DiskRuntimeCommandsTests
     /// Minimal in-memory <see cref="I525Media"/> used to drive the diagnostic commands
     /// against a single deterministic track buffer without needing the on-disk image
     /// loader. Track 0 reads return the buffer contents; all other tracks read as zeros.
+    /// Writes are rejected: the media is declared read-only and any write attempt is
+    /// logged as an error via the injected <see cref="ILogger"/>.
     /// </summary>
     private sealed class InMemoryMedia : I525Media
     {
         private readonly byte[] track0;
         private readonly DiskGeometry geometry;
+        private readonly ILogger logger;
 
-        public InMemoryMedia(byte[] track0, DiskGeometry geometry)
+        public InMemoryMedia(byte[] track0, DiskGeometry geometry, ILogger logger)
         {
             this.track0 = track0;
             this.geometry = geometry;
+            this.logger = logger;
         }
 
         public DiskGeometry Geometry => this.geometry;
 
         public int OptimalTrackLength => this.track0.Length;
 
-        public bool IsReadOnly => false;
+        public bool IsReadOnly => true;
 
         public void ReadTrack(int quarterTrack, Span<byte> destination)
         {
@@ -922,7 +932,9 @@ public sealed class DiskRuntimeCommandsTests
 
         public void WriteTrack(int quarterTrack, ReadOnlySpan<byte> source)
         {
-            throw new NotSupportedException();
+            this.logger.Error(
+                "InMemoryMedia: WriteTrack called on read-only in-memory media (quarter-track {QuarterTrack}); write discarded.",
+                quarterTrack);
         }
 
         public void Flush()

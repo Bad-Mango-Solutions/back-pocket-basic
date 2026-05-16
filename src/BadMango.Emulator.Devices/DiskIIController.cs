@@ -326,7 +326,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             {
                 existingDrive.FlushOrThrow();
             }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException)
+            catch (Exception ex)
             {
                 logger.Warning(
                     ex,
@@ -337,6 +337,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
                     $"Cannot mount over existing disk in drive {driveIndex + 1}: flush of currently mounted disk failed: {ex.Message}",
                     ex);
             }
+
+            // Flush succeeded — physically eject the existing disk so the drive is
+            // empty before the new mount is applied (immediately or deferred).
+            ApplyEject(driveIndex);
         }
 
         // FR-R1: defer the actual swap to the next scheduler turn so the controller
@@ -382,7 +386,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             drive.FlushOrThrow();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        catch (Exception ex)
         {
             logger.Warning(ex, "DiskII (slot {Slot}): eject of drive {Drive} rejected — flush failed.", SlotNumber, driveIndex + 1);
             return false;
@@ -585,6 +589,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return;
         }
 
+        // Any motor-state transition invalidates the byte-ready spin-position
+        // record: the spin advance model restarts when the motor turns on/off.
+        lastReadSpinPosition = -1;
+
         if (!on)
         {
             // FR-D8: motor-off triggers a flush.
@@ -654,6 +662,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         // FR-D8: drive deselect flushes the outgoing drive.
         drives[currentDrive].Flush(logger);
         currentDrive = index;
+
+        // Changing drives invalidates the spin-position recorded for byte-ready gating:
+        // the new drive's position has no relation to the old one.
+        lastReadSpinPosition = -1;
+
         if (motorOn && context is not null)
         {
             drives[currentDrive].LastUpdateCycle = context.Now;
@@ -725,6 +738,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            // Transitioning to read mode: invalidate the byte-ready spin-position record
+            // so the first data-read after a write session is not gated by a stale value.
+            if (q7High)
+            {
+                lastReadSpinPosition = -1;
+            }
+
             q7High = false;
         }
 
@@ -735,6 +755,11 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     {
         if (!ctx.IsSideEffectFree)
         {
+            if (q7High)
+            {
+                lastReadSpinPosition = -1;
+            }
+
             q7High = false;
         }
     }
@@ -954,6 +979,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.Media = media;
         drive.ImagePath = imagePath;
 
+        // Reset byte-ready gating: the new disk's spin position has no relation
+        // to what was recorded for the previous disk or drive session.
+        if (driveIndex == currentDrive)
+        {
+            lastReadSpinPosition = -1;
+        }
+
         // FR-R4: insertion during an active motor cycle resets the settling timer.
         if (motorOn && driveIndex == currentDrive && context is not null)
         {
@@ -983,6 +1015,12 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         drive.ResetTransientState();
         drive.Media = null;
         drive.ImagePath = null;
+
+        // Reset byte-ready gating for the now-empty drive.
+        if (driveIndex == currentDrive)
+        {
+            lastReadSpinPosition = -1;
+        }
     }
 
     /// <summary>

@@ -446,13 +446,16 @@ public sealed partial class MachineBuilder
 
         if (romData.Length > romInfo.Size)
         {
-            romData = romData.Take((int)romInfo.Size).ToArray();
+            throw new InvalidOperationException(
+                $"Slot card boot ROM '{romInfo.Source}' is too large ({romData.Length} bytes). " +
+                $"Expected exactly {romInfo.Size} bytes for ROM image '{romName}'.");
         }
-        else if (romData.Length < romInfo.Size)
+
+        if (romData.Length < romInfo.Size)
         {
             throw new InvalidOperationException(
                 $"Slot card boot ROM '{romInfo.Source}' is too small ({romData.Length} bytes). " +
-                $"Expected {romInfo.Size} bytes for ROM image '{romName}'.");
+                $"Expected exactly {romInfo.Size} bytes for ROM image '{romName}'.");
         }
 
         // Use reflection to call LoadBootRom(byte[]) so the Bus assembly stays decoupled
