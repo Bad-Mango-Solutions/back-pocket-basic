@@ -532,4 +532,104 @@ public class InterruptAndHaltTests : CpuTestBase
     }
 
     #endregion
+
+    #region Decimal Flag On Interrupt Entry (65C02)
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on IRQ entry, pushes P with D set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void IRQ_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0x58);       // CLI
+        Write(0x1002, 0xEA);       // NOP
+        Write(0x2000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.Step(); // CLI
+        Cpu.SignalIRQ();
+        Cpu.Step(); // IRQ entry
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on IRQ entry");
+        Assert.That(Read(0x01FD) & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should be restored");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on NMI entry, pushes P with D set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void NMI_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFA, 0x3000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.SignalNMI();
+        Cpu.Step(); // NMI entry
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on NMI entry");
+        Assert.That(Read(0x01FD) & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on BRK, pushes P with D and B set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void BRK_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0x00);       // BRK
+        Write(0x1002, 0xEA);       // signature byte
+        Write(0x1003, 0xEA);       // NOP (return address)
+        Write(0x2000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.Step(); // BRK
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ/BRK vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on BRK");
+        byte pushed = Read(0x01FD);
+        Assert.That(pushed & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+        Assert.That(pushed & 0x10, Is.EqualTo(0x10), "Pushed P should have B flag set");
+
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should return past BRK signature byte");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    #endregion
 }
