@@ -156,17 +156,19 @@ dataPointer = (position < 0 || position >= dataValues.Count) ? 0 : position;
 return num >= 0 ? (int)Math.Floor(num) : (int)Math.Ceiling(num);
 ```
 
-### Floating-Point Comparisons
+### Processor Status Flags
 
 **From repository memories:**
 
 ```csharp
-// Use epsilon-based comparisons
-private const double EPSILON = 1e-10;
+// Update CPU status flags in place while preserving unrelated bits
+ref var p = ref cpu.Registers.P;
+p = p.SetCarry(accumulator > 0xFF);
+p = p.SetZero(accumulator == 0);
 
-public bool Equals(double a, double b)
+if (p.IsNegativeSet())
 {
-    return Math.Abs(a - b) < EPSILON;
+    // Handle signed arithmetic state
 }
 ```
 
