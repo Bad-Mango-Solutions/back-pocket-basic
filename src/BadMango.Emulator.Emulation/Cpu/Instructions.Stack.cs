@@ -47,7 +47,7 @@ public static partial class Instructions
         return cpu =>
         {
             addressingMode(cpu);
-            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B));
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B | ProcessorStatusFlags.R));
 
             if (cpu.IsDebuggerAttached)
             {
@@ -93,7 +93,7 @@ public static partial class Instructions
         return cpu =>
         {
             addressingMode(cpu);
-            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
+            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase)) | ProcessorStatusFlags.R;
 
             if (cpu.IsDebuggerAttached)
             {

@@ -162,7 +162,7 @@ public sealed class Cpu65C02 : CpuBase
                         // RTI pulls status first, then PC low, then PC high (no +1)
                         Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte status = Read8(statusAddr);
-                        Registers.P = (ProcessorStatusFlags)status;
+                        Registers.P = (ProcessorStatusFlags)status | ProcessorStatusFlags.R;
 
                         Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiLowByte = Read8(rtiLowAddr);
@@ -395,7 +395,7 @@ public sealed class Cpu65C02 : CpuBase
         Write8(PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
 
         // Push processor status (with B flag clear for hardware interrupts)
-        Write8(PushByte(Cpu65C02Constants.StackBase), (byte)(Registers.P & ~ProcessorStatusFlags.B));
+        Write8(PushByte(Cpu65C02Constants.StackBase), (byte)((Registers.P | ProcessorStatusFlags.R) & ~ProcessorStatusFlags.B));
 
         // Set I flag to disable further IRQs
         Registers.P.SetInterruptDisable(true);
