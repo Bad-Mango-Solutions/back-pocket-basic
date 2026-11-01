@@ -237,4 +237,42 @@ public class ProcessorStatusFlagsTests
         Assert.That(p.IsZeroSet(), Is.False, "Z flag should be clear for value 0x7F");
         Assert.That(p.IsNegativeSet(), Is.False, "N flag should be clear for value 0x7F");
     }
+
+    /// <summary>
+    /// Verifies that every single-flag Set* helper writes the result back through the ref receiver.
+    /// </summary>
+    /// <param name="mask">The flag bit mask under test.</param>
+    [TestCase((byte)0x01)]
+    [TestCase((byte)0x02)]
+    [TestCase((byte)0x04)]
+    [TestCase((byte)0x08)]
+    [TestCase((byte)0x10)]
+    [TestCase((byte)0x20)]
+    [TestCase((byte)0x40)]
+    [TestCase((byte)0x80)]
+    public void SetFlagHelpers_WriteThroughRef(byte mask)
+    {
+        static void Apply(ref ProcessorStatusFlags p, byte m, bool v)
+        {
+            switch (m)
+            {
+                case 0x01: p.SetCarry(v); break;
+                case 0x02: p.SetZero(v); break;
+                case 0x04: p.SetInterruptDisable(v); break;
+                case 0x08: p.SetDecimalMode(v); break;
+                case 0x10: p.SetIndexSize8Bit(v); break;
+                case 0x20: p.SetMemorySize8Bit(v); break;
+                case 0x40: p.SetOverflow(v); break;
+                case 0x80: p.SetNegative(v); break;
+            }
+        }
+
+        var p = (ProcessorStatusFlags)0;
+        Apply(ref p, mask, true);
+        Assert.That((byte)p, Is.EqualTo(mask), "Setting the flag should modify the receiver");
+
+        p = (ProcessorStatusFlags)0xFF;
+        Apply(ref p, mask, false);
+        Assert.That((byte)p, Is.EqualTo((byte)(0xFF & ~mask)), "Clearing the flag should modify the receiver");
+    }
 }
