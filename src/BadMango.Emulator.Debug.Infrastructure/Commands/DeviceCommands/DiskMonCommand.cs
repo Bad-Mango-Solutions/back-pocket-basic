@@ -185,12 +185,13 @@ public sealed class DiskMonCommand : CommandHandlerBase, ICommandHelp
 
                 output.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    "    Drive {0}: {1} selected={2} motor={3} qt={4} bytes-on-track={5}",
+                    "    Drive {0}: {1} selected={2} motor={3} qt={4} phase-latch=${5:X1} bytes-on-track={6}",
                     d + 1,
                     drive.HasMedia ? "mounted" : "empty",
                     YesNo(drive.Selected),
                     YesNo(drive.MotorOn),
                     drive.QuarterTrack,
+                    drive.PhaseLatch & 0xF,
                     activity.BytesServedOnCurrentTrack));
                 output.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,

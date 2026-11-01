@@ -1,8 +1,0 @@
-trace filter $F800 $FFFF
-boot --immediate
-run --until-cycles=5000 --trace-buffer
-pause
-trace dump --last=20
-regs
-mem $0400 40
-exit

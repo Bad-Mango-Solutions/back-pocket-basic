@@ -105,6 +105,18 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
 
+        // Per user's observed hardware behavior and to ensure slot ROM "surfaces"
+        // when talking to a card's I/O: any access to the slot I/O region (C0n0-C0nF)
+        // causes SelectExpansionSlot for that slot (making Cn00 ROM and C800 expansion visible).
+        if (offset >= 0x80)
+        {
+            int slot = (offset - 0x80) >> 4; // 0..7
+            if (slot >= 1 && slot <= 7)
+            {
+                slotManager.SelectExpansionSlot(slot);
+            }
+        }
+
         return offset switch
         {
             < SoftSwitchRegionEnd => softSwitches.Read((byte)offset, in access),
@@ -118,6 +130,17 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     public override void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
+
+        // Per user's observed hardware behavior: writing any C0nx address for a slot
+        // surfaces (selects) that slot's 256-byte ROM page (and expansion ROM).
+        if (offset >= 0x80)
+        {
+            int slot = (offset - 0x80) >> 4;
+            if (slot >= 1 && slot <= 7)
+            {
+                slotManager.SelectExpansionSlot(slot);
+            }
+        }
 
         switch (offset)
         {
@@ -215,6 +238,12 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     public void SetIntCxRom(bool enabled)
     {
         intCxRomEnabled = enabled;
+        // Propagate to SlotManager so that TrapRegistry (and other components)
+        // can make layer-aware decisions. In particular, slot ROM traps
+        // (e.g. PocketWatch intercepting C4xx) must not fire when INTCXROM
+        // is active, because the slot's device ROM page is not mapped --
+        // the internal/enhanced ROM is providing the code instead.
+        slotManager?.SetInternalCxRom(enabled);
     }
 
     /// <summary>
@@ -415,25 +444,12 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// <returns>The bus target for the slot ROM, or <see langword="null"/> for floating bus.</returns>
     private IBusTarget? ResolveSlotRomTarget(ushort offset)
     {
-        // Check for INTCXROM override
-        if (intCxRomEnabled && internalRom is not null)
-        {
-            return internalRom;
-        }
-
-        int slot = (offset >> 8) & 0x07;
-
-        // Check for INTC3ROM independent control of $x300 region
-        if (slot == 3 && intC3RomEnabled && internalRom is not null)
-        {
-            return internalRom;
-        }
-
-        // Prefer the card's own slot ROM; fall back to the motherboard's CXROM
-        // image when the card does not publish one (mirrors the read path —
-        // empty/ROM-less slots show the system slot-firmware on the IIe and
-        // later, which is what makes PR#n work for a card with no P5A ROM).
-        return slotManager.GetSlotRomRegion(slot) ?? internalRom;
+        // Return 'this' so CompositeIOTarget.Read8/Write8 performs slot selection and
+        // passes the correct within-ROM offset (0x00-0xFF) to card targets. MainBus
+        // supplies physical addresses (e.g. $C408); forwarding the card ROM target
+        // directly would index RomTarget with the full address and fault.
+        _ = offset;
+        return this;
     }
 
     /// <summary>

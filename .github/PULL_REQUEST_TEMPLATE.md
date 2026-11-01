@@ -16,6 +16,10 @@ Please check the relevant option(s):
 Fixes #(issue number)
 Relates to #(issue number)
 
+## GitHub Project
+- [ ] Linked to the org project board (card moved to **In review** or equivalent)
+- [ ] Acceptance criteria from the issue are addressed
+
 ## Changes Made
 List the key changes made in this PR:
 

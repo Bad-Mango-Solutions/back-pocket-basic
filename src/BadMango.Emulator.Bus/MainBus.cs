@@ -30,7 +30,7 @@ using Serilog.Events;
 /// The CPU computes intent; the bus enforces consequences.
 /// </para>
 /// </remarks>
-public sealed partial class MainBus : IMemoryBus
+public sealed partial class MainBus : IMemoryBus, IFloatingBus
 {
     /// <summary>
     /// The default page shift value for 4KB pages.
@@ -105,6 +105,16 @@ public sealed partial class MainBus : IMemoryBus
     private uint nextSwapGroupId;
 
     /// <summary>
+    /// Default floating-bus value before any bus-driving read occurs.
+    /// </summary>
+    private const byte DefaultFloatingBusValue = 0xFF;
+
+    /// <summary>
+    /// Last value driven onto the data bus by an instruction fetch or RAM/ROM read.
+    /// </summary>
+    private byte floatingBus = DefaultFloatingBusValue;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="MainBus"/> class with the specified address space size.
     /// </summary>
     /// <param name="addressSpaceBits">
@@ -168,6 +178,12 @@ public sealed partial class MainBus : IMemoryBus
     public IBusFaultRing? FaultRing { get; }
 
     /// <inheritdoc />
+    public byte FloatingBusValue => floatingBus;
+
+    /// <inheritdoc />
+    public void LatchFloatingBus(byte value) => floatingBus = value;
+
+    /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte Read8(in BusAccess access)
     {
@@ -188,7 +204,7 @@ public sealed partial class MainBus : IMemoryBus
             // synthetic Unmapped fault so debug tooling can see the silent
             // hole instead of being lied to by the floating-bus value.
             RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
-            return 0xFF;
+            return DefaultFloatingBusValue;
         }
 
         if (page.Target is null)
@@ -196,10 +212,12 @@ public sealed partial class MainBus : IMemoryBus
             // Page entry exists but no target is mapped. Record an Unmapped
             // fault and return the floating-bus value rather than NRE'ing.
             RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: false);
-            return 0xFF;
+            return DefaultFloatingBusValue;
         }
 
-        return page.Target.Read8(physicalAddress, access);
+        byte value = page.Target.Read8(physicalAddress, access);
+        LatchFloatingBusIfNeeded(in access, page.RegionTag, value);
+        return value;
     }
 
     /// <inheritdoc />
@@ -279,17 +297,19 @@ public sealed partial class MainBus : IMemoryBus
                 // with $FF so the CPU sees the expected floating-bus value
                 // (matches the semantics of the fast-path Read8 above).
                 RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
-                return BusResult<byte>.Success(0xFF, access, page.DeviceId, page.RegionTag, cycles: 1);
+                return BusResult<byte>.Success(DefaultFloatingBusValue, access, page.DeviceId, page.RegionTag, cycles: 1);
             }
 
             Addr physicalAddress = page.PhysicalBase + offset;
             byte value = subTarget.Read8(physicalAddress, access);
+            LatchFloatingBusIfNeeded(in access, composite.GetSubRegionTag(offset), value);
             return BusResult<byte>.Success(value, access, page.DeviceId, composite.GetSubRegionTag(offset), cycles: 1);
         }
 
         // Perform the read
         Addr physAddr = page.PhysicalBase + (access.Address & PageMask);
         byte readValue = page.Target.Read8(physAddr, access);
+        LatchFloatingBusIfNeeded(in access, page.RegionTag, readValue);
 
         return BusResult<byte>.Success(readValue, access, page.DeviceId, page.RegionTag, cycles: 1);
     }
@@ -450,5 +470,21 @@ public sealed partial class MainBus : IMemoryBus
             fault.DeviceId,
             fault.RegionTag,
             fault.Cycle);
+    }
+
+    /// <summary>
+    /// Updates the floating-bus latch after bus-driving reads.
+    /// </summary>
+    /// <param name="access">The originating access.</param>
+    /// <param name="regionTag">The resolved region tag for the read.</param>
+    /// <param name="value">The byte returned to the CPU.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void LatchFloatingBusIfNeeded(in BusAccess access, RegionTag regionTag, byte value)
+    {
+        if (access.Intent == AccessIntent.InstructionFetch ||
+            regionTag is RegionTag.Ram or RegionTag.Rom)
+        {
+            floatingBus = value;
+        }
     }
 }

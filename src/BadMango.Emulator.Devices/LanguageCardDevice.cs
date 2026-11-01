@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Cpu;
+using BadMango.Emulator.Core.Interfaces.Cpu;
 
 /// <summary>
 /// Language Card device providing 16KB of bank-switched RAM at $D000-$FFFF.
@@ -117,6 +120,12 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
     private int deviceId;
     private bool highSplitVariantRegistered;
     private bool lowSplitVariantsRegistered;
+    private bool monitorRomAssistTrapRegistered;
+
+    /// <summary>
+    /// Monitor ROM entry used by Enhanced IIe 80-column IRQ glue (<c>JMP $FA47</c>).
+    /// </summary>
+    private const Addr MonitorIntCxRomEntry = 0xFA47;
 
     private bool readRam;           // True = read from LC RAM
     private bool writeEnabled;      // True = writes go to LC RAM
@@ -343,6 +352,7 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         // layers. These variants implement the hardware $C081/$C089 split mode where
         // reads come from ROM and writes go to LC RAM.
         RegisterSplitVariantsIfNeeded();
+        RegisterMonitorRomAssistTrapIfNeeded(context);
 
         // Set initial state: RAM disabled, Bank 1 selected (default power-on state)
         readRam = false;
@@ -515,8 +525,9 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             ProcessSwitch(offset);
         }
 
-        // Language Card soft switches return floating bus value
-        return 0xFF;
+        return bus is IFloatingBus floatingBus
+            ? floatingBus.FloatingBusValue
+            : (byte)0xFF;
     }
 
     private void HandleWrite(byte offset, in BusAccess context)
@@ -808,6 +819,49 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
                 bus.DeactivateLayer(LowLayerName);
             }
         }
+    }
+
+    /// <summary>
+    /// Registers a Language Card RAM trap at <c>$FA47</c> so 80-column clock glue can
+    /// execute the monitor <c>STA $C006</c> entry when LC RAM shadows <c>$E000-$FFFF</c>.
+    /// </summary>
+    /// <param name="context">The event context providing the trap registry.</param>
+    private void RegisterMonitorRomAssistTrapIfNeeded(IEventContext context)
+    {
+        if (monitorRomAssistTrapRegistered)
+        {
+            return;
+        }
+
+        var trapRegistry = context.GetComponent<ITrapRegistry>();
+        if (trapRegistry is null)
+        {
+            return;
+        }
+
+        trapRegistry.RegisterLanguageCardRam(
+            MonitorIntCxRomEntry,
+            "Monitor STA $C006 (80-col glue / LC RAM)",
+            TrapCategory.MonitorRom,
+            HandleMonitorFa47LcRamAssist,
+            "80-col expansion IRQ glue JMPs $FA47 for STA $C006; remap LC to ROM read when RAM bytes are not monitor code.");
+
+        monitorRomAssistTrapRegistered = true;
+    }
+
+    /// <summary>
+    /// Language Card RAM fetch of <c>$FA47</c>. Real hardware always executes whatever
+    /// is in LC RAM — monitor <c>STA $C006</c> after a cold map, or ProDOS/user code
+    /// after relocation. Never synthesize the monitor sequence: doing so clobbers
+    /// ProDOS block-I/O zero-page (<c>$45–$47</c>), tears down the stack, and redirects
+    /// through <c>$03F0</c>, which is exactly wrong once ProDOS owns <c>$FA47</c>.
+    /// </summary>
+    private TrapResult HandleMonitorFa47LcRamAssist(ICpu cpu, IMemoryBus bus, IEventContext evt)
+    {
+        _ = cpu;
+        _ = bus;
+        _ = evt;
+        return TrapResult.NotHandled;
     }
 
     private void SelectVariantIfChanged(uint groupId, string variantName)

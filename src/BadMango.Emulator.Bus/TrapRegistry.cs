@@ -26,6 +26,7 @@ using Interfaces;
 /// <list type="bullet">
 /// <item><description>Slot dependency checks for slot ROM traps ($Cn00-$CnFF)</description></item>
 /// <item><description>Expansion ROM selection checks for expansion ROM traps ($C800-$CFFF)</description></item>
+/// <item><description>INTCXROM / layer awareness: slot ROM traps in $C100-$C7FF are suppressed when internal CX ROM is active</description></item>
 /// <item><description>Memory context checks for different RAM banks (LC RAM, Aux RAM, ProDOS, etc.)</description></item>
 /// </list>
 /// </remarks>
@@ -629,6 +630,26 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
             if (entry.RequiresExpansionRom && slotManager.ActiveExpansionSlot != slot)
             {
                 return false;
+            }
+
+            // Layer-aware check for INTCXROM (key fix for ROM trapping):
+            // Slot ROM traps in the $C100-$C7FF range (Cn00 device ROM pages) must
+            // only fire when INTCXROM is disabled. When INTCXROM is active, the
+            // internal/enhanced ROM is providing the bytes at those addresses
+            // (via CompositeIOTarget), not the slot card's ROM. Firing a slot-specific
+            // trap (e.g. PocketWatch intercepting C4xx for clock) while the internal
+            // ROM is mapped would incorrectly execute trap code instead of the
+            // enhanced firmware code that ProDOS or other software may expect
+            // when INTCXROM is on.
+            if (entry.Address >= 0xC100 && entry.Address <= 0xC7FF)
+            {
+                if (slotManager.IsInternalCxRomEnabled)
+                {
+                    // All Cnxx slot traps are suppressed while internal CX ROM is mapped.
+                    // 80-col IRQ glue at $C3FA executes real firmware bytes at $C408 (TXA)
+                    // and $C40B (INX); trapping those addresses breaks stack unwinding.
+                    return false;
+                }
             }
         }
 

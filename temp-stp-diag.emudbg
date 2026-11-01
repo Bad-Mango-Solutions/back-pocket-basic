@@ -1,8 +1,0 @@
-disk insert 6:1 library://disks/prodos203-master.dsk
-boot --immediate
-run --until-cycles=50000
-pause
-regs
-dasm
-mem $C6F0 16
-exit

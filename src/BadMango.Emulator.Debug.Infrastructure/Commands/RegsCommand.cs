@@ -100,18 +100,9 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
                 a = registers.A.GetWord(),
                 x = registers.X.GetWord(),
                 y = registers.Y.GetWord(),
-                flags = new
-                {
-                    N = registers.P.HasFlag(ProcessorStatusFlags.N),
-                    V = registers.P.HasFlag(ProcessorStatusFlags.V),
-                    M = registers.P.HasFlag(ProcessorStatusFlags.M),
-                    X = registers.P.HasFlag(ProcessorStatusFlags.X),
-                    D = registers.P.HasFlag(ProcessorStatusFlags.D),
-                    I = registers.P.HasFlag(ProcessorStatusFlags.I),
-                    Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
-                    C = registers.P.HasFlag(ProcessorStatusFlags.C),
-                    raw = (byte)registers.P,
-                },
+                flags = BuildFlagsJson(registers),
+                indexWidth = registers.GetIndexSize(),
+                accumulatorWidth = registers.GetAccumulatorSize(),
                 e = registers.E,
                 cp = registers.CP,
                 interruptsDisabled = registers.P.HasFlag(ProcessorStatusFlags.I),
@@ -260,5 +251,38 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
     private static char FormatFlag(ProcessorStatusFlags p, ProcessorStatusFlags flag)
     {
         return p.HasFlag(flag) ? '1' : '0';
+    }
+
+    private static object BuildFlagsJson(Registers registers)
+    {
+        if (registers.E)
+        {
+            // In emulation mode P bit 4/5 are B/R (6502), not M/X width flags.
+            return new
+            {
+                N = registers.P.HasFlag(ProcessorStatusFlags.N),
+                V = registers.P.HasFlag(ProcessorStatusFlags.V),
+                B = registers.P.HasFlag(ProcessorStatusFlags.B),
+                R = registers.P.HasFlag(ProcessorStatusFlags.R),
+                D = registers.P.HasFlag(ProcessorStatusFlags.D),
+                I = registers.P.HasFlag(ProcessorStatusFlags.I),
+                Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
+                C = registers.P.HasFlag(ProcessorStatusFlags.C),
+                raw = (byte)registers.P,
+            };
+        }
+
+        return new
+        {
+            N = registers.P.HasFlag(ProcessorStatusFlags.N),
+            V = registers.P.HasFlag(ProcessorStatusFlags.V),
+            M = registers.P.HasFlag(ProcessorStatusFlags.M),
+            X = registers.P.HasFlag(ProcessorStatusFlags.X),
+            D = registers.P.HasFlag(ProcessorStatusFlags.D),
+            I = registers.P.HasFlag(ProcessorStatusFlags.I),
+            Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
+            C = registers.P.HasFlag(ProcessorStatusFlags.C),
+            raw = (byte)registers.P,
+        };
     }
 }

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices.Interfaces;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Video mode controller interface for display rendering.
@@ -175,4 +176,12 @@ public interface IVideoDevice : IMotherboardDevice
     /// </para>
     /// </remarks>
     void Set80ColumnMode(bool enabled);
+
+    /// <summary>
+    /// Reads the Apple II floating-bus byte for the current video-scanner position.
+    /// </summary>
+    /// <param name="now">Current emulated bus time.</param>
+    /// <param name="bus">Bus used to read display memory at the scanner address.</param>
+    /// <returns>The byte currently driven onto the data bus by the video circuitry.</returns>
+    byte ReadScannerFloatingBus(Cycle now, IMemoryBus bus);
 }

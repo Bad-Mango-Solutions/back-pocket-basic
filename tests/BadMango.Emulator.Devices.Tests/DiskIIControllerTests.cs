@@ -290,16 +290,17 @@ public class DiskIIControllerTests
         scheduler.Advance(new Cycle(2)); // dispatch deferred mount
 
         // Drive 1 is selected by default — writable → WP bit clear.
-        _ = dispatcher.Read(0xED, in ctx); // Q6H
-        _ = dispatcher.Read(0xEE, in ctx); // Q7L
-        var wpWritable = dispatcher.Read(0xED, in ctx);
+        // AppleWin: only even Disk II addresses return driven data; odd addresses are floating bus.
+        _ = dispatcher.Read(0xED, in ctx); // Q6H (odd — mode select only)
+        _ = dispatcher.Read(0xEE, in ctx); // Q7L (even — enters read mode)
+        var wpWritable = dispatcher.Read(0xEE, in ctx); // Q7L even — write-protect sense with Q6=1,Q7=0
         Assert.That(wpWritable & 0x80, Is.EqualTo(0));
 
         // Switch to drive 2 and re-read.
         _ = dispatcher.Read(0xEB, in ctx); // select drive 2
         _ = dispatcher.Read(0xED, in ctx); // Q6H
         _ = dispatcher.Read(0xEE, in ctx); // Q7L
-        var wpReadOnly = dispatcher.Read(0xED, in ctx);
+        var wpReadOnly = dispatcher.Read(0xEE, in ctx); // Q7L even — write-protect sense
         Assert.That(wpReadOnly & 0x80, Is.EqualTo(0x80));
     }
 
@@ -650,7 +651,8 @@ public class DiskIIControllerTests
         _ = dispatcher.Read(0xED, in ctx); // Q6H — load
         WriteSoft(dispatcher, 0xED, 0xAA, ctx);
         WriteSoft(dispatcher, 0xEC, 0x55, ctx); // Q6L write — shift one byte out
-        _ = dispatcher.Read(0xE8, in ctx); // motor off — triggers Drive525.Flush
+        _ = dispatcher.Read(0xE8, in ctx); // motor off — flush deferred until coast-down ends
+        scheduler.Advance(new Cycle(DiskIIController.DefaultSpinningCycles));
 
         loggerMock.Verify(
             l => l.Warning(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<int>()),
@@ -687,14 +689,18 @@ public class DiskIIControllerTests
         // A rapid follow-up read at the same spin position must clear bit 7 so
         // the boot ROM's BPL polling loop continues spinning, even when the
         // underlying nibble has bit 7 set (every valid GCR nibble does).
-        scheduler.Advance(new Cycle(4));
+        // End-of-cycle latch anchoring makes a 5-cycle scheduler gap measure readGap=4.
+        scheduler.Advance(new Cycle(5));
         var poll = dispatcher.Read(0xEC, in ctx);
 
         Assert.Multiple(() =>
         {
             Assert.That(first & 0x80, Is.EqualTo(0x80), "Fresh nibble should report bit 7 set.");
             Assert.That(poll & 0x80, Is.EqualTo(0), "Repeated poll between bytes must report bit 7 cleared.");
-            Assert.That(poll & 0x7F, Is.EqualTo(first & 0x7F), "Low 7 bits of the polled value should match the latched nibble.");
+
+            // AppleWin Disk2InterfaceCard::ReadWrite shifts the latched nibble right by
+            // (8 - gap/4) bits on rapid re-reads within kReadAccessThreshold cycles.
+            Assert.That(poll, Is.EqualTo(first >> 7), "Rapid poll should return the partial high-bit nibble shift.");
         });
 
         // After a full byte time elapses, the next read must surface a fresh
@@ -702,6 +708,46 @@ public class DiskIIControllerTests
         scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
         var fresh = dispatcher.Read(0xEC, in ctx);
         Assert.That(fresh & 0x80, Is.EqualTo(0x80), "Next byte time should re-arm the byte-ready high bit.");
+    }
+
+    /// <summary>
+    /// Consecutive BPL polls within <see cref="DiskIIController.CyclesPerByte"/> must stay
+    /// partial (no head clock-out); otherwise every other ~6-cycle poll full-clocks and
+    /// ProDOS LC snapshot decrypt over-rotates by hundreds of nibbles.
+    /// </summary>
+    [Test]
+    public void Q6L_ConsecutiveRapidPolls_DoNotAdvanceSpinPosition()
+    {
+        var backing = new RamStorageBackend(DiskGeometry.Standard525Dos.TotalBytes);
+        var sector = new SectorImageMedia(backing, DiskGeometry.Standard525Dos);
+        var media = sector.As525Media();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+
+        _ = dispatcher.Read(0xEC, in ctx); // prime latch / first full read
+
+        var bytesAfterFirstFull = controller.GetActivitySnapshot().Drives[0].BytesServedOnCurrentTrack;
+        Assert.That(bytesAfterFirstFull, Is.EqualTo(1), "First full read should clock one nibble.");
+
+        // With threshold 6 and end-of-cycle anchoring, the first poll is partial (gap 6);
+        // the second poll measures gap 12 and full-clocks (AppleWin behaviour).
+        scheduler.Advance(new Cycle(6));
+        _ = dispatcher.Read(0xEC, in ctx);
+
+        var activity = controller.GetActivitySnapshot();
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                activity.Drives[0].BytesServedOnCurrentTrack,
+                Is.EqualTo(bytesAfterFirstFull),
+                "Only the first tight poll should stay on the same nibble.");
+            Assert.That(activity.StaleByteCount, Is.EqualTo(1), "First tight poll should be a stale byte read.");
+        });
     }
 
     /// <summary>
@@ -784,6 +830,75 @@ public class DiskIIControllerTests
         Assert.That(postSettle, Is.EqualTo(0xAA), "After the post-step settle expires, $C0EC must surface the live track byte (bit 7 set).");
     }
 
+    /// <summary>
+    /// ProDOS / RWTS seek uses a continuous 7-cycle <c>LDY $C08C,X / BPL</c> poll
+    /// through track-step settle and beyond. Warming <c>LastLatchReadCycle</c> on every
+    /// in-settle poll left post-settle gaps ≤6 forever (permanent partial latch), so
+    /// block I/O after the first seek never filled the buffer. This regression keeps
+    /// the tight poll alive across the settle boundary.
+    /// </summary>
+    [Test]
+    public void TrackStepSettling_TightBplPoll_GetsFreshByteAfterExpiry()
+    {
+        var media = new ConstantTrackMedia((byte)0xD5);
+
+        const int TrackStepSettle = 30000;
+        var controller = new DiskIIController(
+            NewLoggerMock().Object,
+            bootRom: new DiskIIBootRom(BlankBootRom),
+            motorSettleCycles: 0,
+            trackStepSettleCycles: TrackStepSettle);
+        controller.SlotNumber = 6;
+        var dispatcher = new IOPageDispatcher();
+        dispatcher.InstallSlotHandlers(6, controller.IOHandlers!);
+        var scheduler = new Scheduler();
+        var bus = new Mock<IMemoryBus>();
+        var signals = new Mock<ISignalBus>();
+        var eventCtx = new EventContext(scheduler, signals.Object, bus.Object);
+        scheduler.SetEventContext(eventCtx);
+        controller.Initialize(eventCtx);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        var ctx = new BusAccess(
+            Address: 0xC0E0,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        _ = dispatcher.Read(0xE9, in ctx);
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        _ = dispatcher.Read(0xEC, in ctx);
+
+        // One half-track step arms ~30 ms settle.
+        _ = dispatcher.Read(0xE3, in ctx);
+
+        // Continuous 7-cycle polls for the full settle window plus a short tail
+        // (models RWTS never leaving the BPL loop).
+        byte? firstFresh = null;
+        var polls = (TrackStepSettle / 7) + 64;
+        for (var i = 0; i < polls; i++)
+        {
+            scheduler.Advance(new Cycle(7));
+            var sample = dispatcher.Read(0xEC, in ctx);
+            if ((sample & 0x80) != 0)
+            {
+                firstFresh = sample;
+                break;
+            }
+        }
+
+        Assert.That(
+            firstFresh,
+            Is.EqualTo((byte)0xD5),
+            "After track-step settle, a continuous 7-cycle BPL poll must eventually see a fresh nibble (bit 7 set).");
+    }
+
     // ─── Activity-snapshot instrumentation tests (FR-D10) ────────────────────
 
     /// <summary>
@@ -817,6 +932,72 @@ public class DiskIIControllerTests
             Assert.That(snap.Drives[0].LastObservedVolume, Is.Null);
             Assert.That(snap.Drives[1].ObservedAddressFields, Is.Zero);
         });
+    }
+
+    /// <summary>
+    /// Verifies that $C0EC reads still advance the data path while the platter is
+    /// coasting down after motor-off (AppleWin <c>m_spinning</c>, GH#599).
+    /// </summary>
+    [Test]
+    public void MotorOff_CoastDown_StillServesFreshBytes()
+    {
+        var media = new ConstantTrackMedia((byte)0xD5);
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(motorSettleCycles: 0);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        var whileMotorOn = dispatcher.Read(0xEC, in ctx);
+        Assert.That(whileMotorOn & 0x80, Is.EqualTo(0x80));
+
+        _ = dispatcher.Read(0xE8, in ctx); // motor off, platter still spinning
+        scheduler.Advance(new Cycle(DiskIIController.CyclesPerByte));
+        var whileCoasting = dispatcher.Read(0xEC, in ctx);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.IsMotorOn, Is.False);
+            Assert.That(whileCoasting & 0x80, Is.EqualTo(0x80), "Coast-down reads must still surface byte-ready data.");
+            Assert.That(whileCoasting, Is.EqualTo(0xD5));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that motor-off does not flush immediately; the write-back happens once
+    /// the ~1 s AppleWin coast-down timer expires (GH#1444).
+    /// </summary>
+    [Test]
+    public void MotorOff_FlushDeferredUntilSpinStops()
+    {
+        var media = new ThrowingWriteMedia();
+        var loggerMock = NewLoggerMock();
+
+        var (controller, dispatcher, ctx, scheduler, _) = BuildHarness(
+            motorSettleCycles: 0,
+            loggerMock: loggerMock);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        _ = dispatcher.Read(0xE9, in ctx);
+        scheduler.Advance(new Cycle(10));
+        _ = dispatcher.Read(0xEF, in ctx);
+        _ = dispatcher.Read(0xED, in ctx);
+        WriteSoft(dispatcher, 0xED, 0xAA, ctx);
+        WriteSoft(dispatcher, 0xEC, 0x55, ctx);
+        _ = dispatcher.Read(0xE8, in ctx);
+
+        loggerMock.Verify(
+            l => l.Warning(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<int>()),
+            Times.Never,
+            "Flush must not run immediately on motor-off while the drive is still coasting.");
+
+        scheduler.Advance(new Cycle(DiskIIController.DefaultSpinningCycles));
+
+        loggerMock.Verify(
+            l => l.Warning(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<int>()),
+            Times.AtLeastOnce);
     }
 
     /// <summary>
@@ -936,6 +1117,171 @@ public class DiskIIControllerTests
             Assert.That(drive.LastObservedSector, Is.EqualTo(0x05));
             Assert.That(drive.LastObservedChecksumValid, Is.True, "vol ^ trk ^ sec should match the parsed checksum byte.");
             Assert.That(drive.ObservedAddressFieldChecksumErrors, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// ProDOS Disk II seek pulses phase-ON for the new half-track then phase-OFF for the
+    /// previous half-track (<c>$D187</c> / <c>$D18A</c>). The head must move one half-track
+    /// per step so software track and hardware quarter-track stay aligned.
+    /// </summary>
+    [Test]
+    public void ProdosStylePhaseOnOff_SeeksFromTrack6ToTrack0()
+    {
+        var media = new ConstantTrackMedia(0xFF);
+        var controller = new DiskIIController(
+            NewLoggerMock().Object,
+            bootRom: new DiskIIBootRom(BlankBootRom),
+            motorSettleCycles: 0,
+            trackStepSettleCycles: 0);
+        controller.SlotNumber = 6;
+        var dispatcher = new IOPageDispatcher();
+        dispatcher.InstallSlotHandlers(6, controller.IOHandlers!);
+        var scheduler = new Scheduler();
+        var bus = new Mock<IMemoryBus>();
+        var signals = new Mock<ISignalBus>();
+        var eventCtx = new EventContext(scheduler, signals.Object, bus.Object);
+        scheduler.SetEventContext(eventCtx);
+        controller.Initialize(eventCtx);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        var ctx = new BusAccess(
+            Address: 0xC0E0,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        // Climb to whole-track 6 (half-track 12 / qt=24).
+        for (var step = 0; step < 12; step++)
+        {
+            var phase = (step + 1) & 3;
+            _ = dispatcher.Read((byte)(0xE1 + (phase * 2)), in ctx);
+            scheduler.Advance(new Cycle(50));
+            _ = dispatcher.Read((byte)(0xE0 + (phase * 2)), in ctx);
+            scheduler.Advance(new Cycle(50));
+        }
+
+        Assert.That(controller.GetDriveSnapshot(0).QuarterTrack, Is.EqualTo(24));
+
+        // Descend with ProDOS order: phase ON for new half-track, then OFF for old.
+        for (var half = 12; half > 0; half--)
+        {
+            var newHalf = half - 1;
+            var oldHalf = half;
+            var onPhase = newHalf & 3;
+            var offPhase = oldHalf & 3;
+
+            // SEC path: phase ON = (phase << 1) | 1
+            _ = dispatcher.Read((byte)(0xE0 + (onPhase * 2) + 1), in ctx);
+            scheduler.Advance(new Cycle(100));
+
+            // CLC path: phase OFF = phase << 1
+            _ = dispatcher.Read((byte)(0xE0 + (offPhase * 2)), in ctx);
+            scheduler.Advance(new Cycle(100));
+        }
+
+        Assert.That(
+            controller.GetDriveSnapshot(0).QuarterTrack,
+            Is.EqualTo(0),
+            "12 ProDOS-style half-track steps inward from track 6 must land on track 0.");
+    }
+
+    /// <summary>
+    /// Continuous ProDOS-style 7-cycle BPL polling of a real GCR track must surface
+    /// the on-disk address fields with correct track numbers. If this fails, the latch
+    /// / spin model is corrupting the nibble stream (the disk image itself is fine).
+    /// </summary>
+    [Test]
+    public void ContinuousBplPoll_RealProdosTrack_DecodesAddressFields()
+    {
+        var diskPath = FindProdosTestDisk();
+        Assume.That(diskPath, Is.Not.Null, "p203-test2.dsk (or prodos203-master copy) not found.");
+
+        var backing = new FileStorageBackend(diskPath!, readOnly: true);
+        var sectorMedia = new SectorImageMedia(backing, DiskGeometry.Standard525Dos, writeProtected: true);
+        var media = sectorMedia.As525Media();
+
+        // Zero track-step settle so the test focuses on latch stream fidelity, not seek timing.
+        var controller = new DiskIIController(
+            NewLoggerMock().Object,
+            bootRom: new DiskIIBootRom(BlankBootRom),
+            motorSettleCycles: 0,
+            trackStepSettleCycles: 0);
+        controller.SlotNumber = 6;
+        var dispatcher = new IOPageDispatcher();
+        dispatcher.InstallSlotHandlers(6, controller.IOHandlers!);
+        var scheduler = new Scheduler();
+        var bus = new Mock<IMemoryBus>();
+        var signals = new Mock<ISignalBus>();
+        var eventCtx = new EventContext(scheduler, signals.Object, bus.Object);
+        scheduler.SetEventContext(eventCtx);
+        controller.Initialize(eventCtx);
+        controller.Mount(0, media);
+        scheduler.Advance(new Cycle(2));
+
+        var ctx = new BusAccess(
+            Address: 0xC0E0,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+
+        // Seek to whole track 6 with a real Disk II phase on/off sequence.
+        // Odd offsets energize, even de-energize; only the rising edge steps the head.
+        // Start at qt=0 / phase 0; each adjacent phase-on advances +2 qt.
+        for (var step = 0; step < 12; step++)
+        {
+            var phase = (step + 1) & 3; // 1,2,3,0,1,... from current phase 0
+            var phaseOn = (byte)(0xE1 + (phase * 2));  // $C0E1/$E3/$E5/$E7
+            var phaseOff = (byte)(0xE0 + (phase * 2)); // $C0E0/$E2/$E4/$E6
+            _ = dispatcher.Read(phaseOn, in ctx);
+            scheduler.Advance(new Cycle(100));
+            _ = dispatcher.Read(phaseOff, in ctx);
+            scheduler.Advance(new Cycle(100));
+        }
+
+        Assert.That(controller.GetDriveSnapshot(0).QuarterTrack, Is.EqualTo(24), "Head should be on track 6 (qt=24).");
+
+        // Two full track revolutions of fresh nibbles at the ProDOS 7-cycle poll rate.
+        // With end-of-cycle latch anchoring, every other poll full-clocks (~14 cyc/nibble).
+        var trackLen = GcrEncoder.StandardTrackLength;
+        var targetFresh = trackLen * 2;
+        var fresh = 0;
+        var safety = targetFresh * 4;
+        for (var i = 0; i < safety && fresh < targetFresh; i++)
+        {
+            scheduler.Advance(new Cycle(7));
+            var sample = dispatcher.Read(0xEC, in ctx);
+            if ((sample & 0x80) != 0)
+            {
+                fresh++;
+            }
+        }
+
+        var drive = controller.GetActivitySnapshot().Drives[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(fresh, Is.EqualTo(targetFresh), "Should collect two track lengths of fresh nibbles.");
+            Assert.That(drive.ObservedAddressFields, Is.GreaterThanOrEqualTo(16), "At least one revolution of address fields.");
+            Assert.That(
+                drive.ObservedAddressFieldChecksumErrors,
+                Is.LessThanOrEqualTo(drive.ObservedAddressFields / 4),
+                "Most address fields from a sequential stream must checksum (media is known-good).");
+            Assert.That(drive.LastObservedTrack, Is.EqualTo(6), "Last decoded address field track must match head position.");
+            Assert.That(drive.LastObservedChecksumValid, Is.True);
+            Assert.That(drive.ObservedDataPrologues, Is.GreaterThanOrEqualTo(16));
         });
     }
 
@@ -1391,6 +1737,30 @@ public class DiskIIControllerTests
     }
 
     private static Mock<ILogger> NewLoggerMock() => Generator.Log();
+
+    /// <summary>
+    /// Locates a known-good ProDOS 2.0.3 disk image used for stream-fidelity tests.
+    /// </summary>
+    /// <returns>Absolute path, or <see langword="null"/> if none is present in the tree.</returns>
+    private static string? FindProdosTestDisk()
+    {
+        var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (dir is not null)
+        {
+            foreach (var name in new[] { "p203-test2.dsk", "p203.dsk", "disks/prodos203-master-clean.dsk" })
+            {
+                var candidate = Path.Combine(dir.FullName, name);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
 
     private static (DiskIIController Controller, IOPageDispatcher Dispatcher, BusAccess Context, Scheduler Scheduler, Mock<I525Media> Media) BuildHarness(
         int motorSettleCycles = DiskIIController.DefaultMotorSettleCycles,

@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 
@@ -473,6 +474,14 @@ public abstract class CpuBase : ICpu
     /// <param name="widthBits">The width of the access in bits.</param>
     /// <returns>A configured <see cref="BusAccess"/> for reading.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// <summary>
+    /// Returns the emulated bus time for the current memory access. Uses scheduler
+    /// <see cref="IEventContext.Now"/> plus intra-instruction <c>TCU</c> (cycles
+    /// completed before this access within the executing instruction).
+    /// </summary>
+    protected Cycle GetAccessCycle() => context.Now + registers.TCU;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateReadAccess(Addr address, byte widthBits)
     {
         return new(
@@ -483,7 +492,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.DataRead,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 
@@ -504,7 +513,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.DataWrite,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 
@@ -530,7 +539,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.InstructionFetch,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 

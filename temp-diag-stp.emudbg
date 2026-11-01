@@ -1,9 +1,0 @@
-disk insert 6:1 library://disks/prodos203-master.dsk
-boot --immediate
-run --until-cycles=30000
-pause
-regs --json
-dasm
-mem $C000 64
-disk fsinfo 6:1 --json
-exit

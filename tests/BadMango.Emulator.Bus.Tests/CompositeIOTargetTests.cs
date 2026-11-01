@@ -29,6 +29,10 @@ public class CompositeIOTargetTests
     {
         softSwitches = new();
         mockSlotManager = new(MockBehavior.Strict);
+
+        // Allow calls to the new CX ROM state propagation (called from SetIntCxRom)
+        mockSlotManager.Setup(m => m.SetInternalCxRom(It.IsAny<bool>()));
+        mockSlotManager.SetupGet(m => m.IsInternalCxRomEnabled).Returns(false);
         ioPage = new("Test I/O Page", softSwitches, mockSlotManager.Object);
     }
 
@@ -436,12 +440,15 @@ public class CompositeIOTargetTests
         ioPage.SetInternalRom(internalRom);
         ioPage.SetIntCxRom(true);
 
-        // Should not call slot manager when INTCXROM is enabled (for slot ROM region)
         var access = CreateTestAccess(0xC600, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x600, in access);
 
-        Assert.That(result, Is.EqualTo(0xDD));
-        mockSlotManager.VerifyNoOtherCalls();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(0xDD));
+            mockSlotManager.Verify(m => m.SetInternalCxRom(true), Times.Once);
+            mockSlotManager.VerifyNoOtherCalls();
+        });
     }
 
     /// <summary>
@@ -488,6 +495,7 @@ public class CompositeIOTargetTests
         var access = CreateTestAccess(0xC600, AccessIntent.DataWrite);
         ioPage.Write8(0x600, 0x42, in access);
 
+        mockSlotManager.Verify(m => m.SetInternalCxRom(true), Times.Once);
         mockSlotManager.VerifyNoOtherCalls();
     }
 
@@ -603,25 +611,22 @@ public class CompositeIOTargetTests
     #region INTC3ROM Tests
 
     /// <summary>
-    /// Verifies that INTC3ROM defaults to enabled.
+    /// Verifies that INTC3ROM defaults to disabled (slot 3 ROM visible unless enabled).
     /// </summary>
     [Test]
-    public void IntC3Rom_DefaultsToEnabled()
+    public void IntC3Rom_DefaultsToDisabled()
     {
-        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
-        internalMemory.AsSpan()[0x300] = 0x88;
-        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+        var slotMemory = new PhysicalMemory(256, "Slot3Rom");
+        slotMemory.AsSpan()[0] = 0x77;
+        var slotRom = new RomTarget(slotMemory.Slice(0, 256));
 
-        ioPage.SetInternalRom(internalRom);
-
-        // Slot 3 should use internal ROM by default (INTC3ROM = ON)
-        // BUT expansion ROM selection still occurs!
         mockSlotManager.Setup(m => m.SelectExpansionSlot(3));
+        mockSlotManager.Setup(m => m.GetSlotRomRegion(3)).Returns(slotRom);
 
         var access = CreateTestAccess(0xC300, AccessIntent.DataRead);
         byte result = ioPage.Read8(0x300, in access);
 
-        Assert.That(result, Is.EqualTo(0x88));
+        Assert.That(result, Is.EqualTo(0x77));
         mockSlotManager.Verify(m => m.SelectExpansionSlot(3), Times.Once);
     }
 
@@ -742,7 +747,8 @@ public class CompositeIOTargetTests
         // Internal ROM provides the data
         Assert.That(result, Is.EqualTo(0x55));
 
-        // No slot manager calls when INTCXROM is enabled
+        // INTCXROM propagates to SlotManager; slot ROM/expansion selection is suppressed.
+        mockSlotManager.Verify(m => m.SetInternalCxRom(true), Times.Once);
         mockSlotManager.VerifyNoOtherCalls();
     }
 
@@ -811,18 +817,14 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies ResolveTarget returns slot ROM target when available.
+    /// Verifies ResolveTarget returns self for slot ROM so Read8 masks offsets before
+    /// delegating to card ROM targets (MainBus passes full physical addresses).
     /// </summary>
     [Test]
-    public void ResolveTarget_SlotRomRegion_ReturnsSlotRom()
+    public void ResolveTarget_SlotRomRegion_ReturnsSelfForOffsetTranslation()
     {
-        var slotMemory = new PhysicalMemory(256, "SlotRom");
-        var slotRom = new RomTarget(slotMemory.Slice(0, 256));
-
-        mockSlotManager.Setup(m => m.GetSlotRomRegion(6)).Returns(slotRom);
-
         IBusTarget? target = ioPage.ResolveTarget(0x600, AccessIntent.DataRead);
-        Assert.That(target, Is.SameAs(slotRom));
+        Assert.That(target, Is.SameAs(ioPage));
     }
 
     /// <summary>

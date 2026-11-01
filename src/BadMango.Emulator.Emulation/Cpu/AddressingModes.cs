@@ -254,7 +254,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetDWord()) & 0xFFFF;
+        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetByte()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -294,7 +294,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetDWord()) & 0xFFFF;
+        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetByte()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -756,11 +756,13 @@ public static class AddressingModes
         byte addrCycles = 0;
 
         // Fetch ZP address (first operand)
-        byte zpAddr = cpu.Read8(cpu.Registers.PC.addr++);
+        byte zpAddr = cpu.Read8(cpu.Registers.PC.GetAddr());
+        cpu.Registers.PC.Advance();
         addrCycles++; // 1 cycle to fetch ZP address
 
         // Fetch relative offset (second operand)
-        byte relativeOffset = cpu.Read8(cpu.Registers.PC.addr++);
+        byte relativeOffset = cpu.Read8(cpu.Registers.PC.GetAddr());
+        cpu.Registers.PC.Advance();
         addrCycles++; // 1 cycle to fetch relative offset
 
         cpu.Registers.TCU += addrCycles;

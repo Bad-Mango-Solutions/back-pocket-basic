@@ -563,15 +563,8 @@ public class Extended80ColumnDeviceTests
     }
 
     /// <summary>
-    /// Regression test for the ProDOS auxiliary-RAM probe bug: when the
-    /// $0080-$00B5 boot helper toggles WRCARDRAM (`STA $C005`) and
-    /// RDCARDRAM (`STA $C003`) on to enable auxiliary RAM, then writes to
-    /// WRMAINRAM (`STA $C004`) and RDMAINRAM (`STA $C002`) to switch
-    /// back to main RAM, the AUX_RAM layer must deactivate cleanly and
-    /// reveal main RAM at pages $1-$B. Previously the base mapping was
-    /// never saved, so deactivating the AUX_RAM layer "paged out" all
-    /// RAM above the zero-page composite and the CPU executed garbage
-    /// from unmapped memory.
+    /// Regression test for the ProDOS auxiliary-RAM probe: toggling WRCARDRAM/RDCARDRAM
+    /// on then WRMAINRAM/RDMAINRAM off must leave main RAM readable at pages $1-$B.
     /// </summary>
     [Test]
     public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
@@ -662,6 +655,68 @@ public class Extended80ColumnDeviceTests
         Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "$1000 should read main RAM byte after aux toggle off");
         readAccess = CreateBusAccess(0xB000, AccessIntent.DataRead);
         Assert.That(bus.Read8(readAccess), Is.EqualTo(0xBB), "$B000 should read main RAM byte after aux toggle off");
+    }
+
+    /// <summary>
+    /// Verifies independent RAMRD/RAMWRT routing for $1000-$BFFF (asymmetric bank selection).
+    /// </summary>
+    [Test]
+    public void AsymmetricRamRdRamWrt_GeneralRegion_RoutesReadsAndWritesIndependently()
+    {
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>()! as Extended80ColumnDevice;
+        Assert.That(device, Is.Not.Null);
+
+        var dispatcher = new IOPageDispatcher();
+        device!.RegisterHandlers(dispatcher);
+
+        var bus = machine.Bus;
+        var context = CreateTestContext();
+        var readAccess = CreateBusAccess(0x2000, AccessIntent.DataRead);
+        var writeAccess = CreateBusAccess(0x2000, AccessIntent.DataWrite);
+
+        bus.Write8(writeAccess, 0x11);
+
+        // RAMRD off, RAMWRT on: read main, write aux
+        dispatcher.Write(0x02, 0x00, in context);
+        dispatcher.Write(0x05, 0x00, in context);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "Should read from main");
+        bus.Write8(writeAccess, 0x22);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "Main unchanged; write went to aux");
+
+        // RAMRD on, RAMWRT off: read aux, write main
+        dispatcher.Write(0x03, 0x00, in context);
+        dispatcher.Write(0x04, 0x00, in context);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x22), "Should read from aux");
+        bus.Write8(writeAccess, 0x33);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x22), "Aux unchanged; write went to main");
+
+        dispatcher.Write(0x02, 0x00, in context);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x33), "Main should hold the last main-bank write");
     }
 
     private static BusAccess CreateTestContext(bool isSideEffectFree = false)

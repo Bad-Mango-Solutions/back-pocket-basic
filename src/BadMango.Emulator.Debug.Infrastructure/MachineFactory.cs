@@ -64,7 +64,11 @@ public static class MachineFactory
 
         // Register standard motherboard device factories for profile-based device loading.
         // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        // (includes the config-aware "pocketwatch" registration so "rom" in card config works).
         builder.RegisterStandardDeviceFactories();
+
+        // The profile (pocket2e-a2-enh.json) drives which cards are attached via
+        // devices.slots.cards and their config. No hardcoding of PocketWatchCard creation here.
 
         var machine = builder
             .FromProfile(profile, pathResolver)
@@ -117,7 +121,11 @@ public static class MachineFactory
 
         // Register standard motherboard device factories for profile-based device loading.
         // This enables profiles to declare devices like speaker, keyboard, video, etc.
+        // (includes the config-aware "pocketwatch" registration so "rom" in card config works).
         builder.RegisterStandardDeviceFactories();
+
+        // The profile (pocket2e-a2-enh.json) drives which cards are attached via
+        // devices.slots.cards and their config. No hardcoding of PocketWatchCard creation here.
 
         var machine = builder
             .FromProfile(profile, pathResolver)

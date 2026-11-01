@@ -135,6 +135,12 @@ The IIc Plus builds on the IIc, adding a 4MHz accelerator, internal 3.5" disk dr
 
 On the IIe Enhanced, each peripheral slot (0–7) is allocated 16 bytes of I/O space ($C080–$C0FF), with corresponding ROM space in $C100–$C7FF and $C800–$CFFF. Accessing these addresses activates the DEVICE SELECT signal on the slot connector, allowing the card to respond to reads/writes. Cards such as the Disk II controller, Super Serial Card, and 80-column card use these addresses for control registers, status flags, and firmware routines.
 
+**ROM surfacing / expansion selection side effects (observed / implemented behavior):**
+- Accessing any location in a slot's firmware ROM page ($Cn00–$CnFF) selects that slot's expansion ROM (if present) so that it appears at $C800–$CFFF. Writes to these locations are ignored (ROM is immutable) but the access itself has the selection side-effect.
+- Writing (and in our implementation, also reading) any address in the slot's I/O block ($C0n0–$C0nF) also causes the slot device's 256-byte ROM page to surface. For slot 4 this means writes/reads at $C0C0 / $C0C1 make the $C400 ROM (and any expansion) active.
+- Accessing $CnFF (e.g. $C4FF for slot 4) or the standard $CFFF deselects the currently selected slot's expansion ROM, revealing the default (usually the 80-column card's expansion ROM or none).
+- These rules are important for cards like the Thunderclock/PocketWatch whose driver entry points ($C408 read, $C40B write) live inside the Cnxx page; a driver write to $C40B "surfaces" the ROM even though the data is discarded. The emulator now mirrors this in CompositeIOTarget for both Cnxx ROM-region accesses and C0nx I/O-region accesses.
+
 On the IIc and IIc Plus, physical slots are replaced by virtual slots, with I/O and ROM spaces mapped to fixed addresses. For example, the disk controller is mapped to virtual slot 6, serial ports to slots 1 and 2, and mouse firmware to slot 4 or 7 (depending on ROM version).
 
 ------
@@ -198,6 +204,18 @@ Emulators such as Mednafen and MAME document the behavior of $C0xx soft switches
 ## Peripheral Cards Using $C0xx Addresses
 
 Peripheral cards, including the Disk II controller, Super Serial Card, and 80-column card, use $C0xx addresses for control registers, status flags, and firmware routines. The Disk II controller, for example, uses $C080–$C08F for phase control, motor on/off, drive selection, and data transfer, with Q6/Q7 soft switches managing read/write modes. The Super Serial Card maps UART registers and configuration switches to its slot I/O space, with ROM mapped to $C800–$CFFF when enabled.
+
+### Thunderclock Plus (PocketWatch emulation) and $C4xx / C0C0
+
+When a Thunderclock-compatible card (sig bytes $08,$28,$58,$70 at Cn00/Cn02/Cn04/Cn06) is in slot 4:
+- Cn08 = READ entry (ProDOS calls after LDA #$A3; JSR Cn0B to set numeric mode).
+- Cn0B = WRITE entry (used to send mode chars like '#'=$A3).
+- Real firmware (from ThunderClockPlus.rom): C408 stub saves regs, LDA $CFFF (C8 deselect/ownership), JSR $C81A (into expansion ROM at C800+), performs serial protocol to uPD1990AC via C0C0 (slot4), formats "mo,da,dt,hr,mn[,sc]" ASCII + $8D at $0200, returns.
+- C0C0 (for slot 4): write = control (bit0=DATA IN, bit1=SHIFT CLOCK, bit2=STROBE, bits5:3=COMMAND); read = bit0=DATA OUT, bit7=IRQ.
+- C800–CBFF used by firmware (C8 ownership protocol via Cn access + CFFF).
+- Emulator support: load real 2K ROM (first 256 as Cn ROMRegion via RomTarget, bytes[256:] as 2K ExpansionROMRegion); C0nx writes (CompositeIOTarget) SelectExpansionSlot; only CFFF deselects; uPD1990 state machine in PocketWatchCard I/O handlers for serial shift/BCD. Traps at Cn08/Cn0B only for stub fallback.
+
+Accessing Cnxx or C0n0+ for the slot surfaces the ROM + expansion as side effect. See PocketWatchCard.cs for current implementation.
 
 ------
 

@@ -7,9 +7,28 @@ This file focuses on practical workflows, especially **interacting with `emudbg`
 ## Project Context
 
 - **Solution**: `BackPocketBasic.slnx` (modern .NET solution file). All projects target **net10.0**.
-- **Core**: Cycle-accurate 65C02 (and future 65816/65832) emulator for Apple II, plus a full Applesoft BASIC implementation.
 - **Primary Debug Tool**: `emudbg` — an interactive REPL for inspecting and controlling a live emulated machine. It is the main lever for debugging the emulator, devices, storage, video, BASIC runtime, etc.
 - The long-term vision (documented in `PRD-emudbg-agent.md` and `emudbg-agent-plan.md`) is to make `emudbg` excellent for **both humans and AI agents**.
+
+### Current Scope (stabilization phase)
+
+**This project is currently a 65C02 Apple IIe emulator.** The immediate goal is a working, cycle-accurate Enhanced IIe — not a general multi-CPU platform yet.
+
+| In scope now | Not in scope yet (future plans) |
+|--------------|----------------------------------|
+| **65C02** in Apple IIe **emulation mode** (always 8-bit A/X/Y) | 65816 / 65832 native mode, IIgs, etc. |
+| Profile **`pocket2e-a2-enh`** (128 KB, Extended 80-Column, Language Card, Disk II) | Broad non–Apple IIe machine profiles |
+| ProDOS / DOS 3.3 boot, Applesoft BASIC, slot devices, storage | Speculative 65832 OS / privilege model |
+| `emudbg` agent workflows for boot validation | Full MCP production host (in progress) |
+
+**Implications for agents and fixes:**
+
+- Treat **`Cpu65C02`** as the production CPU: `E=1`, `CP=1`, 8-bit index/accumulator — never 16-bit index mode on Apple IIe.
+- Prefer **Apple IIe hardware fidelity** over forward-looking 65816 abstractions when they conflict.
+- Functional bar for stabilization: **ProDOS 2.0.3 → BASIC.SYSTEM → `]` prompt**, plus `PRINT` / `CATALOG` smoke tests on a copied disk image (never boot the golden master writeable).
+- The codebase contains 65816/65832 scaffolding (register widths, opcode tables, etc.) for **future** expansion; do not expand that surface unless the user asks.
+
+- **Core (long-term)**: Cycle-accurate 65C02 emulator for Apple II, plus a full Applesoft BASIC implementation; broader CPU support is planned after IIe stabilization.
 
 ## Building and Running
 

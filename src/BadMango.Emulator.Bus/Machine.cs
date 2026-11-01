@@ -129,6 +129,13 @@ public sealed class Machine : IMachine
         // events are scheduled relative to the start of the timeline.
         ResetDevices();
 
+        // Host-only fidelity fix for reset + boot: ensure INTCXROM is off so slot ROMs
+        // (e.g. Disk II at $C600) are visible for scan and boot fetch. ROM code will
+        // toggle as needed for 80-col firmware. This prevents layering/intcx overlay
+        // hiding card ROMs during critical computed JMP ($00) / JMP Cn00 paths.
+        var intRomHandler = GetComponent<IInternalRomHandler>();
+        intRomHandler?.SetIntCxRom(false);
+
         // Deassert RESET signal
         Signals.Deassert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
 

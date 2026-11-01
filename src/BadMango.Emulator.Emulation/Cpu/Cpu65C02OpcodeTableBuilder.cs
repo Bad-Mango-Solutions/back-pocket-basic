@@ -15,6 +15,12 @@ using Core.Interfaces.Cpu;
 /// and instructions are higher-order functions that accept addressing mode delegates.
 /// This pattern eliminates duplication and makes it easy to add new instructions
 /// and addressing modes without creating combinatorial explosion of methods.
+/// 
+/// Long-term flexibility for 65816: the table can be extended or replaced with mode-aware
+/// handlers (check E/M/X flags in Registers for operand sizes, 24-bit addressing via PBR/DBR,
+/// new opcodes). For speculative 65832: handlers + bus layers can incorporate privilege rings,
+/// MMU page permissions (hypervisor vs user separation), and secure exec (NX via InstructionFetch intent).
+/// Hot loop remains fast via AggressiveInlining + ref Registers + precomputed routing tables.
 /// </remarks>
 public static class Cpu65C02OpcodeTableBuilder
 {

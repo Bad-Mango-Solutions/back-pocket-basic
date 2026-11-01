@@ -1,9 +1,0 @@
-disk insert 6:1 library://disks/prodos203-master.dsk
-trace on
-boot --immediate
-run --until-cycles=30000 --trace-buffer
-pause
-regs
-trace dump --last=20
-dasm
-exit

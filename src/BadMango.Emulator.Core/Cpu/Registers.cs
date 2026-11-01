@@ -405,12 +405,12 @@ public struct RegisterProgramCounter
     /// <param name="value">The address value to set.</param>
     public void SetAddr(Addr value) => addr = value;
 
-    /// <summary>Advances the program counter by one byte.</summary>
+    /// <summary>Advances the program counter by one byte (16-bit wrap for 65C02 fidelity).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Advance() => addr++;
+    public void Advance() => addr = (Addr)((addr + 1) & 0xFFFF);
 
-    /// <summary>Advances the program counter by the specified number of bytes.</summary>
+    /// <summary>Advances the program counter by the specified number of bytes (16-bit wrap).</summary>
     /// <param name="count">The number of bytes to advance.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Advance(int count) => addr = (Addr)(addr + count);
+    public void Advance(int count) => addr = (Addr)((addr + count) & 0xFFFF);
 }

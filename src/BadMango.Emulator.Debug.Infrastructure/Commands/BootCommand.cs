@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Configuration;
 
 /// <summary>
@@ -126,8 +127,26 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
             _ = windowManager.ShowWindowAsync("Video", debugContext.Machine);
         }
 
-        // Start boot with optional delay (use --immediate for agent/scripted boots without modifier wait)
-        _ = BootWithDelayAsync(debugContext, delayMs);
+        // Immediate boots reset (and apply startupSlot) before returning so batch scripts can run safely.
+        if (immediate)
+        {
+            var machine = debugContext.Machine!;
+            machine.Reset();
+            if (StartupSlotBootAssist.TryApplyDirectBoot(debugContext, profile) &&
+                profile?.Boot?.StartupSlot is int slot)
+            {
+                return CommandResult.Ok(
+                    $"Booting immediately from startup slot {slot} (${0xC000 + (slot << 8):X4}). Video window opened if configured.");
+            }
+
+            _ = BootRunAsync(debugContext, machine, delayMs: 0);
+            string immediateMsg = autoOpenVideo && windowManager is not null
+                ? "Booting immediately (no delay). Video window opened if configured."
+                : "Booting immediately (no delay for modifiers).";
+            return CommandResult.Ok(immediateMsg);
+        }
+
+        _ = BootWithDelayAsync(debugContext, profile, delayMs);
 
         if (delayMs == 0)
         {
@@ -144,19 +163,29 @@ public sealed class BootCommand : CommandHandlerBase, ICommandHelp
         return CommandResult.Ok(message);
     }
 
-    private static async Task BootWithDelayAsync(IDebugContext debugContext, int delayMs)
+    private static async Task BootWithDelayAsync(IDebugContext debugContext, MachineProfile? machineProfile, int delayMs)
     {
         try
         {
-            // Wait to give user time to press modifier keys
             await Task.Delay(delayMs).ConfigureAwait(false);
-
-            // Now boot the machine
-            await debugContext.Machine!.BootAsync().ConfigureAwait(false);
+            var machine = debugContext.Machine!;
+            machine.Reset();
+            StartupSlotBootAssist.TryApplyDirectBoot(debugContext, machineProfile);
+            await BootRunAsync(debugContext, machine, delayMs: 0).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             debugContext.Error.WriteLine($"Boot error: {ex.Message}");
         }
+    }
+
+    private static async Task BootRunAsync(IDebugContext debugContext, IMachine machine, int delayMs)
+    {
+        if (delayMs > 0)
+        {
+            await Task.Delay(delayMs).ConfigureAwait(false);
+        }
+
+        await machine.RunAsync().ConfigureAwait(false);
     }
 }

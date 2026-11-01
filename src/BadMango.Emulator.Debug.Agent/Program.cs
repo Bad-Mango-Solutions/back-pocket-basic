@@ -135,6 +135,10 @@ public sealed class McpServer
                             new { name = "emudbg_keyboard_type", description = "Type a string into the keyboard (use \\r for return).", inputSchema = new { type = "object", properties = new { text = new { type = "string" } } } },
                             new { name = "emudbg_get_screen", description = "Get current video screen content as text grid (for validation).", inputSchema = new { type = "object", properties = new { } } },
                             new { name = "emudbg_get_video_state", description = "Get video mode and flags.", inputSchema = new { type = "object", properties = new { } } },
+                            new { name = "emudbg_get_text_page", description = "Detailed text page ($0400+) content + 80col/aux state. Helps diagnose blank/no-text screens (main vs routed).", inputSchema = new { type = "object", properties = new { } } },
+                            new { name = "emudbg_get_clock_state", description = "Inspect Thunderclock/PocketWatch: $0200 ASCII buffer, $BF90/$BF03 time, after ProDOS clock calls.", inputSchema = new { type = "object", properties = new { } } },
+                            new { name = "emudbg_check_for_prompt", description = "Scan current screen/video for BASIC prompt (']' or ProDOS banner text). Returns whether prompt visible.", inputSchema = new { type = "object", properties = new { } } },
+                            new { name = "emudbg_get_switches", description = "Detailed soft switches (INTCXROM, 80STORE, PAGE2, RAMRD/WRT, ALTZP etc.) + text routing for layering diagnosis.", inputSchema = new { type = "object", properties = new { } } },
                             new { name = "emudbg_trace_on", description = "Enable tracing.", inputSchema = new { type = "object", properties = new { } } },
                             new { name = "emudbg_trace_dump", description = "Dump recent trace records (structured). Use filter on $C600-$C6FF then $0801 for Apple II DOS 3.3 boot stages (C600 loader → JMP 0801 after load to 0800).", inputSchema = new { type = "object", properties = new { count = new { type = "integer" } } } },
                             new { name = "emudbg_pause", description = "Pause machine execution.", inputSchema = new { type = "object", properties = new { } } },
@@ -446,6 +450,54 @@ public sealed class McpServer
             var result = dispatcher.Dispatch(pContext, "perf --json");
             var text = output.ToString();
             return new { content = new[] { new { type = "text", text = text.Trim() } } };
+        }
+        else if (toolName == "emudbg_get_text_page")
+        {
+            // Main text page
+            var mainCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(mainCtx, "peek --json $0400 128");
+
+            // Video state for 80col / page2 / aux info
+            output.WriteLine("\n--- Video State ---");
+            var vsCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(vsCtx, "video state --json");
+
+            // Also try to read via main ram provider if possible, but use peek for now
+            var captured = output.ToString() + error.ToString();
+            return new { content = new[] { new { type = "text", text = captured.Trim() } } };
+        }
+        else if (toolName == "emudbg_get_clock_state")
+        {
+            var clkCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(clkCtx, "peek --json $0200 16");
+            output.WriteLine("\n--- ProDOS Global Time ---");
+            var bfCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(bfCtx, "peek --json $BF90 4; peek --json $BF03");
+            var captured = output.ToString() + error.ToString();
+            return new { content = new[] { new { type = "text", text = captured.Trim() } } };
+        }
+        else if (toolName == "emudbg_check_for_prompt")
+        {
+            var screenCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(screenCtx, "video screen --json");
+            var text = output.ToString() + error.ToString();
+            bool hasPrompt = text.Contains("]") || text.Contains("BASIC") || text.Contains("PRODOS") || text.Contains("Apple");
+            // Also check raw $0400 for non-00 / prompt chars
+            var peekCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(peekCtx, "peek --json $0400 40");
+            var peekText = output.ToString();
+            hasPrompt = hasPrompt || !peekText.Contains("\"00\"") || peekText.Contains("DD") /* ] in apple encoding */;
+            return new { content = new[] { new { type = "text", text = (hasPrompt ? "PROMPT_DETECTED\n" : "NO_PROMPT\n") + text.Trim() } } };
+        }
+        else if (toolName == "emudbg_get_switches")
+        {
+            var swCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(swCtx, "switches --json");
+            output.WriteLine("\n--- Video/80col state ---");
+            var vCtx = new CaptureContext(templateContext, output, error) { ForceJson = true };
+            dispatcher.Dispatch(vCtx, "video state --json");
+            var captured = output.ToString() + error.ToString();
+            return new { content = new[] { new { type = "text", text = captured.Trim() } } };
         }
 
         return new { content = new[] { new { type = "text", text = $"Unknown tool {toolName}" } } };

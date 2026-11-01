@@ -385,7 +385,8 @@ public static class RegisterHelpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte GetAccumulatorSize()
         {
-            if (registers.Is65C02Mode())
+            // Emulation mode (E=1) always behaves like a 6502/65C02: 8-bit A regardless of P.M.
+            if (registers.E)
             {
                 return 8;
             }
@@ -395,7 +396,7 @@ public static class RegisterHelpers
                 return registers.P.IsMemorySize8Bit() ? (byte)8 : (byte)16;
             }
 
-            return 32; // 65832 mode
+            return 32; // 65832 native mode
         }
 
         /// <summary>Gets the effective index register size based on mode and X flag.</summary>
@@ -403,7 +404,8 @@ public static class RegisterHelpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte GetIndexSize()
         {
-            if (registers.Is65C02Mode())
+            // Emulation mode (E=1) always behaves like a 6502/65C02: 8-bit X/Y regardless of P.X.
+            if (registers.E)
             {
                 return 8;
             }
@@ -413,7 +415,7 @@ public static class RegisterHelpers
                 return registers.P.IsIndexSize8Bit() ? (byte)8 : (byte)16;
             }
 
-            return 32; // 65832 mode
+            return 32; // 65832 native mode
         }
 
         /// <summary>Resets all registers to their default power-on state.</summary>

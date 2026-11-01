@@ -271,22 +271,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         bus = context.Bus;
 
-        // Save the current page table entries for $1000-$BFFF as base mappings.
-        // This must be done during Initialize (not ConfigureMemory) because RAM
-        // and ROM regions are mapped AFTER memory configurations in
-        // MachineBuilder.Build(). At this point, main RAM is properly mapped
-        // and we can save it as the base mapping that will be restored whenever
-        // the AUX_RAM / AUX_HIRES1 layers are deactivated (i.e. when RAMRD and
-        // RAMWRT both go off). Without this, deactivating the auxiliary RAM
-        // layer would leave pages $1-$B with the default empty page entry,
-        // effectively "paging out" all main RAM above the zero page composite.
-        // See LanguageCardDevice for the same pattern at $D000-$FFFF.
-        if (bus is MainBus mainBus && layersConfigured)
-        {
-            // Pages $1 through $B (11 pages covering $1000-$BFFF)
-            mainBus.SaveBaseMappingRange(0x1, 0xB);
-        }
-
         // Get the video device from the machine context
         videoDevice = context.GetComponent<IVideoDevice>();
 
@@ -420,22 +404,12 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         //
         // For now, we only set up layers for regions that are page-aligned (>= $1000).
 
-        // Create the layer for auxiliary RAM ($1000-$BFFF)
-        // This handles RAMRD/RAMWRT switching for general memory above page 0.
-        var ramLayer = memoryBus.CreateLayer(LayerNameAuxRam, LayerPriority);
-        memoryBus.AddLayeredMapping(new(
-            VirtualBase: 0x1000,
-            Size: 0xB000,  // $1000-$BFFF = 44KB
-            Layer: ramLayer,
-            DeviceId: deviceId,
-            RegionTag: RegionTag.Ram,
-            Perms: PagePerms.All,
-            Caps: auxRamTarget.Capabilities,
-            Target: new RamTarget(auxiliaryRam.Slice(0x1000, 0xB000), "AUX_RAM_1000"),
-            PhysBase: 0));
+        // RAMRD/RAMWRT for $1000-$BFFF is handled by Extended80ColumnGeneralTarget
+        // (configured in Extended80ColumnExtensions) because reads and writes route
+        // independently. A single layer cannot model asymmetric bank selection.
 
         // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
-        // This has higher priority than the general AUX_RAM layer and handles 80STORE+PAGE2+HIRES
+        // This overlays the general composite target when 80STORE+PAGE2+HIRES are enabled
         var hiresLayer = memoryBus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
         memoryBus.AddLayeredMapping(new(
             VirtualBase: 0x2000,
@@ -554,6 +528,15 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     public RamTarget GetAuxPage0Target()
     {
         return new RamTarget(auxiliaryRam.Slice(0, 0x1000), "AUX_PAGE0");
+    }
+
+    /// <summary>
+    /// Gets the auxiliary RAM target for $1000-$BFFF (used by composite target configuration).
+    /// </summary>
+    /// <returns>A RAM target covering the page-aligned auxiliary region.</returns>
+    public RamTarget GetAuxGeneralTarget()
+    {
+        return new RamTarget(auxiliaryRam.Slice(0x1000, 0xB000), "AUX_RAM_1000");
     }
 
     /// <summary>
@@ -842,26 +825,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             if (!layersConfigured)
             {
                 return;
-            }
-
-            // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
-            // Note: This layer uses read/write permissions based on RAMRD and RAMWRT
-            bool auxRamActive = ramrd || ramwrt;
-            SetLayerActive(LayerNameAuxRam, auxRamActive);
-            if (auxRamActive)
-            {
-                PagePerms ramPerms = PagePerms.None;
-                if (ramrd)
-                {
-                    ramPerms |= PagePerms.ReadExecute;
-                }
-
-                if (ramwrt)
-                {
-                    ramPerms |= PagePerms.Write;
-                }
-
-                SetLayerPermissions(LayerNameAuxRam, ramPerms);
             }
 
             // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES

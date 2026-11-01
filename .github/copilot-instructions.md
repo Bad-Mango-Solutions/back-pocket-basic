@@ -77,6 +77,37 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **User acceptance testing.** Involve end-users in testing to validate that the software meets their needs and expectations.
 - **Bug tracking.** Use a bug tracking system (GitHub Issues) to log, prioritize, and manage bugs effectively.
 
+## GitHub Project and Copilot Workflow
+
+This repository is tracked on a **GitHub Project** board under the [Bad-Mango-Solutions](https://github.com/Bad-Mango-Solutions) organization. See [`.github/GITHUB_PROJECT.md`](GITHUB_PROJECT.md) for board setup, automation variables, and verification commands.
+
+### When Copilot (or any agent) picks up work
+
+1. **Start from the GitHub Issue** linked on the project card — use its reproduction steps and acceptance criteria.
+2. **Read `AGENTS.md`** (repo root) for `emudbg` batch verification when touching emulator, boot, disk, or debug commands.
+3. **Branch naming:** `feature/<issue>-short-description` or `fix/<issue>-short-description`.
+4. **Commit messages:** reference issues (`Fixes #123`, `Relates to #456`).
+5. **Before finishing:** run `dotnet build BackPocketBasic.slnx` and `dotnet test BackPocketBasic.slnx`; for boot-path changes, run the DOS/ProDOS smoke sequences in `AGENTS.md` or `.github/GITHUB_PROJECT.md`.
+6. **PR template:** fill Related Issues, Testing, and link the project card.
+
+### Repository automation
+
+| Workflow | Purpose |
+|----------|---------|
+| [`ci.yml`](workflows/ci.yml) | Build and test on push/PR to `main` |
+| [`copilot-setup-steps.yml`](workflows/copilot-setup-steps.yml) | Copilot coding agent environment setup (restore, build, test, emudbg smoke) |
+| [`project-automation.yml`](workflows/project-automation.yml) | Auto-add new issues/PRs to [org project #3](https://github.com/orgs/Bad-Mango-Solutions/projects/3) (requires `ADD_TO_PROJECT_PAT` secret) |
+| [`.github/project.config.json`](project.config.json) | Committed project id/URL for Copilot and agents |
+
+### Key planning documents
+
+| Document | Scope |
+|----------|-------|
+| `PRD-emudbg-agent.md` | Agent mode product requirements |
+| `emudbg-agent-plan.md` | MCP / structured tool implementation plan |
+| `AGENTS.md` | Current `emudbg` command patterns for humans and AI |
+| `specs/` and `profiles/` | Machine profiles and hardware specifications |
+
 ## Issue and PR Guidelines
 
 ### When Creating Issues

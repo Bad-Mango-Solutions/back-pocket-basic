@@ -1,0 +1,45 @@
+name: Project automation
+
+on:
+  issues:
+    types: [opened, transferred]
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  add-issue-to-project:
+    name: Add issue to GitHub Project
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Add issue to org project
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/${{ vars.PROJECT_OWNER || 'Bad-Mango-Solutions' }}/projects/${{ vars.PROJECT_NUMBER || '3' }}
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+
+  add-pr-to-project:
+    name: Add pull request to GitHub Project
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Add pull request to org project
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/${{ vars.PROJECT_OWNER || 'Bad-Mango-Solutions' }}/projects/${{ vars.PROJECT_NUMBER || '3' }}
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}

@@ -9,10 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      issues: write
-      actions: write
-      pull-requests: write
+      contents: read
+      issues: read
+      pull-requests: read
 
     steps:
       - name: Checkout code
@@ -25,3 +24,17 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore BackPocketBasic.slnx
+
+      - name: Build solution
+        run: dotnet build BackPocketBasic.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test BackPocketBasic.slnx --configuration Release --no-build --verbosity minimal
+
+      - name: Verify emudbg batch boot (simple profile)
+        run: |
+          dotnet run --project src/BadMango.Emulator.Debug --configuration Release --no-build -- \
+            --profile simple-65c02 \
+            --headless \
+            --no-banner \
+            --exec "regs;step 5;regs;exit"

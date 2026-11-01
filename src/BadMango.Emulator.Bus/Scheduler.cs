@@ -68,6 +68,12 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     private Cycle now;
 
     /// <summary>
+    /// Reentrancy guard for Dispatch to protect PriorityQueue from nested modifications during
+    /// callbacks (e.g. VBlank scheduling more events or device code advancing time).
+    /// </summary>
+    private bool isDispatching;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="Scheduler"/> class.
     /// </summary>
     public Scheduler()
@@ -241,49 +247,90 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// <param name="targetCycle">The target cycle up to which events should be dispatched.</param>
     private void DispatchEventsUntil(Cycle targetCycle)
     {
-        while (eventQueue.TryPeek(out var nextEvent, out _) && nextEvent.Cycle <= targetCycle)
+        // Safer dispatch: drain the PQ into a list (no callbacks during queue mutation), invoke
+        // callbacks with now set to each event's cycle, then repeat so events scheduled during
+        // callbacks are still eligible in this Advance pass. This prevents reentrancy corruption
+        // of the PriorityQueue while preserving periodic timers and VBlank rescheduling.
+        if (isDispatching)
         {
-            if (!eventQueue.TryDequeue(out _, out _))
-            {
-                break; // safety, should not happen after peek
-            }
-
-            // Skip cancelled events
-            if (cancelledHandles.Remove(nextEvent.Handle.Id))
-            {
-                continue;
-            }
-
-            // Advance to the event's cycle if it's in the future
-            if (nextEvent.Cycle > now)
-            {
-                now = nextEvent.Cycle;
-            }
-
-            // Invoke the callback with the event context
-            if (eventContext is null)
-            {
-                throw new InvalidOperationException("Event context is not set. Call SetEventContext before dispatching events.");
-            }
-
-            try
-            {
-                nextEvent.Callback(eventContext);
-            }
-            catch (Exception ex)
-            {
-                System.Console.Error.WriteLine($"[SCHED CALLBACK NRE] Kind={nextEvent.Kind} addr={nextEvent.Callback?.Method?.Name} ex={ex.Message}");
-                // continue to not crash the run
-            }
-
-            // Notify observers after execution
-            EventConsumed?.Invoke(nextEvent.Handle, now, nextEvent.Kind);
+            return;
         }
 
-        // Clean up the cancelled handles set periodically to prevent unbounded growth
-        // Clear when we have a significant number of cancelled handles and either:
-        // 1. The queue is empty, or
-        // 2. The number of cancelled handles exceeds a threshold
+        isDispatching = true;
+        try
+        {
+            var toDispatch = new System.Collections.Generic.List<ScheduledEvent>();
+            int safety = 0;
+            const int MaxEventsPerDispatch = 100000;
+
+            while (true)
+            {
+                toDispatch.Clear();
+
+                while (safety++ < MaxEventsPerDispatch && eventQueue.TryPeek(out var peeked, out _) && peeked.Cycle <= targetCycle)
+                {
+                    ScheduledEvent nextEvent;
+                    try
+                    {
+                        if (!eventQueue.TryDequeue(out nextEvent, out _))
+                        {
+                            break;
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        System.Console.Error.WriteLine($"[SCHED PQ] TryDequeue failed (possible transient corruption from high event volume): {ex.Message}");
+                        break;
+                    }
+
+                    if (cancelledHandles.Remove(nextEvent.Handle.Id))
+                    {
+                        continue;
+                    }
+
+                    toDispatch.Add(nextEvent);
+                }
+
+                if (toDispatch.Count == 0)
+                {
+                    break;
+                }
+
+                foreach (var ev in toDispatch)
+                {
+                    if (eventContext is null)
+                    {
+                        throw new InvalidOperationException("Event context is not set. Call SetEventContext before dispatching events.");
+                    }
+
+                    if (ev.Cycle > now)
+                    {
+                        now = ev.Cycle;
+                    }
+
+                    try
+                    {
+                        ev.Callback(eventContext);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Console.Error.WriteLine($"[SCHED CALLBACK ERR] Kind={ev.Kind} method={ev.Callback?.Method?.Name} ex={ex.Message}");
+                    }
+
+                    EventConsumed?.Invoke(ev.Handle, now, ev.Kind);
+                }
+            }
+
+            if (safety >= MaxEventsPerDispatch)
+            {
+                System.Console.Error.WriteLine("[SCHED] safety limit hit in dispatch - possible event loop or drift");
+            }
+        }
+        finally
+        {
+            isDispatching = false;
+        }
+
         if (cancelledHandles.Count > 0 && (eventQueue.Count == 0 || cancelledHandles.Count > CancelledHandlesCleanupThreshold))
         {
             cancelledHandles.Clear();

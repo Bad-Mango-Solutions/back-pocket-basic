@@ -310,182 +310,80 @@ public class CharacterDeviceTests
     }
 
     /// <summary>
-    /// Verifies that writing $C04B (SETALTGLYPH1) enables AltGlyph1.
+    /// Verifies programmatic AltGlyph1 control.
     /// </summary>
     [Test]
-    public void WriteC04B_EnablesAltGlyph1()
+    public void SetAltGlyph1Enabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x4B, 0x00, in context);
-
-        Assert.That(device.IsAltGlyph1Enabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C04A (CLRALTGLYPH1) disables AltGlyph1.
-    /// </summary>
-    [Test]
-    public void WriteC04A_DisablesAltGlyph1()
-    {
-        var context = CreateTestContext();
-
-        // First enable
-        dispatcher.Write(0x4B, 0x00, in context);
+        device.SetAltGlyph1Enabled(true);
         Assert.That(device.IsAltGlyph1Enabled, Is.True);
 
-        // Then disable
-        dispatcher.Write(0x4A, 0x00, in context);
+        device.SetAltGlyph1Enabled(false);
         Assert.That(device.IsAltGlyph1Enabled, Is.False);
     }
 
     /// <summary>
-    /// Verifies that writing $C04D (SETALTGLYPH2) enables AltGlyph2.
+    /// Verifies programmatic AltGlyph2 control.
     /// </summary>
     [Test]
-    public void WriteC04D_EnablesAltGlyph2()
+    public void SetAltGlyph2Enabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x4D, 0x00, in context);
-
-        Assert.That(device.IsAltGlyph2Enabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C04C (CLRALTGLYPH2) disables AltGlyph2.
-    /// </summary>
-    [Test]
-    public void WriteC04C_DisablesAltGlyph2()
-    {
-        var context = CreateTestContext();
-
-        // First enable
-        dispatcher.Write(0x4D, 0x00, in context);
+        device.SetAltGlyph2Enabled(true);
         Assert.That(device.IsAltGlyph2Enabled, Is.True);
 
-        // Then disable
-        dispatcher.Write(0x4C, 0x00, in context);
+        device.SetAltGlyph2Enabled(false);
         Assert.That(device.IsAltGlyph2Enabled, Is.False);
     }
 
     /// <summary>
-    /// Verifies that writing $C047 (SETNOFLASH1) enables NoFlash1.
+    /// Verifies programmatic NoFlash1 control.
     /// </summary>
     [Test]
-    public void WriteC047_EnablesNoFlash1()
+    public void SetNoFlash1Enabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x47, 0x00, in context);
-
-        Assert.That(device.IsNoFlash1Enabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C046 (CLRNOFLASH1) disables NoFlash1.
-    /// </summary>
-    [Test]
-    public void WriteC046_DisablesNoFlash1()
-    {
-        var context = CreateTestContext();
-
-        // First enable
-        dispatcher.Write(0x47, 0x00, in context);
+        device.SetNoFlash1Enabled(true);
         Assert.That(device.IsNoFlash1Enabled, Is.True);
 
-        // Then disable
-        dispatcher.Write(0x46, 0x00, in context);
+        device.SetNoFlash1Enabled(false);
         Assert.That(device.IsNoFlash1Enabled, Is.False);
     }
 
     /// <summary>
-    /// Verifies that writing $C049 (SETNOFLASH2) enables NoFlash2.
+    /// Verifies programmatic NoFlash2 control.
     /// </summary>
     [Test]
-    public void WriteC049_EnablesNoFlash2()
+    public void SetNoFlash2Enabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        // First disable (it defaults to true)
-        dispatcher.Write(0x48, 0x00, in context);
+        device.SetNoFlash2Enabled(false);
         Assert.That(device.IsNoFlash2Enabled, Is.False);
 
-        // Then enable
-        dispatcher.Write(0x49, 0x00, in context);
+        device.SetNoFlash2Enabled(true);
         Assert.That(device.IsNoFlash2Enabled, Is.True);
     }
 
     /// <summary>
-    /// Verifies that writing $C048 (CLRNOFLASH2) disables NoFlash2.
+    /// Verifies programmatic GlyphRead control.
     /// </summary>
     [Test]
-    public void WriteC048_DisablesNoFlash2()
+    public void SetGlyphReadEnabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x48, 0x00, in context);
-
-        Assert.That(device.IsNoFlash2Enabled, Is.False);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C043 (SETGLYPHRD) enables GlyphRead.
-    /// </summary>
-    [Test]
-    public void WriteC043_EnablesGlyphRead()
-    {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x43, 0x00, in context);
-
-        Assert.That(device.IsGlyphReadEnabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C042 (CLRGLYPHRD) disables GlyphRead.
-    /// </summary>
-    [Test]
-    public void WriteC042_DisablesGlyphRead()
-    {
-        var context = CreateTestContext();
-
-        // First enable
-        dispatcher.Write(0x43, 0x00, in context);
+        device.SetGlyphReadEnabled(true);
         Assert.That(device.IsGlyphReadEnabled, Is.True);
 
-        // Then disable
-        dispatcher.Write(0x42, 0x00, in context);
+        device.SetGlyphReadEnabled(false);
         Assert.That(device.IsGlyphReadEnabled, Is.False);
     }
 
     /// <summary>
-    /// Verifies that writing $C045 (SETGLYPHWRT) enables GlyphWrite.
+    /// Verifies programmatic GlyphWrite control.
     /// </summary>
     [Test]
-    public void WriteC045_EnablesGlyphWrite()
+    public void SetGlyphWriteEnabled_UpdatesState()
     {
-        var context = CreateTestContext();
-
-        dispatcher.Write(0x45, 0x00, in context);
-
-        Assert.That(device.IsGlyphWriteEnabled, Is.True);
-    }
-
-    /// <summary>
-    /// Verifies that writing $C044 (CLRGLYPHWRT) disables GlyphWrite.
-    /// </summary>
-    [Test]
-    public void WriteC044_DisablesGlyphWrite()
-    {
-        var context = CreateTestContext();
-
-        // First enable
-        dispatcher.Write(0x45, 0x00, in context);
+        device.SetGlyphWriteEnabled(true);
         Assert.That(device.IsGlyphWriteEnabled, Is.True);
 
-        // Then disable
-        dispatcher.Write(0x44, 0x00, in context);
+        device.SetGlyphWriteEnabled(false);
         Assert.That(device.IsGlyphWriteEnabled, Is.False);
     }
 
@@ -508,75 +406,22 @@ public class CharacterDeviceTests
     }
 
     /// <summary>
-    /// Verifies that reading $C038 returns AltGlyph1 status.
+    /// Verifies glyph extension status addresses are unmapped (floating bus) for IIe compatibility.
     /// </summary>
     [Test]
-    public void ReadC038_ReturnsAltGlyph1Status()
+    public void ReadGlyphExtensionStatusAddresses_ReturnFloatingBus()
     {
         var context = CreateTestContext();
 
-        // Initially off - bit 7 should be clear
-        byte statusOff = dispatcher.Read(0x38, in context);
-        Assert.That(statusOff & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear when AltGlyph1 off");
-
-        // Enable it
-        dispatcher.Write(0x4B, 0x00, in context);
-        byte statusOn = dispatcher.Read(0x38, in context);
-        Assert.That(statusOn & 0x80, Is.EqualTo(0x80), "Bit 7 should be set when AltGlyph1 on");
-    }
-
-    /// <summary>
-    /// Verifies that reading $C039 returns AltGlyph2 status.
-    /// </summary>
-    [Test]
-    public void ReadC039_ReturnsAltGlyph2Status()
-    {
-        var context = CreateTestContext();
-
-        // Initially off - bit 7 should be clear
-        byte statusOff = dispatcher.Read(0x39, in context);
-        Assert.That(statusOff & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear when AltGlyph2 off");
-
-        // Enable it
-        dispatcher.Write(0x4D, 0x00, in context);
-        byte statusOn = dispatcher.Read(0x39, in context);
-        Assert.That(statusOn & 0x80, Is.EqualTo(0x80), "Bit 7 should be set when AltGlyph2 on");
-    }
-
-    /// <summary>
-    /// Verifies that reading $C036 returns NoFlash1 status.
-    /// </summary>
-    [Test]
-    public void ReadC036_ReturnsNoFlash1Status()
-    {
-        var context = CreateTestContext();
-
-        // Initially off - bit 7 should be clear
-        byte statusOff = dispatcher.Read(0x36, in context);
-        Assert.That(statusOff & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear when NoFlash1 off");
-
-        // Enable it
-        dispatcher.Write(0x47, 0x00, in context);
-        byte statusOn = dispatcher.Read(0x36, in context);
-        Assert.That(statusOn & 0x80, Is.EqualTo(0x80), "Bit 7 should be set when NoFlash1 on");
-    }
-
-    /// <summary>
-    /// Verifies that reading $C037 returns NoFlash2 status (defaults to on).
-    /// </summary>
-    [Test]
-    public void ReadC037_ReturnsNoFlash2Status()
-    {
-        var context = CreateTestContext();
-
-        // Initially on (bank 2 defaults to NOFLASH) - bit 7 should be set
-        byte statusOn = dispatcher.Read(0x37, in context);
-        Assert.That(statusOn & 0x80, Is.EqualTo(0x80), "Bit 7 should be set when NoFlash2 on");
-
-        // Disable it
-        dispatcher.Write(0x48, 0x00, in context);
-        byte statusOff = dispatcher.Read(0x37, in context);
-        Assert.That(statusOff & 0x80, Is.EqualTo(0x00), "Bit 7 should be clear when NoFlash2 off");
+        Assert.Multiple(() =>
+        {
+            Assert.That(dispatcher.Read(0x34, in context), Is.EqualTo(0xFF));
+            Assert.That(dispatcher.Read(0x35, in context), Is.EqualTo(0xFF));
+            Assert.That(dispatcher.Read(0x36, in context), Is.EqualTo(0xFF));
+            Assert.That(dispatcher.Read(0x37, in context), Is.EqualTo(0xFF));
+            Assert.That(dispatcher.Read(0x38, in context), Is.EqualTo(0xFF));
+            Assert.That(dispatcher.Read(0x39, in context), Is.EqualTo(0xFF));
+        });
     }
 
     /// <summary>
@@ -587,14 +432,14 @@ public class CharacterDeviceTests
     {
         var context = CreateTestContext();
 
-        // Change state using writes
+        // Change state
         dispatcher.Write(0x0F, 0x00, in context); // AltCharSet on
-        dispatcher.Write(0x4B, 0x00, in context); // AltGlyph1 on
-        dispatcher.Write(0x4D, 0x00, in context); // AltGlyph2 on
-        dispatcher.Write(0x47, 0x00, in context); // NoFlash1 on
-        dispatcher.Write(0x48, 0x00, in context); // NoFlash2 off
-        dispatcher.Write(0x43, 0x00, in context); // GlyphRead on
-        dispatcher.Write(0x45, 0x00, in context); // GlyphWrite on
+        device.SetAltGlyph1Enabled(true);
+        device.SetAltGlyph2Enabled(true);
+        device.SetNoFlash1Enabled(true);
+        device.SetNoFlash2Enabled(false);
+        device.SetGlyphReadEnabled(true);
+        device.SetGlyphWriteEnabled(true);
 
         device.Reset();
 
@@ -618,9 +463,9 @@ public class CharacterDeviceTests
     {
         var context = CreateTestContextWithNoSideEffects();
 
-        dispatcher.Write(0x4B, 0x00, in context); // Try to enable AltGlyph1
+        dispatcher.Write(0x0F, 0x00, in context); // Try to enable AltCharSet
 
-        Assert.That(device.IsAltGlyph1Enabled, Is.False); // Should remain false
+        Assert.That(device.IsAltCharSet, Is.False); // Should remain false
     }
 
     /// <summary>
@@ -631,10 +476,10 @@ public class CharacterDeviceTests
     {
         var context = CreateTestContext();
 
-        // Reading toggle switches should NOT change state (they're write-only now)
-        _ = dispatcher.Read(0x4B, in context); // Read SETALTGLYPH1 address
+        // Reading ALTCHAR toggle addresses should NOT change state (write-only)
+        _ = dispatcher.Read(0x0F, in context); // Read SETALTCHAR address
 
-        Assert.That(device.IsAltGlyph1Enabled, Is.False); // Should remain false
+        Assert.That(device.IsAltCharSet, Is.False); // Should remain false
     }
 
     /// <summary>
@@ -647,35 +492,10 @@ public class CharacterDeviceTests
 
         Assert.Multiple(() =>
         {
-            // Check for ALTCHAR switches
             Assert.That(states.Any(s => s.Name == "CLRALTCHAR" && s.Address == 0xC00E), Is.True);
             Assert.That(states.Any(s => s.Name == "SETALTCHAR" && s.Address == 0xC00F), Is.True);
-
-            // Check for glyph control switches at new addresses ($C04A-$C04D)
-            Assert.That(states.Any(s => s.Name == "CLRALTGLYPH1" && s.Address == 0xC04A), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETALTGLYPH1" && s.Address == 0xC04B), Is.True);
-            Assert.That(states.Any(s => s.Name == "CLRALTGLYPH2" && s.Address == 0xC04C), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETALTGLYPH2" && s.Address == 0xC04D), Is.True);
-
-            // Check for flash control switches at new addresses ($C046-$C049)
-            Assert.That(states.Any(s => s.Name == "CLRNOFLASH1" && s.Address == 0xC046), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETNOFLASH1" && s.Address == 0xC047), Is.True);
-            Assert.That(states.Any(s => s.Name == "CLRNOFLASH2" && s.Address == 0xC048), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETNOFLASH2" && s.Address == 0xC049), Is.True);
-
-            // Check for glyph read/write switches at new addresses ($C042-$C045)
-            Assert.That(states.Any(s => s.Name == "CLRGLYPHRD" && s.Address == 0xC042), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETGLYPHRD" && s.Address == 0xC043), Is.True);
-            Assert.That(states.Any(s => s.Name == "CLRGLYPHWRT" && s.Address == 0xC044), Is.True);
-            Assert.That(states.Any(s => s.Name == "SETGLYPHWRT" && s.Address == 0xC045), Is.True);
-
-            // Check for status reads at new addresses ($C034-$C039)
-            Assert.That(states.Any(s => s.Name == "RDGLYPHRD" && s.Address == 0xC034), Is.True);
-            Assert.That(states.Any(s => s.Name == "RDGLYPHWRT" && s.Address == 0xC035), Is.True);
-            Assert.That(states.Any(s => s.Name == "RDNOFLASH1" && s.Address == 0xC036), Is.True);
-            Assert.That(states.Any(s => s.Name == "RDNOFLASH2" && s.Address == 0xC037), Is.True);
-            Assert.That(states.Any(s => s.Name == "RDALTGLYPH1" && s.Address == 0xC038), Is.True);
-            Assert.That(states.Any(s => s.Name == "RDALTGLYPH2" && s.Address == 0xC039), Is.True);
+            Assert.That(states.Any(s => s.Name == "RDALTCHAR" && s.Address == 0xC01E), Is.True);
+            Assert.That(states.Count, Is.EqualTo(3));
         });
     }
 
@@ -732,8 +552,7 @@ public class CharacterDeviceTests
         device.WriteGlyphRam(0x40 * 8, glyphData);
 
         // Enable glyph bank 1 overlay
-        var context = CreateTestContext();
-        dispatcher.Write(0x4B, 0x00, in context);
+        device.SetAltGlyph1Enabled(true);
 
         // Should now read from glyph RAM
         byte result = device.GetCharacterScanline(0x40, 0, useAltCharSet: false);
@@ -757,8 +576,7 @@ public class CharacterDeviceTests
         device.WriteGlyphRam(altOffset, glyphData);
 
         // Enable glyph bank 2 overlay
-        var context = CreateTestContext();
-        dispatcher.Write(0x4D, 0x00, in context);
+        device.SetAltGlyph2Enabled(true);
 
         // Should now read from glyph RAM
         byte result = device.GetCharacterScanline(0x40, 0, useAltCharSet: true);
@@ -797,8 +615,7 @@ public class CharacterDeviceTests
         device.LoadCharacterRom(romData);
 
         // Enable NoFlash1
-        var context = CreateTestContext();
-        dispatcher.Write(0x47, 0x00, in context);
+        device.SetNoFlash1Enabled(true);
 
         // Should not invert even with flash state true
         byte result = device.GetCharacterScanlineWithEffects(0x40, 0, false, flashState: true);

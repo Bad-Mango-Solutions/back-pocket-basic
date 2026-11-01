@@ -70,6 +70,7 @@ public static class Extended80ColumnExtensions
                     // This handles zero page ($0000-$00FF), stack ($0100-$01FF), and text page ($0400-$07FF)
                     // which cannot use layer-based switching due to 4KB page granularity.
                     ConfigurePage0CompositeTarget(b, bus, registry, device);
+                    ConfigureGeneralAuxTarget(b, bus, registry, device);
 
                     // Configure layers for page-aligned regions ($1000+)
                     device.ConfigureMemory(bus, registry);
@@ -107,6 +108,7 @@ public static class Extended80ColumnExtensions
             {
                 // Configure page 0 composite target
                 ConfigurePage0CompositeTarget(builder, bus, registry, device);
+                ConfigureGeneralAuxTarget(builder, bus, registry, device);
 
                 // Configure layers for page-aligned regions ($1000+)
                 device.ConfigureMemory(bus, registry);
@@ -174,6 +176,48 @@ public static class Extended80ColumnExtensions
             // state and may return auxiliary memory data when 80STORE+PAGE2 is active.
             machineBuilder.AddComponent<IMainMemoryProvider>(
                 new PhysicalMemoryMainRamProvider(mainRam));
+        }
+
+        /// <summary>
+        /// Configures $1000-$BFFF with a composite target for independent RAMRD/RAMWRT routing.
+        /// </summary>
+        private static void ConfigureGeneralAuxTarget(
+            MachineBuilder machineBuilder,
+            IMemoryBus bus,
+            IDeviceRegistry registry,
+            Extended80ColumnDevice device)
+        {
+            var mainRam = machineBuilder.GetPhysicalMemory("main-ram-48k")
+                ?? machineBuilder.GetPhysicalMemory("main-ram");
+            if (mainRam is null)
+            {
+                return;
+            }
+
+            var mainGeneralTarget = new RamTarget(mainRam.Slice(0x1000, 0xB000), "MAIN_RAM_1000");
+            var auxGeneralTarget = device.GetAuxGeneralTarget();
+            var generalTarget = new Extended80ColumnGeneralTarget(
+                mainGeneralTarget,
+                auxGeneralTarget,
+                device,
+                baseOffset: 0x1000);
+
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "Extended80Column", "General_Composite", "Memory/General");
+            bus.MapRegion(
+                virtualBase: 0x1000,
+                size: 0xB000,
+                deviceId: deviceId,
+                regionTag: RegionTag.Ram,
+                perms: PagePerms.All,
+                caps: generalTarget.Capabilities,
+                target: generalTarget,
+                physicalBase: 0x1000);
+
+            if (bus is MainBus mainBus)
+            {
+                mainBus.SaveBaseMappingRange(0x1, 0xB);
+            }
         }
     }
 
