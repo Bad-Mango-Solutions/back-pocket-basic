@@ -12,12 +12,12 @@
     
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Emulator Bus Architecture</Product>
+    <Product>BackPocket Emulator - Emulator Bus Architecture</Product>
     <Description>Core interfaces and types for bus-oriented emulator architecture including memory bus, signal bus, and device registry.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>emulator;bus;memory;signals;6502;65816;65832</PackageTags>
   </PropertyGroup>

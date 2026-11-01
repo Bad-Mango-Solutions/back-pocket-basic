@@ -15,12 +15,12 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - UI</Product>
-    <Description>Avalonia-based cross-platform emulator user interface for BackPocketBASIC.</Description>
+    <Product>BackPocket Emulator - UI</Product>
+    <Description>Avalonia-based cross-platform emulator user interface for BackPocket Emulator.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;ui;avalonia;apple2;6502</PackageTags>
   </PropertyGroup>

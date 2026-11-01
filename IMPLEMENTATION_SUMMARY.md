@@ -145,13 +145,13 @@ Due to system limitations, the following tasks require manual action by the repo
 
 ### Build Verification
 ```bash
-dotnet build BackPocketBasic.slnx --configuration Release
+dotnet build BackPocketEmulator.slnx --configuration Release
 Result: ✅ Success (2 warnings about Console.Beep, not critical)
 ```
 
 ### Test Verification
 ```bash
-dotnet test BackPocketBasic.slnx --configuration Release
+dotnet test BackPocketEmulator.slnx --configuration Release
 Result: ✅ All 103 tests pass
 ```
 
@@ -164,7 +164,7 @@ Result: ✅ All 103 tests pass
 ## Repository Structure
 
 ```
-back-pocket-basic/
+back-pocket-emulator/
 ├── .github/
 │   ├── workflows/
 │   │   └── ci.yml                    # CI/CD workflow

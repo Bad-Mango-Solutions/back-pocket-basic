@@ -85,7 +85,7 @@ public partial class AboutWindow : Window
 
     private void OnGitHubLinkClick(object? sender, PointerPressedEventArgs e)
     {
-        var url = "https://github.com/Bad-Mango-Solutions/back-pocket-basic";
+        var url = "https://github.com/Bad-Mango-Solutions/back-pocket-emulator";
         OpenUrl(url);
     }
 

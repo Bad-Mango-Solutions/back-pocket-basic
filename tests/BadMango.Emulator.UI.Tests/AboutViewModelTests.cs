@@ -45,7 +45,7 @@ public class AboutViewModelTests
             Assert.That(viewModel.DotNetVersion, Is.Not.Null.And.Not.Empty);
             Assert.That(viewModel.OperatingSystem, Is.Not.Null.And.Not.Empty);
             Assert.That(viewModel.License, Is.EqualTo("MIT License"));
-            Assert.That(viewModel.GitHubUrl, Is.EqualTo("https://github.com/Bad-Mango-Solutions/back-pocket-basic"));
+            Assert.That(viewModel.GitHubUrl, Is.EqualTo("https://github.com/Bad-Mango-Solutions/back-pocket-emulator"));
         });
     }
 

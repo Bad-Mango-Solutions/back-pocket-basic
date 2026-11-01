@@ -12,12 +12,12 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - UI Abstractions</Product>
+    <Product>BackPocket Emulator - UI Abstractions</Product>
     <Description>Shared interfaces, enums, and data structures for emulator UI components. Provides contracts that can be referenced without depending on the full UI implementation.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;ui;abstractions;contracts;6502;apple2</PackageTags>
   </PropertyGroup>

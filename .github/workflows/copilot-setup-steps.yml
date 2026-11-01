@@ -24,4 +24,4 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore BackPocketBasic.slnx
+        run: dotnet restore BackPocketEmulator.slnx

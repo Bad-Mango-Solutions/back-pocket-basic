@@ -1,7 +1,7 @@
 # BackPocket Emulator
 
 <p align="center">
-  <img src="back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+  <img src="back-pocket-logo.png" alt="BackPocket Emulator Logo" width="200">
 </p>
 
 A .NET emulator for the WDC 65C02 (Apple IIe-class "Pocket2e" machine), with an architecture built to grow into the 65816 and a theoretical 32-bit 65832.
@@ -32,17 +32,17 @@ A .NET emulator for the WDC 65C02 (Apple IIe-class "Pocket2e" machine), with an 
 
 ```bash
 # Clone the repository
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Build the solution
-dotnet build BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
 
 # Run tests
-dotnet test BackPocketBasic.slnx
+dotnet test BackPocketEmulator.slnx
 
 # Run tests with statement coverage
-dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
+dotnet test BackPocketEmulator.slnx --collect "XPlat Code Coverage"
 ```
 
 ## Architecture
@@ -50,7 +50,7 @@ dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
 ### Project Structure
 
 ```
-back-pocket-basic/
+back-pocket-emulator/
 ├── src/
 │   ├── BadMango.Emulator.Core/        # Core emulator abstractions
 │   │   ├── Cpu/                       # CPU state, registers, instructions
@@ -75,7 +75,7 @@ back-pocket-basic/
 │   └── ... (additional test projects)
 │
 ├── wiki/                              # GitHub Wiki documentation
-└── BackPocketBasic.slnx               # Solution file
+└── BackPocketEmulator.slnx               # Solution file
 ```
 
 ### Technologies Used
