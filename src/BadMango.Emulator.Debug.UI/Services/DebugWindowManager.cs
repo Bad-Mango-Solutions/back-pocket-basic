@@ -39,7 +39,7 @@ using BadMango.Emulator.TextEditor;
 /// displays, text editors, and memory viewers.
 /// </para>
 /// </remarks>
-/// <seealso href="https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/specs/video/Pocket2e%20Debug%20Video%20Window%20(Avalonia)%20%E2%80%94%20Specification.md#8-threading-model">
+/// <seealso href="https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/specs/video/Pocket2e%20Debug%20Video%20Window%20(Avalonia)%20%E2%80%94%20Specification.md#8-threading-model">
 /// Threading Model Specification
 /// </seealso>
 public class DebugWindowManager : IDebugWindowManager

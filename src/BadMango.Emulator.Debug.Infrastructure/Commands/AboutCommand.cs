@@ -91,16 +91,16 @@ public sealed class AboutCommand : CommandHandlerBase, ICommandHelp
 
         context.Output.WriteLine();
         context.Output.WriteLine("-----------------------------------------------------------------------");
-        context.Output.WriteLine("  BackPocket BASIC - Emulator Debug Console");
+        context.Output.WriteLine("  BackPocket Emulator - Emulator Debug Console");
         context.Output.WriteLine($"  Version: {informationalVersion}");
         context.Output.WriteLine();
-        context.Output.WriteLine("  A fully-featured Applesoft BASIC interpreter with");
+        context.Output.WriteLine("  An Apple II-family emulator with");
         context.Output.WriteLine("  6502/65C02/65816 CPU emulation and Apple II memory space.");
         context.Output.WriteLine();
         context.Output.WriteLine("  Copyright (c) Bad Mango Solutions. All rights reserved.");
         context.Output.WriteLine("  Licensed under the MIT License.");
         context.Output.WriteLine();
-        context.Output.WriteLine("  https://github.com/Bad-Mango-Solutions/back-pocket-basic");
+        context.Output.WriteLine("  https://github.com/Bad-Mango-Solutions/back-pocket-emulator");
         context.Output.WriteLine("-----------------------------------------------------------------------");
         context.Output.WriteLine();
 

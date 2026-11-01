@@ -48,7 +48,7 @@ public class AboutCommandTests
             Assert.Multiple(() =>
             {
                 Assert.That(result.Success, Is.True);
-                Assert.That(outputWriter.ToString(), Does.Contain("BackPocket BASIC"));
+                Assert.That(outputWriter.ToString(), Does.Contain("BackPocket Emulator"));
                 Assert.That(outputWriter.ToString(), Does.Contain("Copyright"));
             });
         }

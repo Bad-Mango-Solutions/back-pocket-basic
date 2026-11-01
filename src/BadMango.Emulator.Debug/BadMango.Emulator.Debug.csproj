@@ -13,14 +13,14 @@
     
     <!-- Application Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Emulator Debug Console</Product>
+    <Product>BackPocket Emulator - Emulator Debug Console</Product>
     <Description>Interactive debug console for 6502/65816/65832 CPU and bus emulation with REPL interface.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
 
     <!-- NuGet Package Metadata -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>emulator;debugger;6502;65816;65832;cpu;bus;console;repl</PackageTags>
   </PropertyGroup>

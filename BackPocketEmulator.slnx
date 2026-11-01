@@ -46,8 +46,6 @@
     <File Path="reference/WDC 65816 Emulator Reference.md" />
     <File Path="reference/WDC 65816 Instruction Set Reference.md" />
   </Folder>
-  <Folder Name="/samples/">
-  </Folder>
   <Folder Name="/schemas/">
     <File Path="schemas/machine-profile.schema.json" />
   </Folder>
