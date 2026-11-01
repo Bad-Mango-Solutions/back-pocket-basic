@@ -45,7 +45,7 @@ public class InterruptAndHaltTests : CpuTestBase
 
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
         byte p = Read(0x01FD);      // P is at top of stack
@@ -77,6 +77,41 @@ public class InterruptAndHaltTests : CpuTestBase
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
+    /// <summary>
+    /// Verifies that a held (level-asserted) IRQ line does not re-enter the handler
+    /// before RTI or CLI, and that the stack pointer remains stable inside the handler.
+    /// </summary>
+    [Test]
+    public void IRQ_HeldLine_DoesNotReenterHandlerBeforeRtiOrCli()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x2000, 0xEA);       // NOP
+        Write(0x2001, 0xEA);       // NOP
+        Write(0x2002, 0xEA);       // NOP
+        Write(0x2003, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // CLI
+        Cpu.SignalIRQ(); // IRQ line asserted and never released
+        Cpu.Step(); // Enter IRQ handler
+        byte spAfterEntry = Cpu.Registers.SP.GetByte();
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set on IRQ entry");
+
+        for (int i = 1; i <= 3; i++)
+        {
+            Cpu.Step();
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000 + i), $"Handler should not be re-entered (step {i})");
+            Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(spAfterEntry), $"SP should be stable inside handler (step {i})");
+        }
+    }
     #endregion
 
     #region NMI Tests
@@ -128,6 +163,30 @@ public class InterruptAndHaltTests : CpuTestBase
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
+    /// <summary>
+    /// Verifies that NMI sets the I flag on entry.
+    /// </summary>
+    [Test]
+    public void NMI_SetsInterruptDisableFlag()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // CLI
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "Precondition: I flag clear");
+        Cpu.SignalNMI();
+        Cpu.Step(); // Enter NMI handler
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set after NMI");
+    }
     #endregion
 
     #region D Flag Clearing Tests (65C02)
