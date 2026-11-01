@@ -400,6 +400,9 @@ public sealed class Cpu65C02 : CpuBase
         // Set I flag to disable further IRQs
         Registers.P.SetInterruptDisable(true);
 
+        // 65C02: clear D flag on interrupt entry (NMOS 6502 leaves D unchanged)
+        Registers.P.SetDecimalMode(false);
+
         // Load PC from interrupt vector
         Registers.PC.SetAddr(Read16(vector));
 
