@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices.Interfaces;
 
 using Moq;
 
@@ -16,6 +17,7 @@ public class SpeakerControllerTests
 {
     private SpeakerController controller = null!;
     private IOPageDispatcher dispatcher = null!;
+    private RecordingAudioOutput audioOutput = null!;
 
     /// <summary>
     /// Sets up test fixtures before each test.
@@ -23,7 +25,8 @@ public class SpeakerControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new();
+        audioOutput = new();
+        controller = new(audioOutput, startFlushTimer: false);
         dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
@@ -226,6 +229,58 @@ public class SpeakerControllerTests
         Assert.DoesNotThrow(() => controller.Initialize(mockContext.Object));
     }
 
+    /// <summary>
+    /// Verifies cycle-based synthesis produces deterministic sample counts independent of host timing.
+    /// </summary>
+    [Test]
+    public void Toggle_WithKnownCycleDelta_GeneratesExpectedSampleCount()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 510);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(22));
+    }
+
+    /// <summary>
+    /// Verifies cycle-based synthesis produces alternating square-wave levels.
+    /// </summary>
+    [Test]
+    public void Toggle_WithAlternatingState_GeneratesPositiveThenNegativeSamples()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 510);
+        var third = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        _ = dispatcher.Read(0x30, in third);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(44));
+        Assert.That(audioOutput.LastPlayedSamples.Take(22).All(static sample => sample > 0), Is.True);
+        Assert.That(audioOutput.LastPlayedSamples.Skip(22).All(static sample => sample < 0), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies the buffered audio backlog stays bounded for large cycle deltas.
+    /// </summary>
+    [Test]
+    public void Toggle_WithLargeCycleDelta_KeepsAudioBufferBounded()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 25_000_000);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
+    }
+
     private static BusAccess CreateTestContext(ulong cycle)
     {
         return new(
@@ -252,5 +307,30 @@ public class SpeakerControllerTests
             SourceId: 0,
             Cycle: cycle,
             Flags: AccessFlags.NoSideEffects);
+    }
+
+    private sealed class RecordingAudioOutput : IAudioOutput
+    {
+        /// <summary>
+        /// Gets the last sample buffer played.
+        /// </summary>
+        public short[] LastPlayedSamples { get; private set; } = [];
+
+        /// <summary>
+        /// Gets the total number of samples played across all calls.
+        /// </summary>
+        public int TotalSamplesPlayed { get; private set; }
+
+        /// <inheritdoc />
+        public void Play(short[] samples)
+        {
+            LastPlayedSamples = samples;
+            TotalSamplesPlayed += samples.Length;
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+        }
     }
 }

@@ -33,39 +33,62 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private const int SampleRate = 44100;
     private const int BitsPerSample = 16;
     private const int Channels = 1;
+    private const ulong AppleIICyclesPerSecond = 1_020_484;
+    private const int SpeakerAmplitude = 8192;
+    private const int MaxAudioBufferSamples = SampleRate * 2;
+    private const int MaxPendingToggles = 16_384;
 
-    // Click timing - Apple II CPU runs at ~1.023 MHz
-    // A typical click produces a brief pulse
-    private const int ClickSamples = 64; // ~1.5ms pulse
-
-    private readonly List<(ulong Cycle, bool State)> pendingToggles = [];
+    private readonly Queue<(ulong Cycle, bool State)> pendingToggles = new();
     private readonly Lock syncLock = new();
-
-    // Audio buffer for accumulating clicks
     private readonly List<short> audioBuffer = [];
-    private readonly System.Timers.Timer flushTimer;
+    private readonly System.Timers.Timer? flushTimer;
+    private readonly IAudioOutput audioOutput;
 
     private bool speakerState;
-    private DateTime lastClickTime = DateTime.MinValue;
+    private bool hasLastRenderCycle;
+    private ulong lastRenderCycle;
+    private ulong cycleToSampleRemainder;
     private bool disposed;
     private IScheduler? scheduler;
-
-    // Platform audio output
-    private IAudioOutput? audioOutput;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpeakerController"/> class.
     /// </summary>
     public SpeakerController()
     {
-        // Set up a timer to flush audio buffer periodically
-        flushTimer = new(50); // 50ms intervals
+        try
+        {
+            audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
+        }
+        catch
+        {
+            audioOutput = new NullAudioOutput();
+        }
+
+        flushTimer = new(50);
         flushTimer.Elapsed += (s, e) => Flush();
         flushTimer.AutoReset = true;
         flushTimer.Start();
+    }
 
-        // Initialize audio output
-        InitializeAudioOutput();
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SpeakerController"/> class with explicit dependencies.
+    /// </summary>
+    /// <param name="audioOutput">The audio output sink used to play generated PCM samples.</param>
+    /// <param name="startFlushTimer">A value indicating whether periodic flushing should start automatically.</param>
+    internal SpeakerController(IAudioOutput audioOutput, bool startFlushTimer)
+    {
+        ArgumentNullException.ThrowIfNull(audioOutput);
+        this.audioOutput = audioOutput;
+        flushTimer = null;
+
+        if (startFlushTimer)
+        {
+            flushTimer = new(50);
+            flushTimer.Elapsed += (s, e) => Flush();
+            flushTimer.AutoReset = true;
+            flushTimer.Start();
+        }
     }
 
     /// <inheritdoc />
@@ -84,7 +107,16 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     public bool State => speakerState;
 
     /// <inheritdoc />
-    public IReadOnlyList<(ulong Cycle, bool State)> PendingToggles => pendingToggles;
+    public IReadOnlyList<(ulong Cycle, bool State)> PendingToggles
+    {
+        get
+        {
+            lock (syncLock)
+            {
+                return [.. pendingToggles];
+            }
+        }
+    }
 
     /// <inheritdoc />
     public string ProviderName => "Speaker";
@@ -113,6 +145,9 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             speakerState = false;
             pendingToggles.Clear();
             audioBuffer.Clear();
+            hasLastRenderCycle = false;
+            lastRenderCycle = 0;
+            cycleToSampleRemainder = 0;
         }
     }
 
@@ -121,7 +156,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         lock (syncLock)
         {
-            var result = new List<(ulong, bool)>(pendingToggles);
+            var result = pendingToggles.ToList();
             pendingToggles.Clear();
             return result;
         }
@@ -162,32 +197,21 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
 
         disposed = true;
 
-        flushTimer.Stop();
-        flushTimer.Dispose();
+        flushTimer?.Stop();
+        flushTimer?.Dispose();
 
         lock (syncLock)
         {
             FlushInternal();
         }
 
-        audioOutput?.Dispose();
-    }
-
-    private void InitializeAudioOutput()
-    {
-        try
-        {
-            audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
-        }
-        catch
-        {
-            // Fall back to null output if audio initialization fails
-            audioOutput = new NullAudioOutput();
-        }
+        audioOutput.Dispose();
     }
 
     private void FlushInternal()
     {
+        AppendCurrentStateUntilNow();
+
         if (audioBuffer.Count == 0)
         {
             return;
@@ -197,7 +221,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         {
             var samples = audioBuffer.ToArray();
             audioBuffer.Clear();
-            audioOutput?.Play(samples);
+            audioOutput.Play(samples);
         }
         catch
         {
@@ -228,57 +252,75 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         lock (syncLock)
         {
-            // Toggle speaker state
+            AppendStateSegment(cycle);
             speakerState = !speakerState;
-
-            // Record the toggle for cycle-accurate synthesis
-            pendingToggles.Add((cycle, speakerState));
-
-            // Generate click audio
-            GenerateClickAudio();
+            pendingToggles.Enqueue((cycle, speakerState));
+            while (pendingToggles.Count > MaxPendingToggles)
+            {
+                _ = pendingToggles.Dequeue();
+            }
         }
 
-        // Raise event outside the lock
         Toggled?.Invoke(cycle, speakerState);
     }
 
-    private void GenerateClickAudio()
+    private void AppendCurrentStateUntilNow()
     {
-        // Calculate time since last click to determine sample gap
-        var now = DateTime.UtcNow;
-        var timeSinceLastClick = now - lastClickTime;
-        lastClickTime = now;
-
-        // Add silence between clicks if there was a gap
-        if (timeSinceLastClick.TotalMilliseconds > 1 && timeSinceLastClick.TotalMilliseconds < 100)
+        if (scheduler is null || !hasLastRenderCycle)
         {
-            int silenceSamples = (int)(timeSinceLastClick.TotalSeconds * SampleRate);
-            silenceSamples = Math.Min(silenceSamples, SampleRate / 10); // Cap at 100ms of silence
-
-            for (int i = 0; i < silenceSamples; i++)
-            {
-                audioBuffer.Add(0);
-            }
+            return;
         }
 
-        // Generate click waveform (sharp transition)
-        short amplitude = speakerState ? short.MaxValue : short.MinValue;
+        ulong currentCycle = scheduler.Now;
+        AppendStateSegment(currentCycle);
+    }
 
-        // Create a brief pulse with attack/decay to reduce harshness
-        for (int i = 0; i < ClickSamples; i++)
+    private void AppendStateSegment(ulong cycle)
+    {
+        if (!hasLastRenderCycle)
         {
-            // Apply simple envelope to smooth the click
-            double envelope = 1.0;
-            if (i < 8)
-            {
-                envelope = i / 8.0; // Attack
-            }
-            else if (i > ClickSamples - 8)
-            {
-                envelope = (ClickSamples - i) / 8.0; // Decay
-            }
-
-            audioBuffer.Add((short)(amplitude * envelope));
+            hasLastRenderCycle = true;
+            lastRenderCycle = cycle;
+            return;
         }
+
+        if (cycle <= lastRenderCycle)
+        {
+            lastRenderCycle = cycle;
+            return;
+        }
+
+        ulong deltaCycles = cycle - lastRenderCycle;
+        lastRenderCycle = cycle;
+
+        ulong numerator = (deltaCycles * (ulong)SampleRate) + cycleToSampleRemainder;
+        int sampleCount = (int)(numerator / AppleIICyclesPerSecond);
+        cycleToSampleRemainder = numerator % AppleIICyclesPerSecond;
+        if (sampleCount <= 0)
+        {
+            return;
+        }
+
+        short sampleValue = (short)(speakerState ? SpeakerAmplitude : -SpeakerAmplitude);
+        AppendSamples(sampleValue, sampleCount);
+    }
+
+    private void AppendSamples(short sampleValue, int sampleCount)
+    {
+        if (sampleCount >= MaxAudioBufferSamples)
+        {
+            audioBuffer.Clear();
+            audioBuffer.AddRange(Enumerable.Repeat(sampleValue, MaxAudioBufferSamples));
+            return;
+        }
+
+        int total = audioBuffer.Count + sampleCount;
+        if (total > MaxAudioBufferSamples)
+        {
+            int overflow = total - MaxAudioBufferSamples;
+            audioBuffer.RemoveRange(0, overflow);
+        }
+
+        audioBuffer.AddRange(Enumerable.Repeat(sampleValue, sampleCount));
     }
 }
