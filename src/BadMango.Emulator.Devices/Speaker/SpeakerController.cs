@@ -22,7 +22,16 @@ using BadMango.Emulator.Devices.Interfaces;
 /// <para>
 /// This controller records toggle events with cycle timestamps, allowing
 /// audio synthesis systems to generate accurate waveforms from the toggle history.
-/// It also generates audible click sounds using the host audio system.
+/// It also synthesizes PCM audio from the toggle timing for the host audio system.
+/// </para>
+/// <para>
+/// The real speaker cone cannot hold a displacement: after each toggle it relaxes
+/// back toward rest. The synthesized level is therefore the 1-bit square wave passed
+/// through a one-pole high-pass (DC-blocking) response: each toggle steps the level
+/// by twice <c>SpeakerAmplitude</c> and the level then decays exponentially toward zero
+/// with a time constant of <c>SpeakerDecayTimeConstantSeconds</c>. A silent speaker thus
+/// settles to zero instead of holding a DC offset, which avoids pops when playback
+/// starts, stops, or drops samples.
 /// </para>
 /// </remarks>
 [DeviceType("speaker")]
@@ -39,6 +48,13 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private const int SpeakerAmplitude = 8192;
     private const int MaxAudioBufferSamples = SampleRate * 2;
     private const int MaxPendingToggles = 16_384;
+    private const double SpeakerDecayTimeConstantSeconds = 0.005;
+
+    // Levels below one LSB truncate to zero, so the decay can stop there.
+    private const double SilenceThreshold = 1.0;
+
+    // Per-sample multiplier for the exponential relaxation toward zero.
+    private static readonly double DecayPerSample = Math.Exp(-1.0 / (SampleRate * SpeakerDecayTimeConstantSeconds));
 
     private readonly Queue<(ulong Cycle, bool State)> pendingToggles = new();
     private readonly Lock syncLock = new();
@@ -47,6 +63,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private readonly IAudioOutput audioOutput;
 
     private bool speakerState;
+    private double speakerLevel;
     private bool hasLastRenderCycle;
     private ulong lastRenderCycle;
     private ulong cycleToSampleRemainder;
@@ -165,6 +182,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             hasLastRenderCycle = false;
             lastRenderCycle = 0;
             cycleToSampleRemainder = 0;
+            speakerLevel = 0;
         }
     }
 
@@ -274,6 +292,10 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         {
             AppendStateSegment(cycle);
             speakerState = !speakerState;
+
+            // The square wave steps between -A and +A; the high-passed level
+            // receives the full 2A step and then relaxes toward zero.
+            speakerLevel += speakerState ? 2.0 * SpeakerAmplitude : -2.0 * SpeakerAmplitude;
             pendingToggles.Enqueue((cycle, speakerState));
             while (pendingToggles.Count > MaxPendingToggles)
             {
@@ -333,9 +355,15 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         }
 
         int sampleCount = (int)Math.Min(sampleCountUnclamped, (ulong)MaxAudioBufferSamples);
+        ulong skippedSamples = sampleCountUnclamped - (ulong)sampleCount;
+        if (skippedSamples > 0)
+        {
+            // Samples beyond the cap are dropped (they are the oldest of this
+            // segment), but the cone keeps relaxing while they elapse.
+            speakerLevel *= Math.Pow(DecayPerSample, skippedSamples);
+        }
 
-        short sampleValue = (short)(speakerState ? SpeakerAmplitude : -SpeakerAmplitude);
-        AppendSamples(sampleValue, sampleCount);
+        AppendDecayingSamples(sampleCount);
     }
 
     /// <summary>
@@ -352,7 +380,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         return clockSpeedHz > 0 ? (ulong)clockSpeedHz : DefaultCyclesPerSecond;
     }
 
-    private void AppendSamples(short sampleValue, int sampleCount)
+    private void AppendDecayingSamples(int sampleCount)
     {
         if (sampleCount >= MaxAudioBufferSamples)
         {
@@ -372,6 +400,23 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
 
         int start = audioBuffer.Count;
         CollectionsMarshal.SetCount(audioBuffer, start + sampleCount);
-        CollectionsMarshal.AsSpan(audioBuffer).Slice(start, sampleCount).Fill(sampleValue);
+        Span<short> span = CollectionsMarshal.AsSpan(audioBuffer).Slice(start, sampleCount);
+
+        double level = speakerLevel;
+        int i = 0;
+        while (i < span.Length && Math.Abs(level) >= SilenceThreshold)
+        {
+            span[i++] = (short)level;
+            level *= DecayPerSample;
+        }
+
+        if (i < span.Length)
+        {
+            // Fully relaxed: the rest of the segment is silence.
+            level = 0;
+            span[i..].Clear();
+        }
+
+        speakerLevel = level;
     }
 }

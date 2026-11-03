@@ -345,6 +345,75 @@ public class SpeakerControllerTests
         Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
     }
 
+    /// <summary>
+    /// Verifies a speaker left untoggled relaxes toward zero instead of holding a DC offset.
+    /// </summary>
+    [Test]
+    public void Toggle_FollowedByLongSilence_DecaysToZero()
+    {
+        ulong now = 0;
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(() => now);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        _ = dispatcher.Read(0x30, in first);
+
+        now = 1_020_484; // One second of emulated time.
+        controller.Flush();
+
+        short[] samples = audioOutput.LastPlayedSamples;
+        Assert.Multiple(() =>
+        {
+            Assert.That(samples, Has.Length.EqualTo(44_100));
+            Assert.That(samples[0], Is.GreaterThan(0));
+            Assert.That(samples[1], Is.LessThan(samples[0]));
+            Assert.That(samples.Skip(44_100 - 4_410).All(static sample => sample == 0), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies the decay state carries across flushes so split rendering matches a single render.
+    /// </summary>
+    [Test]
+    public void Decay_IsContinuousAcrossFlushes()
+    {
+        short[] single = RenderToggleThenSilence(flushPoints: [2_000]);
+        short[] split = RenderToggleThenSilence(flushPoints: [700, 1_300, 2_000]);
+
+        Assert.That(split, Is.EqualTo(single));
+    }
+
+    private static short[] RenderToggleThenSilence(ulong[] flushPoints)
+    {
+        var output = new RecordingAudioOutput();
+        using var speaker = new SpeakerController(output, startFlushTimer: false);
+        var io = new IOPageDispatcher();
+        speaker.RegisterHandlers(io);
+
+        ulong now = 0;
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(() => now);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        speaker.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 300);
+        _ = io.Read(0x30, in first);
+        _ = io.Read(0x30, in second);
+
+        foreach (ulong point in flushPoints)
+        {
+            now = point;
+            speaker.Flush();
+        }
+
+        return [.. output.AllSamples];
+    }
+
     private static BusAccess CreateTestContext(ulong cycle)
     {
         return new(
@@ -385,10 +454,16 @@ public class SpeakerControllerTests
         /// </summary>
         public int TotalSamplesPlayed { get; private set; }
 
+        /// <summary>
+        /// Gets every sample played, in order, across all calls.
+        /// </summary>
+        public List<short> AllSamples { get; } = [];
+
         /// <inheritdoc />
         public void Play(short[] samples)
         {
             LastPlayedSamples = samples;
+            AllSamples.AddRange(samples);
             TotalSamplesPlayed += samples.Length;
         }
 
