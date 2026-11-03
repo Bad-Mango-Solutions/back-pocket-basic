@@ -23,6 +23,14 @@ using Core.Interfaces.Debugging;
 /// are not caught — they will propagate to the CPU step loop, which is the desired
 /// behavior for debugger plumbing where a misbehaving listener is itself a bug.
 /// </para>
+/// <para>
+/// The step callbacks run once per emulated instruction, so the listener set is
+/// stored copy-on-write: <see cref="Add"/> and <see cref="Remove"/> rebuild an
+/// immutable snapshot array under a lock, and <see cref="OnBeforeStep"/> /
+/// <see cref="OnAfterStep"/> read that snapshot without locking or allocating.
+/// A listener added or removed while a step is being dispatched takes effect on
+/// the next dispatch.
+/// </para>
 /// </remarks>
 public sealed class CompositeDebugStepListener : IDebugStepListener
 {
@@ -30,18 +38,15 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
     private readonly List<IDebugStepListener> listeners = [];
 
     /// <summary>
+    /// Immutable snapshot of <see cref="listeners"/> read by the per-instruction
+    /// callbacks. Replaced (never mutated) whenever the listener set changes.
+    /// </summary>
+    private volatile IDebugStepListener[] snapshot = [];
+
+    /// <summary>
     /// Gets the number of registered listeners.
     /// </summary>
-    public int Count
-    {
-        get
-        {
-            lock (syncLock)
-            {
-                return listeners.Count;
-            }
-        }
-    }
+    public int Count => snapshot.Length;
 
     /// <summary>
     /// Adds a listener to the composite.
@@ -58,6 +63,7 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
             if (!listeners.Contains(listener))
             {
                 listeners.Add(listener);
+                snapshot = [.. listeners];
             }
         }
     }
@@ -75,47 +81,35 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
         ArgumentNullException.ThrowIfNull(listener);
         lock (syncLock)
         {
-            return listeners.Remove(listener);
+            if (!listeners.Remove(listener))
+            {
+                return false;
+            }
+
+            snapshot = [.. listeners];
+            return true;
         }
     }
 
     /// <inheritdoc/>
     public void OnBeforeStep(in DebugStepEventArgs eventData)
     {
-        IDebugStepListener[] snapshot;
-        lock (syncLock)
+        // Lock-free, allocation-free: read the current immutable snapshot once.
+        var current = snapshot;
+        for (int i = 0; i < current.Length; i++)
         {
-            if (listeners.Count == 0)
-            {
-                return;
-            }
-
-            snapshot = [.. listeners];
-        }
-
-        foreach (var l in snapshot)
-        {
-            l.OnBeforeStep(in eventData);
+            current[i].OnBeforeStep(in eventData);
         }
     }
 
     /// <inheritdoc/>
     public void OnAfterStep(in DebugStepEventArgs eventData)
     {
-        IDebugStepListener[] snapshot;
-        lock (syncLock)
+        // Lock-free, allocation-free: read the current immutable snapshot once.
+        var current = snapshot;
+        for (int i = 0; i < current.Length; i++)
         {
-            if (listeners.Count == 0)
-            {
-                return;
-            }
-
-            snapshot = [.. listeners];
-        }
-
-        foreach (var l in snapshot)
-        {
-            l.OnAfterStep(in eventData);
+            current[i].OnAfterStep(in eventData);
         }
     }
 }
