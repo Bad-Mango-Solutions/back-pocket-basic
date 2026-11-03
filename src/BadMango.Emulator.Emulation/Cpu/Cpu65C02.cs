@@ -357,12 +357,21 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         // Check for IRQ (maskable by I flag, level-triggered)
-        if (Signals.IsAsserted(SignalLine.IRQ) && !Registers.P.IsInterruptDisabled())
+        if (Signals.IsAsserted(SignalLine.IRQ))
         {
-            // Resume from WAI if halted
+            // WAI clears the halt on any asserted IRQ, but only vectors when I is clear.
             if (HaltReason == HaltState.Wai)
             {
                 HaltReason = HaltState.None;
+
+                if (Registers.P.IsInterruptDisabled())
+                {
+                    return false;
+                }
+            }
+            else if (Registers.P.IsInterruptDisabled())
+            {
+                return false;
             }
 
             ProcessInterrupt(Cpu65C02Constants.IrqVector);
