@@ -7,32 +7,39 @@ namespace BadMango.Emulator.Devices.Speaker;
 using System.Diagnostics.CodeAnalysis;
 
 using BadMango.Emulator.Devices.Interfaces;
+using OpenTK.Audio.OpenAL;
 
 /// <summary>
-/// Windows/Cross-platform audio output using raw wave API.
+/// Cross-platform streaming audio output backed by OpenAL.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This implementation creates WAV data in memory and plays it using platform-specific APIs.
-/// On Windows, it uses <see cref="System.Media.SoundPlayer"/>. On other platforms, audio
-/// output is currently not supported and will be silent.
+/// This implementation keeps a single long-lived OpenAL source and streams PCM data
+/// into it from a bounded ring buffer.
 /// </para>
 /// <para>
-/// Audio playback occurs on a background thread to avoid blocking the emulation.
+/// Incoming samples are enqueued by <see cref="Play(short[])"/> and consumed on a dedicated
+/// background thread. Buffer overruns drop the oldest samples to keep playback latency bounded.
 /// </para>
 /// </remarks>
 [ExcludeFromCodeCoverage]
 internal sealed class WaveOutAudioOutput : IAudioOutput
 {
-    private readonly int sampleRate;
-    private readonly int bitsPerSample;
-    private readonly int channels;
+    private const int BufferCount = 3;
+    private const int BufferSamples = 1024;
+    private const int MaxBufferedMilliseconds = 200;
 
-    // Simple ring buffer for audio output
-    private readonly Queue<byte[]> audioQueue = new();
+    private readonly int sampleRate;
+    private readonly AudioSampleRingBuffer ringBuffer;
+    private readonly short[] sampleChunk;
     private readonly Thread playbackThread;
-    private readonly ManualResetEventSlim audioAvailable = new(false);
+    private readonly ManualResetEventSlim samplesAvailable = new(false);
     private readonly CancellationTokenSource cts = new();
+
+    private ALDevice device;
+    private ALContext context;
+    private int source;
+    private int[] buffers = [];
 
     private bool disposed;
 
@@ -43,17 +50,59 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
     /// <param name="bitsPerSample">The number of bits per audio sample (e.g., 16 for 16-bit audio).</param>
     /// <param name="channels">The number of audio channels (e.g., 1 for mono, 2 for stereo).</param>
     /// <remarks>
-    /// This constructor sets up the audio output configuration and starts a background thread
-    /// for audio playback. The <see cref="WaveOutAudioOutput"/> class provides a cross-platform
-    /// implementation for audio output using raw wave APIs.
+    /// This constructor sets up OpenAL streaming playback and starts a background thread
+    /// that continuously feeds queued PCM data.
     /// </remarks>
     public WaveOutAudioOutput(int sampleRate, int bitsPerSample, int channels)
     {
-        this.sampleRate = sampleRate;
-        this.bitsPerSample = bitsPerSample;
-        this.channels = channels;
+        if (bitsPerSample != 16)
+        {
+            throw new PlatformNotSupportedException("OpenAL output currently supports only 16-bit PCM samples.");
+        }
 
-        // Start playback thread
+        if (channels != 1)
+        {
+            throw new PlatformNotSupportedException("OpenAL output currently supports only mono output.");
+        }
+
+        this.sampleRate = sampleRate;
+        ringBuffer = new(sampleRate * MaxBufferedMilliseconds / 1000);
+        sampleChunk = new short[BufferSamples];
+
+        try
+        {
+            device = ALC.OpenDevice(null);
+            if (device == default)
+            {
+                throw new PlatformNotSupportedException("OpenAL device could not be opened.");
+            }
+
+            context = ALC.CreateContext(device, Array.Empty<int>());
+            if (context == default)
+            {
+                throw new PlatformNotSupportedException("OpenAL context could not be created.");
+            }
+
+            _ = ALC.MakeContextCurrent(context);
+
+            source = AL.GenSource();
+            buffers = AL.GenBuffers(BufferCount);
+
+            for (var i = 0; i < BufferCount; i++)
+            {
+                FillSampleChunk();
+                AL.BufferData(buffers[i], ALFormat.Mono16, sampleChunk, sampleRate);
+                AL.SourceQueueBuffer(source, buffers[i]);
+            }
+
+            AL.SourcePlay(source);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException or PlatformNotSupportedException)
+        {
+            CleanupAudioResources();
+            throw new PlatformNotSupportedException("OpenAL playback is unavailable on this host.", ex);
+        }
+
         playbackThread = new(PlaybackLoop)
         {
             IsBackground = true,
@@ -70,15 +119,8 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
             return;
         }
 
-        // Convert samples to bytes
-        var bytes = new byte[samples.Length * 2];
-        Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
-
-        lock (audioQueue)
-        {
-            audioQueue.Enqueue(bytes);
-            audioAvailable.Set();
-        }
+        ringBuffer.Write(samples);
+        samplesAvailable.Set();
     }
 
     /// <inheritdoc />
@@ -92,106 +134,117 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
         disposed = true;
 
         cts.Cancel();
-        audioAvailable.Set(); // Wake up thread
+        samplesAvailable.Set();
         playbackThread.Join(1000);
 
+        CleanupAudioResources();
+
         cts.Dispose();
-        audioAvailable.Dispose();
-    }
-
-    private static void PlayWavStream(MemoryStream wavStream)
-    {
-        // Use System.Media.SoundPlayer on Windows
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                using var player = new System.Media.SoundPlayer(wavStream);
-                player.PlaySync();
-            }
-            catch
-            {
-                // Fallback: ignore if SoundPlayer not available
-            }
-        }
-
-        // On other platforms, we could use other audio APIs
-        // For now, non-Windows platforms will be silent
+        samplesAvailable.Dispose();
     }
 
     private void PlaybackLoop()
     {
         try
         {
+            _ = ALC.MakeContextCurrent(context);
+
             while (!cts.Token.IsCancellationRequested)
             {
-                audioAvailable.Wait(cts.Token);
-
-                byte[]? audioData = null;
-                lock (audioQueue)
+                AL.GetSource(source, ALGetSourcei.BuffersProcessed, out var processed);
+                while (processed-- > 0)
                 {
-                    if (audioQueue.Count > 0)
-                    {
-                        // Combine all queued audio
-                        var allBytes = new List<byte>();
-                        while (audioQueue.Count > 0)
-                        {
-                            allBytes.AddRange(audioQueue.Dequeue());
-                        }
-
-                        audioData = [.. allBytes];
-                    }
-
-                    audioAvailable.Reset();
+                    int processedBuffer = AL.SourceUnqueueBuffer(source);
+                    FillSampleChunk();
+                    AL.BufferData(processedBuffer, ALFormat.Mono16, sampleChunk, sampleRate);
+                    AL.SourceQueueBuffer(source, processedBuffer);
                 }
 
-                if (audioData != null && audioData.Length > 0)
+                AL.GetSource(source, ALGetSourcei.SourceState, out var stateValue);
+                if ((ALSourceState)stateValue != ALSourceState.Playing)
                 {
-                    PlayWavData(audioData);
+                    AL.SourcePlay(source);
                 }
+
+                _ = samplesAvailable.Wait(5, cts.Token);
             }
         }
         catch (OperationCanceledException)
         {
-            // Normal shutdown
+            // Normal shutdown.
+        }
+        catch (InvalidOperationException)
+        {
+            // Backend failure: stop playback loop and allow silent operation.
+        }
+        finally
+        {
+            try
+            {
+                _ = ALC.MakeContextCurrent(default);
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
     }
 
-    private void PlayWavData(byte[] pcmData)
+    private void FillSampleChunk()
     {
-        // Create WAV file in memory and play using platform APIs
+        sampleChunk.AsSpan().Clear();
+        int read = ringBuffer.Read(sampleChunk);
+        if (read < sampleChunk.Length)
+        {
+            samplesAvailable.Reset();
+        }
+    }
+
+    private void CleanupAudioResources()
+    {
         try
         {
-            using var ms = new MemoryStream();
-            using var writer = new BinaryWriter(ms);
-
-            // WAV header
-            int dataSize = pcmData.Length;
-            int fileSize = 36 + dataSize;
-
-            writer.Write("RIFF"u8.ToArray());
-            writer.Write(fileSize);
-            writer.Write("WAVE"u8.ToArray());
-            writer.Write("fmt "u8.ToArray());
-            writer.Write(16); // Subchunk1Size (16 for PCM)
-            writer.Write((short)1); // AudioFormat (1 = PCM)
-            writer.Write((short)channels);
-            writer.Write(sampleRate);
-            writer.Write(sampleRate * channels * bitsPerSample / 8); // ByteRate
-            writer.Write((short)(channels * bitsPerSample / 8)); // BlockAlign
-            writer.Write((short)bitsPerSample);
-            writer.Write("data"u8.ToArray());
-            writer.Write(dataSize);
-            writer.Write(pcmData);
-
-            ms.Position = 0;
-
-            // Play using platform-specific method
-            PlayWavStream(ms);
+            if (source != 0)
+            {
+                AL.SourceStop(source);
+                AL.DeleteSource(source);
+            }
         }
-        catch
+        catch (InvalidOperationException)
         {
-            // Silently ignore playback errors
+        }
+
+        try
+        {
+            if (buffers.Length > 0)
+            {
+                AL.DeleteBuffers(buffers);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        try
+        {
+            if (context != default)
+            {
+                _ = ALC.MakeContextCurrent(default);
+                ALC.DestroyContext(context);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        try
+        {
+            if (device != default)
+            {
+                ALC.CloseDevice(device);
+            }
+        }
+        catch (InvalidOperationException)
+        {
         }
     }
 }
