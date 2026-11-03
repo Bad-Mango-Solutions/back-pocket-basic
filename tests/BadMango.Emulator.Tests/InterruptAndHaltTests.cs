@@ -639,4 +639,121 @@ public class InterruptAndHaltTests : CpuTestBase
     }
 
     #endregion
+    #region Pushed Status Bit 5 (65C02)
+
+    /// <summary>
+    /// Verifies IRQ pushes P with bit 5 forced to 1 and B clear, even if bit 5 is clear in the register.
+    /// </summary>
+    [Test]
+    public void IRQ_PushedStatus_HasBit5Set_AndBClear()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xEA);
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalIRQ();
+        Cpu.Step();
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x20), "Pushed P should have bit 5 set and B clear");
+    }
+
+    /// <summary>
+    /// Verifies NMI pushes P with bit 5 forced to 1 and B clear.
+    /// </summary>
+    [Test]
+    public void NMI_PushedStatus_HasBit5Set_AndBClear()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFA, 0x3000);
+        Write(0x1000, 0xEA);
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalNMI();
+        Cpu.Step();
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x20), "Pushed P should have bit 5 set and B clear");
+    }
+
+    /// <summary>
+    /// Verifies BRK pushes P with bit 5 and B both set.
+    /// </summary>
+    [Test]
+    public void BRK_PushedStatus_HasBit5AndBSet()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x00); // BRK
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.Step();
+
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x30), "Pushed P should have bit 5 and B set");
+    }
+
+    /// <summary>
+    /// Verifies PHP pushes P with bit 5 and B both set.
+    /// </summary>
+    [Test]
+    public void PHP_PushedStatus_HasBit5AndBSet()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0x08); // PHP
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.Step();
+
+        Assert.That(Read(0x01FF), Is.EqualTo(0x30), "Pushed P should be exactly bit 5 | B");
+    }
+
+    /// <summary>
+    /// Verifies PLP keeps bit 5 reading as 1 even when the pulled byte has it clear.
+    /// </summary>
+    [Test]
+    public void PLP_PulledStatus_KeepsBit5Set()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$00
+        Write(0x1001, 0x00);
+        Write(0x1002, 0x48); // PHA
+        Write(0x1003, 0x28); // PLP
+        Cpu.Reset();
+
+        Cpu.Step();
+        Cpu.Step();
+        Cpu.Step();
+
+        Assert.That((byte)Cpu.Registers.P & 0x20, Is.EqualTo(0x20), "Bit 5 should read as 1 after PLP");
+    }
+
+    /// <summary>
+    /// Verifies RTI keeps bit 5 reading as 1 even when the pulled status byte has it clear.
+    /// </summary>
+    [Test]
+    public void RTI_PulledStatus_KeepsBit5Set()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xEA);
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalIRQ();
+        Cpu.Step(); // IRQ entry
+        Write(0x01FD, 0x00); // Overwrite pushed status with bit 5 clear
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1000), "PC should be restored");
+        Assert.That((byte)Cpu.Registers.P & 0x20, Is.EqualTo(0x20), "Bit 5 should read as 1 after RTI");
+    }
+
+    #endregion
 }
