@@ -329,6 +329,22 @@ public class SpeakerControllerTests
         Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(44));
     }
 
+    /// <summary>
+    /// Verifies a cycle delta large enough to overflow 64-bit sample math still yields a full, bounded buffer.
+    /// </summary>
+    [Test]
+    public void Toggle_WithHugeCycleDelta_ClampsWithoutOverflow()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: ulong.MaxValue - 1);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
+    }
+
     private static BusAccess CreateTestContext(ulong cycle)
     {
         return new(

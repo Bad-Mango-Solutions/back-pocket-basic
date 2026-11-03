@@ -318,13 +318,19 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             cycleToSampleRemainder %= cyclesPerSecond;
         }
 
-        ulong numerator = (deltaCycles * (ulong)SampleRate) + cycleToSampleRemainder;
-        int sampleCount = (int)(numerator / cyclesPerSecond);
-        cycleToSampleRemainder = numerator % cyclesPerSecond;
-        if (sampleCount <= 0)
+        // Use 128-bit intermediates so very large cycle deltas (long pauses,
+        // unthrottled runs) cannot overflow, then clamp to the buffer cap before
+        // narrowing to int.
+        UInt128 numerator = ((UInt128)deltaCycles * (ulong)SampleRate) + cycleToSampleRemainder;
+        UInt128 wideSampleCount = numerator / cyclesPerSecond;
+        cycleToSampleRemainder = (ulong)(numerator % cyclesPerSecond);
+        ulong sampleCountUnclamped = wideSampleCount > ulong.MaxValue ? ulong.MaxValue : (ulong)wideSampleCount;
+        if (sampleCountUnclamped == 0)
         {
             return;
         }
+
+        int sampleCount = (int)Math.Min(sampleCountUnclamped, (ulong)MaxAudioBufferSamples);
 
         short sampleValue = (short)(speakerState ? SpeakerAmplitude : -SpeakerAmplitude);
         AppendSamples(sampleValue, sampleCount);
