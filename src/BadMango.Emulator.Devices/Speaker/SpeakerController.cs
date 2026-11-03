@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Devices.Speaker;
 
+using System.Runtime.InteropServices;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
@@ -354,18 +356,22 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         if (sampleCount >= MaxAudioBufferSamples)
         {
+            // The new segment alone fills the cap; keep only its newest samples.
             audioBuffer.Clear();
-            audioBuffer.AddRange(Enumerable.Repeat(sampleValue, MaxAudioBufferSamples));
-            return;
+            sampleCount = MaxAudioBufferSamples;
         }
-
-        int total = audioBuffer.Count + sampleCount;
-        if (total > MaxAudioBufferSamples)
+        else
         {
-            int overflow = total - MaxAudioBufferSamples;
-            audioBuffer.RemoveRange(0, overflow);
+            int total = audioBuffer.Count + sampleCount;
+            if (total > MaxAudioBufferSamples)
+            {
+                // Drop the oldest samples to bound latency and memory.
+                audioBuffer.RemoveRange(0, total - MaxAudioBufferSamples);
+            }
         }
 
-        audioBuffer.AddRange(Enumerable.Repeat(sampleValue, sampleCount));
+        int start = audioBuffer.Count;
+        CollectionsMarshal.SetCount(audioBuffer, start + sampleCount);
+        CollectionsMarshal.AsSpan(audioBuffer).Slice(start, sampleCount).Fill(sampleValue);
     }
 }
