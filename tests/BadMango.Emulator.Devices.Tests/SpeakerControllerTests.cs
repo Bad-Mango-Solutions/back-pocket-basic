@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices.Interfaces;
 
 using Moq;
 
@@ -16,6 +17,7 @@ public class SpeakerControllerTests
 {
     private SpeakerController controller = null!;
     private IOPageDispatcher dispatcher = null!;
+    private RecordingAudioOutput audioOutput = null!;
 
     /// <summary>
     /// Sets up test fixtures before each test.
@@ -23,7 +25,8 @@ public class SpeakerControllerTests
     [SetUp]
     public void SetUp()
     {
-        controller = new();
+        audioOutput = new();
+        controller = new(audioOutput, startFlushTimer: false);
         dispatcher = new();
         controller.RegisterHandlers(dispatcher);
     }
@@ -226,6 +229,191 @@ public class SpeakerControllerTests
         Assert.DoesNotThrow(() => controller.Initialize(mockContext.Object));
     }
 
+    /// <summary>
+    /// Verifies cycle-based synthesis produces deterministic sample counts independent of host timing.
+    /// </summary>
+    [Test]
+    public void Toggle_WithKnownCycleDelta_GeneratesExpectedSampleCount()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 510);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(22));
+    }
+
+    /// <summary>
+    /// Verifies cycle-based synthesis produces alternating square-wave levels.
+    /// </summary>
+    [Test]
+    public void Toggle_WithAlternatingState_GeneratesPositiveThenNegativeSamples()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 510);
+        var third = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        _ = dispatcher.Read(0x30, in third);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(44));
+        Assert.That(audioOutput.LastPlayedSamples.Take(22).All(static sample => sample > 0), Is.True);
+        Assert.That(audioOutput.LastPlayedSamples.Skip(22).All(static sample => sample < 0), Is.True);
+    }
+
+    /// <summary>
+    /// Verifies the buffered audio backlog stays bounded for large cycle deltas.
+    /// </summary>
+    [Test]
+    public void Toggle_WithLargeCycleDelta_KeepsAudioBufferBounded()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 25_000_000);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
+    }
+
+    /// <summary>
+    /// Verifies the cycle-to-sample conversion follows the machine's configured clock rate.
+    /// </summary>
+    [Test]
+    public void Toggle_WithDoubledMachineClock_HalvesSamplesPerCycle()
+    {
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(1020UL);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        machine.Setup(m => m.ClockSpeedHz).Returns(2_040_968);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        // 1020 cycles at 2.040968 MHz is 0.5 ms, i.e. 22 samples at 44.1 kHz
+        // (the default 1.020484 MHz clock would yield 44).
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(22));
+    }
+
+    /// <summary>
+    /// Verifies the default Apple IIe clock rate is used when the machine reports no clock speed.
+    /// </summary>
+    [Test]
+    public void Toggle_WithUnthrottledMachineClock_UsesDefaultClockRate()
+    {
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(1020UL);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        machine.Setup(m => m.ClockSpeedHz).Returns(0);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(44));
+    }
+
+    /// <summary>
+    /// Verifies a cycle delta large enough to overflow 64-bit sample math still yields a full, bounded buffer.
+    /// </summary>
+    [Test]
+    public void Toggle_WithHugeCycleDelta_ClampsWithoutOverflow()
+    {
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: ulong.MaxValue - 1);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
+    }
+
+    /// <summary>
+    /// Verifies a speaker left untoggled relaxes toward zero instead of holding a DC offset.
+    /// </summary>
+    [Test]
+    public void Toggle_FollowedByLongSilence_DecaysToZero()
+    {
+        ulong now = 0;
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(() => now);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        _ = dispatcher.Read(0x30, in first);
+
+        now = 1_020_484; // One second of emulated time.
+        controller.Flush();
+
+        short[] samples = audioOutput.LastPlayedSamples;
+        Assert.Multiple(() =>
+        {
+            Assert.That(samples, Has.Length.EqualTo(44_100));
+            Assert.That(samples[0], Is.GreaterThan(0));
+            Assert.That(samples[1], Is.LessThan(samples[0]));
+            Assert.That(samples.Skip(44_100 - 4_410).All(static sample => sample == 0), Is.True);
+        });
+    }
+
+    /// <summary>
+    /// Verifies the decay state carries across flushes so split rendering matches a single render.
+    /// </summary>
+    [Test]
+    public void Decay_IsContinuousAcrossFlushes()
+    {
+        short[] single = RenderToggleThenSilence(flushPoints: [2_000]);
+        short[] split = RenderToggleThenSilence(flushPoints: [700, 1_300, 2_000]);
+
+        Assert.That(split, Is.EqualTo(single));
+    }
+
+    private static short[] RenderToggleThenSilence(ulong[] flushPoints)
+    {
+        var output = new RecordingAudioOutput();
+        using var speaker = new SpeakerController(output, startFlushTimer: false);
+        var io = new IOPageDispatcher();
+        speaker.RegisterHandlers(io);
+
+        ulong now = 0;
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(() => now);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        speaker.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 300);
+        _ = io.Read(0x30, in first);
+        _ = io.Read(0x30, in second);
+
+        foreach (ulong point in flushPoints)
+        {
+            now = point;
+            speaker.Flush();
+        }
+
+        return [.. output.AllSamples];
+    }
+
     private static BusAccess CreateTestContext(ulong cycle)
     {
         return new(
@@ -252,5 +440,36 @@ public class SpeakerControllerTests
             SourceId: 0,
             Cycle: cycle,
             Flags: AccessFlags.NoSideEffects);
+    }
+
+    private sealed class RecordingAudioOutput : IAudioOutput
+    {
+        /// <summary>
+        /// Gets the last sample buffer played.
+        /// </summary>
+        public short[] LastPlayedSamples { get; private set; } = [];
+
+        /// <summary>
+        /// Gets the total number of samples played across all calls.
+        /// </summary>
+        public int TotalSamplesPlayed { get; private set; }
+
+        /// <summary>
+        /// Gets every sample played, in order, across all calls.
+        /// </summary>
+        public List<short> AllSamples { get; } = [];
+
+        /// <inheritdoc />
+        public void Play(short[] samples)
+        {
+            LastPlayedSamples = samples;
+            AllSamples.AddRange(samples);
+            TotalSamplesPlayed += samples.Length;
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+        }
     }
 }
