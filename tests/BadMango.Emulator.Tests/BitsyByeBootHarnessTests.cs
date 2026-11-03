@@ -13,6 +13,8 @@ using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Devices;
+using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Storage.Formats;
 using BadMango.Emulator.Storage.Media;
 
@@ -26,9 +28,10 @@ using BadMango.Emulator.Storage.Media;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Marked <c>[Category("LongRunning")]</c> so it does not run as part of
-/// the default test suite (which filters with <c>TestCategory!=LongRunning</c>).
-/// Invoke it explicitly with:
+/// The test takes about a minute, so it is marked <c>[Explicit]</c> and
+/// does not run as part of the default test suite (including CI). It is
+/// also tagged <c>[Category("LongRunning")]</c> so it can be selected by
+/// category. Invoke it explicitly with:
 /// </para>
 /// <code>
 /// dotnet test tests/BadMango.Emulator.Tests \
@@ -37,7 +40,7 @@ using BadMango.Emulator.Storage.Media;
 /// <para><b>Agent-tunable knobs (environment variables):</b></para>
 /// <list type="bullet">
 ///   <item><c>BPB_HARNESS_MAX_CYCLES</c> — total emulated cycle budget
-///     (default 200,000,000 ≈ 200 emulated seconds at 1.023 MHz).</item>
+///     (default 50,000,000 ≈ 50 emulated seconds at 1.023 MHz).</item>
 ///   <item><c>BPB_HARNESS_MAX_EVENTS</c> — cap on captured diff events
 ///     (default 16,384).</item>
 ///   <item><c>BPB_HARNESS_WATCH_START</c>, <c>BPB_HARNESS_WATCH_END</c> —
@@ -57,8 +60,9 @@ using BadMango.Emulator.Storage.Media;
 /// </list>
 /// <para>
 /// The harness <em>does not</em> assert correctness; its purpose is to
-/// dump diagnostic information. The test passes as long as the CPU does
-/// not halt unexpectedly. Diagnostics are written to
+/// dump diagnostic information. The test passes as long as all
+/// motherboard devices are present, the CPU does not halt unexpectedly,
+/// and <c>Cpu.Step()</c> does not throw. Diagnostics are written to
 /// <see cref="TestContext.Out"/>.
 /// </para>
 /// <para>
@@ -130,6 +134,7 @@ public sealed class BitsyByeBootHarnessTests
     /// (boot-ROM entry, boot-sector entry, language-card entry).
     /// </summary>
     [Test]
+    [Explicit("Long-running (~1 min) diagnostic boot harness; run on demand only.")]
     public void BootProDos243_AndWatchPage0CWritesForBitsyByeOffByOne()
     {
         ulong maxCycles = GetEnvUlong("BPB_HARNESS_MAX_CYCLES", DefaultMaxCycles);
@@ -145,8 +150,8 @@ public sealed class BitsyByeBootHarnessTests
         }
 
         string repoRoot = LocateRepositoryRoot();
-        string profilePath = Path.Combine(repoRoot, "profiles", ProfileName + ".json");
-        string diskPath = Path.Combine(repoRoot, DiskImageRelativePath);
+        string profilePath = Path.Join(repoRoot, "profiles", ProfileName + ".json");
+        string diskPath = Path.Join(repoRoot, DiskImageRelativePath);
 
         if (!File.Exists(profilePath))
         {
@@ -158,7 +163,7 @@ public sealed class BitsyByeBootHarnessTests
             Assert.Inconclusive($"Disk image not found: {diskPath}");
         }
 
-        var loader = new MachineProfileLoader(Path.Combine(repoRoot, "profiles"));
+        var loader = new MachineProfileLoader(Path.Join(repoRoot, "profiles"));
         var profile = loader.LoadProfileFromFile(profilePath);
 
         // libraryRoot = repoRoot ⇒ "library://roms/..." resolves to <repo>/roms/...
@@ -167,6 +172,10 @@ public sealed class BitsyByeBootHarnessTests
         IMachine machine = MachineFactory.CreateMachine(profile, resolver);
 
         AssertAllMotherboardDevicesLoaded(machine);
+
+        // Bus fault recording is off by default (debug tooling turns it on
+        // when used); the harness surfaces faults, so enable it here.
+        machine.Bus.FaultRecordingEnabled = true;
 
         MountDiskOnSlot6(machine, diskPath);
 
@@ -204,7 +213,6 @@ public sealed class BitsyByeBootHarnessTests
         };
 
         ulong stepCount = 0;
-        ulong lastCycles = machine.Cpu.GetCycles();
         CpuRunState lastState = CpuRunState.Running;
 
         // Tight-loop detector. Tracks the min/max PC seen across a sliding
@@ -295,21 +303,35 @@ public sealed class BitsyByeBootHarnessTests
             }
             catch (Exception ex)
             {
+                // Dump what we have so far for diagnosis, then let the
+                // exception fail the test.
                 events.Add($"!! CPU.Step threw at PC=${pcBefore:X4} after {stepCount} steps: {ex.GetType().Name}: {ex.Message}");
-                break;
+                foreach (var ev in events)
+                {
+                    TestContext.Out.WriteLine(ev);
+                }
+
+                throw;
             }
 
             stepCount++;
             lastState = result.State;
 
-            // WAI / Stopped / Halted: drain the scheduler if WAI, otherwise bail.
-            if (result.State == CpuRunState.WaitingForInterrupt)
+            // WAI: Step() consumes no cycles while waiting, so advance time
+            // the same way Machine.Run() does (jump to the next scheduled
+            // event and dispatch it) so disk/video timers can raise the IRQ
+            // that wakes the CPU. If nothing is scheduled the CPU can never
+            // wake, so record that and stop instead of spinning forever.
+            // Either way fall through so the watched window is still diffed
+            // for the instruction that just executed.
+            if (result.State == CpuRunState.WaitingForInterrupt &&
+                !machine.Scheduler.JumpToNextEventAndDispatch())
             {
-                // Skip ahead so disk-controller / video timers can fire IRQs.
-                // The scheduler is reached through the CPU's event context.
-                continue;
+                events.Add($"!! CPU is in WAI with no scheduled events at PC=${pcBefore:X4} after {stepCount} steps, cycles={machine.Cpu.GetCycles()}");
+                break;
             }
 
+            // Stopped / Halted: bail.
             if (result.State is CpuRunState.Stopped or CpuRunState.Halted)
             {
                 events.Add($"!! CPU entered {result.State} state at PC=${pcBefore:X4} after {stepCount} steps, cycles={machine.Cpu.GetCycles()}");
@@ -323,8 +345,6 @@ public sealed class BitsyByeBootHarnessTests
                 var registersAfter = machine.Cpu.GetRegisters();
                 events.Add(FormatEvent(stepCount, now, pcBefore, registersAfter, diffs, recentPcs, machine.Bus, lastSoftSwitchSnapshot));
             }
-
-            lastCycles = machine.Cpu.GetCycles();
         }
 
         // Render summary first so it's visible at the top of the test output.
@@ -381,27 +401,20 @@ public sealed class BitsyByeBootHarnessTests
 
     private static void AssertAllMotherboardDevicesLoaded(IMachine machine)
     {
-        // The pocket2e-a2-enh profile declares 8 motherboard devices that all
+        // The pocket2e-a2-enh profile declares 7 motherboard devices that all
         // contribute to memory routing or I/O for the boot path. If any are
         // missing, the harness will produce misleading diagnostic data.
-        var requiredDeviceTypes = new[]
+        Assert.Multiple(() =>
         {
-            "Keyboard",
-            "Character",
-            "Video",
-            "Speaker",
-            "Language Card",
-            "Game I/O",
-            "Extended 80-Column Card",
-        };
-
-        // We can't introspect the device bag generically by name, so we rely
-        // on the bus having received its layered mappings from LanguageCard
-        // and Extended80Column. As a smoke check, just confirm that the bus
-        // has more than the bare-minimum mappings; the integration tests in
-        // Pocket2eIntegrationTests cover detailed wiring assertions.
-        Assert.That(machine.Bus, Is.Not.Null, "Bus must be configured.");
-        TestContext.Out.WriteLine("Expected motherboard devices (per profile): " + string.Join(", ", requiredDeviceTypes));
+            Assert.That(machine.Bus, Is.Not.Null, "Bus must be configured.");
+            Assert.That(machine.GetComponent<IKeyboardDevice>(), Is.Not.Null, "Keyboard device missing.");
+            Assert.That(machine.GetComponent<IVideoDevice>(), Is.Not.Null, "Video device missing.");
+            Assert.That(machine.GetComponent<ICharacterDevice>(), Is.Not.Null, "Character generator device missing.");
+            Assert.That(machine.GetComponent<ISpeakerDevice>(), Is.Not.Null, "Speaker device missing.");
+            Assert.That(machine.GetComponent<LanguageCardDevice>(), Is.Not.Null, "Language Card device missing.");
+            Assert.That(machine.GetComponent<IGamePortDevice>(), Is.Not.Null, "Game I/O device missing.");
+            Assert.That(machine.GetComponent<IExtended80ColumnDevice>(), Is.Not.Null, "Extended 80-Column Card device missing.");
+        });
     }
 
     private static void MountDiskOnSlot6(IMachine machine, string diskPath)
@@ -527,9 +540,9 @@ public sealed class BitsyByeBootHarnessTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, "profiles")) &&
-                Directory.Exists(Path.Combine(dir.FullName, "roms")) &&
-                Directory.Exists(Path.Combine(dir.FullName, "disks")))
+            if (Directory.Exists(Path.Join(dir.FullName, "profiles")) &&
+                Directory.Exists(Path.Join(dir.FullName, "roms")) &&
+                Directory.Exists(Path.Join(dir.FullName, "disks")))
             {
                 return dir.FullName;
             }
