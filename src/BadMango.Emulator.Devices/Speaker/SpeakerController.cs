@@ -33,9 +33,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private const int SampleRate = 44100;
     private const int BitsPerSample = 16;
     private const int Channels = 1;
-    // Fallback emulated clock rate (Apple IIe NTSC, ~1.020484 MHz) used for
-    // cycle-to-sample conversion when the machine does not report a clock speed.
-    private const ulong DefaultCyclesPerSecond = 1_020_484;
+    private const ulong DefaultCyclesPerSecond = 1_020_484; // Apple IIe clock; used when the machine reports none.
     private const int SpeakerAmplitude = 8192;
     private const int MaxAudioBufferSamples = SampleRate * 2;
     private const int MaxPendingToggles = 16_384;
