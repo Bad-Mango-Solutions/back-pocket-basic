@@ -756,18 +756,22 @@ public static class AddressingModes
     /// Zero Page Relative addressing (Rockwell/WDC 65C02) - fetches ZP address and relative offset.
     /// </summary>
     /// <param name="cpu">The CPU instance providing state and memory access.</param>
-    /// <returns>The zero-page address (first operand).</returns>
+    /// <returns>
+    /// Both operands packed into one value: bits 0-7 hold the zero-page address
+    /// (first operand) and bits 8-15 hold the raw relative offset byte (second
+    /// operand). Callers decode them as <c>(byte)(encoded &amp; 0xFF)</c> and
+    /// <c>(sbyte)((encoded &gt;&gt; 8) &amp; 0xFF)</c>.
+    /// </returns>
     /// <remarks>
     /// <para>
     /// Used by bit branch instructions (BBR/BBS). This is a 3-byte instruction format:
     /// opcode + ZP address + signed relative offset. The addressing mode fetches both
-    /// operands and advances PC by 2, but returns only the ZP address since that's what
-    /// needs to be read from memory. The instruction handler will separately read the
-    /// relative offset from the trace operands.
+    /// operands, advances PC by 2, and adds 2 cycles.
     /// </para>
     /// <para>
-    /// The instruction handler is responsible for reading the relative offset from
-    /// Operands[1] and performing the branch logic.
+    /// The instruction handler is responsible for decoding the packed return value,
+    /// reading the zero-page byte, and performing the branch logic. The returned value
+    /// is not an effective address and must not be used as one.
     /// </para>
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
