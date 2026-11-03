@@ -15,6 +15,10 @@ using System.Globalization;
 /// faulting address, fault kind, and any additional context available.
 /// </para>
 /// <para>
+/// Bus fault recording is off by default; the first use of this command
+/// (or <c>buslog</c>) enables it, so only faults from that point on are shown.
+/// </para>
+/// <para>
 /// This command requires a bus to be attached to the debug context.
 /// </para>
 /// </remarks>
@@ -40,7 +44,9 @@ public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
         "the memory bus, including the faulting address and fault kind. " +
         "Useful for debugging unmapped memory access, permission violations, " +
         "and silent floating-bus reads. Shows 'No fault' if no fault has " +
-        "occurred since the ring was last cleared.";
+        "occurred since the ring was last cleared. Recording is off by " +
+        "default; the first use of 'fault' or 'buslog' turns it on, so only " +
+        "faults from that point on are captured.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -52,7 +58,8 @@ public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
     ];
 
     /// <inheritdoc/>
-    public string? SideEffects => null;
+    public string? SideEffects =>
+        "Enables bus fault recording if it is not already on.";
 
     /// <inheritdoc/>
     public IReadOnlyList<string> SeeAlso { get; } = ["buslog", "regions", "pages"];
@@ -77,9 +84,11 @@ public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
         {
             debugContext.Output.WriteLine("Bus Fault Status:");
             debugContext.Output.WriteLine();
-            debugContext.Output.WriteLine("  Fault recording is not enabled for this bus.");
+            debugContext.Output.WriteLine("  No fault ring is configured for this bus.");
             return CommandResult.Ok();
         }
+
+        BusLogCommand.EnsureRecordingEnabled(debugContext.Bus, debugContext.Output);
 
         debugContext.Output.WriteLine("Bus Fault Status:");
         debugContext.Output.WriteLine();
