@@ -109,7 +109,7 @@ public static partial class Instructions
         {
             byte opCycles = 0;
             addressingMode(cpu);
-            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
+            cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase)) | ProcessorStatusFlags.R;
             opCycles++; // Pull P
             byte lo = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull PC low byte

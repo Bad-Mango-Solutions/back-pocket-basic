@@ -266,7 +266,7 @@ public static partial class Instructions
             opCycles++; // Push PC high byte
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
             opCycles++; // Push PC low byte
-            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B));
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B | ProcessorStatusFlags.R));
             opCycles++; // Push P
 
             cpu.Registers.P |= ProcessorStatusFlags.I;
