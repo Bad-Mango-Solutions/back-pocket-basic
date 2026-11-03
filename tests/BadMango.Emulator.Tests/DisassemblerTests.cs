@@ -212,19 +212,29 @@ public class DisassemblerTests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies that illegal opcodes have None instruction.
+    /// Verifies that on WDC 65C02, there are no illegal opcodes.
     /// </summary>
+    /// <remarks>
+    /// On the WDC 65C02, all 256 opcodes have defined behavior. For example,
+    /// $FF is BBS7, not an illegal opcode. The unused slots (like column-B)
+    /// are explicit NOPs.
+    /// </remarks>
     [Test]
-    public void BuildOpcodeInfoTable_IllegalOpcode_HasNoneInstruction()
+    public void BuildOpcodeInfoTable_65C02_NoIllegalOpcodes()
     {
         // Act
         var table = OpcodeTableAnalyzer.BuildOpcodeInfoTable(opcodeTable);
 
-        // 0x02 is an illegal opcode on 65C02
-        var info = table[0x02];
-
-        // Assert
-        Assert.That(info.Instruction, Is.EqualTo(CpuInstructions.None));
+        // On WDC 65C02, all 256 opcodes should have defined instructions
+        // (none should have CpuInstructions.None)
+        for (int opcode = 0; opcode < 256; opcode++)
+        {
+            var info = table[(byte)opcode];
+            Assert.That(
+                info.Instruction,
+                Is.Not.EqualTo(CpuInstructions.None),
+                $"Opcode ${opcode:X2} should have a valid instruction");
+        }
     }
 
     #endregion
@@ -557,19 +567,29 @@ public class DisassemblerTests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies that Disassembler handles illegal opcodes.
+    /// Verifies that Disassembler correctly handles BBS7 ($FF).
     /// </summary>
+    /// <remarks>
+    /// On the WDC 65C02, all 256 opcodes have defined behavior.
+    /// $FF is BBS7, not an illegal opcode.
+    /// </remarks>
     [Test]
-    public void Disassembler_IllegalOpcode_HasNoneInstruction()
+    public void Disassembler_BBS7_Opcode_IsRecognized()
     {
-        // Arrange
-        Write(0x1000, 0x02); // Illegal opcode
+        // Arrange: BBS7 $80,+4
+        Write(0x1000, 0xFF); // BBS7
+        Write(0x1001, 0x80); // Zero page address
+        Write(0x1002, 0x04); // Relative offset
 
         // Act
         var instruction = disassembler.DisassembleInstruction(0x1000);
 
         // Assert
-        Assert.That(instruction.Instruction, Is.EqualTo(CpuInstructions.None));
+        Assert.Multiple(() =>
+        {
+            Assert.That(instruction.Instruction, Is.EqualTo(CpuInstructions.BBS));
+            Assert.That(instruction.TotalLength, Is.EqualTo(3));
+        });
     }
 
     /// <summary>

@@ -68,6 +68,8 @@ public sealed partial class MachineBuilder
     private long clockSpeedHz;
     private Func<IEventContext, ICpu>? cpuFactory;
     private ProfilePathResolver? profilePathResolver;
+    private Serilog.ILogger? logger;
+    private int faultRingCapacity = BusFaultRing.DefaultCapacity;
 
     /// <summary>
     /// Creates a new <see cref="MachineBuilder"/> instance with pre-configured system services.
@@ -145,6 +147,40 @@ public sealed partial class MachineBuilder
         }
 
         addressSpaceBits = bits;
+        return this;
+    }
+
+    /// <summary>
+    /// Injects a Serilog logger that the bus and supporting infrastructure
+    /// can use to emit diagnostic messages (e.g. bus fault warnings).
+    /// </summary>
+    /// <param name="logger">
+    /// The logger instance. Passing <see langword="null"/> falls back to a
+    /// sink-less logger so the bus never reaches for the static
+    /// <c>Log.Logger</c> facade from library code.
+    /// </param>
+    /// <returns>This builder instance for method chaining.</returns>
+    public MachineBuilder WithLogger(Serilog.ILogger? logger)
+    {
+        this.logger = logger;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the capacity of the <see cref="BusFaultRing"/> attached to the
+    /// memory bus and registered as a machine component.
+    /// </summary>
+    /// <param name="capacity">
+    /// Maximum number of faults retained in the ring. Must be positive.
+    /// </param>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="capacity"/> is less than one.
+    /// </exception>
+    public MachineBuilder WithBusFaultRingCapacity(int capacity)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        faultRingCapacity = capacity;
         return this;
     }
 
@@ -824,7 +860,11 @@ public sealed partial class MachineBuilder
         var scheduler = new Scheduler();
         var signals = new SignalBus();
         var devices = new DeviceRegistry();
-        var bus = new MainBus(addressSpaceBits);
+
+        // Wire up the bus fault ring + logger so the bus can record and
+        // describe faults instead of silently returning floating-bus values.
+        var faultRing = new BusFaultRing(faultRingCapacity);
+        var bus = new MainBus(addressSpaceBits, logger, faultRing);
 
         // Apply memory configurations (base RAM mappings, device layer setup)
         foreach (var configure in memoryConfigurations)
@@ -885,6 +925,10 @@ public sealed partial class MachineBuilder
         {
             machine.AddComponent(component);
         }
+
+        // Register the bus fault ring as a machine component so debug
+        // commands (fault, buslog) can resolve it via GetComponent.
+        machine.AddComponent(faultRing);
 
         // Add scheduled devices
         foreach (var device in scheduledDevices)

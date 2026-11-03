@@ -562,6 +562,108 @@ public class Extended80ColumnDeviceTests
         });
     }
 
+    /// <summary>
+    /// Regression test for the ProDOS auxiliary-RAM probe bug: when the
+    /// $0080-$00B5 boot helper toggles WRCARDRAM (`STA $C005`) and
+    /// RDCARDRAM (`STA $C003`) on to enable auxiliary RAM, then writes to
+    /// WRMAINRAM (`STA $C004`) and RDMAINRAM (`STA $C002`) to switch
+    /// back to main RAM, the AUX_RAM layer must deactivate cleanly and
+    /// reveal main RAM at pages $1-$B. Previously the base mapping was
+    /// never saved, so deactivating the AUX_RAM layer "paged out" all
+    /// RAM above the zero-page composite and the CPU executed garbage
+    /// from unmapped memory.
+    /// </summary>
+    [Test]
+    public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
+    {
+        // Arrange: build a machine with main RAM at $0000-$BFFF and the
+        // Extended 80-Column device installed (matching pocket2e-a2-enh).
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+
+        // Stamp distinctive bytes at the page-1 boundaries we care about.
+        mainRamPhysical.AsSpan()[0x1000] = 0x11;
+        mainRamPhysical.AsSpan()[0xB000] = 0xBB;
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
+
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+
+        var bus = machine.Bus;
+        var context = CreateTestContext();
+
+        // Sanity: at power-on, pages $1 and $B should map to main RAM.
+        Assert.Multiple(() =>
+        {
+            for (int page = 0x1; page <= 0xB; page++)
+            {
+                ref readonly var entry = ref bus.GetPageEntryByIndex(page);
+                Assert.That(entry.Target, Is.Not.Null, $"Page ${page:X} should be mapped to main RAM at power-on");
+                Assert.That(entry.RegionTag, Is.EqualTo(RegionTag.Ram), $"Page ${page:X} should be RAM at power-on");
+            }
+        });
+
+        // Act: emulate ProDOS aux probe at $0084-$00B1:
+        //   STA $C005  (WRCARDRAM: writes go to aux RAM)
+        //   STA $C003  (RDCARDRAM: reads come from aux RAM)
+        //   STA $C004  (WRMAINRAM: writes go back to main RAM)
+        //   STA $C002  (RDMAINRAM: reads come back from main RAM)
+        dispatcher.Write(0x05, 0x00, in context);
+        dispatcher.Write(0x03, 0x00, in context);
+
+        Assert.That(device.IsRamRdEnabled, Is.True, "RAMRD should be on after probe-enable");
+        Assert.That(device.IsRamWrtEnabled, Is.True, "RAMWRT should be on after probe-enable");
+
+        dispatcher.Write(0x04, 0x00, in context);
+        dispatcher.Write(0x02, 0x00, in context);
+
+        Assert.That(device.IsRamRdEnabled, Is.False, "RAMRD should be off after probe-disable");
+        Assert.That(device.IsRamWrtEnabled, Is.False, "RAMWRT should be off after probe-disable");
+
+        // Assert: pages $1-$B must still resolve to main RAM (not "Unknown"/null).
+        Assert.Multiple(() =>
+        {
+            for (int page = 0x1; page <= 0xB; page++)
+            {
+                ref readonly var entry = ref bus.GetPageEntryByIndex(page);
+                Assert.That(entry.Target, Is.Not.Null, $"Page ${page:X} target must not be null after aux toggle off");
+                Assert.That(entry.RegionTag, Is.EqualTo(RegionTag.Ram), $"Page ${page:X} region tag should be Ram after aux toggle off");
+                Assert.That(entry.Perms, Is.EqualTo(PagePerms.All), $"Page ${page:X} should be RWX after aux toggle off");
+            }
+        });
+
+        // And reading through the bus should hit the main-RAM bytes we stamped.
+        var readAccess = CreateBusAccess(0x1000, AccessIntent.DataRead);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "$1000 should read main RAM byte after aux toggle off");
+        readAccess = CreateBusAccess(0xB000, AccessIntent.DataRead);
+        Assert.That(bus.Read8(readAccess), Is.EqualTo(0xBB), "$B000 should read main RAM byte after aux toggle off");
+    }
+
     private static BusAccess CreateTestContext(bool isSideEffectFree = false)
     {
         var flags = isSideEffectFree ? AccessFlags.NoSideEffects : AccessFlags.None;

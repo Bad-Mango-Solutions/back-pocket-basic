@@ -185,4 +185,81 @@ public partial class DebugCommandsTests
         var command = new BusLogCommand();
         Assert.That(command.Aliases, Is.EquivalentTo(new[] { "bl" }));
     }
+
+    /// <summary>
+    /// Verifies that bus fault recording is off until the <c>buslog</c>
+    /// command is first used, and that using it enables recording.
+    /// </summary>
+    [Test]
+    public void BusLogCommand_FirstUse_EnablesFaultRecording()
+    {
+        var ringBus = new MainBus(16, faultRecorder: new BusFaultRing());
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, ringBus, disassembler);
+        Assert.That(ringBus.FaultRecordingEnabled, Is.False, "Recording must be off by default");
+
+        var result = new BusLogCommand().Execute(context, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(ringBus.FaultRecordingEnabled, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("recording enabled"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <c>buslog off</c> disables recording and <c>buslog on</c>
+    /// re-enables it, and that faults are captured only while enabled.
+    /// </summary>
+    [Test]
+    public void BusLogCommand_OnOff_TogglesFaultRecording()
+    {
+        var ring = new BusFaultRing();
+        var ringBus = new MainBus(16, faultRecorder: ring);
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, ringBus, disassembler);
+        var command = new BusLogCommand();
+        var access = new BusAccess(
+            Address: 0x5000,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DataRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.None);
+
+        var on = command.Execute(context, ["on"]);
+        ringBus.TryRead8(access);
+        var off = command.Execute(context, ["off"]);
+        bool enabledAfterOff = ringBus.FaultRecordingEnabled;
+        ringBus.TryRead8(access);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(on.Success, Is.True);
+            Assert.That(off.Success, Is.True);
+            Assert.That(enabledAfterOff, Is.False);
+            Assert.That(ring.Count, Is.EqualTo(1), "Only the fault raised while recording was on is captured");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the <c>fault</c> command enables bus fault recording.
+    /// </summary>
+    [Test]
+    public void FaultCommand_FirstUse_EnablesFaultRecording()
+    {
+        var ringBus = new MainBus(16, faultRecorder: new BusFaultRing());
+        var context = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, ringBus, disassembler);
+
+        var result = new FaultCommand().Execute(context, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(ringBus.FaultRecordingEnabled, Is.True);
+            Assert.That(outputWriter.ToString(), Does.Contain("No fault recorded"));
+        });
+    }
 }

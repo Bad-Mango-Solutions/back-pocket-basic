@@ -36,12 +36,15 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.IndirectX)] = 1,
         [nameof(AddressingModes.IndirectY)] = 1,
         [nameof(AddressingModes.IndirectYWrite)] = 1,
+        [nameof(AddressingModes.ZeroPageIndirect)] = 1,
         [nameof(AddressingModes.Absolute)] = 2,
         [nameof(AddressingModes.AbsoluteX)] = 2,
         [nameof(AddressingModes.AbsoluteY)] = 2,
         [nameof(AddressingModes.AbsoluteXWrite)] = 2,
         [nameof(AddressingModes.AbsoluteYWrite)] = 2,
         [nameof(AddressingModes.Indirect)] = 2,
+        [nameof(AddressingModes.AbsoluteIndirectX)] = 2,
+        [nameof(AddressingModes.ZeroPageRelative)] = 2,
     };
 
     /// <summary>
@@ -59,12 +62,15 @@ public static class OpcodeTableAnalyzer
         [nameof(AddressingModes.IndirectX)] = CpuAddressingModes.IndirectX,
         [nameof(AddressingModes.IndirectY)] = CpuAddressingModes.IndirectY,
         [nameof(AddressingModes.IndirectYWrite)] = CpuAddressingModes.IndirectY, // Write variant maps to same mode
+        [nameof(AddressingModes.ZeroPageIndirect)] = CpuAddressingModes.ZeroPageIndirect,
         [nameof(AddressingModes.Absolute)] = CpuAddressingModes.Absolute,
         [nameof(AddressingModes.AbsoluteX)] = CpuAddressingModes.AbsoluteX,
         [nameof(AddressingModes.AbsoluteY)] = CpuAddressingModes.AbsoluteY,
         [nameof(AddressingModes.AbsoluteXWrite)] = CpuAddressingModes.AbsoluteX, // Write variant maps to same mode
         [nameof(AddressingModes.AbsoluteYWrite)] = CpuAddressingModes.AbsoluteY, // Write variant maps to same mode
         [nameof(AddressingModes.Indirect)] = CpuAddressingModes.Indirect,
+        [nameof(AddressingModes.AbsoluteIndirectX)] = CpuAddressingModes.AbsoluteIndirectX,
+        [nameof(AddressingModes.ZeroPageRelative)] = CpuAddressingModes.ZeroPageRelative,
     };
 
     /// <summary>
@@ -172,6 +178,12 @@ public static class OpcodeTableAnalyzer
         map["LSRa"] = CpuInstructions.LSR;
         map["ROLa"] = CpuInstructions.ROL;
         map["RORa"] = CpuInstructions.ROR;
+
+        // BIT #imm has a separate factory (BITImmediate) because it has different
+        // flag semantics (only Z is updated; N and V are preserved). The
+        // disassembler should still display it as "BIT" — the immediate operand
+        // is what distinguishes the variant visually.
+        map["BITImmediate"] = CpuInstructions.BIT;
 
         return map;
     }

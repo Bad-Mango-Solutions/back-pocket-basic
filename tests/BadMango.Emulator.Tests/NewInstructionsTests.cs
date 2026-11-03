@@ -1055,6 +1055,141 @@ public class NewInstructionsTests : CpuTestBase
 
     #endregion
 
+    #region Decimal-Mode (BCD) ADC/SBC Flag Tests (65C02)
+
+    /// <summary>
+    /// Per the checklist: SED; LDA #$09; CLC; ADC #$01 → A=$10, Z=0, N=0, C=0, V=0;
+    /// takes one extra cycle over binary mode (65C02 decimal-mode correction).
+    /// </summary>
+    [Test]
+    public void ADC_DecimalMode_NinePlusOne_ProducesBcdTen()
+    {
+        Write(0x1000, 0x01);
+        SetupCpu(pc: 0x1000, a: 0x09, p: FlagD, cycles: 0);
+
+        var handler = Instructions.ADC(AddressingModes.Immediate);
+        handler(Cpu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x10), "BCD 09 + 01 should yield BCD 10");
+            Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0), "Z should be clear");
+            Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "N should be clear");
+            Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "C should be clear (no decimal carry)");
+            Assert.That(Cpu.Registers.P & FlagV, Is.EqualTo((ProcessorStatusFlags)0), "V should be clear");
+        });
+    }
+
+    /// <summary>
+    /// BCD 99 + 01 = (1)00 — Z=1, C=1, N=0 on the 65C02 (NMOS leaves these undefined).
+    /// </summary>
+    [Test]
+    public void ADC_DecimalMode_NinetyNinePlusOne_SetsZeroAndCarry()
+    {
+        Write(0x1000, 0x01);
+        SetupCpu(pc: 0x1000, a: 0x99, p: FlagD, cycles: 0);
+
+        var handler = Instructions.ADC(AddressingModes.Immediate);
+        handler(Cpu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x00));
+            Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo(FlagZ), "Z should be set");
+            Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "C should be set (BCD overflow)");
+            Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0), "N should be clear");
+        });
+    }
+
+    /// <summary>
+    /// BCD ADC takes one extra cycle on 65C02 compared to binary mode.
+    /// </summary>
+    [Test]
+    public void ADC_DecimalMode_ConsumesOneExtraCycle()
+    {
+        Write(0x1000, 0x01);
+        SetupCpu(pc: 0x1000, a: 0x09, p: 0, cycles: 0);
+        var binHandler = Instructions.ADC(AddressingModes.Immediate);
+        ulong binBefore = Cpu.Registers.TCU;
+        binHandler(Cpu);
+        ulong binDelta = Cpu.Registers.TCU - binBefore;
+
+        Write(0x2000, 0x01);
+        SetupCpu(pc: 0x2000, a: 0x09, p: FlagD, cycles: 0);
+        var decHandler = Instructions.ADC(AddressingModes.Immediate);
+        ulong decBefore = Cpu.Registers.TCU;
+        decHandler(Cpu);
+        ulong decDelta = Cpu.Registers.TCU - decBefore;
+
+        Assert.That(decDelta, Is.EqualTo(binDelta + 1UL), "Decimal-mode ADC should take 1 extra cycle on 65C02");
+    }
+
+    /// <summary>
+    /// BCD SBC: 50 - 25 = 25, with carry set (no borrow) at start.
+    /// </summary>
+    [Test]
+    public void SBC_DecimalMode_FiftyMinusTwentyFive_ProducesBcdTwentyFive()
+    {
+        Write(0x1000, 0x25);
+        SetupCpu(pc: 0x1000, a: 0x50, p: FlagD | FlagC, cycles: 0);
+
+        var handler = Instructions.SBC(AddressingModes.Immediate);
+        handler(Cpu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x25));
+            Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo(FlagC), "C should be set (no borrow out)");
+            Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0));
+            Assert.That(Cpu.Registers.P & FlagN, Is.EqualTo((ProcessorStatusFlags)0));
+        });
+    }
+
+    /// <summary>
+    /// BCD SBC underflow: 00 - 01 with carry set = 99, C cleared (borrow out).
+    /// </summary>
+    [Test]
+    public void SBC_DecimalMode_ZeroMinusOne_ClearsCarryAndProducesNinetyNine()
+    {
+        Write(0x1000, 0x01);
+        SetupCpu(pc: 0x1000, a: 0x00, p: FlagD | FlagC, cycles: 0);
+
+        var handler = Instructions.SBC(AddressingModes.Immediate);
+        handler(Cpu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x99));
+            Assert.That(Cpu.Registers.P & FlagC, Is.EqualTo((ProcessorStatusFlags)0), "C should be clear (borrow out)");
+            Assert.That(Cpu.Registers.P & FlagZ, Is.EqualTo((ProcessorStatusFlags)0));
+        });
+    }
+
+    /// <summary>
+    /// BCD SBC takes one extra cycle on 65C02 compared to binary mode.
+    /// </summary>
+    [Test]
+    public void SBC_DecimalMode_ConsumesOneExtraCycle()
+    {
+        Write(0x1000, 0x01);
+        SetupCpu(pc: 0x1000, a: 0x50, p: FlagC, cycles: 0);
+        var binHandler = Instructions.SBC(AddressingModes.Immediate);
+        ulong binBefore = Cpu.Registers.TCU;
+        binHandler(Cpu);
+        ulong binDelta = Cpu.Registers.TCU - binBefore;
+
+        Write(0x2000, 0x01);
+        SetupCpu(pc: 0x2000, a: 0x50, p: FlagD | FlagC, cycles: 0);
+        var decHandler = Instructions.SBC(AddressingModes.Immediate);
+        ulong decBefore = Cpu.Registers.TCU;
+        decHandler(Cpu);
+        ulong decDelta = Cpu.Registers.TCU - decBefore;
+
+        Assert.That(decDelta, Is.EqualTo(binDelta + 1UL), "Decimal-mode SBC should take 1 extra cycle on 65C02");
+    }
+
+    #endregion
+
     /// <summary>
     /// Sets up the CPU registers for testing with the specified values.
     /// </summary>
