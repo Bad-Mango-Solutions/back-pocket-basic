@@ -43,7 +43,6 @@ public class TrapRegistryTests
     [Test]
     public void IsEmpty_TracksRegistrations()
     {
-        var registry = new TrapRegistry();
         TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
         Assert.That(registry.IsEmpty, Is.True, "new registry");
 
