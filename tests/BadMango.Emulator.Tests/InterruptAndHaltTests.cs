@@ -264,28 +264,35 @@ public class InterruptAndHaltTests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies that WAI does not resume on masked IRQ.
+    /// Verifies that WAI wakes on an asserted IRQ even when the interrupt mask is set,
+    /// but does not vector until the mask is cleared.
     /// </summary>
     [Test]
-    public void WAI_DoesNotResumeOnMaskedIRQ()
+    public void WAI_WakesOnMaskedIRQWithoutVectoring()
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000); // Reset vector
         WriteWord(0xFFFE, 0x2000); // IRQ vector
         Write(0x1000, 0x78);       // SEI - Set I flag
         Write(0x1001, 0xCB);       // WAI
+        Write(0x1002, 0xEA);       // NOP
         Cpu.Reset();
 
         // Act
         Cpu.Step(); // Execute SEI
-        Cpu.Step(); // Execute WAI - CPU halts
-        Cpu.SignalIRQ(); // Signal IRQ (should be masked)
-        var result = Cpu.Step();
-        int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
+        Cpu.Step(); // Execute WAI - CPU halts, PC is now 0x1002
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted after WAI");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should point at the instruction after WAI");
+
+        Cpu.SignalIRQ();
+        Cpu.Step(); // Resume execution at the next instruction, not the IRQ vector
 
         // Assert
-        Assert.That(Cpu.Halted, Is.True, "CPU should remain halted");
-        Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed while halted");
+        Assert.That(Cpu.Halted, Is.False, "CPU should no longer be halted after the IRQ wake-up");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance past NOP after the wake-up");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.Not.EqualTo(0x2000), "IRQ vector should not be taken while I is set");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should remain set");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be cleared");
     }
 
     /// <summary>
@@ -632,7 +639,6 @@ public class InterruptAndHaltTests : CpuTestBase
     }
 
     #endregion
-
     #region Pushed Status Bit 5 (65C02)
 
     /// <summary>
