@@ -116,9 +116,10 @@ public static partial class Instructions
 
             if (bitIsReset)
             {
-                // Branch taken
-                Addr oldPC = cpu.Registers.PC.GetAddr();
-                Addr newPC = (Addr)(oldPC + offset);
+                // Branch taken. Use 16-bit PC math so the target wraps
+                // $FFFF -> $0000 like the 65C02 (mirrors Instructions.Branch.cs).
+                Word oldPC = cpu.Registers.PC.GetWord();
+                Word newPC = (Word)(oldPC + offset);
 
                 // Check for page crossing
                 if ((oldPC & 0xFF00) != (newPC & 0xFF00))
@@ -126,7 +127,7 @@ public static partial class Instructions
                     opCycles++; // Page cross penalty
                 }
 
-                cpu.Registers.PC.SetAddr(newPC);
+                cpu.Registers.PC.SetWord(newPC);
                 opCycles++; // Branch taken cycle
             }
 
@@ -175,9 +176,10 @@ public static partial class Instructions
 
             if (bitIsSet)
             {
-                // Branch taken
-                Addr oldPC = cpu.Registers.PC.GetAddr();
-                Addr newPC = (Addr)(oldPC + offset);
+                // Branch taken. Use 16-bit PC math so the target wraps
+                // $FFFF -> $0000 like the 65C02 (mirrors Instructions.Branch.cs).
+                Word oldPC = cpu.Registers.PC.GetWord();
+                Word newPC = (Word)(oldPC + offset);
 
                 // Check for page crossing
                 if ((oldPC & 0xFF00) != (newPC & 0xFF00))
@@ -185,7 +187,7 @@ public static partial class Instructions
                     opCycles++; // Page cross penalty
                 }
 
-                cpu.Registers.PC.SetAddr(newPC);
+                cpu.Registers.PC.SetWord(newPC);
                 opCycles++; // Branch taken cycle
             }
 

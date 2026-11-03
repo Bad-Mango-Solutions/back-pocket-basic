@@ -172,6 +172,34 @@ public class Cpu65C02BitOpcodesTests : CpuTestBase
         Assert.That(Cpu.Registers.P, Is.EqualTo((ProcessorStatusFlags)0xFF), "Flags should be unchanged");
     }
 
+    /// <summary>
+    /// Verifies BBR0 branch targets wrap at the 16-bit boundary ($FFFF to $0000)
+    /// instead of escaping the 64KB PC space.
+    /// </summary>
+    [Test]
+    public void BBR0_BranchTargetWrapsAt64K()
+    {
+        // Arrange: BBR0 $80,+$7F at $FFF0 with bit 0 clear; PC after fetch is $FFF3,
+        // so the target $FFF3 + $7F = $10072 must wrap to $0072.
+        WriteWord(0xFFFC, 0x1000);
+        Write(0xFFF0, 0x0F); // BBR0 $zp,rel
+        Write(0xFFF1, 0x80);
+        Write(0xFFF2, 0x7F);
+        Write(0x0080, 0x00);
+        Cpu.Reset();
+        Cpu.Registers.PC.SetWord(0xFFF0);
+
+        // Act
+        Cpu.Step();
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x0072), "Branch target should wrap to $0072");
+            Assert.That(Cpu.Registers.PC.GetAddr(), Is.EqualTo(0x0072u), "PC must stay within 16 bits");
+        });
+    }
+
     #endregion
 
     #region BBS Tests
@@ -241,6 +269,34 @@ public class Cpu65C02BitOpcodesTests : CpuTestBase
 
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x100F), "Should branch backward: $1013 + (-4) = $100F");
+    }
+
+    /// <summary>
+    /// Verifies BBS0 branch targets wrap at the 16-bit boundary ($FFFF to $0000)
+    /// instead of escaping the 64KB PC space.
+    /// </summary>
+    [Test]
+    public void BBS0_BranchTargetWrapsAt64K()
+    {
+        // Arrange: BBS0 $80,+$7F at $FFF0 with bit 0 set; PC after fetch is $FFF3,
+        // so the target $FFF3 + $7F = $10072 must wrap to $0072.
+        WriteWord(0xFFFC, 0x1000);
+        Write(0xFFF0, 0x8F); // BBS0 $zp,rel
+        Write(0xFFF1, 0x80);
+        Write(0xFFF2, 0x7F);
+        Write(0x0080, 0x01);
+        Cpu.Reset();
+        Cpu.Registers.PC.SetWord(0xFFF0);
+
+        // Act
+        Cpu.Step();
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x0072), "Branch target should wrap to $0072");
+            Assert.That(Cpu.Registers.PC.GetAddr(), Is.EqualTo(0x0072u), "PC must stay within 16 bits");
+        });
     }
 
     #endregion
