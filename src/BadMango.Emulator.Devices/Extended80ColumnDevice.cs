@@ -271,6 +271,22 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         bus = context.Bus;
 
+        // Save the current page table entries for $1000-$BFFF as base mappings.
+        // This must be done during Initialize (not ConfigureMemory) because RAM
+        // and ROM regions are mapped AFTER memory configurations in
+        // MachineBuilder.Build(). At this point, main RAM is properly mapped
+        // and we can save it as the base mapping that will be restored whenever
+        // the AUX_RAM / AUX_HIRES1 layers are deactivated (i.e. when RAMRD and
+        // RAMWRT both go off). Without this, deactivating the auxiliary RAM
+        // layer would leave pages $1-$B with the default empty page entry,
+        // effectively "paging out" all main RAM above the zero page composite.
+        // See LanguageCardDevice for the same pattern at $D000-$FFFF.
+        if (bus is MainBus mainBus && layersConfigured)
+        {
+            // Pages $1 through $B (11 pages covering $1000-$BFFF)
+            mainBus.SaveBaseMappingRange(0x1, 0xB);
+        }
+
         // Get the video device from the machine context
         videoDevice = context.GetComponent<IVideoDevice>();
 

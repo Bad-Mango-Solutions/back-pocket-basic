@@ -621,36 +621,52 @@ public class Cpu65C02Tests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies that IllegalOpcode halts the CPU.
+    /// Verifies that the WDC 65C02 has all 256 opcodes defined (no illegal opcodes).
     /// </summary>
+    /// <remarks>
+    /// The WDC W65C02S defines behavior for all 256 opcodes. Previously,
+    /// $FF was unimplemented and used to test illegal opcode handling,
+    /// but it is now correctly implemented as BBS7. Per the WDC spec,
+    /// there are no illegal opcodes on the 65C02 - all unused slots are
+    /// defined as specific NOP variants with documented cycle counts.
+    /// This test verifies that $FF (BBS7) executes without halting.
+    /// </remarks>
     [Test]
-    public void IllegalOpcode_HaltsCpu()
+    public void BBS7_DoesNotHaltCpu()
     {
-        // Arrange
+        // Arrange: BBS7 $80,+0 (should not branch since bit 7 is clear)
         WriteWord(0xFFFC, 0x1000);
-        Write(0x1000, 0x02); // Illegal opcode (not implemented)
+        Write(0x1000, 0xFF); // BBS7 $zp,rel
+        Write(0x1001, 0x80); // Zero page address
+        Write(0x1002, 0x00); // Relative offset +0
+        Write(0x0080, 0x7F); // Bit 7 is clear
         Cpu.Reset();
 
         // Act
         var result = Cpu.Step();
-        int cycles = (int)result.CyclesConsumed.Value;
 
         // Assert
-        Assert.That(Cpu.Halted, Is.True);
-        Assert.That(cycles, Is.EqualTo(1)); // 1 cycle for fetching illegal opcode
+        Assert.That(Cpu.Halted, Is.False, "65C02 should not halt on BBS7 (all opcodes defined)");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance by 3 bytes");
     }
 
     /// <summary>
     /// Verifies that Step returns 0 when CPU is halted.
     /// </summary>
+    /// <remarks>
+    /// On the WDC W65C02S there are no illegal opcodes (all 256 slots are
+    /// defined per the datasheet — see <c>65C02 Apple II Emulator Correctness
+    /// Checklist.md</c>). The canonical way to halt the CPU is the WDC
+    /// extension <c>STP</c> (<c>$DB</c>), which stops processing until reset.
+    /// </remarks>
     [Test]
     public void Step_WhenHalted_ReturnsZero()
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000);
-        Write(0x1000, 0x02); // Illegal opcode
+        Write(0x1000, 0xDB); // STP - halts CPU until reset
         Cpu.Reset();
-        Cpu.Step(); // Execute illegal opcode to halt
+        Cpu.Step(); // Execute STP to halt
 
         // Act
         var result = Cpu.Step();

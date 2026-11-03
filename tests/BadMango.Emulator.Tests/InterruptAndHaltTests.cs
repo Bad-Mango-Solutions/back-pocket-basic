@@ -189,6 +189,88 @@ public class InterruptAndHaltTests : CpuTestBase
     }
     #endregion
 
+    #region D Flag Clearing Tests (65C02)
+
+    /// <summary>
+    /// Verifies that IRQ clears the D flag on 65C02.
+    /// </summary>
+    [Test]
+    public void IRQ_ClearsDFlagOn65C02()
+    {
+        // Arrange: Set decimal mode before IRQ
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI - Clear interrupt disable
+        Write(0x1001, 0xF8);       // SED - Set decimal mode
+        Write(0x1002, 0xEA);       // NOP - where we'll signal IRQ
+        Write(0x2000, 0x08);       // PHP at IRQ handler (to check D flag)
+        Write(0x2001, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // Execute CLI
+        Cpu.Step(); // Execute SED (D flag is now set)
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) != 0, Is.True, "D flag should be set after SED");
+
+        Cpu.SignalIRQ(); // Signal IRQ
+        Cpu.Step(); // Should process IRQ and clear D flag
+
+        // Assert
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) == 0, Is.True, "D flag should be cleared by IRQ on 65C02");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ handler");
+    }
+
+    /// <summary>
+    /// Verifies that NMI clears the D flag on 65C02.
+    /// </summary>
+    [Test]
+    public void NMI_ClearsDFlagOn65C02()
+    {
+        // Arrange: Set decimal mode before NMI
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0xF8);       // SED - Set decimal mode
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI at NMI handler
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // Execute SED (D flag is now set)
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) != 0, Is.True, "D flag should be set after SED");
+
+        Cpu.SignalNMI(); // Signal NMI
+        Cpu.Step(); // Should process NMI and clear D flag
+
+        // Assert
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) == 0, Is.True, "D flag should be cleared by NMI on 65C02");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI handler");
+    }
+
+    /// <summary>
+    /// Verifies that Reset clears the D flag on 65C02.
+    /// </summary>
+    [Test]
+    public void Reset_ClearsDFlagOn65C02()
+    {
+        // Arrange: Set decimal mode, then reset
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0xEA);       // NOP
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // Execute SED
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) != 0, Is.True, "D flag should be set after SED");
+
+        Cpu.Reset(); // Reset CPU
+
+        // Assert
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.D) == 0, Is.True, "D flag should be cleared by Reset on 65C02");
+        Assert.That((Cpu.Registers.P & ProcessorStatusFlags.I) != 0, Is.True, "I flag should be set by Reset");
+    }
+
+    #endregion
+
     #region WAI Tests
 
     /// <summary>

@@ -253,7 +253,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetDWord();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetDWord()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -293,7 +293,7 @@ public static class AddressingModes
         addrCycles += 2; // 2 cycles to fetch the 16-bit address
         cpu.Registers.PC.Advance(2);
 
-        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetDWord();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetDWord()) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -346,7 +346,15 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + effectiveOffset);
-        Addr address = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch.
+        // Per the 6502/65C02 spec, all zero-page indirect modes wrap within
+        // the zero page: if the pointer is at $FF, the high byte is read
+        // from $00, not $100 (which would hit the stack). Mirror the helper
+        // pattern used in ZeroPageIndirect: lo = Read8(ptr); hi = Read8((ptr & 0xFF00) | ((ptr + 1) & 0xFF)).
+        byte addrLo = cpu.Read8(pointerAddr);
+        byte addrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr address = (Addr)((addrHi << 8) | addrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
@@ -390,12 +398,20 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + zpOffset);
-        Addr baseAddr = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch.
+        // Per the 6502/65C02 spec, all zero-page indirect modes wrap within
+        // the zero page: if the pointer is at $FF, the high byte is read
+        // from $00, not $100 (which would hit the stack). Mirror the helper
+        // pattern used in ZeroPageIndirect.
+        byte ptrLo = cpu.Read8(pointerAddr);
+        byte ptrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr baseAddr = (Addr)((ptrHi << 8) | ptrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
         byte y = cpu.Registers.Y.GetByte();
-        Addr effectiveAddr = baseAddr + y;
+        Addr effectiveAddr = (baseAddr + y) & 0xFFFF;
 
         if ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))
         {
@@ -432,7 +448,7 @@ public static class AddressingModes
         Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         cpu.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + cpu.Registers.X.GetByte();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.X.GetByte()) & 0xFFFF;
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         cpu.Registers.TCU += addrCycles;
@@ -466,7 +482,7 @@ public static class AddressingModes
         Addr pc = cpu.Registers.PC.GetAddr();
         Addr baseAddr = cpu.Read16(pc);
         cpu.Registers.PC.Advance(2);
-        Addr effectiveAddr = baseAddr + cpu.Registers.Y.GetByte();
+        Addr effectiveAddr = (baseAddr + cpu.Registers.Y.GetByte()) & 0xFFFF;
         addrCycles += 3; // 2 cycles to fetch address + 1 extra for write operations
 
         cpu.Registers.TCU += addrCycles;
@@ -510,12 +526,17 @@ public static class AddressingModes
         }
 
         Addr pointerAddr = (Addr)(directPage + zpOffset);
-        Addr baseAddr = cpu.Read16(pointerAddr);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch
+        // (see IndirectY/ZeroPageIndirect for the rationale).
+        byte ptrLo = cpu.Read8(pointerAddr);
+        byte ptrHi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr baseAddr = (Addr)((ptrHi << 8) | ptrLo);
 
         addrCycles += 2; // 2 cycles to read pointer from ZP
 
         byte y = cpu.Registers.Y.GetByte();
-        Addr effectiveAddr = baseAddr + y;
+        Addr effectiveAddr = (baseAddr + y) & 0xFFFF;
 
         addrCycles++; // 1 extra cycle for write (always taken)
 
@@ -608,7 +629,10 @@ public static class AddressingModes
 
         Addr targetAddr = cpu.Read16(pointerAddr);
 
-        addrCycles += 2; // 2 cycles to read target
+        // 65C02 adds one extra cycle for JMP indirect compared to NMOS 6502.
+        // The NMOS bug (page-wrap on $xxFF) is fixed: Read16 correctly reads
+        // consecutive bytes across page boundaries.
+        addrCycles += 3; // 2 cycles to read target + 1 extra for 65C02
 
         cpu.Registers.TCU += addrCycles;
 
@@ -627,5 +651,159 @@ public static class AddressingModes
         }
 
         return targetAddr;
+    }
+
+    /// <summary>
+    /// Zero-page indirect addressing (65C02) - reads a 16-bit address from a zero-page pointer.
+    /// </summary>
+    /// <param name="cpu">The CPU instance providing state and memory access.</param>
+    /// <returns>The address read from the zero-page pointer.</returns>
+    /// <remarks>
+    /// The pointer fetch wraps within zero page: if the pointer is at $FF, the high byte
+    /// is read from $00, not $100. This is consistent with other zero-page indirect modes.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ZeroPageIndirect(ICpu cpu)
+    {
+        byte addrCycles = 0;
+        var pc = cpu.Registers.PC.GetAddr();
+        cpu.Registers.PC.Advance();
+        byte zpOffset = cpu.Read8(pc);
+        addrCycles++; // 1 cycle to fetch ZP address
+
+        Word directPage = cpu.Registers.D.GetWord();
+
+        if ((directPage & 0xFF) != 0)
+        {
+            addrCycles++;
+        }
+
+        Addr pointerAddr = (Addr)(directPage + zpOffset);
+
+        // Read 16-bit pointer with zero-page wrap on the high-byte fetch.
+        // Per the checklist, this uses the helper pattern for ZP indirect:
+        // lo = Read8(ptr); hi = Read8((ptr & 0xFF00) | ((ptr + 1) & 0xFF))
+        byte lo = cpu.Read8(pointerAddr);
+        byte hi = cpu.Read8((pointerAddr & 0xFF00) | ((pointerAddr + 1) & 0xFF));
+        Addr effectiveAddr = (Addr)((hi << 8) | lo);
+
+        addrCycles += 2; // 2 cycles to read pointer from ZP
+
+        cpu.Registers.TCU += addrCycles;
+
+        if (cpu.IsDebuggerAttached)
+        {
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.ZeroPageIndirect,
+                EffectiveAddress = effectiveAddr,
+                OperandSize = 1,
+                Operands = operands,
+            };
+        }
+
+        return effectiveAddr;
+    }
+
+    /// <summary>
+    /// Absolute indirect X addressing (65C02) - reads a 16-bit address from (abs + X).
+    /// </summary>
+    /// <param name="cpu">The CPU instance providing state and memory access.</param>
+    /// <returns>The address read from the indexed pointer.</returns>
+    /// <remarks>
+    /// Used by JMP ($abs,X). Unlike NMOS 6502's JMP ($abs) page-wrap bug, this mode
+    /// correctly reads the target address across page boundaries. Total 6 cycles.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr AbsoluteIndirectX(ICpu cpu)
+    {
+        byte addrCycles = 0;
+        Addr pc = cpu.Registers.PC.GetAddr();
+        Addr baseAddr = cpu.Read16(pc);
+        cpu.Registers.PC.Advance(2);
+        addrCycles += 2; // 2 cycles to fetch base address
+
+        Addr pointerAddr = (baseAddr + cpu.Registers.X.GetByte()) & 0xFFFF;
+        addrCycles++; // 1 cycle for indexing
+
+        Addr targetAddr = cpu.Read16(pointerAddr);
+        addrCycles += 2; // 2 cycles to read target address
+
+        // Total: 2 (fetch base) + 1 (index) + 2 (read target) = 5 cycles from addressing mode
+        // + 1 cycle from base instruction fetch = 6 cycles total for JMP ($abs,X)
+        cpu.Registers.TCU += addrCycles;
+
+        if (cpu.IsDebuggerAttached)
+        {
+            var operands = cpu.Trace.Operands;
+            operands[0] = (byte)(baseAddr & 0xFF);
+            operands[1] = (byte)((baseAddr >> 8) & 0xFF);
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.AbsoluteIndirectX,
+                EffectiveAddress = targetAddr,
+                OperandSize = 2,
+                Operands = operands,
+            };
+        }
+
+        return targetAddr;
+    }
+
+    /// <summary>
+    /// Zero Page Relative addressing (Rockwell/WDC 65C02) - fetches ZP address and relative offset.
+    /// </summary>
+    /// <param name="cpu">The CPU instance providing state and memory access.</param>
+    /// <returns>
+    /// Both operands packed into one value: bits 0-7 hold the zero-page address
+    /// (first operand) and bits 8-15 hold the raw relative offset byte (second
+    /// operand). Callers decode them as <c>(byte)(encoded &amp; 0xFF)</c> and
+    /// <c>(sbyte)((encoded &gt;&gt; 8) &amp; 0xFF)</c>.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Used by bit branch instructions (BBR/BBS). This is a 3-byte instruction format:
+    /// opcode + ZP address + signed relative offset. The addressing mode fetches both
+    /// operands, advances PC by 2, and adds 2 cycles.
+    /// </para>
+    /// <para>
+    /// The instruction handler is responsible for decoding the packed return value,
+    /// reading the zero-page byte, and performing the branch logic. The returned value
+    /// is not an effective address and must not be used as one.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Addr ZeroPageRelative(ICpu cpu)
+    {
+        byte addrCycles = 0;
+
+        // Fetch ZP address (first operand)
+        byte zpAddr = cpu.Read8(cpu.Registers.PC.addr++);
+        addrCycles++; // 1 cycle to fetch ZP address
+
+        // Fetch relative offset (second operand)
+        byte relativeOffset = cpu.Read8(cpu.Registers.PC.addr++);
+        addrCycles++; // 1 cycle to fetch relative offset
+
+        cpu.Registers.TCU += addrCycles;
+
+        if (cpu.IsDebuggerAttached)
+        {
+            var operands = cpu.Trace.Operands;
+            operands[0] = zpAddr;
+            operands[1] = relativeOffset;
+            cpu.Trace = cpu.Trace with
+            {
+                AddressingMode = CpuAddressingModes.ZeroPageRelative,
+                EffectiveAddress = zpAddr,
+                OperandSize = 2,
+                Operands = operands,
+            };
+        }
+
+        // Encode both operands in return value: low byte = ZP addr, next byte = offset
+        return (Addr)((relativeOffset << 8) | zpAddr);
     }
 }

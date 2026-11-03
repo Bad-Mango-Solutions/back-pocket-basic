@@ -236,4 +236,22 @@ public enum CpuInstructions : byte
 
     /// <summary>STP - Stop Processor (65C02).</summary>
     STP,
+
+    /// <summary>INA - Increment Accumulator (65C02), alternate mnemonic for INC A.</summary>
+    INA,
+
+    /// <summary>DEA - Decrement Accumulator (65C02), alternate mnemonic for DEC A.</summary>
+    DEA,
+
+    /// <summary>RMB - Reset Memory Bit (65C02).</summary>
+    RMB,
+
+    /// <summary>SMB - Set Memory Bit (65C02).</summary>
+    SMB,
+
+    /// <summary>BBR - Branch if Bit Reset (65C02).</summary>
+    BBR,
+
+    /// <summary>BBS - Branch if Bit Set (65C02).</summary>
+    BBS,
 }

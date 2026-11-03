@@ -34,7 +34,9 @@ public static partial class Instructions
 
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
-                // Decimal mode
+                // Decimal (BCD) mode — 65C02 sets N, V, Z correctly based on the final BCD
+                // result (NMOS 6502 left N/V/Z undefined in decimal mode). This costs one
+                // extra cycle compared to binary mode.
                 int al = (a & 0x0F) + (value & 0x0F) + carry;
                 if (al > 9)
                 {
@@ -42,6 +44,18 @@ public static partial class Instructions
                 }
 
                 int ah = (a >> 4) + (value >> 4) + (al > 15 ? 1 : 0);
+
+                // V flag is computed from the signed-binary overflow of the high-nibble
+                // sum BEFORE the BCD correction (WDC W65C02S behavior).
+                if ((((ah << 4) ^ a) & ~(a ^ value) & 0x80) != 0)
+                {
+                    cpu.Registers.P |= ProcessorStatusFlags.V;
+                }
+                else
+                {
+                    cpu.Registers.P &= ~ProcessorStatusFlags.V;
+                }
+
                 if (ah > 9)
                 {
                     ah += 6;
@@ -60,6 +74,7 @@ public static partial class Instructions
 
                 cpu.Registers.P.SetZeroAndNegative(result);
                 cpu.Registers.A.SetByte(result);
+                opCycles++; // 65C02: decimal mode takes one extra cycle for correct flag computation
             }
             else
             {
@@ -126,7 +141,8 @@ public static partial class Instructions
 
             if (((byte)cpu.Registers.P & (byte)ProcessorStatusFlags.D) != 0)
             {
-                // Decimal mode
+                // Decimal (BCD) mode — 65C02 sets N, V, Z correctly based on the final BCD
+                // result (NMOS 6502 left N/V/Z undefined in decimal mode). One extra cycle.
                 int al = (a & 0x0F) - (value & 0x0F) - borrow;
                 if (al < 0)
                 {
@@ -134,6 +150,20 @@ public static partial class Instructions
                 }
 
                 int ah = (a >> 4) - (value >> 4) - (al < 0 ? 1 : 0);
+
+                // V flag computed from signed-binary subtraction of the full bytes
+                // (WDC W65C02S: V reflects the signed-overflow of the binary
+                // subtraction A - value - borrow, taken before BCD correction).
+                int binResult = a - value - borrow;
+                if (((a ^ value) & (a ^ (binResult & 0xFF)) & 0x80) != 0)
+                {
+                    cpu.Registers.P |= ProcessorStatusFlags.V;
+                }
+                else
+                {
+                    cpu.Registers.P &= ~ProcessorStatusFlags.V;
+                }
+
                 if (ah < 0)
                 {
                     ah -= 6;
@@ -152,6 +182,7 @@ public static partial class Instructions
 
                 cpu.Registers.P.SetZeroAndNegative(result);
                 cpu.Registers.A.SetByte(result);
+                opCycles++; // 65C02: decimal mode takes one extra cycle for correct flag computation
             }
             else
             {
@@ -350,6 +381,60 @@ public static partial class Instructions
             if (cpu.IsDebuggerAttached)
             {
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEY };
+            }
+
+            cpu.Registers.TCU += 1;
+        };
+    }
+
+    /// <summary>
+    /// INA - Increment Accumulator instruction (65C02).
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes INC A.</returns>
+    /// <remarks>
+    /// Alternate mnemonic for INC A. Operates on the accumulator register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler INA(AddressingModeHandler addressingMode)
+    {
+        return cpu =>
+        {
+            addressingMode(cpu);
+            byte value = (byte)(cpu.Registers.A.GetByte() + 1);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
+
+            if (cpu.IsDebuggerAttached)
+            {
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INA };
+            }
+
+            cpu.Registers.TCU += 1;
+        };
+    }
+
+    /// <summary>
+    /// DEA - Decrement Accumulator instruction (65C02).
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
+    /// <returns>An opcode handler that executes DEC A.</returns>
+    /// <remarks>
+    /// Alternate mnemonic for DEC A. Operates on the accumulator register.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler DEA(AddressingModeHandler addressingMode)
+    {
+        return cpu =>
+        {
+            addressingMode(cpu);
+            byte value = (byte)(cpu.Registers.A.GetByte() - 1);
+            cpu.Registers.A.SetByte(value);
+            cpu.Registers.P.SetZeroAndNegative(value);
+
+            if (cpu.IsDebuggerAttached)
+            {
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEA };
             }
 
             cpu.Registers.TCU += 1;

@@ -44,6 +44,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xB9] = Instructions.LDA(AddressingModes.AbsoluteY);
         handlers[0xA1] = Instructions.LDA(AddressingModes.IndirectX);
         handlers[0xB1] = Instructions.LDA(AddressingModes.IndirectY);
+        handlers[0xB2] = Instructions.LDA(AddressingModes.ZeroPageIndirect); // 65C02
 
         // STA - Store Accumulator
         handlers[0x85] = Instructions.STA(AddressingModes.ZeroPage);
@@ -53,6 +54,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x99] = Instructions.STA(AddressingModes.AbsoluteYWrite); // Write version always takes max cycles
         handlers[0x81] = Instructions.STA(AddressingModes.IndirectX);
         handlers[0x91] = Instructions.STA(AddressingModes.IndirectYWrite); // Write version always takes max cycles
+        handlers[0x92] = Instructions.STA(AddressingModes.ZeroPageIndirect); // 65C02
 
         // LDX - Load X Register
         handlers[0xA2] = Instructions.LDX(AddressingModes.Immediate);
@@ -70,6 +72,90 @@ public static class Cpu65C02OpcodeTableBuilder
 
         // NOP - No Operation
         handlers[0xEA] = Instructions.NOP(AddressingModes.Implied);
+
+        // WDC W65C02S "unused" opcode NOP slots (see "65C02 Apple II Emulator
+        // Correctness Checklist.md" section 6 and the WDC W65C02S datasheet).
+        // All of these preserve flags and registers. Software (notably ProDOS
+        // 2.4.3's boot1 IIgs-detection idiom at $102C: `C2 02`) relies on these
+        // being silent NOPs on a 65C02 (whereas on a 65816 they decode as
+        // REP/SEP/PEI/MVN/JML/etc. and have observable side effects).
+        // The disassembler renders these as `NOP <operand>` via the standard
+        // Instructions.NOP + AddressingModes.* composition (reflection-based
+        // analysis in OpcodeTableAnalyzer).
+
+        // 2 bytes, 2 cycles: immediate-mode NOPs.
+        handlers[0x02] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x22] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x42] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x62] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0x82] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0xC2] = Instructions.NOP(AddressingModes.Immediate);
+        handlers[0xE2] = Instructions.NOP(AddressingModes.Immediate);
+
+        // 2 bytes, 3 cycles: zero-page NOP.
+        // (ZeroPage adds 1 cycle for the operand fetch; NOP adds 1; +1 from
+        //  base opcode fetch = 3 cycles total.)
+        handlers[0x44] = Instructions.NOP(AddressingModes.ZeroPage);
+
+        // 2 bytes, 4 cycles: zero-page,X NOPs.
+        // (ZeroPageX adds 2 cycles (fetch + indexing); NOP adds 1; +1 from
+        //  base opcode fetch = 4 cycles total.)
+        handlers[0x54] = Instructions.NOP(AddressingModes.ZeroPageX);
+        handlers[0xD4] = Instructions.NOP(AddressingModes.ZeroPageX);
+        handlers[0xF4] = Instructions.NOP(AddressingModes.ZeroPageX);
+
+        // 3 bytes, 4 cycles: absolute NOPs.
+        // (Absolute adds 2 cycles for the 16-bit operand fetch; NOP adds 1;
+        //  +1 from base opcode fetch = 4 cycles total.)
+        handlers[0xDC] = Instructions.NOP(AddressingModes.Absolute);
+        handlers[0xFC] = Instructions.NOP(AddressingModes.Absolute);
+
+        // 3 bytes, 8 cycles: "loud" absolute NOP. Per the WDC datasheet this is
+        // the only unused-slot NOP that consumes 8 cycles (versus 4 for the
+        // other 3-byte absolute NOPs). Modelled with extra instruction cycles
+        // so the PC advances by 3 and the bus arbiter sees the correct cycle
+        // pressure; the actual bus read at the formed address is not performed
+        // since no shipping 65C02 software in scope for this emulator relies on
+        // the side effect.
+        handlers[0x5C] = Instructions.NOP(AddressingModes.Absolute, instructionCycles: 5);
+
+        // 1 byte, 1 cycle: column-3 single-cycle NOPs. These are the slots
+        // reserved by WDC for future expansion; on the 65C02 they fully decode
+        // in a single cycle with no side effects (no operand fetch, no PC
+        // advance beyond the opcode byte itself).
+        handlers[0x03] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x13] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x23] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x33] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x43] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x53] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x63] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x73] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x83] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x93] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xA3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xB3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xC3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xD3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xE3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xF3] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+
+        // 1 byte, 1 cycle: column-B single-cycle NOPs. Additional reserved slots
+        // per WDC datasheet; same behavior as column-3 (no operand, no side effects).
+        handlers[0x0B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x1B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x2B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x3B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x4B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x5B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x6B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x7B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x8B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0x9B] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xAB] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xBB] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xEB] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
+        handlers[0xFB] = Instructions.NOP(AddressingModes.Implied, instructionCycles: 0);
 
         // STX - Store X Register
         handlers[0x86] = Instructions.STX(AddressingModes.ZeroPage);
@@ -120,9 +206,51 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xCB] = Instructions.WAI(AddressingModes.Implied); // Wait for Interrupt
         handlers[0xDB] = Instructions.STP(AddressingModes.Implied); // Stop Processor
 
+        // Rockwell/WDC Bit Manipulation Instructions (RMB, SMB, BBR, BBS)
+        // Reset Memory Bit (RMB0-RMB7)
+        handlers[0x07] = Instructions.RMB(AddressingModes.ZeroPage, 0);
+        handlers[0x17] = Instructions.RMB(AddressingModes.ZeroPage, 1);
+        handlers[0x27] = Instructions.RMB(AddressingModes.ZeroPage, 2);
+        handlers[0x37] = Instructions.RMB(AddressingModes.ZeroPage, 3);
+        handlers[0x47] = Instructions.RMB(AddressingModes.ZeroPage, 4);
+        handlers[0x57] = Instructions.RMB(AddressingModes.ZeroPage, 5);
+        handlers[0x67] = Instructions.RMB(AddressingModes.ZeroPage, 6);
+        handlers[0x77] = Instructions.RMB(AddressingModes.ZeroPage, 7);
+
+        // Set Memory Bit (SMB0-SMB7)
+        handlers[0x87] = Instructions.SMB(AddressingModes.ZeroPage, 0);
+        handlers[0x97] = Instructions.SMB(AddressingModes.ZeroPage, 1);
+        handlers[0xA7] = Instructions.SMB(AddressingModes.ZeroPage, 2);
+        handlers[0xB7] = Instructions.SMB(AddressingModes.ZeroPage, 3);
+        handlers[0xC7] = Instructions.SMB(AddressingModes.ZeroPage, 4);
+        handlers[0xD7] = Instructions.SMB(AddressingModes.ZeroPage, 5);
+        handlers[0xE7] = Instructions.SMB(AddressingModes.ZeroPage, 6);
+        handlers[0xF7] = Instructions.SMB(AddressingModes.ZeroPage, 7);
+
+        // Branch if Bit Reset (BBR0-BBR7)
+        handlers[0x0F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 0);
+        handlers[0x1F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 1);
+        handlers[0x2F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 2);
+        handlers[0x3F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 3);
+        handlers[0x4F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 4);
+        handlers[0x5F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 5);
+        handlers[0x6F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 6);
+        handlers[0x7F] = Instructions.BBR(AddressingModes.ZeroPageRelative, 7);
+
+        // Branch if Bit Set (BBS0-BBS7)
+        handlers[0x8F] = Instructions.BBS(AddressingModes.ZeroPageRelative, 0);
+        handlers[0x9F] = Instructions.BBS(AddressingModes.ZeroPageRelative, 1);
+        handlers[0xAF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 2);
+        handlers[0xBF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 3);
+        handlers[0xCF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 4);
+        handlers[0xDF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 5);
+        handlers[0xEF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 6);
+        handlers[0xFF] = Instructions.BBS(AddressingModes.ZeroPageRelative, 7);
+
         // Jump and Subroutine Operations
         handlers[0x4C] = Instructions.JMP(AddressingModes.Absolute); // Jump Absolute
         handlers[0x6C] = Instructions.JMP(AddressingModes.Indirect); // Jump Indirect
+        handlers[0x7C] = Instructions.JMP(AddressingModes.AbsoluteIndirectX); // Jump Indirect X (65C02)
         handlers[0x20] = Instructions.JSR(AddressingModes.Absolute); // Jump to Subroutine
         handlers[0x60] = Instructions.RTS(AddressingModes.Implied); // Return from Subroutine
         handlers[0x40] = Instructions.RTI(AddressingModes.Implied); // Return from Interrupt
@@ -136,6 +264,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xD9] = Instructions.CMP(AddressingModes.AbsoluteY);
         handlers[0xC1] = Instructions.CMP(AddressingModes.IndirectX);
         handlers[0xD1] = Instructions.CMP(AddressingModes.IndirectY);
+        handlers[0xD2] = Instructions.CMP(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0xE0] = Instructions.CPX(AddressingModes.Immediate);
         handlers[0xE4] = Instructions.CPX(AddressingModes.ZeroPage);
@@ -165,6 +294,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x79] = Instructions.ADC(AddressingModes.AbsoluteY);
         handlers[0x61] = Instructions.ADC(AddressingModes.IndirectX);
         handlers[0x71] = Instructions.ADC(AddressingModes.IndirectY);
+        handlers[0x72] = Instructions.ADC(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0xE9] = Instructions.SBC(AddressingModes.Immediate);
         handlers[0xE5] = Instructions.SBC(AddressingModes.ZeroPage);
@@ -174,16 +304,19 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0xF9] = Instructions.SBC(AddressingModes.AbsoluteY);
         handlers[0xE1] = Instructions.SBC(AddressingModes.IndirectX);
         handlers[0xF1] = Instructions.SBC(AddressingModes.IndirectY);
+        handlers[0xF2] = Instructions.SBC(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0xE6] = Instructions.INC(AddressingModes.ZeroPage);
         handlers[0xF6] = Instructions.INC(AddressingModes.ZeroPageX);
         handlers[0xEE] = Instructions.INC(AddressingModes.Absolute);
         handlers[0xFE] = Instructions.INC(AddressingModes.AbsoluteX);
+        handlers[0x1A] = Instructions.INA(AddressingModes.Accumulator); // 65C02 INC A
 
         handlers[0xC6] = Instructions.DEC(AddressingModes.ZeroPage);
         handlers[0xD6] = Instructions.DEC(AddressingModes.ZeroPageX);
         handlers[0xCE] = Instructions.DEC(AddressingModes.Absolute);
         handlers[0xDE] = Instructions.DEC(AddressingModes.AbsoluteX);
+        handlers[0x3A] = Instructions.DEA(AddressingModes.Accumulator); // 65C02 DEC A
 
         handlers[0xE8] = Instructions.INX(AddressingModes.Implied);
         handlers[0xC8] = Instructions.INY(AddressingModes.Implied);
@@ -199,6 +332,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x39] = Instructions.AND(AddressingModes.AbsoluteY);
         handlers[0x21] = Instructions.AND(AddressingModes.IndirectX);
         handlers[0x31] = Instructions.AND(AddressingModes.IndirectY);
+        handlers[0x32] = Instructions.AND(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0x09] = Instructions.ORA(AddressingModes.Immediate);
         handlers[0x05] = Instructions.ORA(AddressingModes.ZeroPage);
@@ -208,6 +342,7 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x19] = Instructions.ORA(AddressingModes.AbsoluteY);
         handlers[0x01] = Instructions.ORA(AddressingModes.IndirectX);
         handlers[0x11] = Instructions.ORA(AddressingModes.IndirectY);
+        handlers[0x12] = Instructions.ORA(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0x49] = Instructions.EOR(AddressingModes.Immediate);
         handlers[0x45] = Instructions.EOR(AddressingModes.ZeroPage);
@@ -217,9 +352,13 @@ public static class Cpu65C02OpcodeTableBuilder
         handlers[0x59] = Instructions.EOR(AddressingModes.AbsoluteY);
         handlers[0x41] = Instructions.EOR(AddressingModes.IndirectX);
         handlers[0x51] = Instructions.EOR(AddressingModes.IndirectY);
+        handlers[0x52] = Instructions.EOR(AddressingModes.ZeroPageIndirect); // 65C02
 
         handlers[0x24] = Instructions.BIT(AddressingModes.ZeroPage);
         handlers[0x2C] = Instructions.BIT(AddressingModes.Absolute);
+        handlers[0x34] = Instructions.BIT(AddressingModes.ZeroPageX); // 65C02
+        handlers[0x3C] = Instructions.BIT(AddressingModes.AbsoluteX); // 65C02
+        handlers[0x89] = Instructions.BITImmediate(AddressingModes.Immediate); // 65C02
 
         // Shift and Rotate Operations
         handlers[0x0A] = Instructions.ASLa(AddressingModes.Accumulator);

@@ -225,9 +225,24 @@ public static partial class Instructions
     /// NOP - No Operation instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
+    /// <param name="instructionCycles">
+    /// Number of cycles the instruction itself consumes in addition to the base
+    /// fetch cycle and any cycles already added by <paramref name="addressingMode"/>.
+    /// Defaults to <c>1</c>, which produces a standard 2-cycle Implied NOP
+    /// (<c>$EA</c>). Pass <c>0</c> for the WDC65C02S 1-byte/1-cycle "unused"
+    /// NOP slots (column 3 of the opcode matrix). Pass a larger value to cover
+    /// the 8-cycle "loud" NOP at <c>$5C</c>.
+    /// </param>
     /// <returns>An opcode handler that executes NOP.</returns>
+    /// <remarks>
+    /// All NOP variants — including the WDC65C02S unused opcode slots that
+    /// decode as multi-byte/multi-cycle NOPs — share this implementation. Flags
+    /// and registers are never modified. PC advancement and addressing-mode
+    /// cycles are entirely delegated to <paramref name="addressingMode"/>; the
+    /// only state mutation here is the TCU increment.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler NOP(AddressingModeHandler addressingMode)
+    public static OpcodeHandler NOP(AddressingModeHandler addressingMode, int instructionCycles = 1)
     {
         return cpu =>
         {
@@ -238,7 +253,10 @@ public static partial class Instructions
                 cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.NOP };
             }
 
-            cpu.Registers.TCU += 1; // NOP takes 2 cycles total (1 from fetch + 1 here)
+            if (instructionCycles > 0)
+            {
+                cpu.Registers.TCU += (ulong)instructionCycles;
+            }
         };
     }
 

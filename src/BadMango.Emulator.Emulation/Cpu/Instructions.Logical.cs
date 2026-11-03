@@ -174,4 +174,51 @@ public static partial class Instructions
             cpu.Registers.TCU += opCycles;
         };
     }
+
+    /// <summary>
+    /// BIT immediate - Bit Test instruction with immediate addressing (65C02).
+    /// </summary>
+    /// <param name="addressingMode">The addressing mode function to use (must be Immediate).</param>
+    /// <returns>An opcode handler that executes BIT #imm.</returns>
+    /// <remarks>
+    /// Unlike other BIT addressing modes, BIT #imm only affects the Z flag based on A AND operand.
+    /// The N and V flags are NOT modified (they are only set from memory bits 7 and 6 in non-immediate modes).
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OpcodeHandler BITImmediate(AddressingModeHandler addressingMode)
+    {
+        return cpu =>
+        {
+            byte opCycles = 0;
+            Addr address = addressingMode(cpu);
+            byte value = cpu.Read8(address);
+            opCycles++; // Memory read
+
+            byte result = (byte)(cpu.Registers.A.GetByte() & value);
+
+            // Set Z flag based on result. N and V are NOT affected for immediate mode.
+            if (result == 0)
+            {
+                cpu.Registers.P |= ProcessorStatusFlags.Z;
+            }
+            else
+            {
+                cpu.Registers.P &= ~ProcessorStatusFlags.Z;
+            }
+
+            if (cpu.IsDebuggerAttached)
+            {
+                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BIT };
+
+                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
+                {
+                    var operands = cpu.Trace.Operands;
+                    operands[0] = value;
+                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
+                }
+            }
+
+            cpu.Registers.TCU += opCycles;
+        };
+    }
 }
