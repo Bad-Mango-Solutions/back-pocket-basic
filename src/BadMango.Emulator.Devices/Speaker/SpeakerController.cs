@@ -60,8 +60,18 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         {
             audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
         }
-        catch
+        catch (Exception ex) when (ex is PlatformNotSupportedException
+                                       or ThreadStateException
+                                       or InvalidOperationException
+                                       or OutOfMemoryException)
         {
+            // WaveOutAudioOutput creates and starts a dedicated playback thread.
+            // Thread.Start throws PlatformNotSupportedException where threads are
+            // unavailable (e.g. single-threaded WASM), OutOfMemoryException when the
+            // runtime cannot allocate the thread, ThreadStateException if the thread
+            // is in an invalid state to start, and InvalidOperationException from the
+            // Thread.Name setter when a name is rejected.
+            // Fall back to silent output so the emulator still runs without audio.
             audioOutput = new NullAudioOutput();
         }
 
@@ -223,9 +233,12 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             audioBuffer.Clear();
             audioOutput.Play(samples);
         }
-        catch
+        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
         {
-            // Silently ignore playback errors
+            // The output can be disposed concurrently with a timer-driven flush
+            // (its wait handle then throws ObjectDisposedException), and audio
+            // backends may reject playback in an invalid device state. Drop the
+            // samples rather than crash the emulator.
             audioBuffer.Clear();
         }
     }
