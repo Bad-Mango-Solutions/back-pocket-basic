@@ -281,6 +281,54 @@ public class SpeakerControllerTests
         Assert.That(audioOutput.LastPlayedSamples, Has.Length.EqualTo(88_200));
     }
 
+    /// <summary>
+    /// Verifies the cycle-to-sample conversion follows the machine's configured clock rate.
+    /// </summary>
+    [Test]
+    public void Toggle_WithDoubledMachineClock_HalvesSamplesPerCycle()
+    {
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(1020UL);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        machine.Setup(m => m.ClockSpeedHz).Returns(2_040_968);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        // 1020 cycles at 2.040968 MHz is 0.5 ms, i.e. 22 samples at 44.1 kHz
+        // (the default 1.020484 MHz clock would yield 44).
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(22));
+    }
+
+    /// <summary>
+    /// Verifies the default Apple IIe clock rate is used when the machine reports no clock speed.
+    /// </summary>
+    [Test]
+    public void Toggle_WithUnthrottledMachineClock_UsesDefaultClockRate()
+    {
+        var scheduler = new Mock<IScheduler>();
+        scheduler.Setup(s => s.Now).Returns(1020UL);
+        var machine = new Mock<IMachine>();
+        machine.Setup(m => m.Scheduler).Returns(scheduler.Object);
+        machine.Setup(m => m.ClockSpeedHz).Returns(0);
+        controller.Initialize(machine.Object);
+
+        var first = CreateTestContext(cycle: 0);
+        var second = CreateTestContext(cycle: 1020);
+
+        _ = dispatcher.Read(0x30, in first);
+        _ = dispatcher.Read(0x30, in second);
+        controller.Flush();
+
+        Assert.That(audioOutput.TotalSamplesPlayed, Is.EqualTo(44));
+    }
+
     private static BusAccess CreateTestContext(ulong cycle)
     {
         return new(

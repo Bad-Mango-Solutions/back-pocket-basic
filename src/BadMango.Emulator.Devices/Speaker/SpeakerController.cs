@@ -33,7 +33,9 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private const int SampleRate = 44100;
     private const int BitsPerSample = 16;
     private const int Channels = 1;
-    private const ulong AppleIICyclesPerSecond = 1_020_484;
+    // Fallback emulated clock rate (Apple IIe NTSC, ~1.020484 MHz) used for
+    // cycle-to-sample conversion when the machine does not report a clock speed.
+    private const ulong DefaultCyclesPerSecond = 1_020_484;
     private const int SpeakerAmplitude = 8192;
     private const int MaxAudioBufferSamples = SampleRate * 2;
     private const int MaxPendingToggles = 16_384;
@@ -50,6 +52,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private ulong cycleToSampleRemainder;
     private bool disposed;
     private IScheduler? scheduler;
+    private IMachine? machine;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpeakerController"/> class.
@@ -136,6 +139,10 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         ArgumentNullException.ThrowIfNull(context);
         scheduler = context.Scheduler;
+
+        // Devices are initialized with the machine itself as the event context,
+        // which exposes the configured CPU clock rate used to derive pitch.
+        machine = context as IMachine;
     }
 
     /// <inheritdoc />
@@ -306,9 +313,16 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         ulong deltaCycles = cycle - lastRenderCycle;
         lastRenderCycle = cycle;
 
+        ulong cyclesPerSecond = GetCyclesPerSecond();
+        if (cycleToSampleRemainder >= cyclesPerSecond)
+        {
+            // The clock rate changed since the last segment; keep the carry in range.
+            cycleToSampleRemainder %= cyclesPerSecond;
+        }
+
         ulong numerator = (deltaCycles * (ulong)SampleRate) + cycleToSampleRemainder;
-        int sampleCount = (int)(numerator / AppleIICyclesPerSecond);
-        cycleToSampleRemainder = numerator % AppleIICyclesPerSecond;
+        int sampleCount = (int)(numerator / cyclesPerSecond);
+        cycleToSampleRemainder = numerator % cyclesPerSecond;
         if (sampleCount <= 0)
         {
             return;
@@ -316,6 +330,20 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
 
         short sampleValue = (short)(speakerState ? SpeakerAmplitude : -SpeakerAmplitude);
         AppendSamples(sampleValue, sampleCount);
+    }
+
+    /// <summary>
+    /// Gets the emulated clock rate used to convert cycle deltas to samples.
+    /// </summary>
+    /// <returns>
+    /// The machine's <see cref="IMachine.ClockSpeedHz"/> when it is positive; otherwise
+    /// <see cref="DefaultCyclesPerSecond"/>. A clock speed of zero means "unthrottled",
+    /// but the emulated hardware still nominally runs at the default rate.
+    /// </returns>
+    private ulong GetCyclesPerSecond()
+    {
+        long clockSpeedHz = machine?.ClockSpeedHz ?? 0;
+        return clockSpeedHz > 0 ? (ulong)clockSpeedHz : DefaultCyclesPerSecond;
     }
 
     private void AppendSamples(short sampleValue, int sampleCount)
