@@ -12,12 +12,12 @@
     
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Systems</Product>
+    <Product>BackPocket Emulator - Systems</Product>
     <Description>Complete system implementations for Apple II, IIgs, and 65832 configurations.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;apple2;systems</PackageTags>
   </PropertyGroup>

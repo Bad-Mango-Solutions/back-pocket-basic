@@ -1,6 +1,6 @@
 # Modular Solution Layout
 
-This document describes the modular project structure created for the 65832/Back Pocket BASIC Evolution.
+This document describes the modular project structure created for the 65832/BackPocket Emulator evolution.
 
 ## Project Structure
 

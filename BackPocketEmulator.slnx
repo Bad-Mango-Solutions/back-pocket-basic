@@ -11,8 +11,6 @@
     <File Path="StyleCop.json" />
   </Folder>
   <Folder Name="/config/Issue Templates/">
-    <File Path=".github/ISSUE_TEMPLATE/basic_bug_report.md" />
-    <File Path=".github/ISSUE_TEMPLATE/basic_feature_request.md" />
     <File Path=".github/ISSUE_TEMPLATE/emulator_bug_report.md" />
     <File Path=".github/ISSUE_TEMPLATE/emulator_feature_request.md" />
   </Folder>
@@ -47,14 +45,6 @@
     <File Path="reference/WDC 65816 Emulator Implementation DotNet.md" />
     <File Path="reference/WDC 65816 Emulator Reference.md" />
     <File Path="reference/WDC 65816 Instruction Set Reference.md" />
-  </Folder>
-  <Folder Name="/samples/">
-    <File Path="samples/demo.bas" />
-    <File Path="samples/fibonacci.bas" />
-    <File Path="samples/memory.bas" />
-    <File Path="samples/primes.bas" />
-    <File Path="samples/sleep.bas" />
-    <File Path="samples/speaker.bas" />
   </Folder>
   <Folder Name="/schemas/">
     <File Path="schemas/machine-profile.schema.json" />
@@ -106,10 +96,6 @@
     <File Path="specs/video/Pocket2e Debug Video Window (Avalonia) — Specification.md" />
   </Folder>
   <Folder Name="/src/" />
-  <Folder Name="/src/basic/">
-    <Project Path="src/BadMango.Basic.Console/BadMango.Basic.Console.csproj" />
-    <Project Path="src/BadMango.Basic/BadMango.Basic.csproj" />
-  </Folder>
   <Folder Name="/src/emulator/">
     <Project Path="src/BadMango.Emulator.Bus/BadMango.Emulator.Bus.csproj" />
     <Project Path="src/BadMango.Emulator.Devices/BadMango.Emulator.Devices.csproj" />
@@ -133,7 +119,6 @@
     <Project Path="src/BadMango.Emulator.UI/BadMango.Emulator.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/BadMango.Basic.Tests/BadMango.Basic.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Bus.Tests/BadMango.Emulator.Bus.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Configuration.Tests/BadMango.Emulator.Configuration.Tests.csproj" />
     <Project Path="tests/BadMango.Emulator.Debug.Infrastructure.Tests/BadMango.Emulator.Debug.Infrastructure.Tests.csproj" />

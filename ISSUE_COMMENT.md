@@ -46,8 +46,8 @@ git status                 # Should show clean working tree
 New clones will automatically use the `main` branch:
 
 ```bash
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 ```
 
 ### 📚 Documentation

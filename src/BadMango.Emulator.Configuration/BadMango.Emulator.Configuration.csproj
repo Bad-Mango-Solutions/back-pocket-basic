@@ -12,12 +12,12 @@
 
     <!-- Package Metadata -->
     <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Configuration</Product>
+    <Product>BackPocket Emulator - Configuration</Product>
     <Description>Shared configuration services, settings models, and path validation infrastructure for emulator components. Provides cross-cutting configuration functionality that can be consumed by Core, Devices, Systems, Debug, and UI projects.</Description>
     <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;configuration;settings;6502;apple2</PackageTags>
   </PropertyGroup>

@@ -45,7 +45,7 @@ public class InterruptAndHaltTests : CpuTestBase
 
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
-        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "I flag should be set after IRQ");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set after IRQ");
 
         // Verify stack contains pushed PC and P
         byte p = Read(0x01FD);      // P is at top of stack
@@ -77,6 +77,41 @@ public class InterruptAndHaltTests : CpuTestBase
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should have advanced normally, not jumped to IRQ");
     }
 
+    /// <summary>
+    /// Verifies that a held (level-asserted) IRQ line does not re-enter the handler
+    /// before RTI or CLI, and that the stack pointer remains stable inside the handler.
+    /// </summary>
+    [Test]
+    public void IRQ_HeldLine_DoesNotReenterHandlerBeforeRtiOrCli()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFE, 0x2000); // IRQ vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x2000, 0xEA);       // NOP
+        Write(0x2001, 0xEA);       // NOP
+        Write(0x2002, 0xEA);       // NOP
+        Write(0x2003, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // CLI
+        Cpu.SignalIRQ(); // IRQ line asserted and never released
+        Cpu.Step(); // Enter IRQ handler
+        byte spAfterEntry = Cpu.Registers.SP.GetByte();
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set on IRQ entry");
+
+        for (int i = 1; i <= 3; i++)
+        {
+            Cpu.Step();
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000 + i), $"Handler should not be re-entered (step {i})");
+            Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(spAfterEntry), $"SP should be stable inside handler (step {i})");
+        }
+    }
     #endregion
 
     #region NMI Tests
@@ -128,6 +163,30 @@ public class InterruptAndHaltTests : CpuTestBase
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector, not IRQ vector");
     }
 
+    /// <summary>
+    /// Verifies that NMI sets the I flag on entry.
+    /// </summary>
+    [Test]
+    public void NMI_SetsInterruptDisableFlag()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000); // Reset vector
+        WriteWord(0xFFFA, 0x3000); // NMI vector
+        Write(0x1000, 0x58);       // CLI
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // CLI
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "Precondition: I flag clear");
+        Cpu.SignalNMI();
+        Cpu.Step(); // Enter NMI handler
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should be set after NMI");
+    }
     #endregion
 
     #region D Flag Clearing Tests (65C02)
@@ -287,28 +346,35 @@ public class InterruptAndHaltTests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies that WAI does not resume on masked IRQ.
+    /// Verifies that WAI wakes on an asserted IRQ even when the interrupt mask is set,
+    /// but does not vector until the mask is cleared.
     /// </summary>
     [Test]
-    public void WAI_DoesNotResumeOnMaskedIRQ()
+    public void WAI_WakesOnMaskedIRQWithoutVectoring()
     {
         // Arrange
         WriteWord(0xFFFC, 0x1000); // Reset vector
         WriteWord(0xFFFE, 0x2000); // IRQ vector
         Write(0x1000, 0x78);       // SEI - Set I flag
         Write(0x1001, 0xCB);       // WAI
+        Write(0x1002, 0xEA);       // NOP
         Cpu.Reset();
 
         // Act
         Cpu.Step(); // Execute SEI
-        Cpu.Step(); // Execute WAI - CPU halts
-        Cpu.SignalIRQ(); // Signal IRQ (should be masked)
-        var result = Cpu.Step();
-        int cycles = (int)result.CyclesConsumed.Value; // Should remain halted
+        Cpu.Step(); // Execute WAI - CPU halts, PC is now 0x1002
+        Assert.That(Cpu.Halted, Is.True, "CPU should be halted after WAI");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should point at the instruction after WAI");
+
+        Cpu.SignalIRQ();
+        Cpu.Step(); // Resume execution at the next instruction, not the IRQ vector
 
         // Assert
-        Assert.That(Cpu.Halted, Is.True, "CPU should remain halted");
-        Assert.That(cycles, Is.EqualTo(0), "No cycles should be consumed while halted");
+        Assert.That(Cpu.Halted, Is.False, "CPU should no longer be halted after the IRQ wake-up");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance past NOP after the wake-up");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.Not.EqualTo(0x2000), "IRQ vector should not be taken while I is set");
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I flag should remain set");
+        Assert.That(Cpu.HaltReason, Is.EqualTo(HaltState.None), "Halt reason should be cleared");
     }
 
     /// <summary>
@@ -552,6 +618,223 @@ public class InterruptAndHaltTests : CpuTestBase
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
         Assert.That(Cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
+    }
+
+    #endregion
+
+    #region Decimal Flag On Interrupt Entry (65C02)
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on IRQ entry, pushes P with D set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void IRQ_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0x58);       // CLI
+        Write(0x1002, 0xEA);       // NOP
+        Write(0x2000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.Step(); // CLI
+        Cpu.SignalIRQ();
+        Cpu.Step(); // IRQ entry
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on IRQ entry");
+        Assert.That(Read(0x01FD) & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should be restored");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on NMI entry, pushes P with D set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void NMI_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFA, 0x3000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0xEA);       // NOP
+        Write(0x3000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.SignalNMI();
+        Cpu.Step(); // NMI entry
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on NMI entry");
+        Assert.That(Read(0x01FD) & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    /// <summary>
+    /// Verifies that the 65C02 clears D on BRK, pushes P with D and B set, and RTI restores D.
+    /// </summary>
+    [Test]
+    public void BRK_ClearsDecimalFlag_PushedStatusKeepsD_RtiRestoresD()
+    {
+        // Arrange
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xF8);       // SED
+        Write(0x1001, 0x00);       // BRK
+        Write(0x1002, 0xEA);       // signature byte
+        Write(0x1003, 0xEA);       // NOP (return address)
+        Write(0x2000, 0x40);       // RTI
+        Cpu.Reset();
+
+        // Act
+        Cpu.Step(); // SED
+        Cpu.Step(); // BRK
+
+        // Assert
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ/BRK vector");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo((ProcessorStatusFlags)0), "D flag should be cleared on BRK");
+        byte pushed = Read(0x01FD);
+        Assert.That(pushed & 0x08, Is.EqualTo(0x08), "Pushed P should retain D flag");
+        Assert.That(pushed & 0x10, Is.EqualTo(0x10), "Pushed P should have B flag set");
+
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should return past BRK signature byte");
+        Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
+    }
+
+    #endregion
+    #region Pushed Status Bit 5 (65C02)
+
+    /// <summary>
+    /// Verifies IRQ pushes P with bit 5 forced to 1 and B clear, even if bit 5 is clear in the register.
+    /// </summary>
+    [Test]
+    public void IRQ_PushedStatus_HasBit5Set_AndBClear()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xEA);
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalIRQ();
+        Cpu.Step();
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x20), "Pushed P should have bit 5 set and B clear");
+    }
+
+    /// <summary>
+    /// Verifies NMI pushes P with bit 5 forced to 1 and B clear.
+    /// </summary>
+    [Test]
+    public void NMI_PushedStatus_HasBit5Set_AndBClear()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFA, 0x3000);
+        Write(0x1000, 0xEA);
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalNMI();
+        Cpu.Step();
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3000), "PC should be at NMI vector");
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x20), "Pushed P should have bit 5 set and B clear");
+    }
+
+    /// <summary>
+    /// Verifies BRK pushes P with bit 5 and B both set.
+    /// </summary>
+    [Test]
+    public void BRK_PushedStatus_HasBit5AndBSet()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x00); // BRK
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.Step();
+
+        Assert.That(Read(0x01FD) & 0x30, Is.EqualTo(0x30), "Pushed P should have bit 5 and B set");
+    }
+
+    /// <summary>
+    /// Verifies PHP pushes P with bit 5 and B both set.
+    /// </summary>
+    [Test]
+    public void PHP_PushedStatus_HasBit5AndBSet()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0x08); // PHP
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.Step();
+
+        Assert.That(Read(0x01FF), Is.EqualTo(0x30), "Pushed P should be exactly bit 5 | B");
+    }
+
+    /// <summary>
+    /// Verifies PLP keeps bit 5 reading as 1 even when the pulled byte has it clear.
+    /// </summary>
+    [Test]
+    public void PLP_PulledStatus_KeepsBit5Set()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xA9); // LDA #$00
+        Write(0x1001, 0x00);
+        Write(0x1002, 0x48); // PHA
+        Write(0x1003, 0x28); // PLP
+        Cpu.Reset();
+
+        Cpu.Step();
+        Cpu.Step();
+        Cpu.Step();
+
+        Assert.That((byte)Cpu.Registers.P & 0x20, Is.EqualTo(0x20), "Bit 5 should read as 1 after PLP");
+    }
+
+    /// <summary>
+    /// Verifies RTI keeps bit 5 reading as 1 even when the pulled status byte has it clear.
+    /// </summary>
+    [Test]
+    public void RTI_PulledStatus_KeepsBit5Set()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0xEA);
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset();
+        Cpu.Registers.P = 0;
+
+        Cpu.SignalIRQ();
+        Cpu.Step(); // IRQ entry
+        Write(0x01FD, 0x00); // Overwrite pushed status with bit 5 clear
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
+        Cpu.Step(); // RTI
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1000), "PC should be restored");
+        Assert.That((byte)Cpu.Registers.P & 0x20, Is.EqualTo(0x20), "Bit 5 should read as 1 after RTI");
     }
 
     #endregion

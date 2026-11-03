@@ -284,11 +284,12 @@ public static partial class Instructions
             opCycles++; // Push PC high byte
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
             opCycles++; // Push PC low byte
-            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B));
+            cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B | ProcessorStatusFlags.R));
             opCycles++; // Push P
 
             cpu.Registers.P |= ProcessorStatusFlags.I;
-            cpu.Registers.P &= ~ProcessorStatusFlags.D; // 65C02 clears D on BRK
+            // 65C02: BRK clears the D flag after pushing status (NMOS 6502 does not)
+            cpu.Registers.P &= ~ProcessorStatusFlags.D;
             cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
             opCycles += 2; // Read IRQ vector (2 bytes)
 
