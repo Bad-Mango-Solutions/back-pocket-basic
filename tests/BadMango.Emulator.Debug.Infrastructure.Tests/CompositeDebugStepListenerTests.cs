@@ -1,0 +1,238 @@
+// <copyright file="CompositeDebugStepListenerTests.cs" company="Bad Mango Solutions">
+// Copyright (c) Bad Mango Solutions. All rights reserved.
+// </copyright>
+
+namespace BadMango.Emulator.Debug.Infrastructure.Tests;
+
+using Core.Debugger;
+using Core.Interfaces.Debugging;
+
+/// <summary>
+/// Unit tests for the <see cref="CompositeDebugStepListener"/> class.
+/// </summary>
+[TestFixture]
+public class CompositeDebugStepListenerTests
+{
+    /// <summary>
+    /// Verifies that an empty composite dispatches without error.
+    /// </summary>
+    [Test]
+    public void EmptyComposite_DispatchIsNoOp()
+    {
+        var composite = new CompositeDebugStepListener();
+        var args = new DebugStepEventArgs { PC = 0x1234 };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(composite.Count, Is.Zero);
+            Assert.DoesNotThrow(() => composite.OnBeforeStep(in args));
+            Assert.DoesNotThrow(() => composite.OnAfterStep(in args));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that both callbacks fan out to every listener in registration order.
+    /// </summary>
+    [Test]
+    public void Dispatch_InvokesListenersInRegistrationOrder()
+    {
+        var log = new List<string>();
+        var composite = new CompositeDebugStepListener();
+        composite.Add(new RecordingListener("a", log));
+        composite.Add(new RecordingListener("b", log));
+        var args = new DebugStepEventArgs { PC = 0x0300 };
+
+        composite.OnBeforeStep(in args);
+        composite.OnAfterStep(in args);
+
+        Assert.That(log, Is.EqualTo(new[] { "a:before:0300", "b:before:0300", "a:after:0300", "b:after:0300" }));
+    }
+
+    /// <summary>
+    /// Verifies that adding the same listener twice registers it once.
+    /// </summary>
+    [Test]
+    public void Add_Duplicate_IsIgnored()
+    {
+        var log = new List<string>();
+        var composite = new CompositeDebugStepListener();
+        var listener = new RecordingListener("a", log);
+
+        composite.Add(listener);
+        composite.Add(listener);
+        var args = default(DebugStepEventArgs);
+        composite.OnAfterStep(in args);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(composite.Count, Is.EqualTo(1));
+            Assert.That(log, Has.Count.EqualTo(1));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a removed listener no longer receives callbacks and that
+    /// removing an unknown listener returns false.
+    /// </summary>
+    [Test]
+    public void Remove_StopsDispatchToListener()
+    {
+        var log = new List<string>();
+        var composite = new CompositeDebugStepListener();
+        var a = new RecordingListener("a", log);
+        var b = new RecordingListener("b", log);
+        composite.Add(a);
+        composite.Add(b);
+
+        bool removed = composite.Remove(a);
+        bool removedAgain = composite.Remove(a);
+        var args = default(DebugStepEventArgs);
+        composite.OnAfterStep(in args);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(removed, Is.True);
+            Assert.That(removedAgain, Is.False);
+            Assert.That(composite.Count, Is.EqualTo(1));
+            Assert.That(log, Is.EqualTo(new[] { "b:after:0000" }));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a listener added during dispatch is not invoked for the
+    /// in-flight dispatch but is invoked on the next one (copy-on-write snapshot).
+    /// </summary>
+    [Test]
+    public void Add_DuringDispatch_TakesEffectOnNextDispatch()
+    {
+        var log = new List<string>();
+        var composite = new CompositeDebugStepListener();
+        var late = new RecordingListener("late", log);
+        composite.Add(new CallbackListener(() => composite.Add(late)));
+        var args = default(DebugStepEventArgs);
+
+        composite.OnAfterStep(in args);
+        Assert.That(log, Is.Empty, "listener added mid-dispatch must not run in that dispatch");
+
+        composite.OnAfterStep(in args);
+        Assert.That(log, Is.EqualTo(new[] { "late:after:0000" }));
+    }
+
+    /// <summary>
+    /// Verifies that a listener removed during dispatch still completes the
+    /// in-flight dispatch without error and is skipped afterwards.
+    /// </summary>
+    [Test]
+    public void Remove_DuringDispatch_TakesEffectOnNextDispatch()
+    {
+        var log = new List<string>();
+        var composite = new CompositeDebugStepListener();
+        var victim = new RecordingListener("victim", log);
+        composite.Add(new CallbackListener(() => composite.Remove(victim)));
+        composite.Add(victim);
+        var args = default(DebugStepEventArgs);
+
+        composite.OnAfterStep(in args);
+        composite.OnAfterStep(in args);
+
+        Assert.That(log, Is.EqualTo(new[] { "victim:after:0000" }));
+    }
+
+    /// <summary>
+    /// Verifies that steady-state dispatch does not allocate.
+    /// </summary>
+    [Test]
+    public void Dispatch_DoesNotAllocate()
+    {
+        var composite = new CompositeDebugStepListener();
+        composite.Add(new CallbackListener(() => { }));
+        composite.Add(new CallbackListener(() => { }));
+        var args = default(DebugStepEventArgs);
+
+        // Warm up (JIT) before measuring.
+        for (int i = 0; i < 1000; i++)
+        {
+            composite.OnBeforeStep(in args);
+            composite.OnAfterStep(in args);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 10_000; i++)
+        {
+            composite.OnBeforeStep(in args);
+            composite.OnAfterStep(in args);
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.That(allocated, Is.Zero);
+    }
+
+    /// <summary>
+    /// Verifies that concurrent add/remove while another thread dispatches does
+    /// not throw and leaves the composite in a consistent state.
+    /// </summary>
+    [Test]
+    public void ConcurrentMutationAndDispatch_IsSafe()
+    {
+        var composite = new CompositeDebugStepListener();
+        var listeners = Enumerable.Range(0, 8).Select(_ => new CallbackListener(() => { })).ToArray();
+        using var cts = new CancellationTokenSource();
+
+        var dispatcher = Task.Run(() =>
+        {
+            var args = default(DebugStepEventArgs);
+            while (!cts.IsCancellationRequested)
+            {
+                composite.OnBeforeStep(in args);
+                composite.OnAfterStep(in args);
+            }
+        });
+
+        for (int round = 0; round < 2000; round++)
+        {
+            var l = listeners[round % listeners.Length];
+            composite.Add(l);
+            if (round % 3 == 0)
+            {
+                composite.Remove(l);
+            }
+        }
+
+        cts.Cancel();
+        Assert.DoesNotThrowAsync(async () => await dispatcher);
+
+        foreach (var l in listeners)
+        {
+            composite.Remove(l);
+        }
+
+        Assert.That(composite.Count, Is.Zero);
+    }
+
+    /// <summary>
+    /// Listener that records each callback to a shared log.
+    /// </summary>
+    private sealed class RecordingListener(string name, List<string> log) : IDebugStepListener
+    {
+        /// <inheritdoc/>
+        public void OnBeforeStep(in DebugStepEventArgs eventData) => log.Add($"{name}:before:{eventData.PC:X4}");
+
+        /// <inheritdoc/>
+        public void OnAfterStep(in DebugStepEventArgs eventData) => log.Add($"{name}:after:{eventData.PC:X4}");
+    }
+
+    /// <summary>
+    /// Listener that runs a callback from <see cref="OnAfterStep"/>.
+    /// </summary>
+    private sealed class CallbackListener(Action onAfter) : IDebugStepListener
+    {
+        /// <inheritdoc/>
+        public void OnBeforeStep(in DebugStepEventArgs eventData)
+        {
+        }
+
+        /// <inheritdoc/>
+        public void OnAfterStep(in DebugStepEventArgs eventData) => onAfter();
+    }
+}
