@@ -211,6 +211,112 @@ public class CompositeDebugStepListenerTests
     }
 
     /// <summary>
+    /// Verifies that inactive activatable listeners are registered but not dispatched,
+    /// and become dispatched when they turn active.
+    /// </summary>
+    [Test]
+    public void ActivatableListener_DispatchedOnlyWhileActive()
+    {
+        var composite = new CompositeDebugStepListener();
+        var toggle = new ToggleListener();
+        composite.Add(toggle);
+        var args = default(DebugStepEventArgs);
+
+        composite.OnAfterStep(in args);
+        Assert.Multiple(() =>
+        {
+            Assert.That(composite.Count, Is.EqualTo(1));
+            Assert.That(composite.ActiveCount, Is.Zero);
+            Assert.That(composite.HasActiveListeners, Is.False);
+            Assert.That(toggle.AfterCount, Is.Zero);
+        });
+
+        toggle.SetActive(true);
+        composite.OnAfterStep(in args);
+        Assert.Multiple(() =>
+        {
+            Assert.That(composite.HasActiveListeners, Is.True);
+            Assert.That(toggle.AfterCount, Is.EqualTo(1));
+        });
+
+        toggle.SetActive(false);
+        composite.OnAfterStep(in args);
+        Assert.That(toggle.AfterCount, Is.EqualTo(1));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="CompositeDebugStepListener.ActiveListenersChanged"/>
+    /// is raised only when <see cref="CompositeDebugStepListener.HasActiveListeners"/> flips.
+    /// </summary>
+    [Test]
+    public void ActiveListenersChanged_RaisedOnlyOnTransitions()
+    {
+        var composite = new CompositeDebugStepListener();
+        var a = new ToggleListener();
+        var b = new ToggleListener();
+        var states = new List<bool>();
+        composite.ActiveListenersChanged += (_, _) => states.Add(composite.HasActiveListeners);
+
+        composite.Add(a);          // inactive add: no transition
+        composite.Add(b);          // inactive add: no transition
+        a.SetActive(true);         // false -> true
+        b.SetActive(true);         // still true: no event
+        a.SetActive(false);        // still true (b): no event
+        b.SetActive(false);        // true -> false
+        composite.Add(new RecordingListener("plain", [])); // plain listener: false -> true
+
+        Assert.That(states, Is.EqualTo(new[] { true, false, true }));
+    }
+
+    /// <summary>
+    /// Verifies that a removed activatable listener is unsubscribed and no longer
+    /// affects the composite.
+    /// </summary>
+    [Test]
+    public void Remove_ActivatableListener_Unsubscribes()
+    {
+        var composite = new CompositeDebugStepListener();
+        var toggle = new ToggleListener();
+        int raised = 0;
+        composite.Add(toggle);
+        composite.Remove(toggle);
+        composite.ActiveListenersChanged += (_, _) => raised++;
+
+        toggle.SetActive(true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(raised, Is.Zero);
+            Assert.That(composite.HasActiveListeners, Is.False);
+            Assert.That(toggle.SubscriberCount, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the real tracing listener and watchpoint manager report activity.
+    /// </summary>
+    [Test]
+    public void TracingAndWatchpoints_ReportActivityToComposite()
+    {
+        var composite = new CompositeDebugStepListener();
+        var tracing = new TracingDebugListener();
+        var watch = new WatchpointManager();
+        composite.Add(tracing);
+        composite.Add(watch);
+        Assert.That(composite.HasActiveListeners, Is.False);
+
+        tracing.IsEnabled = true;
+        Assert.That(composite.ActiveCount, Is.EqualTo(1));
+
+        watch.Add(0x10, WatchAccess.Read, stopOnHit: false);
+        Assert.That(composite.ActiveCount, Is.EqualTo(2));
+
+        tracing.IsEnabled = false;
+        watch.Remove(0x10);
+        Assert.That(composite.HasActiveListeners, Is.False);
+    }
+
+    /// <summary>
     /// Listener that records each callback to a shared log.
     /// </summary>
     private sealed class RecordingListener(string name, List<string> log) : IDebugStepListener
@@ -234,5 +340,60 @@ public class CompositeDebugStepListenerTests
 
         /// <inheritdoc/>
         public void OnAfterStep(in DebugStepEventArgs eventData) => onAfter();
+    }
+
+    /// <summary>
+    /// Activatable listener whose activity is controlled by the test.
+    /// </summary>
+    private sealed class ToggleListener : IActivatableDebugStepListener
+    {
+        private EventHandler? isActiveChanged;
+
+        /// <inheritdoc/>
+        public event EventHandler? IsActiveChanged
+        {
+            add
+            {
+                isActiveChanged += value;
+                SubscriberCount++;
+            }
+
+            remove
+            {
+                isActiveChanged -= value;
+                SubscriberCount--;
+            }
+        }
+
+        /// <inheritdoc/>
+        public bool IsActive { get; private set; }
+
+        /// <summary>
+        /// Gets the number of after-step callbacks received.
+        /// </summary>
+        public int AfterCount { get; private set; }
+
+        /// <summary>
+        /// Gets the number of current event subscribers.
+        /// </summary>
+        public int SubscriberCount { get; private set; }
+
+        /// <summary>
+        /// Sets activity and raises the change notification.
+        /// </summary>
+        /// <param name="active">The new activity state.</param>
+        public void SetActive(bool active)
+        {
+            IsActive = active;
+            isActiveChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <inheritdoc/>
+        public void OnBeforeStep(in DebugStepEventArgs eventData)
+        {
+        }
+
+        /// <inheritdoc/>
+        public void OnAfterStep(in DebugStepEventArgs eventData) => AfterCount++;
     }
 }

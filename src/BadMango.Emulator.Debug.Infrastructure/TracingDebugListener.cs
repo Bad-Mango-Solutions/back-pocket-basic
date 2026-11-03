@@ -29,7 +29,7 @@ using Core.Interfaces.Debugging;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class TracingDebugListener : IDebugStepListener
+public sealed class TracingDebugListener : IActivatableDebugStepListener
 {
     private readonly Lock syncLock = new();
     private TraceRecord[]? recordBuffer;
@@ -39,6 +39,9 @@ public sealed class TracingDebugListener : IDebugStepListener
     private StreamWriter? fileOutput;
     private bool isEnabled;
     private int maxBufferedRecords = 10000;
+
+    /// <inheritdoc/>
+    public event EventHandler? IsActiveChanged;
 
     /// <summary>
     /// Gets or sets a value indicating whether tracing is enabled.
@@ -50,8 +53,21 @@ public sealed class TracingDebugListener : IDebugStepListener
     public bool IsEnabled
     {
         get => isEnabled;
-        set => isEnabled = value;
+        set
+        {
+            if (isEnabled == value)
+            {
+                return;
+            }
+
+            isEnabled = value;
+            IsActiveChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>The tracing listener is active exactly while <see cref="IsEnabled"/> is <see langword="true"/>.</remarks>
+    public bool IsActive => isEnabled;
 
     /// <summary>
     /// Gets or sets the maximum number of records to buffer when not outputting immediately.

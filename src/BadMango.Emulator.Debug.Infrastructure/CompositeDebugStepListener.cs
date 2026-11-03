@@ -31,6 +31,13 @@ using Core.Interfaces.Debugging;
 /// A listener added or removed while a step is being dispatched takes effect on
 /// the next dispatch.
 /// </para>
+/// <para>
+/// Listeners implementing <see cref="IActivatableDebugStepListener"/> are only
+/// included in the dispatch snapshot while they report
+/// <see cref="IActivatableDebugStepListener.IsActive"/>; other listeners are always
+/// dispatched. <see cref="HasActiveListeners"/> and <see cref="ActiveListenersChanged"/>
+/// let the owner attach the composite to the CPU only while something needs it.
+/// </para>
 /// </remarks>
 public sealed class CompositeDebugStepListener : IDebugStepListener
 {
@@ -38,15 +45,60 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
     private readonly List<IDebugStepListener> listeners = [];
 
     /// <summary>
-    /// Immutable snapshot of <see cref="listeners"/> read by the per-instruction
-    /// callbacks. Replaced (never mutated) whenever the listener set changes.
+    /// Cached delegate so subscribe/unsubscribe use the same instance.
+    /// </summary>
+    private readonly EventHandler activityHandler;
+
+    /// <summary>
+    /// Immutable snapshot of the currently active listeners, read by the
+    /// per-instruction callbacks. Replaced (never mutated) whenever the listener
+    /// set or any listener's activity changes.
     /// </summary>
     private volatile IDebugStepListener[] snapshot = [];
 
     /// <summary>
-    /// Gets the number of registered listeners.
+    /// Initializes a new instance of the <see cref="CompositeDebugStepListener"/> class.
     /// </summary>
-    public int Count => snapshot.Length;
+    public CompositeDebugStepListener()
+    {
+        activityHandler = OnListenerActivityChanged;
+    }
+
+    /// <summary>
+    /// Raised when <see cref="HasActiveListeners"/> changes value.
+    /// </summary>
+    /// <remarks>
+    /// Raised on the thread that caused the change (an add/remove, or a listener
+    /// raising <see cref="IActivatableDebugStepListener.IsActiveChanged"/>), outside
+    /// the composite's internal lock. Handlers should re-read
+    /// <see cref="HasActiveListeners"/>.
+    /// </remarks>
+    public event EventHandler? ActiveListenersChanged;
+
+    /// <summary>
+    /// Gets the number of registered listeners, active or not.
+    /// </summary>
+    public int Count
+    {
+        get
+        {
+            lock (syncLock)
+            {
+                return listeners.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of registered listeners that are currently active and
+    /// therefore receive step callbacks.
+    /// </summary>
+    public int ActiveCount => snapshot.Length;
+
+    /// <summary>
+    /// Gets a value indicating whether at least one registered listener is active.
+    /// </summary>
+    public bool HasActiveListeners => snapshot.Length > 0;
 
     /// <summary>
     /// Adds a listener to the composite.
@@ -58,14 +110,24 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
     public void Add(IDebugStepListener listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
+        bool changed;
         lock (syncLock)
         {
-            if (!listeners.Contains(listener))
+            if (listeners.Contains(listener))
             {
-                listeners.Add(listener);
-                snapshot = [.. listeners];
+                return;
             }
+
+            listeners.Add(listener);
+            if (listener is IActivatableDebugStepListener activatable)
+            {
+                activatable.IsActiveChanged += activityHandler;
+            }
+
+            changed = RebuildSnapshot();
         }
+
+        RaiseIfChanged(changed);
     }
 
     /// <summary>
@@ -79,6 +141,7 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
     public bool Remove(IDebugStepListener listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
+        bool changed;
         lock (syncLock)
         {
             if (!listeners.Remove(listener))
@@ -86,9 +149,16 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
                 return false;
             }
 
-            snapshot = [.. listeners];
-            return true;
+            if (listener is IActivatableDebugStepListener activatable)
+            {
+                activatable.IsActiveChanged -= activityHandler;
+            }
+
+            changed = RebuildSnapshot();
         }
+
+        RaiseIfChanged(changed);
+        return true;
     }
 
     /// <inheritdoc/>
@@ -110,6 +180,39 @@ public sealed class CompositeDebugStepListener : IDebugStepListener
         for (int i = 0; i < current.Length; i++)
         {
             current[i].OnAfterStep(in eventData);
+        }
+    }
+
+    private static bool IsListenerActive(IDebugStepListener listener)
+        => listener is not IActivatableDebugStepListener activatable || activatable.IsActive;
+
+    private void OnListenerActivityChanged(object? sender, EventArgs e)
+    {
+        bool changed;
+        lock (syncLock)
+        {
+            changed = RebuildSnapshot();
+        }
+
+        RaiseIfChanged(changed);
+    }
+
+    /// <summary>
+    /// Rebuilds the active-listener snapshot. Must be called under <see cref="syncLock"/>.
+    /// </summary>
+    /// <returns><see langword="true"/> if <see cref="HasActiveListeners"/> changed.</returns>
+    private bool RebuildSnapshot()
+    {
+        bool hadActive = snapshot.Length > 0;
+        snapshot = [.. listeners.Where(IsListenerActive)];
+        return hadActive != (snapshot.Length > 0);
+    }
+
+    private void RaiseIfChanged(bool changed)
+    {
+        if (changed)
+        {
+            ActiveListenersChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }
