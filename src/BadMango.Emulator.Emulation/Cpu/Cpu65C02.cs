@@ -35,7 +35,35 @@ using Core.Debugger;
 public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
+
+    /// <summary>
+    /// The concrete scheduler, when the event context supplies one, so the
+    /// per-instruction <c>Advance</c> call is a direct (non-interface) call.
+    /// <see langword="null"/> for other <see cref="IScheduler"/> implementations.
+    /// </summary>
+    private readonly Scheduler? concreteScheduler;
+
+    /// <summary>
+    /// The concrete signal bus, when the event context supplies one, so the CPU can
+    /// test <see cref="SignalBus.AnyInterruptPending"/> instead of running the full
+    /// interrupt check every instruction. <see langword="null"/> for other
+    /// <see cref="Core.Interfaces.Signaling.ISignalBus"/> implementations.
+    /// </summary>
+    private readonly SignalBus? concreteSignals;
+
     private ITrapRegistry trapRegistry;
+
+    /// <summary>
+    /// The trap registry as its concrete type, when it is one, so the CPU can skip
+    /// the per-instruction lookup while it is empty.
+    /// </summary>
+    private TrapRegistry? concreteTrapRegistry;
+
+    /// <summary>
+    /// <see langword="true"/> when <see cref="trapRegistry"/> is <see cref="NullTrapRegistry"/>,
+    /// which never contains traps.
+    /// </summary>
+    private bool trapRegistryIsNull;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -46,7 +74,10 @@ public sealed class Cpu65C02 : CpuBase
         : base(context)
     {
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        concreteScheduler = context.Scheduler as Scheduler;
+        concreteSignals = context.Signals as SignalBus;
         trapRegistry = NullTrapRegistry.Instance;
+        trapRegistryIsNull = true;
     }
 
     /// <inheritdoc />
@@ -79,7 +110,12 @@ public sealed class Cpu65C02 : CpuBase
     public ITrapRegistry TrapRegistry
     {
         get => trapRegistry;
-        set => trapRegistry = value ?? NullTrapRegistry.Instance;
+        set
+        {
+            trapRegistry = value ?? NullTrapRegistry.Instance;
+            concreteTrapRegistry = trapRegistry as TrapRegistry;
+            trapRegistryIsNull = trapRegistry is NullTrapRegistry;
+        }
     }
 
     /// <inheritdoc/>
@@ -99,14 +135,17 @@ public sealed class Cpu65C02 : CpuBase
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
-        // Check for pending interrupts at instruction boundary using the signal bus
-        bool interruptProcessed = CheckInterrupts();
+        // Check for pending interrupts at instruction boundary using the signal bus.
+        // With the concrete SignalBus, a single cached flag tells us whether an NMI
+        // edge is pending or IRQ is asserted; if neither, CheckInterrupts would
+        // return false with no side effects, so skip it.
+        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts();
         if (interruptProcessed)
         {
             // Interrupt was processed, TCU was updated by ProcessInterrupt
             // Advance the scheduler by the TCU value
             Cycle interruptCycles = Registers.TCU;
-            EventContext.Scheduler.Advance(interruptCycles);
+            AdvanceScheduler(interruptCycles);
 
             // Clear TCU after advancing scheduler
             Registers.TCU = Cycle.Zero;
@@ -131,7 +170,9 @@ public sealed class Cpu65C02 : CpuBase
         // First perform an O(1) address check; only if a trap exists at this
         // address do we proceed with the more expensive context resolution
         // and handler invocation.
-        if (trapRegistry.ContainsAddress(pcBefore))
+        // The lookup is skipped entirely when the registry cannot contain traps
+        // (NullTrapRegistry, or an empty concrete TrapRegistry).
+        if (MayHaveTrapAt(pcBefore))
         {
             var trapResult = trapRegistry.TryExecute(pcBefore, this, Bus, EventContext);
             if (trapResult.Handled)
@@ -192,7 +233,7 @@ public sealed class Cpu65C02 : CpuBase
                 Cycle trapCycles = Registers.TCU;
 
                 // Advance the scheduler by the TCU value
-                EventContext.Scheduler.Advance(trapCycles);
+                AdvanceScheduler(trapCycles);
 
                 // Clear TCU after advancing scheduler
                 Registers.TCU = Cycle.Zero;
@@ -239,7 +280,7 @@ public sealed class Cpu65C02 : CpuBase
         Cycle instructionCycles = Registers.TCU;
 
         // Advance the scheduler by the TCU value (total cycles for this instruction)
-        EventContext.Scheduler.Advance(instructionCycles);
+        AdvanceScheduler(instructionCycles);
 
         // Notify debug listener after execution
         if (DebugListener is not null)
@@ -281,6 +322,30 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AdvanceScheduler(Cycle cycles)
+    {
+        if (concreteScheduler is not null)
+        {
+            concreteScheduler.Advance(cycles);
+        }
+        else
+        {
+            EventContext.Scheduler.Advance(cycles);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool MayHaveTrapAt(Addr address)
+    {
+        if (concreteTrapRegistry is not null)
+        {
+            return !concreteTrapRegistry.IsEmpty && concreteTrapRegistry.ContainsAddress(address);
+        }
+
+        return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte FetchByte()
     {

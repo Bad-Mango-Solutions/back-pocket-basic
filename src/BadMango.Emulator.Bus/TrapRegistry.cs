@@ -127,6 +127,19 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     /// <inheritdoc />
     public int Count => traps.Count;
 
+    /// <summary>
+    /// Gets a value indicating whether no trap addresses are registered.
+    /// </summary>
+    /// <remarks>
+    /// Cheap check used by the CPU to skip the per-instruction
+    /// <see cref="ContainsAddress"/> lookup when no traps exist.
+    /// </remarks>
+    public bool IsEmpty
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => trappedAddresses.Count == 0;
+    }
+
     /// <inheritdoc />
     public void Register(
         Addr address,

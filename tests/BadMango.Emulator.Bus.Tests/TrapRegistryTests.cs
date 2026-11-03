@@ -38,6 +38,29 @@ public class TrapRegistryTests
     // ─── Constructor Tests ──────────────────────────────────────────────────────
 
     /// <summary>
+    /// Verifies that IsEmpty reflects whether any trap address is registered.
+    /// </summary>
+    [Test]
+    public void IsEmpty_TracksRegistrations()
+    {
+        var registry = new TrapRegistry();
+        TrapHandler handler = (cpu, bus, ctx) => TrapResult.NotHandled;
+        Assert.That(registry.IsEmpty, Is.True, "new registry");
+
+        registry.Register(0xFDED, "COUT", TrapCategory.MonitorRom, handler);
+        Assert.That(registry.IsEmpty, Is.False, "after Register");
+
+        registry.Unregister(0xFDED);
+        Assert.That(registry.IsEmpty, Is.True, "after Unregister");
+
+        registry.RegisterLanguageCardRam(0xD000, "LC", TrapCategory.MonitorRom, handler);
+        Assert.That(registry.IsEmpty, Is.False, "after context-specific Register");
+
+        registry.Clear();
+        Assert.That(registry.IsEmpty, Is.True, "after Clear");
+    }
+
+    /// <summary>
     /// Verifies that the default constructor creates an empty registry.
     /// </summary>
     [Test]

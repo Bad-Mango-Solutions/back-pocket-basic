@@ -385,4 +385,75 @@ public class SignalBusTests
 
         Assert.That(bus.ConsumeNmiEdge(), Is.True, "New edge should be detected after full deassert/assert cycle");
     }
+
+    /// <summary>
+    /// Verifies that AnyInterruptPending tracks IRQ assertion across multiple devices.
+    /// </summary>
+    [Test]
+    public void AnyInterruptPending_TracksIrqAcrossDevices()
+    {
+        var bus = new SignalBus();
+        Assert.That(bus.AnyInterruptPending, Is.False, "new bus");
+
+        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
+        bus.Assert(SignalLine.IRQ, deviceId: 2, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.True, "IRQ asserted");
+
+        bus.Deassert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.True, "one device still asserting");
+
+        bus.Deassert(SignalLine.IRQ, deviceId: 2, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.False, "all devices released IRQ");
+    }
+
+    /// <summary>
+    /// Verifies that AnyInterruptPending follows the NMI edge, not the NMI level.
+    /// </summary>
+    [Test]
+    public void AnyInterruptPending_TracksNmiEdge()
+    {
+        var bus = new SignalBus();
+
+        bus.Assert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.True, "NMI edge pending");
+
+        Assert.That(bus.ConsumeNmiEdge(), Is.True);
+        Assert.That(bus.AnyInterruptPending, Is.False, "edge consumed while line still held");
+
+        bus.Deassert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that consuming the NMI edge leaves AnyInterruptPending set while IRQ is asserted.
+    /// </summary>
+    [Test]
+    public void AnyInterruptPending_ConsumeNmi_WithIrqStillAsserted()
+    {
+        var bus = new SignalBus();
+        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
+        bus.Assert(SignalLine.NMI, deviceId: 2, cycle: Cycle.Zero);
+
+        bus.ConsumeNmiEdge();
+
+        Assert.That(bus.AnyInterruptPending, Is.True);
+    }
+
+    /// <summary>
+    /// Verifies that non-interrupt lines do not affect AnyInterruptPending and Reset clears it.
+    /// </summary>
+    [Test]
+    public void AnyInterruptPending_IgnoresOtherLines_AndClearsOnReset()
+    {
+        var bus = new SignalBus();
+        bus.Assert(SignalLine.RDY, deviceId: 1, cycle: Cycle.Zero);
+        bus.Assert(SignalLine.DmaReq, deviceId: 1, cycle: Cycle.Zero);
+        Assert.That(bus.AnyInterruptPending, Is.False, "RDY/DMA are not interrupts");
+
+        bus.Assert(SignalLine.IRQ, deviceId: 1, cycle: Cycle.Zero);
+        bus.Assert(SignalLine.NMI, deviceId: 1, cycle: Cycle.Zero);
+        bus.Reset();
+
+        Assert.That(bus.AnyInterruptPending, Is.False, "Reset clears everything");
+    }
 }
