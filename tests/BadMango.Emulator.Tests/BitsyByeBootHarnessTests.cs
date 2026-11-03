@@ -30,12 +30,13 @@ using BadMango.Emulator.Storage.Media;
 /// <para>
 /// The test takes about a minute, so it is marked <c>[Explicit]</c> and
 /// does not run as part of the default test suite (including CI). It is
-/// also tagged <c>[Category("LongRunning")]</c> so it can be selected by
-/// category. Invoke it explicitly with:
+/// also tagged <c>[Category("LongRunning")]</c>. Explicit tests only run
+/// when selected by name (the NUnit adapter does not treat a category
+/// filter as an explicit selection), so invoke it with:
 /// </para>
 /// <code>
 /// dotnet test tests/BadMango.Emulator.Tests \
-///   --filter "TestCategory=LongRunning"
+///   --filter "FullyQualifiedName~BitsyByeBootHarnessTests"
 /// </code>
 /// <para><b>Agent-tunable knobs (environment variables):</b></para>
 /// <list type="bullet">
