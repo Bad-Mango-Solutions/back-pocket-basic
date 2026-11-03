@@ -608,11 +608,11 @@ public class Extended80ColumnDeviceTests
         mockCpu.Setup(c => c.Halted).Returns(false);
         var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
 
-        var device = machine.GetComponent<IExtended80ColumnDevice>()! as Extended80ColumnDevice;
-        Assert.That(device, Is.Not.Null, "Extended80ColumnDevice should be registered as a component");
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
 
         var dispatcher = new IOPageDispatcher();
-        device!.RegisterHandlers(dispatcher);
+        device.RegisterHandlers(dispatcher);
 
         var bus = machine.Bus;
         var context = CreateTestContext();

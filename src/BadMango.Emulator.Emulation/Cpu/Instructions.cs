@@ -288,6 +288,7 @@ public static partial class Instructions
             opCycles++; // Push P
 
             cpu.Registers.P |= ProcessorStatusFlags.I;
+
             // 65C02: BRK clears the D flag after pushing status (NMOS 6502 does not)
             cpu.Registers.P &= ~ProcessorStatusFlags.D;
             cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
