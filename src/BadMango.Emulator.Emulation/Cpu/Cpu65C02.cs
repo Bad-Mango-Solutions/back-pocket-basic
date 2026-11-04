@@ -58,6 +58,18 @@ public sealed class Cpu65C02 : CpuBase
     /// </summary>
     private bool interruptDisableSample;
 
+    /// <summary>
+    /// Set when the previous instruction modified I with the 65C02 delayed semantics and
+    /// the new value must be sampled only after the next instruction completes.
+    /// </summary>
+    private bool interruptDisableChangePending;
+
+    /// <summary>
+    /// The deferred interrupt-disable value that becomes visible at the next instruction boundary
+    /// after a CLI/SEI/PLP instruction completes.
+    /// </summary>
+    private bool interruptDisablePendingValue;
+
     private ITrapRegistry trapRegistry;
 
     /// <summary>
@@ -132,6 +144,8 @@ public sealed class Cpu65C02 : CpuBase
         // The CPU only resets its own state (registers, halt reason, stop flag).
         Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
         interruptDisableSample = Registers.P.IsInterruptDisabled();
+        interruptDisablePendingValue = interruptDisableSample;
+        interruptDisableChangePending = false;
         HaltReason = HaltState.None;
         ClearStopRequest();
     }
@@ -144,8 +158,8 @@ public sealed class Cpu65C02 : CpuBase
         Registers.TCU = Cycle.Zero;
 
         // Use the latched I state from the previous boundary for this poll. CLI/SEI/PLP
-        // change I during the current instruction, so the next boundary continues to see
-        // the prior value; RTI and interrupt entry update the sample immediately.
+        // change I during the current instruction, so the next boundary still sees the
+        // prior value; RTI and interrupt entry update the latched value immediately.
         bool irqMaskedAtBoundary = interruptDisableSample;
 
         // Check for pending interrupts at instruction boundary using the signal bus.
@@ -157,9 +171,6 @@ public sealed class Cpu65C02 : CpuBase
         {
             // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
             interruptDisableSample = Registers.P.IsInterruptDisabled();
-            interruptDisablePendingValue = interruptDisableSample;
-            interruptDisableChangedThisInstruction = false;
-            interruptDisableRestoredThisInstruction = false;
             interruptDisableChangePending = false;
 
             // Interrupt was processed, TCU was updated by ProcessInterrupt
@@ -298,35 +309,30 @@ public sealed class Cpu65C02 : CpuBase
 
         // Latch the I state for the next boundary. CLI/SEI/PLP modify I during this
         // instruction, but the new value must not be observed until the following boundary.
-        // RTI restores the flag immediately, so it updates the sample in-place instead of
+        // RTI restores the flag immediately, so it updates the sample immediately instead of
         // waiting for the next instruction.
+        bool currentI = Registers.P.IsInterruptDisabled();
         if (Trace.Instruction == CpuInstructions.RTI)
         {
-            interruptDisableSample = Registers.P.IsInterruptDisabled();
-            interruptDisablePendingValue = interruptDisableSample;
+            interruptDisableSample = currentI;
+            interruptDisablePendingValue = currentI;
             interruptDisableChangePending = false;
+        }
+        else if (Trace.Instruction is CpuInstructions.CLI or CpuInstructions.SEI or CpuInstructions.PLP)
+        {
+            interruptDisablePendingValue = currentI;
+            interruptDisableChangePending = true;
         }
         else if (interruptDisableChangePending)
         {
             interruptDisableSample = interruptDisablePendingValue;
-            interruptDisablePendingValue = false;
+            interruptDisablePendingValue = currentI;
             interruptDisableChangePending = false;
-
-            if (Trace.Instruction is CpuInstructions.CLI or CpuInstructions.SEI or CpuInstructions.PLP)
-            {
-                interruptDisablePendingValue = Registers.P.IsInterruptDisabled();
-                interruptDisableChangePending = true;
-            }
-        }
-        else if (Trace.Instruction is CpuInstructions.CLI or CpuInstructions.SEI or CpuInstructions.PLP)
-        {
-            interruptDisablePendingValue = Registers.P.IsInterruptDisabled();
-            interruptDisableChangePending = true;
         }
         else
         {
-            interruptDisableSample = Registers.P.IsInterruptDisabled();
-            interruptDisablePendingValue = interruptDisableSample;
+            interruptDisableSample = currentI;
+            interruptDisablePendingValue = currentI;
             interruptDisableChangePending = false;
         }
 
