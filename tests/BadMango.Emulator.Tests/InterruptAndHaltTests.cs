@@ -34,14 +34,18 @@ public class InterruptAndHaltTests : CpuTestBase
         WriteWord(0xFFFC, 0x1000); // Reset vector
         WriteWord(0xFFFE, 0x2000); // IRQ vector
         Write(0x1000, 0x58);       // CLI - Clear interrupt disable
-        Write(0x1001, 0xEA);       // NOP - where we'll signal IRQ
+        Write(0x1001, 0xEA);       // NOP - executes before the queued IRQ is taken
         Write(0x2000, 0x40);       // RTI at IRQ handler
         Cpu.Reset();
 
         // Act
         Cpu.Step(); // Execute CLI
-        Cpu.SignalIRQ(); // Signal IRQ
-        Cpu.Step(); // Should process IRQ instead of executing NOP
+        Cpu.SignalIRQ(); // IRQ remains asserted while the next instruction executes
+        Cpu.Step(); // NOP should execute before the IRQ is taken
+
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should advance past NOP before the IRQ is serviced");
+
+        Cpu.Step(); // Now the IRQ should be taken at the next boundary
 
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should be at IRQ vector");
@@ -51,8 +55,170 @@ public class InterruptAndHaltTests : CpuTestBase
         byte p = Read(0x01FD);      // P is at top of stack
         byte lo = Read(0x01FE);    // PC low byte
         byte hi = Read(0x01FF);    // PC high byte
-        Assert.That((hi << 8) | lo, Is.EqualTo(0x1001), "Pushed PC should point to NOP");
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1002), "Pushed PC should point to the next instruction after the NOP");
         Assert.That(p & 0x10, Is.EqualTo(0), "B flag should be clear in pushed P");
+    }
+
+    /// <summary>
+    /// Verifies that CLI has one-instruction latency before an already-pending IRQ is taken.
+    /// </summary>
+    [Test]
+    public void IRQ_TakenOneInstructionAfterCLI()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset();
+
+        Cpu.Step(); // CLI
+        Cpu.SignalIRQ();
+        Cpu.Step(); // NOP should still run
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+
+        Cpu.Step(); // IRQ is taken on the following boundary
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+    }
+
+    /// <summary>
+    /// Verifies that SEI does not mask an already-pending IRQ until the next boundary.
+    /// </summary>
+    [Test]
+    public void PendingIRQ_NotMaskedUntilNextBoundaryAfterSEI()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0xEA); // NOP
+        Write(0x1002, 0x78); // SEI
+        Write(0x1003, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset();
+
+        Cpu.Step(); // CLI
+        Cpu.Step(); // NOP - establishes I=0 at the next boundary
+        Cpu.Step(); // SEI
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True);
+
+        Cpu.SignalIRQ(); // IRQ becomes pending during SEI
+
+        Cpu.Step(); // Pending IRQ is taken at the next boundary before NOP executes
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+    }
+
+    /// <summary>
+    /// Verifies that PLP clears or sets I with one-instruction latency.
+    /// </summary>
+    [Test]
+    public void IRQ_TakenOneInstructionAfterPLPChangesI()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x28); // PLP
+        Write(0x1001, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Write(0x01FF, 0x00); // stack value with I cleared
+        Cpu.Reset();
+        Cpu.Registers.P = ProcessorStatusFlags.I | ProcessorStatusFlags.R;
+        Cpu.Registers.SP.SetByte(0xFE);
+
+        Cpu.Step(); // PLP should not clear I until next boundary
+        Cpu.SignalIRQ();
+        Cpu.Step(); // NOP still executes before IRQ is taken
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+
+        Cpu.Step(); // IRQ taken on the next boundary after the NOP
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+    }
+
+    /// <summary>
+    /// Verifies that with an IRQ held, <c>CLI; SEI</c> takes the IRQ right after SEI because
+    /// SEI polls using the I value from before it executed (cleared by CLI), and the pushed
+    /// status has I set by SEI.
+    /// </summary>
+    [Test]
+    public void IRQ_TakenAfterSEI_WhenCLIImmediatelyPrecedesSEI()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0x78); // SEI
+        Write(0x1002, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset(); // I=1, SP=$FF
+        Cpu.SignalIRQ(); // IRQ line asserted and held
+
+        Cpu.Step(); // CLI - polls with I=1 from before CLI, so no IRQ
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "IRQ should not be taken before CLI's change is visible");
+
+        Cpu.Step(); // SEI - the boundary before SEI still uses CLI's pre-execute I=1, so no IRQ yet
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "SEI should execute before the IRQ is taken");
+
+        Cpu.Step(); // SEI polled with its pre-execute I=0, so the IRQ is taken now
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "IRQ should be taken right after SEI");
+
+        byte p = Read(0x01FD);
+        byte lo = Read(0x01FE);
+        byte hi = Read(0x01FF);
+        Assert.That(p & 0x04, Is.EqualTo(0x04), "Pushed P should have I set by SEI");
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1002), "Pushed PC should point to the instruction after SEI");
+    }
+
+    /// <summary>
+    /// Verifies that with an IRQ held, <c>CLI; CLI</c> takes the IRQ right after the second CLI
+    /// because it polls using the I value from before it executed (already cleared by the first CLI).
+    /// </summary>
+    [Test]
+    public void IRQ_TakenAfterSecondCLI_WhenCLIsAreBackToBack()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0x58); // CLI
+        Write(0x1002, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset(); // I=1, SP=$FF
+        Cpu.SignalIRQ(); // IRQ line asserted and held
+
+        Cpu.Step(); // First CLI
+        Cpu.Step(); // Second CLI
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "Both CLIs should execute before the IRQ is taken");
+
+        Cpu.Step(); // IRQ taken right after the second CLI, before the NOP
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "IRQ should be taken right after the second CLI");
+
+        byte lo = Read(0x01FE);
+        byte hi = Read(0x01FF);
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1002), "Pushed PC should point to the instruction after the second CLI");
+    }
+
+    /// <summary>
+    /// Verifies that RTI restores the interrupt mask immediately on the same instruction.
+    /// </summary>
+    [Test]
+    public void RTI_RestoresIFlagImmediately()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0xEA); // NOP
+        Write(0x1002, 0x40); // RTI
+        Write(0x1003, 0xEA); // NOP
+        Write(0x2000, 0xEA); // NOP in IRQ handler
+        Cpu.Reset();
+        Cpu.Registers.SP.SetByte(0xFC);
+        Write(0x01FD, 0x04); // pulled status: I set
+        Write(0x01FE, 0x03); // return low byte -> $1003
+        Write(0x01FF, 0x10); // return high byte
+
+        Cpu.Step(); // CLI
+        Cpu.Step(); // NOP
+        Cpu.Step(); // RTI restores I=1 while no IRQ is pending.
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "RTI should restore I immediately on the same instruction");
+        Cpu.SignalIRQ(); // IRQ becomes pending during RTI
+        Cpu.Step(); // If restoration is immediate, the pending IRQ remains masked.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1004));
     }
 
     /// <summary>
@@ -98,6 +264,9 @@ public class InterruptAndHaltTests : CpuTestBase
         // Act
         Cpu.Step(); // CLI
         Cpu.SignalIRQ(); // IRQ line asserted and never released
+        Cpu.Step(); // NOP executes before IRQ is serviced
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should advance through the post-CLI delay window");
+
         Cpu.Step(); // Enter IRQ handler
         byte spAfterEntry = Cpu.Registers.SP.GetByte();
 
@@ -604,19 +773,21 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Reset();
 
         // Act
-        Cpu.Step(); // Execute CLI
-        Cpu.SignalIRQ(); // Signal IRQ (asserts on signal bus)
-        Cpu.Step(); // Process IRQ (pushes PC and P, jumps to IRQ vector)
+        Cpu.Step(); // Execute CLI; the next instruction still sees the old I state.
+        Cpu.SignalIRQ();
+        Cpu.Step(); // LDA executes before the IRQ is serviced.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance past the next instruction before IRQ");
 
-        // Deassert IRQ before executing RTI, simulating device acknowledgment
-        // In a real system, the interrupt handler would read the device's status
-        // register which clears the interrupt. For this test, we manually deassert.
+        Cpu.Step(); // Now the pending IRQ is serviced.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should jump to the IRQ vector");
+
+        // Deassert IRQ before executing RTI, simulating device acknowledgment.
         Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
 
-        Cpu.Step(); // Execute RTI
+        Cpu.Step(); // Execute RTI and restore the previous state immediately.
 
         // Assert
-        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should be restored to the instruction after the CLI-delayed IRQ window");
         Assert.That(Cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }
 
@@ -643,6 +814,9 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Step(); // SED
         Cpu.Step(); // CLI
         Cpu.SignalIRQ();
+        Cpu.Step(); // NOP executes before IRQ is serviced
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance through the post-CLI delay window");
+
         Cpu.Step(); // IRQ entry
 
         // Assert
@@ -653,7 +827,7 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
         Cpu.Step(); // RTI
 
-        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "PC should be restored");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should be restored");
         Assert.That(Cpu.Registers.P & ProcessorStatusFlags.D, Is.EqualTo(ProcessorStatusFlags.D), "RTI should restore D flag");
     }
 
