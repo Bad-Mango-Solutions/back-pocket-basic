@@ -28,6 +28,7 @@ using Interfaces;
 /// 11 cycles per unit at 1 MHz.
 /// </para>
 /// </remarks>
+[DeviceType("gameio")]
 public sealed class GameIOController : IGamePortDevice
 {
     private const byte PushButton0Offset = 0x61;

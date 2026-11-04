@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Interfaces.Signaling;
@@ -104,55 +102,44 @@ public abstract class CpuBase : ICpu
     /// <inheritdoc />
     public ref Registers Registers
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => ref registers;
     }
 
     /// <inheritdoc/>
     public bool Halted
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => haltReason != HaltState.None;
     }
 
     /// <inheritdoc/>
     public HaltState HaltReason
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => haltReason;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => haltReason = value;
     }
 
     /// <inheritdoc/>
     public bool IsWaitingForInterrupt
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => haltReason == HaltState.Wai;
     }
 
     /// <inheritdoc/>
     public bool IsDebuggerAttached
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => debugListener is not null;
     }
 
     /// <inheritdoc/>
     public bool IsStopRequested
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => stopRequested;
     }
 
     /// <inheritdoc/>
     public InstructionTrace Trace
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => trace;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => trace = value;
     }
 
@@ -191,14 +178,12 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Registers GetRegisters()
     {
         return registers;
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ulong GetCycles()
     {
         // Return the scheduler's current cycle count plus any pending TCU cycles.
@@ -211,7 +196,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetCycles(ulong cycles)
     {
         // If the new cycle count is greater than the current scheduler time, advance the scheduler to match
@@ -248,28 +232,24 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetPC(Addr address)
     {
         registers.PC.SetAddr(address);
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Addr GetPC()
     {
         return registers.PC.GetAddr();
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RequestStop()
     {
         stopRequested = true;
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ClearStopRequest()
     {
         stopRequested = false;
@@ -278,7 +258,6 @@ public abstract class CpuBase : ICpu
     // ─── Memory Access Methods (Bus-based) ──────────────────────────────
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual byte Read8(Addr address)
     {
         var access = CreateReadAccess(address, 8);
@@ -299,7 +278,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual void Write8(Addr address, byte value)
     {
         var access = CreateWriteAccess(address, 8);
@@ -313,7 +291,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual byte Peek8(Addr address)
     {
         var access = CreateDebugReadAccess(address);
@@ -330,7 +307,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual void Poke8(Addr address, byte value)
     {
         var access = CreateDebugWriteAccess(address);
@@ -345,7 +321,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual Word Read16(Addr address)
     {
         var access = CreateReadAccess(address, 16);
@@ -365,7 +340,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual void Write16(Addr address, Word value)
     {
         var access = CreateWriteAccess(address, 16);
@@ -373,7 +347,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual DWord ReadValue(Addr address, byte sizeInBits)
     {
         return sizeInBits switch
@@ -386,7 +359,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual void WriteValue(Addr address, DWord value, byte sizeInBits)
     {
         switch (sizeInBits)
@@ -406,7 +378,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual Addr PushByte(Addr stackBase = 0)
     {
         var old = registers.SP.stack;
@@ -415,7 +386,6 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual Addr PopByte(Addr stackBase = 0)
     {
         var old = registers.SP.stack + 1;
@@ -430,7 +400,6 @@ public abstract class CpuBase : ICpu
     /// </summary>
     /// <param name="address">The address to read from.</param>
     /// <returns>The 32-bit value at the address.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected DWord Read32(Addr address)
     {
         var access = CreateReadAccess(address, 32);
@@ -454,7 +423,6 @@ public abstract class CpuBase : ICpu
     /// </summary>
     /// <param name="address">The address to write to.</param>
     /// <param name="value">The 32-bit value to write.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected void Write32(Addr address, DWord value)
     {
         var access = CreateWriteAccess(address, 32);
@@ -467,7 +435,6 @@ public abstract class CpuBase : ICpu
     /// <param name="address">The address being accessed.</param>
     /// <param name="widthBits">The width of the access in bits.</param>
     /// <returns>A configured <see cref="BusAccess"/> for reading.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateReadAccess(Addr address, byte widthBits)
     {
         return new(
@@ -488,7 +455,6 @@ public abstract class CpuBase : ICpu
     /// <param name="address">The address being accessed.</param>
     /// <param name="widthBits">The width of the access in bits.</param>
     /// <returns>A configured <see cref="BusAccess"/> for writing.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateWriteAccess(Addr address, byte widthBits)
     {
         return new(
@@ -514,7 +480,6 @@ public abstract class CpuBase : ICpu
     /// to differentiate between data reads and code fetches. This enables NX enforcement
     /// and trap interception at ROM entry points.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateInstructionFetchAccess(Addr address, byte widthBits)
     {
         return new(
@@ -538,7 +503,6 @@ public abstract class CpuBase : ICpu
     /// Debug reads use <see cref="AccessIntent.DebugRead"/> to read memory without
     /// triggering side effects such as soft switches or flag clearing.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateDebugReadAccess(Addr address)
     {
         return new(
@@ -562,7 +526,6 @@ public abstract class CpuBase : ICpu
     /// Debug writes use <see cref="AccessIntent.DebugWrite"/> to write memory,
     /// bypassing ROM write protection and avoiding side effects on I/O addresses.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateDebugWriteAccess(Addr address)
     {
         return new(

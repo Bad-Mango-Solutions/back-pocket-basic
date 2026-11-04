@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
-
 using Interfaces;
 
 /// <summary>
@@ -100,7 +98,6 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         base.Capabilities | TargetCaps.HasSideEffects | TargetCaps.TimingSensitive;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override byte Read8(Addr physicalAddress, in BusAccess access)
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
@@ -114,7 +111,6 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
@@ -283,12 +279,25 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
             slotManager.SelectExpansionSlot(slot);
         }
 
-        // Return ROM data if card has ROM, otherwise floating bus
+        // Return the card-supplied slot ROM data if a card published one.
         var rom = slotManager.GetSlotRomRegion(slot);
         if (rom is not null)
         {
             ushort romOffset = (ushort)(offset & 0x00FF);
             return rom.Read8(romOffset, in access);
+        }
+
+        // No card ROM. On the Apple IIe (and later) the system CXROM image always
+        // backs $C100-$C7FF — a card without its own ROM cannot drive the bus, so
+        // the motherboard's internal slot-firmware shows through. This is what
+        // allows PR#6 to work against a Disk II card that did not supply a P5A
+        // boot ROM: the system ROM contains a default Disk II driver. Falling
+        // through to the internal ROM here matches that hardware behaviour;
+        // returning $FF would leave the slot effectively unbootable and would
+        // hard-lock PR#6 on a JMP into FF-filled space.
+        if (internalRom is not null)
+        {
+            return internalRom.Read8(offset, in access);
         }
 
         return FloatingBusValue;
@@ -416,7 +425,11 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
             return internalRom;
         }
 
-        return slotManager.GetSlotRomRegion(slot);
+        // Prefer the card's own slot ROM; fall back to the motherboard's CXROM
+        // image when the card does not publish one (mirrors the read path —
+        // empty/ROM-less slots show the system slot-firmware on the IIe and
+        // later, which is what makes PR#n work for a card with no P5A ROM).
+        return slotManager.GetSlotRomRegion(slot) ?? internalRom;
     }
 
     /// <summary>

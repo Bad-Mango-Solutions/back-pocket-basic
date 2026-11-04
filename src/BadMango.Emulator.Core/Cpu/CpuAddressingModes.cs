@@ -88,4 +88,23 @@ public enum CpuAddressingModes : byte
     /// relative to the program counter.
     /// </summary>
     Relative = 13,
+
+    /// <summary>
+    /// Zero-page indirect addressing mode (65C02), where the operand address is read from a
+    /// zero-page pointer without indexing.
+    /// </summary>
+    ZeroPageIndirect = 14,
+
+    /// <summary>
+    /// Absolute indirect X addressing mode (65C02), where the operand address is read from
+    /// an absolute address indexed by X.
+    /// </summary>
+    AbsoluteIndirectX = 15,
+
+    /// <summary>
+    /// Zero-page relative addressing mode (Rockwell/WDC 65C02), used for bit branch instructions
+    /// (BBR/BBS), where the first operand is a zero-page address and the second is a signed
+    /// relative offset for branching.
+    /// </summary>
+    ZeroPageRelative = 16,
 }

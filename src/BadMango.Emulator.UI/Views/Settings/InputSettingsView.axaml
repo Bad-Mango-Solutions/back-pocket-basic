@@ -29,7 +29,7 @@
                                VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" 
                              Text="{Binding CustomKeyMapFile}"
-                             Watermark="Path to custom key map file..." />
+                             PlaceholderText="Path to custom key map file..." />
                 </Grid>
             </StackPanel>
         </Border>
@@ -58,7 +58,7 @@
                                VerticalAlignment="Center" />
                     <TextBox Grid.Row="0" Grid.Column="1" 
                              Text="{Binding JoystickDevice}"
-                             Watermark="Auto" />
+                             PlaceholderText="Auto" />
                     
                     <TextBlock Grid.Row="1" Grid.Column="0" 
                                Text="Paddle Sensitivity:" 

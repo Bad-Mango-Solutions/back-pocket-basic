@@ -2,11 +2,42 @@
 
 ## Project Overview
 
-This repository contains code to emulate an Applesoft BASIC interpreter, enhancing its capabilities and performance. The project is structured to facilitate contributions, maintainability, and adherence to coding standards.
+This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2e machine), structured so it can grow into the 65816 and a theoretical 32-bit 65832. The Applesoft BASIC interpreter projects (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). The current project layout is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure).
 
 ### Target Framework
 
 **This project uses .NET 10.0** as its target framework. All new code and projects must target `net10.0`. Do not question or suggest changes to the framework version - .NET 10.0 is the established standard for this repository as documented in the README and all project files.
+
+### 65xxx Emulation
+
+- The core of the project is a cycle-accurate emulator for the 65C02 and 65816 microprocessors, which are central to the Apple II architecture.
+- It must accurately model the memory management, instruction set, and timing of these processors to ensure compatibility with existing software and to enable detailed diagnostics.
+- It must also accurately model I/O devices such as the keyboard, video output, audio output, and disk drives to provide a complete emulation environment.
+- The future speculative 65832 emulator will build on this foundation while offering capabilities expected of a 32-bit successor, including memory management, protected memory regions, execution privilege (kernel vs. user), hypervisor support, and an expanded instruction set.
+- In order to reach this goal, we will have to continually improve the performance of the core emulation loop, optimize memory access patterns, and ensure that our implementation is efficient enough to run in real time on modern hardware.
+
+### New OS Development
+
+- Beginning with the 65C02-based Apple II, we will develop a new operating system that runs on the emulator. This OS will be designed to be compatible with existing Apple II software while also introducing new features and capabilities.
+- We will use this OS as a testbed for the emulator's accuracy and performance, as well as a platform for exploring new ideas in OS design and user experience.
+- The OS will be developed in parallel with the emulator, with a focus on iterative development and continuous integration to ensure that both components evolve together and remain compatible.
+- Further, we will expand its functionality as we introduce the 65816 emulator and eventually our speculative 32-bit "65832" processor, ensuring that it can take advantage of new capabilities while maintaining backward compatibility.
+
+### Debug Console
+
+- The existing `emudbg` debug console is designed for interactive human use.
+- It exposes a REPL interface for issuing commands and inspecting emulator state in real time.
+- It also exposes the local keyboard, video, and audio devices for direct interaction with the emulated machine.
+- It will include debugging tools such as register/memory inspection, breakpoints, watchpoints, tracing, and disk state management.
+- The ultimate goal is to reuse this infrastructure for a user-friendly application that can host multiple instances of an emulator.
+- We will use this debug console as we move towards the 65816 emulator and, eventually, our speculative 32-bit "65832" processor, so it must be designed with future extensibility in mind.
+
+### Emulator Host Agent (emudbg-agent)
+
+- The `emudbg-agent` is a new host mode for `emudbg` that allows an LLM agent to control the emulator as a local tool.
+- It will reuse the existing debug infrastructure and command surface while exposing a machine-friendly transport suitable for local tooling integrations such as MCP clients.
+- Use headless Avalonia for video output when implementing the emudbg agent host.
+- Use a fake speaker controller for audio in the emudbg agent host on Linux/Ubuntu diagnostic hosts where Windows-only implementations are unavailable.
 
 ## Development Guidelines
 
@@ -69,4 +100,33 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **Well-maintained libraries.** Use libraries that are actively maintained and have a strong community support.
 - **Compatible with the target framework.** Ensure that all dependencies are compatible with .NET 10.0 (net10.0). The project may also accept packages compatible with net6.0 or netstandard2.0 as they are compatible with net10.0, but prefer net10.0-specific packages when available.
 - **Properly licensed.** Verify that all third-party libraries comply with the project's licensing requirements. The repository in general should only use libraries that are licensed under permissive licenses (e.g., MIT, Apache 2.0). We use the MIT License for this repository, so any compatible license is acceptable.
+  - **Narrow exception for LGPL native libraries.** An LGPL-licensed *native* library may be used only when it is shipped unmodified and loaded dynamically at runtime as a separate shared library (`.dll`/`.so`/`.dylib`) that users can replace with their own build. It must never be statically linked, compiled into our assemblies, or have its source copied into this repository, and every such library must be listed in [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md). The current (and only) case is OpenAL Soft, bundled through `Silk.NET.OpenAL.Soft.Native` and loaded by OpenTK. Managed (.NET) dependencies must still use permissive licenses.
+  - **Keep the notices current.** When adding, removing, or upgrading a dependency that ships with the application, update [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 - **Necessary and not redundant.** Avoid adding unnecessary dependencies that bloat the project or duplicate existing functionality.
+- **Preferred libraries.** When introducing a new dependency in one of these areas, prefer the established choice already used in the codebase:
+  - **Logging:** [Serilog](https://serilog.net/) (`Serilog.ILogger`).
+  - **Dependency injection:** [Autofac](https://autofac.org/).
+  - **Mocking in tests:** [Moq](https://github.com/devlooped/moq).
+
+## Logging
+- **Use Serilog `ILogger`.** All new code that needs to log MUST take `Serilog.ILogger` as a constructor parameter and store it in a `private readonly` field. Call `logger.ForContext<TThis>()` once in the constructor when a per-class context is desired.
+- **Do not use `System.Diagnostics.Trace` or `System.Diagnostics.Debug` for application logging.** They are not testable, are not configurable, and bypass the configured Serilog sinks. Reserve `Debug.Assert`-style invariants for genuine programmer-error checks only.
+- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The host executables (`BadMango.Emulator.UI` and `BadMango.Emulator.Debug`) are responsible for configuring Serilog and registering an `ILogger` instance with Autofac at startup. `BadMango.Emulator.Debug` assigns `Log.Logger`.
+- **Make classes DI-friendly.** Constructors should accept their collaborators (including the `ILogger`) as parameters; avoid `new`-ing services or loggers internally so consumers can substitute test doubles.
+- **Log outside hot loops.** Logging belongs at well-defined boundaries (configuration, mount/eject, error paths, lifecycle transitions). Do not log per CPU cycle, per scan-line, per emitted nibble, or inside any other timing-sensitive inner loop. Lift logging out of the loop or guard it with `logger.IsEnabled(LogEventLevel.Verbose)` when verbose detail is genuinely needed.
+- **Use structured logging.** Prefer `logger.Warning("Foo {Bar} failed because {Reason}.", bar, reason)` over interpolated or concatenated strings so messages remain queryable.
+
+## Exception handling
+- **Never use a bare `catch` or `catch (Exception)`.** Catch only the specific exceptions the called code is documented or known to throw. When several share the same handling, use one filtered clause: `catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)`.
+- **No empty catch blocks.** Log the exception with the injected `ILogger`, or add a comment explaining why ignoring it is correct. Prefer not catching at all when there is nothing useful to do.
+- **Don't catch what can't be thrown.** Do not wrap calls in `try`/`catch` for exception types they never throw. APIs that report failure through return values or error state (e.g. native interop such as OpenAL's `AL.GetError()`, `TryXxx` methods, `bool` results) must have that result checked instead.
+- **Best-effort teardown still logs.** Cleanup in `Dispose`/`finally` may continue past failures, but must log them rather than discard them silently.
+- **Preserve the cause when translating.** When rethrowing as a different type, pass the original as the `innerException`; use `throw;` (never `throw ex;`) to rethrow unchanged.
+- **Prefer guard helpers.** Use `ArgumentNullException.ThrowIfNull`, `ArgumentException.ThrowIfNullOrEmpty`, `ArgumentOutOfRangeException.ThrowIfNegative`, `ObjectDisposedException.ThrowIf`, etc. instead of hand-written checks.
+
+## Testing helpers
+- **Use `BadMango.Unit.Components` for shared test utilities.** All new test projects should reference `tests/BadMango.Unit.Components/BadMango.Unit.Components.csproj`.
+  - **`Generator`** — random data generation. Use `Generator.Log()` to obtain a preconfigured `Mock<ILogger>` whose `ForContext` chain returns the same mock, which is the canonical way to inject a logger into a class under test.
+  - **`UnitExtensions`** — Serilog sink extension that pipes log events to NUnit's `TestContext.Out`. Configure with `new LoggerConfiguration().WriteTo.NUnit()` when a real Serilog pipeline is needed inside a test.
+  - **`NUnitContextSink`** — the underlying Serilog sink used by `WriteTo.NUnit()`.
+  - **`UnitTest.InconclusiveIfCI`** — marks a test inconclusive when running in CI; pair with `PerformanceTestAttribute` for timing-sensitive cases.

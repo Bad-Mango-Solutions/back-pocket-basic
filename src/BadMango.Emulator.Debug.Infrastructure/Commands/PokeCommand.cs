@@ -19,6 +19,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// - Multiple bytes: poke $1234 AB CD EF or poke $1234 $AB $CD $EF.
 /// - Byte sequence: poke $1234 "Hello" (writes ASCII bytes).
 /// - Interactive mode: poke $1234 -i (enter bytes interactively).
+/// - File mode: poke $1234 -f path/to/file.txt (read bytes from file using interactive format).
 /// </para>
 /// <para>
 /// Byte values can be specified with or without a $ or 0x prefix. Values without
@@ -27,6 +28,13 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <para>
 /// In interactive mode, enter hex bytes separated by spaces. Use $addr: prefix to
 /// change the write address. A blank line ends interactive mode.
+/// </para>
+/// <para>
+/// In file mode, the file is read line-by-line using the same format as interactive
+/// mode. Trailing whitespace is trimmed and blank lines are ignored. Bytes must be
+/// represented by exactly two hexadecimal digits (with an optional $ or 0x prefix);
+/// reading stops at the first invalid byte representation. The file path is resolved
+/// through the debug path resolver, supporting library:// and app:// URI schemes.
 /// </para>
 /// </remarks>
 public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
@@ -43,24 +51,26 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["pk"];
 
     /// <inheritdoc/>
-    public override string Usage => "poke <address> <byte> [byte...]  or  poke <address> -i  or  poke <address> \"string\"";
+    public override string Usage => "poke <address> <byte> [byte...]  or  poke <address> -i  or  poke <address> -f <file>  or  poke <address> \"string\"";
 
     /// <inheritdoc/>
-    public string Synopsis => "poke <address> <byte> [byte...] | -i | \"string\"";
+    public string Synopsis => "poke <address> <byte> [byte...] | -i | -f <file> | \"string\"";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
         "Writes bytes to memory using DebugWrite intent, bypassing ROM write protection " +
-        "and I/O handlers. Supports single bytes, multiple bytes, ASCII strings, and " +
-        "interactive mode (-i). Values can be hex (ab, $AB, 0xAB) or decimal. This is " +
-        "a side-effect-free write; use 'write' for hardware-like writes. " +
-        "Addresses can be specified as hex ($C000, 0xC000), decimal, or soft switch " +
-        "names registered by the current machine (e.g., SPEAKER, KBDSTRB).";
+        "and I/O handlers. Supports single bytes, multiple bytes, ASCII strings, " +
+        "interactive mode (-i), and file mode (-f). Values can be hex (ab, $AB, 0xAB) " +
+        "or decimal. This is a side-effect-free write; use 'write' for hardware-like " +
+        "writes. Addresses can be specified as hex ($C000, 0xC000), decimal, or soft " +
+        "switch names registered by the current machine (e.g., SPEAKER, KBDSTRB). File " +
+        "paths support library:// and app:// URI schemes.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
         new("-i", "--interactive", "flag", "Enter interactive mode for continuous input", "off"),
+        new("-f", "--file", "path", "Read bytes from a file using the interactive input format", null),
     ];
 
     /// <inheritdoc/>
@@ -69,6 +79,7 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         "poke $300 A9 00 60        Write LDA #$00; RTS at $0300",
         "poke $F000 \"Hello\"        Write ASCII string at $F000 (bypasses ROM)",
         "poke $800 -i              Start interactive mode at $0800",
+        "poke $1000 -f library://snippets/boot.txt   Read bytes from file",
         "poke KBD 00               Poke keyboard address using soft switch name",
     ];
 
@@ -110,6 +121,18 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
                                   args[1].Equals("--interactive", StringComparison.OrdinalIgnoreCase)))
         {
             return ExecuteInteractiveMode(debugContext, startAddress);
+        }
+
+        // Check for file mode
+        if (args.Length >= 2 && (args[1].Equals("-f", StringComparison.OrdinalIgnoreCase) ||
+                                  args[1].Equals("--file", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (args.Length < 3)
+            {
+                return CommandResult.Error("File path required. Usage: poke <address> -f <file>");
+            }
+
+            return ExecuteFileMode(debugContext, startAddress, args[2]);
         }
 
         if (args.Length < 2)
@@ -285,6 +308,168 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         return CommandResult.Ok();
     }
 
+    private static CommandResult ExecuteFileMode(IDebugContext context, uint startAddress, string rawPath)
+    {
+        if (context.Bus is null)
+        {
+            return CommandResult.Error("No memory bus attached.");
+        }
+
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            return CommandResult.Error("File path required.");
+        }
+
+        // Resolve the path using the path resolver if available
+        string resolvedPath = rawPath;
+        if (context.PathResolver is not null)
+        {
+            if (!context.PathResolver.TryResolve(rawPath, out string? resolved))
+            {
+                return CommandResult.Error($"Cannot resolve path: '{rawPath}'.");
+            }
+
+            resolvedPath = resolved!;
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            string errorMessage = resolvedPath != rawPath
+                ? $"File not found: '{rawPath}' (resolved to '{resolvedPath}')."
+                : $"File not found: '{rawPath}'.";
+            return CommandResult.Error(errorMessage);
+        }
+
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(resolvedPath);
+        }
+        catch (IOException ex)
+        {
+            return CommandResult.Error($"Error reading file: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CommandResult.Error($"Access denied: {ex.Message}");
+        }
+
+        // Calculate memory size from bus page count
+        uint memorySize = (uint)context.Bus.PageCount << context.Bus.PageShift;
+
+        string displayPath = resolvedPath != rawPath
+            ? $"'{rawPath}' (resolved to '{resolvedPath}')"
+            : $"'{rawPath}'";
+        context.Output.WriteLine($"File poke mode starting at ${startAddress:X4} from {displayPath}");
+
+        uint currentAddress = startAddress;
+        uint firstWrittenAddress = startAddress;
+        int totalBytesWritten = 0;
+        var allFaults = new List<(uint Address, BusFault Fault)>();
+        bool stopProcessing = false;
+
+        foreach (var rawLine in lines)
+        {
+            if (stopProcessing)
+            {
+                break;
+            }
+
+            if (rawLine is null)
+            {
+                continue;
+            }
+
+            // Trim trailing whitespace; ignore blank lines.
+            var line = rawLine.TrimEnd();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var trimmedLine = line.Trim();
+
+            // Optional <addr>: prefix to change write address. In file mode an
+            // unprefixed address is treated as hexadecimal so that the natural
+            // "1000: a2 20" format used by interactive output can be replayed
+            // verbatim.
+            if (TryParseAddressPrefixHexDefault(trimmedLine, context.Machine, out uint newAddress, out string remainingBytes))
+            {
+                currentAddress = newAddress;
+                if (string.IsNullOrWhiteSpace(remainingBytes))
+                {
+                    continue;
+                }
+
+                trimmedLine = remainingBytes;
+            }
+
+            var parts = trimmedLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var bytes = new List<byte>();
+
+            foreach (var part in parts)
+            {
+                // Strict parsing: a byte must be represented by exactly two hex
+                // digits (with an optional $ or 0x prefix). Reading stops at the
+                // first invalid byte representation.
+                if (!TryParseStrictByteValue(part, out byte value))
+                {
+                    stopProcessing = true;
+                    break;
+                }
+
+                bytes.Add(value);
+            }
+
+            if (bytes.Count == 0)
+            {
+                continue;
+            }
+
+            if (currentAddress + (uint)bytes.Count > memorySize)
+            {
+                context.Error.WriteLine($"Write would exceed memory bounds at ${currentAddress:X4}. Stopping.");
+                break;
+            }
+
+            if (totalBytesWritten == 0)
+            {
+                firstWrittenAddress = currentAddress;
+            }
+
+            for (int i = 0; i < bytes.Count; i++)
+            {
+                var result = WriteByteWithFault(context.Bus, currentAddress + (uint)i, bytes[i]);
+                if (result.Failed)
+                {
+                    allFaults.Add((currentAddress + (uint)i, result.Fault));
+                }
+            }
+
+            currentAddress += (uint)bytes.Count;
+            totalBytesWritten += bytes.Count;
+        }
+
+        if (totalBytesWritten > 0)
+        {
+            context.Output.WriteLine($"File mode complete. Wrote {totalBytesWritten} byte(s) from ${firstWrittenAddress:X4} to ${currentAddress - 1:X4}.");
+            if (allFaults.Count > 0)
+            {
+                context.Output.WriteLine($"  ({allFaults.Count} fault(s) encountered)");
+                foreach (var (faultAddr, fault) in allFaults)
+                {
+                    context.Output.WriteLine($"  Fault at ${faultAddr:X4}: {FormatFault(fault)}");
+                }
+            }
+        }
+        else
+        {
+            context.Output.WriteLine("File mode complete. No bytes written.");
+        }
+
+        return CommandResult.Ok();
+    }
+
     private static bool TryParseAddressPrefix(string line, IMachine? machine, out uint address, out string remainingBytes)
     {
         address = 0;
@@ -301,6 +486,46 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
         if (!AddressParser.TryParse(addressPart, machine, out address))
         {
             return false;
+        }
+
+        remainingBytes = line[(colonIndex + 1)..].Trim();
+        return true;
+    }
+
+    private static bool TryParseAddressPrefixHexDefault(string line, IMachine? machine, out uint address, out string remainingBytes)
+    {
+        address = 0;
+        remainingBytes = string.Empty;
+
+        int colonIndex = line.IndexOf(':', StringComparison.Ordinal);
+        if (colonIndex < 1)
+        {
+            return false;
+        }
+
+        var addressPart = line[..colonIndex].Trim();
+
+        // Honor explicit $ and 0x prefixes via the standard parser. Without an
+        // explicit prefix, prefer hexadecimal so that the natural
+        // "1000: a2 20" format produced by interactive poke output can be
+        // replayed verbatim. Soft-switch names are still accepted as a
+        // fallback when the value cannot be interpreted as hex.
+        bool hasExplicitPrefix = addressPart.StartsWith("$", StringComparison.Ordinal)
+            || addressPart.StartsWith("0x", StringComparison.OrdinalIgnoreCase);
+
+        if (hasExplicitPrefix)
+        {
+            if (!AddressParser.TryParse(addressPart, machine, out address))
+            {
+                return false;
+            }
+        }
+        else if (!uint.TryParse(addressPart, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out address))
+        {
+            if (!AddressParser.TryParse(addressPart, machine, out address))
+            {
+                return false;
+            }
         }
 
         remainingBytes = line[(colonIndex + 1)..].Trim();
@@ -441,5 +666,44 @@ public sealed class PokeCommand : CommandHandlerBase, ICommandHelp
     private static bool IsValidHexString(string value)
     {
         return value.All(char.IsAsciiHexDigit);
+    }
+
+    /// <summary>
+    /// Parses a byte value using strict file-mode rules: the value must be exactly
+    /// two hexadecimal digits, optionally preceded by a <c>$</c> or <c>0x</c> prefix.
+    /// </summary>
+    /// <param name="value">The string value to parse.</param>
+    /// <param name="result">The parsed byte value.</param>
+    /// <returns><see langword="true"/> if parsing succeeded; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseStrictByteValue(string value, out byte result)
+    {
+        result = 0;
+
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> digits = value.AsSpan();
+        if (digits.StartsWith("$", StringComparison.Ordinal))
+        {
+            digits = digits[1..];
+        }
+        else if (digits.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            digits = digits[2..];
+        }
+
+        if (digits.Length != 2)
+        {
+            return false;
+        }
+
+        if (!char.IsAsciiHexDigit(digits[0]) || !char.IsAsciiHexDigit(digits[1]))
+        {
+            return false;
+        }
+
+        return byte.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
     }
 }

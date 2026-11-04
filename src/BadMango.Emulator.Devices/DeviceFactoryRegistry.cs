@@ -5,9 +5,12 @@
 namespace BadMango.Emulator.Devices;
 
 using System.Reflection;
+using System.Text.Json;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+
+using Serilog;
 
 /// <summary>
 /// Auto-discovers and registers device factories based on <see cref="DeviceTypeAttribute"/>.
@@ -20,11 +23,46 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </para>
 /// <para>
 /// Device classes must:
+/// </para>
 /// <list type="bullet">
-/// <item><description>Have the <see cref="DeviceTypeAttribute"/> applied</description></item>
-/// <item><description>Implement <see cref="IMotherboardDevice"/> or <see cref="ISlotCard"/></description></item>
-/// <item><description>Have a public parameterless constructor</description></item>
+/// <item><description>Have the <see cref="DeviceTypeAttribute"/> applied.</description></item>
+/// <item><description>Implement <see cref="IMotherboardDevice"/> or <see cref="ISlotCard"/>.</description></item>
+/// <item><description>
+/// Expose a public constructor whose parameters are all either resolvable by the registry
+/// (currently <see cref="ILogger"/> via <see cref="LoggerFactory"/>) or have default values.
+/// A public parameterless constructor is the simplest such case. When a type exposes several
+/// resolvable constructors, the one with the most parameters is used, so a device that offers
+/// both a parameterless and an <see cref="ILogger"/> constructor (for example
+/// <see cref="Speaker.SpeakerController"/>) receives the configured logger.
+/// </description></item>
 /// </list>
+/// <para>
+/// To accommodate device controllers that take constructor dependencies (the canonical
+/// example is <see cref="DiskIIController"/>, which requires an injected
+/// <see cref="ILogger"/>), the registry resolves each constructor argument at factory
+/// invocation time:
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// Parameters of type <see cref="ILogger"/> are resolved via the configurable
+/// <see cref="LoggerFactory"/> hook. Application bootstrap code (or an Autofac
+/// module) should set <see cref="LoggerFactory"/> so loggers are scoped to the
+/// device's type. When unset, the registry falls back to a sink-less Serilog
+/// logger so unit tests and bootstrap-light callers still get a working factory.
+/// </description></item>
+/// <item><description>
+/// Parameters with default values fall back to those defaults.
+/// </description></item>
+/// <item><description>
+/// Types annotated with <see cref="DeviceTypeAttribute"/> whose constructors cannot be
+/// satisfied by either of the rules above are recorded in <see cref="SkippedDeviceTypes"/>
+/// so that callers can log a clear diagnostic instead of silently dropping the device.
+/// </description></item>
+/// </list>
+/// <para>
+/// Two classes must not declare the same <see cref="DeviceTypeAttribute.DeviceTypeId"/>;
+/// the registry refuses to overwrite an existing registration and records the duplicate
+/// in <see cref="SkippedDeviceTypes"/>.
 /// </para>
 /// </remarks>
 public static class DeviceFactoryRegistry
@@ -35,11 +73,38 @@ public static class DeviceFactoryRegistry
     private static readonly Dictionary<string, Func<MachineBuilder, IMotherboardDevice>> motherboardFactories
         = new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly Dictionary<string, Func<MachineBuilder, ISlotCard>> slotCardFactories
+    private static readonly Dictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> slotCardFactories
         = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, string> skippedDeviceTypes
+        = new(StringComparer.Ordinal);
 #pragma warning restore SA1311
 
+    /// <summary>
+    /// Lazily-constructed sink-less Serilog logger used as a fallback when
+    /// <see cref="LoggerFactory"/> has not been configured. It silently discards all events,
+    /// which keeps device construction working in tests and bootstrap-light callers
+    /// without the registry ever touching the global <c>Log.Logger</c> facade.
+    /// </summary>
+    private static readonly Lazy<ILogger> SilentLoggerInstance = new(
+        () => new LoggerConfiguration().CreateLogger(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private static bool isInitialized;
+
+    /// <summary>
+    /// Gets or sets the factory used to obtain a <see cref="ILogger"/> when constructing
+    /// a discovered device that takes one as a constructor parameter.
+    /// </summary>
+    /// <value>
+    /// A delegate that returns an <see cref="ILogger"/> for the given device <see cref="Type"/>.
+    /// Application bootstrap code (or an Autofac module) should set this once at startup,
+    /// for example <c>t =&gt; container.Resolve&lt;ILogger&gt;().ForContext(t)</c>. When
+    /// <see langword="null"/>, the registry falls back to a sink-less Serilog logger so
+    /// device construction never throws solely because no logger has been configured —
+    /// useful for unit tests and command-line tools that don't wire up Serilog.
+    /// </value>
+    public static Func<Type, ILogger>? LoggerFactory { get; set; }
 
     /// <summary>
     /// Gets the discovered motherboard device factories.
@@ -51,9 +116,32 @@ public static class DeviceFactoryRegistry
     /// <summary>
     /// Gets the discovered slot card factories.
     /// </summary>
-    /// <value>A dictionary mapping type IDs to slot card factory functions.</value>
-    public static IReadOnlyDictionary<string, Func<MachineBuilder, ISlotCard>> SlotCardFactories
+    /// <value>
+    /// A dictionary mapping type IDs to slot card factory delegates of shape
+    /// <c>Func&lt;MachineBuilder, JsonElement?, ISlotCard&gt;</c>. The second argument is the
+    /// optional per-card <see cref="JsonElement"/> taken from
+    /// <see cref="Core.Configuration.SlotCardProfile.Config"/>; auto-discovered factories that
+    /// do not require configuration ignore it.
+    /// </value>
+    public static IReadOnlyDictionary<string, Func<MachineBuilder, JsonElement?, ISlotCard>> SlotCardFactories
         => slotCardFactories;
+
+    /// <summary>
+    /// Gets the device types that were discovered (annotated with <see cref="DeviceTypeAttribute"/>)
+    /// but excluded from auto-registration, together with a human-readable reason.
+    /// </summary>
+    /// <value>
+    /// A dictionary keyed by the assembly-qualified-ish display name of the skipped device
+    /// type (<see cref="Type.FullName"/>), mapping to the diagnostic reason — for example
+    /// <c>"no public constructor whose parameters can be resolved"</c> or
+    /// <c>"duplicate slot card type id 'foo'; another type is already registered"</c>.
+    /// Callers that have an <see cref="ILogger"/> available (for example, the application
+    /// bootstrap or an Autofac module) should iterate this collection after calling
+    /// <see cref="EnsureInitialized"/> and emit a warning per entry so that misconfigured
+    /// devices fail loudly rather than silently.
+    /// </value>
+    public static IReadOnlyDictionary<string, string> SkippedDeviceTypes
+        => skippedDeviceTypes;
 
     /// <summary>
     /// Ensures device factories are discovered and registered.
@@ -113,6 +201,20 @@ public static class DeviceFactoryRegistry
     }
 
     /// <summary>
+    /// Resolves the logger handed to a device constructed by a registry or extension factory.
+    /// </summary>
+    /// <param name="deviceType">The type of the device being constructed.</param>
+    /// <returns>
+    /// The logger returned by <see cref="LoggerFactory"/>, or a sink-less logger when no
+    /// factory is configured (or it returns <see langword="null"/>).
+    /// </returns>
+    internal static ILogger ResolveLogger(Type deviceType)
+    {
+        ArgumentNullException.ThrowIfNull(deviceType);
+        return LoggerFactory?.Invoke(deviceType) ?? SilentLoggerInstance.Value;
+    }
+
+    /// <summary>
     /// Scans for device types and creates factory registrations.
     /// </summary>
     private static void DiscoverDevices()
@@ -145,27 +247,107 @@ public static class DeviceFactoryRegistry
 
     private static void RegisterMotherboardFactory(string typeId, Type deviceType)
     {
-        // Find parameterless constructor
-        var constructor = deviceType.GetConstructor(Type.EmptyTypes);
+        var constructor = FindResolvableConstructor(deviceType);
         if (constructor is null)
         {
-            // Device type doesn't have a parameterless constructor - skip
+            RecordSkip(deviceType, "no public constructor whose parameters can all be resolved (expected a parameterless ctor or one whose non-default parameters are all of type Serilog.ILogger)");
             return;
         }
 
-        motherboardFactories[typeId] = _ => (IMotherboardDevice)constructor.Invoke(null);
+        if (motherboardFactories.ContainsKey(typeId))
+        {
+            RecordSkip(deviceType, $"duplicate motherboard device type id '{typeId}'; another type is already registered");
+            return;
+        }
+
+        motherboardFactories[typeId] = _ => (IMotherboardDevice)InvokeConstructor(constructor, deviceType);
     }
 
     private static void RegisterSlotCardFactory(string typeId, Type deviceType)
     {
-        // Find parameterless constructor
-        var constructor = deviceType.GetConstructor(Type.EmptyTypes);
+        var constructor = FindResolvableConstructor(deviceType);
         if (constructor is null)
         {
-            // Device type doesn't have a parameterless constructor - skip
+            RecordSkip(deviceType, "no public constructor whose parameters can all be resolved (expected a parameterless ctor or one whose non-default parameters are all of type Serilog.ILogger)");
             return;
         }
 
-        slotCardFactories[typeId] = _ => (ISlotCard)constructor.Invoke(null);
+        if (slotCardFactories.ContainsKey(typeId))
+        {
+            RecordSkip(deviceType, $"duplicate slot card type id '{typeId}'; another type is already registered");
+            return;
+        }
+
+        slotCardFactories[typeId] = (_, _) => (ISlotCard)InvokeConstructor(constructor, deviceType);
+    }
+
+    /// <summary>
+    /// Finds a public constructor the registry can satisfy, selecting the resolvable public
+    /// constructor with the most parameters. A parameterless constructor is always resolvable,
+    /// so it is chosen only when no richer resolvable constructor exists.
+    /// </summary>
+    private static ConstructorInfo? FindResolvableConstructor(Type deviceType)
+    {
+        // Pick the public constructor with the most parameters that we can fully resolve, so
+        // devices that also offer a logger-taking constructor receive the configured logger.
+        ConstructorInfo? best = null;
+        var bestParamCount = -1;
+        foreach (var candidate in deviceType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var parameters = candidate.GetParameters();
+            if (!parameters.All(CanResolveParameter))
+            {
+                continue;
+            }
+
+            if (parameters.Length > bestParamCount)
+            {
+                best = candidate;
+                bestParamCount = parameters.Length;
+            }
+        }
+
+        return best;
+    }
+
+    private static bool CanResolveParameter(ParameterInfo parameter)
+        => parameter.ParameterType == typeof(ILogger) || parameter.HasDefaultValue;
+
+    private static object InvokeConstructor(ConstructorInfo constructor, Type deviceType)
+    {
+        var parameters = constructor.GetParameters();
+        if (parameters.Length == 0)
+        {
+            return constructor.Invoke(null);
+        }
+
+        var args = new object?[parameters.Length];
+        for (var i = 0; i < parameters.Length; i++)
+        {
+            args[i] = ResolveParameter(parameters[i], deviceType);
+        }
+
+        return constructor.Invoke(args);
+    }
+
+    private static object? ResolveParameter(ParameterInfo parameter, Type deviceType)
+    {
+        if (parameter.ParameterType == typeof(ILogger))
+        {
+            return ResolveLogger(deviceType);
+        }
+
+        return parameter.DefaultValue;
+    }
+
+    private static void RecordSkip(Type deviceType, string reason)
+    {
+        // Prefer FullName (namespace + nested-type chain). Fall back to
+        // AssemblyQualifiedName to avoid collisions for distinct types that happen to
+        // share a simple name; only fall back to Name as a last resort.
+        var key = deviceType.FullName
+                  ?? deviceType.AssemblyQualifiedName
+                  ?? deviceType.Name;
+        skippedDeviceTypes[key] = reason;
     }
 }

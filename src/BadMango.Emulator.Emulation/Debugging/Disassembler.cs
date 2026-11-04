@@ -149,7 +149,7 @@ public sealed class Disassembler : IDisassembler
     public IReadOnlyList<DisassembledInstruction> DisassembleRange(uint startAddress, uint endAddress) =>
         endAddress < startAddress
             ? throw new ArgumentException("End address must be greater than or equal to start address.", nameof(endAddress))
-            : Disassemble(startAddress, (int)(endAddress - startAddress));
+            : Disassemble(startAddress, (int)(endAddress - startAddress) + 1);
 
     private static OpcodeInfo[] BuildOpcodeInfoArray(OpcodeTable opcodeTable)
     {

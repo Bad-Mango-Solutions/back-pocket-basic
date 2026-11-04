@@ -94,7 +94,7 @@ public sealed class DeviceMapCommand : CommandHandlerBase, ICommandHelp
 
         debugContext.Output.WriteLine("Device Registry:");
         debugContext.Output.WriteLine();
-        debugContext.Output.WriteLine($"{"ID",-6} {"Kind",-16} {"Name",-24} {"Wiring Path"}");
+        debugContext.Output.WriteLine($"{"ID",-6} {"Kind",-20} {"Name",-24} {"Wiring Path"}");
         debugContext.Output.WriteLine(new string('─', 80));
 
         // Sort devices by wiring path for hierarchical display
@@ -102,22 +102,14 @@ public sealed class DeviceMapCommand : CommandHandlerBase, ICommandHelp
 
         foreach (var device in devices)
         {
-            string indent = GetIndent(device.WiringPath);
             string displayName = device.Name;
 
-            debugContext.Output.WriteLine($"{device.Id,-6} {device.Kind,-16} {indent}{displayName,-24} {device.WiringPath}");
+            debugContext.Output.WriteLine($"{device.Id,-6} {device.Kind,-20} {displayName,-24} {device.WiringPath}");
         }
 
         debugContext.Output.WriteLine();
         debugContext.Output.WriteLine($"Total devices: {registry.Count}");
 
         return CommandResult.Ok();
-    }
-
-    private static string GetIndent(string wiringPath)
-    {
-        // Count the depth based on '/' separators in the wiring path
-        int depth = wiringPath.Count(c => c == '/');
-        return new(' ', depth * 2);
     }
 }

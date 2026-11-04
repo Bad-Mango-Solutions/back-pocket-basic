@@ -101,12 +101,20 @@
             {
                 "type": "keyboard",
                 "name": "Keyboard",
-                "enabled": true
+                "enabled": true,
+                "config": {
+                    "preset": "enhanced",
+                    "autoRepeat": true
+                }
             },
             {
                 "type": "video",
-                "name": "Video Device",
-                "enabled": true
+                "name": "Video",
+                "enabled": true,
+                "config": {
+                    "preset": "enhanced",
+                    "colorMode": "ntsc"
+                }
             },
             {
                 "type": "character",
@@ -119,12 +127,23 @@
             {
                 "type": "speaker",
                 "name": "Speaker",
-                "enabled": true
+                "enabled": true,
+                "config": {
+                    "sampleRate": 48000
+                }
             },
             {
                 "type": "languagecard",
                 "name": "Language Card",
                 "enabled": true
+            },
+            {
+                "type": "gameio",
+                "name": "Game I/O",
+                "enabled": true,
+                "config": {
+                    "joystickDeadzone": 0.1
+                }
             },
             {
                 "type": "extended80column",
@@ -144,6 +163,14 @@
                 {
                     "slot": 4,
                     "type": "pocketwatch"
+                },
+                {
+                    "slot": 6,
+                    "type": "disk-ii-compatible",
+                    "config": {
+                        "drive1": null,
+                        "drive2": null
+                    }
                 }
             ]
         }
@@ -151,6 +178,7 @@
 
     "boot": {
         "autoStart": false,
-        "autoVideoWindowOpen": true
+        "autoVideoWindowOpen": true,
+        "startupSlot": 6
     }
 }

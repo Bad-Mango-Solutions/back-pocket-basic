@@ -4,14 +4,25 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using System.Globalization;
+
 /// <summary>
-/// Controls bus logging and displays recent bus access traces.
+/// Displays the bus fault log captured by the memory bus and lets the
+/// operator clear it.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Enables or disables bus logging, displays recent bus access traces, and
-/// allows clearing the trace buffer. Bus logging captures read/write operations
-/// for debugging and analysis.
+/// The memory bus pushes every fault it observes (unmapped, permission,
+/// NX, misaligned, device, plus synthetic faults for silent floating-bus
+/// reads from composite targets with no sub-handler) into a fixed-capacity
+/// ring buffer. This command renders that ring buffer.
+/// </para>
+/// <para>
+/// Recording is off by default so normal emulation does not pay for it
+/// (see <see cref="Bus.Interfaces.IMemoryBus.FaultRecordingEnabled"/>). The
+/// first <c>buslog</c> or <c>fault</c> invocation turns it on; faults that
+/// occurred before that point are not captured. Use <c>buslog off</c> to
+/// stop recording again.
 /// </para>
 /// <para>
 /// This command requires a bus to be attached to the debug context.
@@ -23,25 +34,31 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
     /// Initializes a new instance of the <see cref="BusLogCommand"/> class.
     /// </summary>
     public BusLogCommand()
-        : base("buslog", "Control bus logging and display traces")
+        : base("buslog", "Show or clear the bus fault log")
     {
     }
 
     /// <inheritdoc/>
-    public override IReadOnlyList<string> Aliases { get; } = ["bl", "trace"];
+    public override IReadOnlyList<string> Aliases { get; } = ["bl"];
 
     /// <inheritdoc/>
-    public override string Usage => "buslog [on|off|show|clear]";
+    public override string Usage => "buslog [show|tail|clear|status|on|off] [N]";
 
     /// <inheritdoc/>
-    public string Synopsis => "buslog [on|off|show|clear|status]";
+    public string Synopsis => "buslog [show|tail|clear|status|on|off] [N]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
-        "Controls bus logging and displays recent bus access traces. Use 'on' to enable " +
-        "logging, 'off' to disable, 'show' to display the log buffer, 'clear' to empty " +
-        "the buffer, and 'status' to check current state. Currently a placeholder - full " +
-        "implementation requires IOPageDispatcher integration.";
+        "Inspects the bus fault ring buffer. The bus records every fault it " +
+        "observes (Unmapped, Permission, Nx, Misaligned, DeviceFault) plus " +
+        "synthetic Unmapped entries for silent floating-bus reads where a " +
+        "composite target had no sub-handler for the requested offset.\n" +
+        "Recording is off by default to keep emulation fast; the first use of " +
+        "'buslog' or 'fault' turns it on (earlier faults are not captured).\n" +
+        "  show [N] | tail [N]   Print the last N faults (default 20).\n" +
+        "  clear                 Empty the buffer and reset counters.\n" +
+        "  status                Show buffer capacity / counters.\n" +
+        "  on | off              Enable or disable fault recording.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } = [];
@@ -49,14 +66,18 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "buslog on                Enable bus logging",
-        "buslog show              Display bus access log",
-        "buslog clear             Clear the log buffer",
+        "buslog                   Show the last 20 faults",
+        "buslog show 100          Show the last 100 faults",
+        "buslog clear             Empty the buffer",
+        "buslog status            Show buffer capacity and counters",
+        "buslog off               Stop recording faults",
     ];
 
     /// <inheritdoc/>
     public string? SideEffects =>
-        "Enabling logging may slightly impact performance. The log buffer consumes memory.";
+        "'clear' discards the captured fault history. Any subcommand other " +
+        "than 'off' enables bus fault recording, which adds a small cost to " +
+        "faulting bus accesses.";
 
     /// <inheritdoc/>
     public IReadOnlyList<string> SeeAlso { get; } = ["fault", "switches", "regions"];
@@ -76,66 +97,119 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No bus attached. This command requires a bus-based system.");
         }
 
-        string subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "status";
+        var ring = debugContext.Bus.FaultRing;
+        if (ring is null)
+        {
+            return CommandResult.Error("No bus fault ring is configured for this bus.");
+        }
+
+        string subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "show";
+
+        if (subcommand == "off")
+        {
+            debugContext.Bus.FaultRecordingEnabled = false;
+            debugContext.Output.WriteLine("Bus fault recording disabled.");
+            return CommandResult.Ok();
+        }
+
+        bool justEnabled = EnsureRecordingEnabled(debugContext.Bus, debugContext.Output);
+        if (subcommand == "on")
+        {
+            if (!justEnabled)
+            {
+                debugContext.Output.WriteLine("Bus fault recording is already enabled.");
+            }
+
+            return CommandResult.Ok();
+        }
 
         return subcommand switch
         {
-            "on" or "enable" => EnableLogging(debugContext),
-            "off" or "disable" => DisableLogging(debugContext),
-            "show" or "display" => ShowLog(debugContext),
-            "clear" => ClearLog(debugContext),
-            "status" or "" => ShowStatus(debugContext),
-            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use: on, off, show, clear, or status."),
+            "show" or "tail" or "" => ShowLog(debugContext, ring, args),
+            "clear" => ClearLog(debugContext, ring),
+            "status" => ShowStatus(debugContext, ring),
+            _ => CommandResult.Error($"Unknown subcommand: '{args[0]}'. Use: show, tail, clear, status, on, or off."),
         };
     }
 
-    private static CommandResult EnableLogging(IDebugContext context)
+    /// <summary>
+    /// Turns on bus fault recording if it is currently off and tells the
+    /// operator that only faults from now on will be captured.
+    /// </summary>
+    /// <param name="bus">The bus whose recording flag to set.</param>
+    /// <param name="output">Where to write the notice.</param>
+    /// <returns>
+    /// <see langword="true"/> if recording was off and has just been enabled;
+    /// otherwise <see langword="false"/>.
+    /// </returns>
+    internal static bool EnsureRecordingEnabled(Bus.Interfaces.IMemoryBus bus, TextWriter output)
     {
-        // Note: This would require the bus to support logging configuration.
-        // Placeholder implementation.
-        context.Output.WriteLine("Bus logging enabled.");
+        if (bus.FaultRecordingEnabled)
+        {
+            return false;
+        }
+
+        bus.FaultRecordingEnabled = true;
+        output.WriteLine("Bus fault recording enabled; faults from this point on will be captured ('buslog off' to disable).");
+        output.WriteLine();
+        return true;
+    }
+
+    private static CommandResult ShowLog(IDebugContext context, BadMango.Emulator.Bus.Interfaces.IBusFaultRing ring, string[] args)
+    {
+        int n = 20;
+        if (args.Length > 1 && int.TryParse(args[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed > 0)
+        {
+            n = parsed;
+        }
+
+        var snapshot = ring.Snapshot();
+        if (snapshot.Length == 0)
+        {
+            context.Output.WriteLine("Bus fault log is empty.");
+            return CommandResult.Ok();
+        }
+
+        int start = Math.Max(0, snapshot.Length - n);
+        int shown = snapshot.Length - start;
+
+        context.Output.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"Bus fault log (showing {shown} of {ring.Count}; {ring.TotalFaults} total recorded):"));
         context.Output.WriteLine();
-        context.Output.WriteLine("Note: Bus logging requires infrastructure support.");
-        context.Output.WriteLine("      Check that your bus implementation supports tracing.");
+        context.Output.WriteLine("  Cycle           Kind        Addr  W  Intent             Device  Region");
+        context.Output.WriteLine("  --------------- ----------- ----- -- ------------------ ------- ------------");
+        for (int i = start; i < snapshot.Length; i++)
+        {
+            var f = snapshot[i];
+            context.Output.WriteLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"  {f.Cycle,15} {f.Kind,-11} ${f.Address:X4} {f.WidthBits,2} {f.Intent,-18} {f.DeviceId,7} {f.RegionTag}"));
+        }
+
         return CommandResult.Ok();
     }
 
-    private static CommandResult DisableLogging(IDebugContext context)
+    private static CommandResult ClearLog(IDebugContext context, BadMango.Emulator.Bus.Interfaces.IBusFaultRing ring)
     {
-        context.Output.WriteLine("Bus logging disabled.");
+        ring.Clear();
+        context.Output.WriteLine("Bus fault log cleared.");
         return CommandResult.Ok();
     }
 
-    private static CommandResult ShowLog(IDebugContext context)
+    private static CommandResult ShowStatus(IDebugContext context, BadMango.Emulator.Bus.Interfaces.IBusFaultRing ring)
     {
-        context.Output.WriteLine("Bus Access Log:");
+        context.Output.WriteLine("Bus Fault Log Status:");
         context.Output.WriteLine();
-        context.Output.WriteLine("  No log entries available.");
-        context.Output.WriteLine();
-        context.Output.WriteLine("Note: Bus logging captures read/write operations when enabled.");
-        context.Output.WriteLine("      Use 'buslog on' to start capturing traces.");
-        return CommandResult.Ok();
-    }
-
-    private static CommandResult ClearLog(IDebugContext context)
-    {
-        context.Output.WriteLine("Bus log buffer cleared.");
-        return CommandResult.Ok();
-    }
-
-    private static CommandResult ShowStatus(IDebugContext context)
-    {
-        context.Output.WriteLine("Bus Logging Status:");
-        context.Output.WriteLine();
-        context.Output.WriteLine("  Logging:      Disabled");
-        context.Output.WriteLine("  Buffer size:  0 entries");
-        context.Output.WriteLine("  Buffer limit: N/A");
-        context.Output.WriteLine();
-        context.Output.WriteLine("Commands:");
-        context.Output.WriteLine("  buslog on     - Enable bus logging");
-        context.Output.WriteLine("  buslog off    - Disable bus logging");
-        context.Output.WriteLine("  buslog show   - Display recent log entries");
-        context.Output.WriteLine("  buslog clear  - Clear the log buffer");
+        context.Output.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"  Buffer capacity:  {ring.Capacity}"));
+        context.Output.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"  Faults in buffer: {ring.Count}"));
+        context.Output.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"  Total recorded:   {ring.TotalFaults}"));
         return CommandResult.Ok();
     }
 }

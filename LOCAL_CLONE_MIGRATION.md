@@ -2,7 +2,7 @@
 
 ## Repository Transfer Complete
 
-The repository has been transferred from `jpactor/applesoft-basic` to `Bad-Mango-Solutions/back-pocket-basic`.
+The repository has been transferred from `jpactor/applesoft-basic` to `Bad-Mango-Solutions/back-pocket-emulator`.
 
 ## Migrating Your Local Clone
 
@@ -17,7 +17,7 @@ This preserves your local branches and commit history:
 cd /path/to/your/local/clone
 
 # Update the origin remote URL
-git remote set-url origin https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
+git remote set-url origin https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
 
 # Verify the new URL
 git remote -v
@@ -25,8 +25,8 @@ git remote -v
 
 **Expected output:**
 ```
-origin  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (fetch)
-origin  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (push)
+origin  https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git (fetch)
+origin  https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git (push)
 ```
 
 ```bash
@@ -44,13 +44,13 @@ If you prefer to start fresh:
 
 ```bash
 # Clone the repository at the new location
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Build and verify
-dotnet restore BackPocketBasic.slnx
-dotnet build BackPocketBasic.slnx
-dotnet test BackPocketBasic.slnx
+dotnet restore BackPocketEmulator.slnx
+dotnet build BackPocketEmulator.slnx
+dotnet test BackPocketEmulator.slnx
 ```
 
 ### For Contributors with Forks
@@ -60,7 +60,7 @@ If you forked the repository before the transfer:
 1. **Update your fork's upstream remote:**
    ```bash
    cd /path/to/your/fork
-   git remote set-url upstream https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
+   git remote set-url upstream https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
    git remote -v
    ```
 
@@ -73,7 +73,7 @@ If you forked the repository before the transfer:
    ```
 
 3. **Consider re-forking:**
-   - You may want to create a new fork from `Bad-Mango-Solutions/back-pocket-basic`
+   - You may want to create a new fork from `Bad-Mango-Solutions/back-pocket-emulator`
    - This ensures your fork is properly linked to the new organization
 
 ### Verifying the Migration
@@ -84,7 +84,7 @@ After updating your remote URL:
    ```bash
    git remote -v
    ```
-   Should show `Bad-Mango-Solutions/back-pocket-basic`
+   Should show `Bad-Mango-Solutions/back-pocket-emulator`
 
 2. **Verify you can fetch:**
    ```bash
@@ -107,21 +107,21 @@ After updating your remote URL:
 #### "Repository not found" error
 
 If you get this error after updating the remote URL:
-- Verify you're using the correct URL: `https://github.com/Bad-Mango-Solutions/back-pocket-basic.git`
+- Verify you're using the correct URL: `https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git`
 - Check if you have access to the repository
 - Ensure you're authenticated with GitHub
 
 #### GitHub automatically redirects old URLs
 
 GitHub provides automatic redirects for transferred repositories, so:
-- `https://github.com/jpactor/applesoft-basic.git` will redirect to `https://github.com/Bad-Mango-Solutions/back-pocket-basic.git`
+- `https://github.com/jpactor/applesoft-basic.git` will redirect to `https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git`
 - However, it's still best practice to update your remote URL explicitly
 
 ### What Changed
 
 - **Organization**: `jpactor` → `Bad-Mango-Solutions`
-- **Repository name**: `applesoft-basic` → `back-pocket-basic`
-- **Full URL**: `https://github.com/jpactor/applesoft-basic` → `https://github.com/Bad-Mango-Solutions/back-pocket-basic`
+- **Repository name**: `applesoft-basic` → `back-pocket-emulator`
+- **Full URL**: `https://github.com/jpactor/applesoft-basic` → `https://github.com/Bad-Mango-Solutions/back-pocket-emulator`
 
 ### What Stayed the Same
 
@@ -134,7 +134,7 @@ GitHub provides automatic redirects for transferred repositories, so:
 ## Questions?
 
 If you encounter any issues migrating your local clone, please open an issue at:
-https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues
+https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues
 
 ---
 

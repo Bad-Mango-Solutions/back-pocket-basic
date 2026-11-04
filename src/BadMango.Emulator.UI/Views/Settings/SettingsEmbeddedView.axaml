@@ -20,7 +20,7 @@
                     <ItemsControl ItemsSource="{Binding SettingsPages}" Margin="8">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Command="{Binding DataContext.NavigateToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                <Button Command="{Binding ((vm:SettingsWindowViewModel)DataContext).NavigateToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding DisplayName}"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"

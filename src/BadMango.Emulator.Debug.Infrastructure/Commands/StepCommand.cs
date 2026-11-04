@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
 
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Cpu;
+
 /// <summary>
 /// Executes one or more CPU instructions in single-step mode.
 /// </summary>
@@ -110,16 +113,35 @@ public sealed class StepCommand : CommandHandlerBase, ICommandHelp
                 break;
             }
 
-            // Display instruction before execution
+            // Disassemble the instruction about to execute so we can show the
+            // effective address (when applicable) alongside the mnemonic.
+            DisassembledInstruction? disassembled = null;
             if (debugContext.Disassembler is not null)
             {
                 var pc = debugContext.Cpu.GetPC();
-                var instruction = debugContext.Disassembler.DisassembleInstruction(pc);
-                debugContext.Output.WriteLine($"${instruction.Address:X4}: {instruction.FormatBytes(),-12} {instruction.FormatInstruction()}");
+                disassembled = debugContext.Disassembler.DisassembleInstruction(pc);
+                debugContext.Output.WriteLine(
+                    $"${disassembled.Address:X4}: {disassembled.FormatBytes(),-12} {disassembled.FormatInstruction()}");
             }
 
             var result = debugContext.Cpu.Step();
             totalCycles += (int)result.CyclesConsumed.Value;
+
+            // Show register state and effective address after the instruction.
+            var regs = debugContext.Cpu.GetRegisters();
+            debugContext.Output.WriteLine(
+                $"  A={regs.A.GetByte():X2} X={regs.X.GetByte():X2} Y={regs.Y.GetByte():X2} " +
+                $"SP={regs.SP.GetByte():X2} P={(byte)regs.P:X2} [{FormatFlags(regs.P)}] " +
+                $"PC=${debugContext.Cpu.GetPC():X4} Cyc={result.CyclesConsumed.Value}");
+
+            if (disassembled is not null)
+            {
+                string? ea = FormatEffectiveAddress(disassembled);
+                if (ea is not null)
+                {
+                    debugContext.Output.WriteLine($"  EA={ea}");
+                }
+            }
 
             if (debugContext.Cpu.IsStopRequested)
             {
@@ -139,6 +161,49 @@ public sealed class StepCommand : CommandHandlerBase, ICommandHelp
 
         return CommandResult.Ok();
     }
+
+    private static string FormatFlags(ProcessorStatusFlags p)
+    {
+        Span<char> chars = stackalloc char[8];
+        chars[0] = (p & ProcessorStatusFlags.N) != 0 ? 'N' : '.';
+        chars[1] = (p & ProcessorStatusFlags.V) != 0 ? 'V' : '.';
+        chars[2] = '.';
+        chars[3] = '.';
+        chars[4] = (p & ProcessorStatusFlags.D) != 0 ? 'D' : '.';
+        chars[5] = (p & ProcessorStatusFlags.I) != 0 ? 'I' : '.';
+        chars[6] = (p & ProcessorStatusFlags.Z) != 0 ? 'Z' : '.';
+        chars[7] = (p & ProcessorStatusFlags.C) != 0 ? 'C' : '.';
+        return new string(chars);
+    }
+
+    private static string? FormatEffectiveAddress(DisassembledInstruction instruction)
+    {
+        // Only memory-touching addressing modes have a meaningful effective address.
+        switch (instruction.AddressingMode)
+        {
+            case CpuAddressingModes.ZeroPage:
+            case CpuAddressingModes.ZeroPageX:
+            case CpuAddressingModes.ZeroPageY:
+            case CpuAddressingModes.Absolute:
+            case CpuAddressingModes.AbsoluteX:
+            case CpuAddressingModes.AbsoluteY:
+            case CpuAddressingModes.Indirect:
+            case CpuAddressingModes.IndirectX:
+            case CpuAddressingModes.IndirectY:
+            case CpuAddressingModes.Relative:
+                return $"${GetOperandValue(instruction):X4}";
+            default:
+                return null;
+        }
+    }
+
+    private static uint GetOperandValue(DisassembledInstruction instruction) =>
+        instruction.OperandLength switch
+        {
+            1 => instruction.Operands[0],
+            2 => (uint)(instruction.Operands[0] | (instruction.Operands[1] << 8)),
+            _ => 0,
+        };
 
     private static bool TryParseNumber(string value, out int result)
     {

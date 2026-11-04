@@ -1,0 +1,1224 @@
+2026-05-18 09:29:30.640 -07:00 [INF] Starting Emulator Debug Console
+2026-05-18 09:29:30.868 -07:00 [INF] Debug console initialized
+2026-05-18 09:49:31.470 -07:00 [INF] Debug console exited normally
+2026-05-18 09:49:42.798 -07:00 [INF] Starting Emulator Debug Console
+2026-05-18 09:49:43.019 -07:00 [INF] Debug console initialized
+2026-05-18 09:50:40.054 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:50:40.114 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.115 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.129 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.141 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.188 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.188 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.207 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.208 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.275 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.275 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.297 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.297 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.342 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.342 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.373 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.373 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.423 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.423 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.450 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.450 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.499 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.499 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.527 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.527 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.588 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.588 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.603 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.603 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.653 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.653 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.671 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.671 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.730 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.730 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.748 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.748 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.808 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.808 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.827 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.827 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.885 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.886 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.904 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.904 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.962 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.963 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:40.980 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:40.981 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.042 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.042 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.058 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.058 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.120 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.121 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.136 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.136 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.201 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.201 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.227 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.227 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.278 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.278 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.285 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.285 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.355 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.355 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.370 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.370 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.434 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.434 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.450 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.450 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.500 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.500 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.528 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.528 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.577 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.577 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:41.604 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.604 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:50:41.641 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$09 chk=$F7 (ok).
+2026-05-18 09:50:41.646 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.647 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0A chk=$F4 (ok).
+2026-05-18 09:50:41.668 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.668 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0B chk=$F5 (ok).
+2026-05-18 09:50:41.681 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.682 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0C chk=$F2 (ok).
+2026-05-18 09:50:41.686 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.686 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0D chk=$F3 (ok).
+2026-05-18 09:50:41.699 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.699 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0E chk=$F0 (ok).
+2026-05-18 09:50:41.716 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.716 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0F chk=$F1 (ok).
+2026-05-18 09:50:41.730 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.731 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$00 chk=$FE (ok).
+2026-05-18 09:50:41.749 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$00 → ok (epilogue-mismatch) (epilogue $F5 $E6).
+2026-05-18 09:50:41.760 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$02 chk=$FC (ok).
+2026-05-18 09:50:41.764 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.764 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$03 chk=$FD (ok).
+2026-05-18 09:50:41.777 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.777 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$04 chk=$FA (ok).
+2026-05-18 09:50:41.793 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.794 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$05 chk=$FB (ok).
+2026-05-18 09:50:41.806 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.807 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$06 chk=$F8 (ok).
+2026-05-18 09:50:41.823 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.824 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$07 chk=$F9 (ok).
+2026-05-18 09:50:41.827 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.837 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$08 chk=$F6 (ok).
+2026-05-18 09:50:41.852 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.853 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$09 chk=$F7 (ok).
+2026-05-18 09:50:41.856 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.857 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0A chk=$F4 (ok).
+2026-05-18 09:50:41.870 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.870 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0B chk=$F5 (ok).
+2026-05-18 09:50:41.883 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.884 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0C chk=$F2 (ok).
+2026-05-18 09:50:41.902 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0C → ok (epilogue-mismatch) (epilogue $DA $CD).
+2026-05-18 09:50:41.914 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0E chk=$F0 (ok).
+2026-05-18 09:50:41.933 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0E → ok (epilogue-mismatch) (epilogue $BF $CD).
+2026-05-18 09:50:41.935 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$00 chk=$FE (ok).
+2026-05-18 09:50:41.948 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:41.949 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$01 chk=$FF (ok).
+2026-05-18 09:50:41.977 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$01 → ok (epilogue-mismatch) (epilogue $9A $E7).
+2026-05-18 09:50:41.979 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$03 chk=$FD (ok).
+2026-05-18 09:50:41.996 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$03 → ok (epilogue-mismatch) (epilogue $B7 $AE).
+2026-05-18 09:50:42.010 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$05 chk=$FB (ok).
+2026-05-18 09:50:42.026 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$05 → ok (epilogue-mismatch) (epilogue $FF $DF).
+2026-05-18 09:50:42.028 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$07 chk=$F9 (ok).
+2026-05-18 09:50:42.056 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$07 → ok (epilogue-mismatch) (epilogue $96 $96).
+2026-05-18 09:50:42.058 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$09 chk=$F7 (ok).
+2026-05-18 09:50:42.074 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$09 → ok (epilogue-mismatch) (epilogue $96 $96).
+2026-05-18 09:50:42.088 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0B chk=$F5 (ok).
+2026-05-18 09:50:42.104 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0B → ok (epilogue-mismatch) (epilogue $D3 $F4).
+2026-05-18 09:50:42.106 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0D chk=$F3 (ok).
+2026-05-18 09:50:42.135 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0D → ok (epilogue-mismatch) (epilogue $DE $BD).
+2026-05-18 09:50:42.137 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0F chk=$F1 (ok).
+2026-05-18 09:50:42.141 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:42.151 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$00 chk=$FE (ok).
+2026-05-18 09:50:42.170 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$00 → ok (epilogue-mismatch) (epilogue $FE $ED).
+2026-05-18 09:50:42.170 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:42.170 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:50:42.183 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:50:42.183 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:50:42.186 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:50:42.186 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:50:42.199 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:50:42.199 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:50:42.246 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$07 chk=$FB (ok).
+2026-05-18 09:50:42.249 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:42.262 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=8).
+2026-05-18 09:50:42.262 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=8, settle=1000 cycles).
+2026-05-18 09:50:43.247 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$04 chk=$F8 (ok).
+2026-05-18 09:50:43.263 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.264 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$05 chk=$F9 (ok).
+2026-05-18 09:50:43.267 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.268 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$06 chk=$FA (ok).
+2026-05-18 09:50:43.280 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.293 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$07 chk=$FB (ok).
+2026-05-18 09:50:43.297 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.297 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$08 chk=$F4 (ok).
+2026-05-18 09:50:43.310 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.311 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$09 chk=$F5 (ok).
+2026-05-18 09:50:43.314 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:43.327 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=8).
+2026-05-18 09:50:43.327 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=8, settle=1000 cycles).
+2026-05-18 09:50:44.336 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$07 chk=$FB (ok).
+2026-05-18 09:50:44.349 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:44.349 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$08 chk=$F4 (ok).
+2026-05-18 09:50:44.362 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:44.363 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$09 chk=$F5 (ok).
+2026-05-18 09:50:44.379 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:44.380 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0A chk=$F6 (ok).
+2026-05-18 09:50:44.383 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:44.384 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0B chk=$F7 (ok).
+2026-05-18 09:50:44.410 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:44.412 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=8).
+2026-05-18 09:50:44.412 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=8, settle=1000 cycles).
+2026-05-18 09:50:45.416 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$09 chk=$F5 (ok).
+2026-05-18 09:50:45.432 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:45.433 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0A chk=$F6 (ok).
+2026-05-18 09:50:45.446 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:45.447 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0B chk=$F7 (ok).
+2026-05-18 09:50:45.450 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:45.451 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0C chk=$F0 (ok).
+2026-05-18 09:50:45.463 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:45.477 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0D chk=$F1 (ok).
+2026-05-18 09:50:45.480 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:45.493 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=8).
+2026-05-18 09:50:45.493 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=8, settle=1000 cycles).
+2026-05-18 09:50:46.494 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0B chk=$F7 (ok).
+2026-05-18 09:50:46.510 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.511 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0C chk=$F0 (ok).
+2026-05-18 09:50:46.523 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.523 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0D chk=$F1 (ok).
+2026-05-18 09:50:46.539 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.540 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0E chk=$F2 (ok).
+2026-05-18 09:50:46.553 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.553 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$0F chk=$F3 (ok).
+2026-05-18 09:50:46.557 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.557 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 address field vol=$FE trk=$02 sec=$00 chk=$FC (ok).
+2026-05-18 09:50:46.570 -07:00 [VRB] DiskII (slot 6): drive 1 qt=8 data field after vol=$FE trk=$02 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:46.585 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=8).
+2026-05-18 09:50:46.585 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=8, settle=1000 cycles).
+2026-05-18 09:50:46.740 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→6 (delta -2).
+2026-05-18 09:50:46.740 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→6 (delta -2).
+2026-05-18 09:50:46.744 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→4 (delta -2).
+2026-05-18 09:50:46.744 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→4 (delta -2).
+2026-05-18 09:50:47.596 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0E chk=$F1 (ok).
+2026-05-18 09:50:47.600 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:47.600 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0F chk=$F0 (ok).
+2026-05-18 09:50:47.613 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:47.615 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:47.615 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:48.629 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0D chk=$F2 (ok).
+2026-05-18 09:50:48.641 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.642 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0E chk=$F1 (ok).
+2026-05-18 09:50:48.655 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.655 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0F chk=$F0 (ok).
+2026-05-18 09:50:48.672 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.672 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$00 chk=$FF (ok).
+2026-05-18 09:50:48.676 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.676 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$01 chk=$FE (ok).
+2026-05-18 09:50:48.702 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.703 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$02 chk=$FD (ok).
+2026-05-18 09:50:48.706 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:48.718 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:48.718 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:49.721 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$00 chk=$FF (ok).
+2026-05-18 09:50:49.735 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:49.735 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$01 chk=$FE (ok).
+2026-05-18 09:50:49.751 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:50:49.752 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$02 chk=$FD (ok).
+2026-05-18 09:50:49.755 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:49.766 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$03 chk=$FC (ok).
+2026-05-18 09:50:49.781 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:49.782 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$04 chk=$FB (ok).
+2026-05-18 09:50:49.785 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:49.798 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:49.798 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:50.810 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$02 chk=$FD (ok).
+2026-05-18 09:50:50.814 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:50.815 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$03 chk=$FC (ok).
+2026-05-18 09:50:50.828 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:50.829 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$04 chk=$FB (ok).
+2026-05-18 09:50:50.841 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:50.842 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$05 chk=$FA (ok).
+2026-05-18 09:50:50.857 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:50.858 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$06 chk=$F9 (ok).
+2026-05-18 09:50:50.861 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:50.873 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:50.873 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:51.890 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$04 chk=$FB (ok).
+2026-05-18 09:50:51.893 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:51.894 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$05 chk=$FA (ok).
+2026-05-18 09:50:51.907 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:51.908 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$06 chk=$F9 (ok).
+2026-05-18 09:50:51.921 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:51.922 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$07 chk=$F8 (ok).
+2026-05-18 09:50:51.938 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:51.939 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$08 chk=$F7 (ok).
+2026-05-18 09:50:51.942 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:51.954 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:51.955 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:52.960 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$06 chk=$F9 (ok).
+2026-05-18 09:50:52.974 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:52.974 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$07 chk=$F8 (ok).
+2026-05-18 09:50:52.987 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:52.988 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$08 chk=$F7 (ok).
+2026-05-18 09:50:53.005 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:53.005 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$09 chk=$F6 (ok).
+2026-05-18 09:50:53.011 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:53.012 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0A chk=$F5 (ok).
+2026-05-18 09:50:53.035 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:53.038 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:53.038 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:54.040 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$08 chk=$F7 (ok).
+2026-05-18 09:50:54.057 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:50:54.057 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$09 chk=$F6 (ok).
+2026-05-18 09:50:54.071 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:50:54.071 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0A chk=$F5 (ok).
+2026-05-18 09:50:54.075 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:54.075 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0B chk=$F4 (ok).
+2026-05-18 09:50:54.088 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:54.101 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0C chk=$F3 (ok).
+2026-05-18 09:50:54.105 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:54.117 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:54.117 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:55.117 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0A chk=$F5 (ok).
+2026-05-18 09:50:55.133 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:50:55.134 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0B chk=$F4 (ok).
+2026-05-18 09:50:55.147 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:50:55.147 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0C chk=$F3 (ok).
+2026-05-18 09:50:55.163 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:55.164 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0D chk=$F2 (ok).
+2026-05-18 09:50:55.177 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:55.177 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0E chk=$F1 (ok).
+2026-05-18 09:50:55.181 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:55.193 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:55.193 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:56.206 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0C chk=$F3 (ok).
+2026-05-18 09:50:56.210 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.210 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0D chk=$F2 (ok).
+2026-05-18 09:50:56.224 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.225 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0E chk=$F1 (ok).
+2026-05-18 09:50:56.241 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.242 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0F chk=$F0 (ok).
+2026-05-18 09:50:56.255 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.255 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$00 chk=$FF (ok).
+2026-05-18 09:50:56.261 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.261 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$01 chk=$FE (ok).
+2026-05-18 09:50:56.272 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:50:56.288 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:56.288 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:57.288 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0F chk=$F0 (ok).
+2026-05-18 09:50:57.302 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:50:57.303 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$00 chk=$FF (ok).
+2026-05-18 09:50:57.319 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:50:57.319 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$01 chk=$FE (ok).
+2026-05-18 09:50:57.333 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:50:57.333 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$02 chk=$FD (ok).
+2026-05-18 09:50:57.349 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:57.350 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$03 chk=$FC (ok).
+2026-05-18 09:50:57.363 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:57.366 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:57.366 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:58.367 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$01 chk=$FE (ok).
+2026-05-18 09:50:58.380 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:50:58.394 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$02 chk=$FD (ok).
+2026-05-18 09:50:58.397 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:50:58.398 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$03 chk=$FC (ok).
+2026-05-18 09:50:58.411 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:58.412 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$04 chk=$FB (ok).
+2026-05-18 09:50:58.428 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:58.429 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$05 chk=$FA (ok).
+2026-05-18 09:50:58.442 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:58.445 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:58.445 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:50:59.454 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$03 chk=$FC (ok).
+2026-05-18 09:50:59.468 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:50:59.469 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$04 chk=$FB (ok).
+2026-05-18 09:50:59.485 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:50:59.486 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$05 chk=$FA (ok).
+2026-05-18 09:50:59.489 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:50:59.490 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$06 chk=$F9 (ok).
+2026-05-18 09:50:59.502 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:50:59.503 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$07 chk=$F8 (ok).
+2026-05-18 09:50:59.517 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:50:59.535 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:50:59.535 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:51:00.534 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$05 chk=$FA (ok).
+2026-05-18 09:51:00.547 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:00.548 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$06 chk=$F9 (ok).
+2026-05-18 09:51:00.552 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:00.552 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$07 chk=$F8 (ok).
+2026-05-18 09:51:00.564 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:00.576 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$08 chk=$F7 (ok).
+2026-05-18 09:51:00.580 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:51:00.581 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$09 chk=$F6 (ok).
+2026-05-18 09:51:00.593 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:00.609 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:51:00.609 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:51:01.614 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$07 chk=$F8 (ok).
+2026-05-18 09:51:01.630 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:01.631 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$08 chk=$F7 (ok).
+2026-05-18 09:51:01.634 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:51:01.635 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$09 chk=$F6 (ok).
+2026-05-18 09:51:01.650 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:01.650 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0A chk=$F5 (ok).
+2026-05-18 09:51:01.661 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:51:01.662 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0B chk=$F4 (ok).
+2026-05-18 09:51:01.678 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:51:01.680 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:51:01.680 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:51:02.692 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$09 chk=$F6 (ok).
+2026-05-18 09:51:02.707 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:02.708 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0A chk=$F5 (ok).
+2026-05-18 09:51:02.711 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:51:02.722 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0B chk=$F4 (ok).
+2026-05-18 09:51:02.739 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:51:02.739 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0C chk=$F3 (ok).
+2026-05-18 09:51:02.743 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:51:02.743 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0D chk=$F2 (ok).
+2026-05-18 09:51:02.756 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:02.758 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:51:02.758 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:51:03.769 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0B chk=$F4 (ok).
+2026-05-18 09:51:03.785 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.785 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0C chk=$F3 (ok).
+2026-05-18 09:51:03.798 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.799 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0D chk=$F2 (ok).
+2026-05-18 09:51:03.814 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.815 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0E chk=$F1 (ok).
+2026-05-18 09:51:03.818 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.819 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$0F chk=$F0 (ok).
+2026-05-18 09:51:03.844 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.845 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 address field vol=$FE trk=$01 sec=$00 chk=$FF (ok).
+2026-05-18 09:51:03.848 -07:00 [VRB] DiskII (slot 6): drive 1 qt=4 data field after vol=$FE trk=$01 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:03.861 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=4).
+2026-05-18 09:51:03.861 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=4, settle=1000 cycles).
+2026-05-18 09:51:04.017 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→2 (delta -2).
+2026-05-18 09:51:04.017 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→2 (delta -2).
+2026-05-18 09:51:04.034 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:51:04.034 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:51:04.863 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0E chk=$F0 (ok).
+2026-05-18 09:51:04.876 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:04.876 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0F chk=$F1 (ok).
+2026-05-18 09:51:04.893 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:04.895 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:04.896 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:05.906 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0D chk=$F3 (ok).
+2026-05-18 09:51:05.918 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.919 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0E chk=$F0 (ok).
+2026-05-18 09:51:05.935 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.935 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0F chk=$F1 (ok).
+2026-05-18 09:51:05.949 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.949 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$00 chk=$FE (ok).
+2026-05-18 09:51:05.954 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.954 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$01 chk=$FF (ok).
+2026-05-18 09:51:05.966 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.966 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$02 chk=$FC (ok).
+2026-05-18 09:51:05.982 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:05.995 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:05.995 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:06.994 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$00 chk=$FE (ok).
+2026-05-18 09:51:07.009 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:07.010 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$01 chk=$FF (ok).
+2026-05-18 09:51:07.023 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:07.024 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$02 chk=$FC (ok).
+2026-05-18 09:51:07.040 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:07.040 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$03 chk=$FD (ok).
+2026-05-18 09:51:07.044 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:07.055 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$04 chk=$FA (ok).
+2026-05-18 09:51:07.058 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:07.071 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:07.071 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:08.078 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$02 chk=$FC (ok).
+2026-05-18 09:51:08.101 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:08.102 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$03 chk=$FD (ok).
+2026-05-18 09:51:08.105 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:08.106 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$04 chk=$FA (ok).
+2026-05-18 09:51:08.109 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:08.109 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$05 chk=$FB (ok).
+2026-05-18 09:51:08.132 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:08.133 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$06 chk=$F8 (ok).
+2026-05-18 09:51:08.149 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:08.151 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:08.151 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:09.160 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$04 chk=$FA (ok).
+2026-05-18 09:51:09.173 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:09.174 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$05 chk=$FB (ok).
+2026-05-18 09:51:09.177 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:09.178 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$06 chk=$F8 (ok).
+2026-05-18 09:51:09.190 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:09.203 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$07 chk=$F9 (ok).
+2026-05-18 09:51:09.211 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:09.211 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$08 chk=$F6 (ok).
+2026-05-18 09:51:09.221 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:51:09.236 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:09.236 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:10.234 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$06 chk=$F8 (ok).
+2026-05-18 09:51:10.247 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:10.248 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$07 chk=$F9 (ok).
+2026-05-18 09:51:10.263 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:10.264 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$08 chk=$F6 (ok).
+2026-05-18 09:51:10.277 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:51:10.278 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$09 chk=$F7 (ok).
+2026-05-18 09:51:10.293 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:10.294 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 address field vol=$FE trk=$00 sec=$0A chk=$F4 (ok).
+2026-05-18 09:51:10.297 -07:00 [VRB] DiskII (slot 6): drive 1 qt=0 data field after vol=$FE trk=$00 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:51:10.309 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=0).
+2026-05-18 09:51:10.360 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=0, settle=1000 cycles).
+2026-05-18 09:51:10.515 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:51:10.515 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:51:10.529 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:51:10.529 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:51:10.532 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:51:10.532 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:51:10.545 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:51:10.545 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:51:10.559 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→10 (delta 2).
+2026-05-18 09:51:10.559 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→10 (delta 2).
+2026-05-18 09:51:10.561 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→12 (delta 2).
+2026-05-18 09:51:10.561 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→12 (delta 2).
+2026-05-18 09:51:10.562 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:51:10.562 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:51:10.575 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:51:10.575 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:51:10.576 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:51:10.576 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:51:10.578 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:51:10.578 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:51:10.589 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:51:10.589 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:51:10.590 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:51:10.591 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:51:10.605 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:51:10.605 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:51:10.607 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:51:10.607 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:51:10.609 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:51:10.609 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:51:10.611 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:51:10.611 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:51:10.621 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:51:10.621 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:51:10.635 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:51:10.635 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:51:10.637 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:51:10.637 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:51:10.639 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:51:10.639 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:51:10.641 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:51:10.641 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:51:10.651 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:51:10.651 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:51:10.666 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:51:10.666 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:51:10.668 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:51:10.668 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:51:10.671 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:51:10.671 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:51:10.673 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:51:10.673 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:51:10.682 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:51:10.682 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:51:10.684 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:51:10.684 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:51:10.686 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:51:10.686 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:51:10.698 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:51:10.698 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:51:10.700 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:51:10.700 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:51:10.715 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:51:10.715 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:51:10.718 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:51:10.718 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:51:10.729 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:51:10.729 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:51:11.376 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$09 chk=$E6 (ok).
+2026-05-18 09:51:11.402 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.402 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0A chk=$E5 (ok).
+2026-05-18 09:51:11.406 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.406 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0B chk=$E4 (ok).
+2026-05-18 09:51:11.420 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.421 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0C chk=$E3 (ok).
+2026-05-18 09:51:11.433 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.433 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0D chk=$E2 (ok).
+2026-05-18 09:51:11.449 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.449 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:51:11.453 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.454 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:51:11.479 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.480 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$00 chk=$EF (ok).
+2026-05-18 09:51:11.486 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:11.488 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:51:11.488 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:51:12.500 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:51:12.509 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:12.509 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:51:12.525 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:12.530 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:51:12.531 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:51:12.697 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:51:12.697 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:51:12.700 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→64 (delta -2).
+2026-05-18 09:51:12.700 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→64 (delta -2).
+2026-05-18 09:51:12.712 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→62 (delta -2).
+2026-05-18 09:51:12.712 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→62 (delta -2).
+2026-05-18 09:51:12.715 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→60 (delta -2).
+2026-05-18 09:51:12.715 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→60 (delta -2).
+2026-05-18 09:51:12.727 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→58 (delta -2).
+2026-05-18 09:51:12.727 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→58 (delta -2).
+2026-05-18 09:51:12.729 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→56 (delta -2).
+2026-05-18 09:51:12.729 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→56 (delta -2).
+2026-05-18 09:51:12.745 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→54 (delta -2).
+2026-05-18 09:51:12.745 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→54 (delta -2).
+2026-05-18 09:51:12.747 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→52 (delta -2).
+2026-05-18 09:51:12.747 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→52 (delta -2).
+2026-05-18 09:51:12.748 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→50 (delta -2).
+2026-05-18 09:51:12.748 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→50 (delta -2).
+2026-05-18 09:51:12.758 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→48 (delta -2).
+2026-05-18 09:51:12.758 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→48 (delta -2).
+2026-05-18 09:51:12.760 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→46 (delta -2).
+2026-05-18 09:51:12.760 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→46 (delta -2).
+2026-05-18 09:51:12.774 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→44 (delta -2).
+2026-05-18 09:51:12.774 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→44 (delta -2).
+2026-05-18 09:51:12.776 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→42 (delta -2).
+2026-05-18 09:51:12.776 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→42 (delta -2).
+2026-05-18 09:51:12.778 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→40 (delta -2).
+2026-05-18 09:51:12.778 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→40 (delta -2).
+2026-05-18 09:51:12.789 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→38 (delta -2).
+2026-05-18 09:51:12.791 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→38 (delta -2).
+2026-05-18 09:51:12.793 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→36 (delta -2).
+2026-05-18 09:51:12.793 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→36 (delta -2).
+2026-05-18 09:51:12.794 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→34 (delta -2).
+2026-05-18 09:51:12.794 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→34 (delta -2).
+2026-05-18 09:51:12.796 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→32 (delta -2).
+2026-05-18 09:51:12.796 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→32 (delta -2).
+2026-05-18 09:51:12.805 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→30 (delta -2).
+2026-05-18 09:51:12.805 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→30 (delta -2).
+2026-05-18 09:51:12.820 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→28 (delta -2).
+2026-05-18 09:51:12.820 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→28 (delta -2).
+2026-05-18 09:51:12.822 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→26 (delta -2).
+2026-05-18 09:51:12.822 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→26 (delta -2).
+2026-05-18 09:51:12.824 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→24 (delta -2).
+2026-05-18 09:51:12.824 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→24 (delta -2).
+2026-05-18 09:51:12.825 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→22 (delta -2).
+2026-05-18 09:51:12.825 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→22 (delta -2).
+2026-05-18 09:51:12.837 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→20 (delta -2).
+2026-05-18 09:51:12.837 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→20 (delta -2).
+2026-05-18 09:51:12.852 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→18 (delta -2).
+2026-05-18 09:51:12.852 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→18 (delta -2).
+2026-05-18 09:51:12.856 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→16 (delta -2).
+2026-05-18 09:51:12.856 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→16 (delta -2).
+2026-05-18 09:51:12.858 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→14 (delta -2).
+2026-05-18 09:51:12.858 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→14 (delta -2).
+2026-05-18 09:51:12.868 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→12 (delta -2).
+2026-05-18 09:51:12.868 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→12 (delta -2).
+2026-05-18 09:51:13.541 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$0D chk=$F0 (ok).
+2026-05-18 09:51:13.554 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:13.554 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$0E chk=$F3 (ok).
+2026-05-18 09:51:13.571 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:13.571 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$0F chk=$F2 (ok).
+2026-05-18 09:51:13.585 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:13.586 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$00 chk=$FD (ok).
+2026-05-18 09:51:13.589 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:13.589 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$01 chk=$FC (ok).
+2026-05-18 09:51:13.603 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:13.618 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=12).
+2026-05-18 09:51:13.619 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=12, settle=1000 cycles).
+2026-05-18 09:51:14.617 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$0F chk=$F2 (ok).
+2026-05-18 09:51:14.630 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:14.644 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$00 chk=$FD (ok).
+2026-05-18 09:51:14.647 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:14.648 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$01 chk=$FC (ok).
+2026-05-18 09:51:14.660 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:14.661 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$02 chk=$FF (ok).
+2026-05-18 09:51:14.677 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:14.678 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$03 chk=$FE (ok).
+2026-05-18 09:51:14.690 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:14.693 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=12).
+2026-05-18 09:51:14.770 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=12, settle=1000 cycles).
+2026-05-18 09:51:15.783 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$01 chk=$FC (ok).
+2026-05-18 09:51:15.786 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:15.787 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$02 chk=$FF (ok).
+2026-05-18 09:51:15.800 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:15.800 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$03 chk=$FE (ok).
+2026-05-18 09:51:15.804 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:15.814 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$04 chk=$F9 (ok).
+2026-05-18 09:51:15.830 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:15.831 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$05 chk=$F8 (ok).
+2026-05-18 09:51:15.834 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:15.847 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=12).
+2026-05-18 09:51:15.911 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=12, settle=1000 cycles).
+2026-05-18 09:51:16.924 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$03 chk=$FE (ok).
+2026-05-18 09:51:16.941 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:16.942 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$04 chk=$F9 (ok).
+2026-05-18 09:51:16.945 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:16.955 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$05 chk=$F8 (ok).
+2026-05-18 09:51:16.959 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:16.960 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$06 chk=$FB (ok).
+2026-05-18 09:51:16.973 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:16.973 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 address field vol=$FE trk=$03 sec=$07 chk=$FA (ok).
+2026-05-18 09:51:16.990 -07:00 [VRB] DiskII (slot 6): drive 1 qt=12 data field after vol=$FE trk=$03 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:16.992 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=12).
+2026-05-18 09:51:17.114 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=12, settle=1000 cycles).
+2026-05-18 09:51:17.262 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:51:17.262 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:51:17.286 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:51:17.286 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:51:17.289 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:51:17.289 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:51:17.291 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:51:17.291 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:51:17.301 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:51:17.301 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:51:17.303 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:51:17.303 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:51:17.317 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:51:17.317 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:51:17.319 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:51:17.319 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:51:17.321 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:51:17.321 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:51:17.333 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:51:17.333 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:51:17.334 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:51:17.334 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:51:17.349 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:51:17.349 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:51:17.351 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:51:17.351 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:51:17.353 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:51:17.353 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:51:17.363 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:51:17.364 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:51:17.365 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:51:17.365 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:51:17.380 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:51:17.380 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:51:17.382 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:51:17.382 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:51:17.383 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:51:17.383 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:51:17.395 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:51:17.395 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:51:17.397 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:51:17.397 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:51:17.398 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:51:17.398 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:51:17.400 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:51:17.400 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:51:17.411 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:51:17.411 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:51:17.425 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:51:17.425 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:51:17.428 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:51:17.428 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:51:17.430 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:51:17.430 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:51:17.443 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:51:17.443 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:51:18.115 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$05 chk=$EA (ok).
+2026-05-18 09:51:18.129 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.129 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$06 chk=$E9 (ok).
+2026-05-18 09:51:18.145 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.146 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$07 chk=$E8 (ok).
+2026-05-18 09:51:18.159 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.160 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$08 chk=$E7 (ok).
+2026-05-18 09:51:18.163 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.164 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$09 chk=$E6 (ok).
+2026-05-18 09:51:18.177 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.178 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0A chk=$E5 (ok).
+2026-05-18 09:51:18.196 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.197 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0B chk=$E4 (ok).
+2026-05-18 09:51:18.208 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.208 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0C chk=$E3 (ok).
+2026-05-18 09:51:18.224 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.225 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0D chk=$E2 (ok).
+2026-05-18 09:51:18.238 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.239 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:51:18.242 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.243 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:51:18.256 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.256 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$00 chk=$EF (ok).
+2026-05-18 09:51:18.272 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:18.284 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:51:18.286 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:51:19.295 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:51:19.311 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:19.311 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:51:19.317 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:19.327 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:51:19.362 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:51:20.372 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0D chk=$E2 (ok).
+2026-05-18 09:51:20.384 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.385 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:51:20.388 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.389 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:51:20.402 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.402 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$00 chk=$EF (ok).
+2026-05-18 09:51:20.419 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.419 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$01 chk=$EE (ok).
+2026-05-18 09:51:20.432 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.433 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$02 chk=$ED (ok).
+2026-05-18 09:51:20.448 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:20.451 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:51:20.494 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:51:21.495 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$00 chk=$EF (ok).
+2026-05-18 09:51:21.507 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:51:21.508 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$01 chk=$EE (ok).
+2026-05-18 09:51:21.524 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$01 → ok (epilogue $DE $AA).
+2026-05-18 09:51:21.524 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$02 chk=$ED (ok).
+2026-05-18 09:51:21.528 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:51:21.537 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$03 chk=$EC (ok).
+2026-05-18 09:51:21.553 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:51:21.554 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$04 chk=$EB (ok).
+2026-05-18 09:51:21.560 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:51:21.569 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:52:16.179 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:52:17.191 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$02 chk=$ED (ok).
+2026-05-18 09:52:17.195 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$02 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.205 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$03 chk=$EC (ok).
+2026-05-18 09:52:17.221 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$03 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.222 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$04 chk=$EB (ok).
+2026-05-18 09:52:17.225 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$04 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.226 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$05 chk=$EA (ok).
+2026-05-18 09:52:17.239 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$05 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.240 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$06 chk=$E9 (ok).
+2026-05-18 09:52:17.257 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$06 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.257 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$07 chk=$E8 (ok).
+2026-05-18 09:52:17.269 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$07 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.270 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$08 chk=$E7 (ok).
+2026-05-18 09:52:17.273 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$08 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.274 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$09 chk=$E6 (ok).
+2026-05-18 09:52:17.299 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$09 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.300 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0A chk=$E5 (ok).
+2026-05-18 09:52:17.306 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0A → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.306 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0B chk=$E4 (ok).
+2026-05-18 09:52:17.316 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0B → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.317 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0C chk=$E3 (ok).
+2026-05-18 09:52:17.333 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0C → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.333 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0D chk=$E2 (ok).
+2026-05-18 09:52:17.346 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0D → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.346 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:52:17.362 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.363 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:52:17.375 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.376 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$00 chk=$EF (ok).
+2026-05-18 09:52:17.379 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$00 → ok (epilogue $DE $AA).
+2026-05-18 09:52:17.392 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:52:17.392 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:52:18.405 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0E chk=$E1 (ok).
+2026-05-18 09:52:18.408 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0E → ok (epilogue $DE $AA).
+2026-05-18 09:52:18.409 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:52:18.422 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 data field after vol=$FE trk=$11 sec=$0F → ok (epilogue $DE $AA).
+2026-05-18 09:52:18.437 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:52:18.438 -07:00 [VRB] DiskII (slot 6): motor ON (active drive 1, qt=68, settle=1000 cycles).
+2026-05-18 09:52:18.610 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.610 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.624 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:18.624 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:18.639 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.639 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.653 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:18.654 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:18.669 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.669 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:18.684 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:18.684 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.447 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0D chk=$E2 (ok).
+2026-05-18 09:52:19.463 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.463 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.478 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.478 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.494 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.494 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.496 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.496 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.525 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.525 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.529 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.529 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.574 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$07 chk=$E8 (ok).
+2026-05-18 09:52:19.590 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.590 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.606 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.606 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.621 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.621 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.635 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.635 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.651 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.651 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.654 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.654 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.712 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$01 chk=$EE (ok).
+2026-05-18 09:52:19.728 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.728 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.730 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.730 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.758 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.758 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.760 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.760 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.776 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.776 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.791 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.791 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:19.838 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0B chk=$E4 (ok).
+2026-05-18 09:52:19.854 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.854 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:19.869 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→64 (delta -2).
+2026-05-18 09:52:19.869 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→64 (delta -2).
+2026-05-18 09:52:19.871 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→62 (delta -2).
+2026-05-18 09:52:19.871 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→62 (delta -2).
+2026-05-18 09:52:19.873 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→60 (delta -2).
+2026-05-18 09:52:19.873 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→60 (delta -2).
+2026-05-18 09:52:19.885 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→58 (delta -2).
+2026-05-18 09:52:19.885 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→58 (delta -2).
+2026-05-18 09:52:19.886 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→56 (delta -2).
+2026-05-18 09:52:19.886 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→56 (delta -2).
+2026-05-18 09:52:19.900 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→54 (delta -2).
+2026-05-18 09:52:19.900 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→54 (delta -2).
+2026-05-18 09:52:19.902 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→52 (delta -2).
+2026-05-18 09:52:19.902 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→52 (delta -2).
+2026-05-18 09:52:19.903 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→50 (delta -2).
+2026-05-18 09:52:19.903 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→50 (delta -2).
+2026-05-18 09:52:19.915 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→48 (delta -2).
+2026-05-18 09:52:19.915 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→48 (delta -2).
+2026-05-18 09:52:19.917 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→46 (delta -2).
+2026-05-18 09:52:19.917 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→46 (delta -2).
+2026-05-18 09:52:19.919 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→44 (delta -2).
+2026-05-18 09:52:19.919 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→44 (delta -2).
+2026-05-18 09:52:19.930 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→42 (delta -2).
+2026-05-18 09:52:19.930 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→42 (delta -2).
+2026-05-18 09:52:19.931 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→40 (delta -2).
+2026-05-18 09:52:19.931 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→40 (delta -2).
+2026-05-18 09:52:19.946 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→38 (delta -2).
+2026-05-18 09:52:19.946 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→38 (delta -2).
+2026-05-18 09:52:19.948 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→36 (delta -2).
+2026-05-18 09:52:19.948 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→36 (delta -2).
+2026-05-18 09:52:19.949 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→34 (delta -2).
+2026-05-18 09:52:19.949 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→34 (delta -2).
+2026-05-18 09:52:19.951 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→32 (delta -2).
+2026-05-18 09:52:19.951 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→32 (delta -2).
+2026-05-18 09:52:19.962 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→30 (delta -2).
+2026-05-18 09:52:19.962 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→30 (delta -2).
+2026-05-18 09:52:19.976 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→28 (delta -2).
+2026-05-18 09:52:19.976 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→28 (delta -2).
+2026-05-18 09:52:19.978 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→26 (delta -2).
+2026-05-18 09:52:19.978 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→26 (delta -2).
+2026-05-18 09:52:19.979 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→24 (delta -2).
+2026-05-18 09:52:19.979 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→24 (delta -2).
+2026-05-18 09:52:19.981 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→22 (delta -2).
+2026-05-18 09:52:19.981 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→22 (delta -2).
+2026-05-18 09:52:19.992 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→20 (delta -2).
+2026-05-18 09:52:19.992 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→20 (delta -2).
+2026-05-18 09:52:19.994 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→18 (delta -2).
+2026-05-18 09:52:19.994 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→18 (delta -2).
+2026-05-18 09:52:20.008 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→16 (delta -2).
+2026-05-18 09:52:20.008 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→16 (delta -2).
+2026-05-18 09:52:20.010 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→14 (delta -2).
+2026-05-18 09:52:20.010 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→14 (delta -2).
+2026-05-18 09:52:20.012 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→12 (delta -2).
+2026-05-18 09:52:20.012 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→12 (delta -2).
+2026-05-18 09:52:20.023 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→10 (delta -2).
+2026-05-18 09:52:20.023 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→10 (delta -2).
+2026-05-18 09:52:20.025 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→8 (delta -2).
+2026-05-18 09:52:20.025 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→8 (delta -2).
+2026-05-18 09:52:20.026 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→6 (delta -2).
+2026-05-18 09:52:20.026 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→6 (delta -2).
+2026-05-18 09:52:20.037 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→4 (delta -2).
+2026-05-18 09:52:20.037 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→4 (delta -2).
+2026-05-18 09:52:20.039 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→2 (delta -2).
+2026-05-18 09:52:20.039 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→2 (delta -2).
+2026-05-18 09:52:20.054 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.054 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.059 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.059 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.070 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.070 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.088 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.088 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.090 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.090 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.104 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.104 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.116 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.116 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.134 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.134 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.136 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.136 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.163 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.163 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.165 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.165 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.179 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.179 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.181 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.181 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.196 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.196 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.210 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.210 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.225 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.225 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.226 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.226 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.243 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.243 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.255 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.255 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.273 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.273 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.275 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.275 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.289 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.289 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.291 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.291 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.319 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.319 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.321 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.321 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.335 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.335 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.350 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.350 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.364 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.364 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.366 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.366 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.382 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.382 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.383 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.383 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.401 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.401 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.412 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.412 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.427 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.427 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.429 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.429 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.447 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.447 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.448 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.448 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.477 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.477 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.479 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.479 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.493 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.493 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.507 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.508 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.522 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.522 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.524 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.524 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.539 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.539 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.553 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.554 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.559 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.559 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.569 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.569 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.587 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.587 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.589 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.589 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.616 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.616 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.617 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.617 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.632 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.632 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.636 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.636 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.661 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.661 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.663 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.663 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.677 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.677 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.691 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.691 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.696 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.696 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.707 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.707 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.724 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.724 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.726 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.726 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.741 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.741 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.753 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.753 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.771 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.771 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.772 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.772 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.800 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.800 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.802 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.802 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.816 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.816 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.830 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.830 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.835 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.835 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.847 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.847 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.862 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.862 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.864 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.864 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.882 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.882 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.885 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.885 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.899 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.899 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.910 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.910 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.929 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.929 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.942 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.942 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→0 (delta -2).
+2026-05-18 09:52:20.987 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.987 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=0→2 (delta 2).
+2026-05-18 09:52:20.991 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:52:20.991 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=2→4 (delta 2).
+2026-05-18 09:52:21.002 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:52:21.002 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=4→6 (delta 2).
+2026-05-18 09:52:21.005 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:52:21.005 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=6→8 (delta 2).
+2026-05-18 09:52:21.007 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→10 (delta 2).
+2026-05-18 09:52:21.007 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=8→10 (delta 2).
+2026-05-18 09:52:21.018 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→12 (delta 2).
+2026-05-18 09:52:21.018 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=10→12 (delta 2).
+2026-05-18 09:52:21.033 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:52:21.033 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=12→14 (delta 2).
+2026-05-18 09:52:21.034 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:52:21.034 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=14→16 (delta 2).
+2026-05-18 09:52:21.036 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:52:21.036 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=16→18 (delta 2).
+2026-05-18 09:52:21.038 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:52:21.038 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=18→20 (delta 2).
+2026-05-18 09:52:21.049 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:52:21.049 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=20→22 (delta 2).
+2026-05-18 09:52:21.063 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:52:21.063 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=22→24 (delta 2).
+2026-05-18 09:52:21.065 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:52:21.065 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=24→26 (delta 2).
+2026-05-18 09:52:21.066 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:52:21.066 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=26→28 (delta 2).
+2026-05-18 09:52:21.068 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:52:21.068 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=28→30 (delta 2).
+2026-05-18 09:52:21.079 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:52:21.079 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=30→32 (delta 2).
+2026-05-18 09:52:21.081 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:52:21.081 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=32→34 (delta 2).
+2026-05-18 09:52:21.095 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:52:21.095 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=34→36 (delta 2).
+2026-05-18 09:52:21.097 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:52:21.097 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=36→38 (delta 2).
+2026-05-18 09:52:21.098 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:52:21.098 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=38→40 (delta 2).
+2026-05-18 09:52:21.110 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:52:21.110 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=40→42 (delta 2).
+2026-05-18 09:52:21.112 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:52:21.112 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=42→44 (delta 2).
+2026-05-18 09:52:21.113 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:52:21.113 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=44→46 (delta 2).
+2026-05-18 09:52:21.125 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:52:21.125 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=46→48 (delta 2).
+2026-05-18 09:52:21.126 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:52:21.126 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=48→50 (delta 2).
+2026-05-18 09:52:21.141 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:52:21.141 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=50→52 (delta 2).
+2026-05-18 09:52:21.143 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:52:21.143 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=52→54 (delta 2).
+2026-05-18 09:52:21.144 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:52:21.144 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=54→56 (delta 2).
+2026-05-18 09:52:21.146 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:52:21.146 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=56→58 (delta 2).
+2026-05-18 09:52:21.157 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:52:21.157 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=58→60 (delta 2).
+2026-05-18 09:52:21.171 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:52:21.171 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=60→62 (delta 2).
+2026-05-18 09:52:21.173 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:52:21.173 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=62→64 (delta 2).
+2026-05-18 09:52:21.175 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:52:21.175 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=64→66 (delta 2).
+2026-05-18 09:52:21.176 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.176 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.203 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.203 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.205 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.205 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.219 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.220 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.221 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.221 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.249 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.249 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.252 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.252 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.297 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0B chk=$E4 (ok).
+2026-05-18 09:52:21.313 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.313 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.328 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.328 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.343 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.343 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.347 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.347 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.374 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.375 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.377 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.377 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.424 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$05 chk=$EA (ok).
+2026-05-18 09:52:21.443 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.443 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.455 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.455 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.470 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.470 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.484 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.484 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.501 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.501 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.516 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.516 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.561 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$0F chk=$E0 (ok).
+2026-05-18 09:52:21.578 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.578 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.592 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.592 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.608 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.608 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.609 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.609 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.628 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.628 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=68→66 (delta -2).
+2026-05-18 09:52:21.641 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.641 -07:00 [VRB] DiskII (slot 6): drive 1 track step qt=66→68 (delta 2).
+2026-05-18 09:52:21.687 -07:00 [VRB] DiskII (slot 6): drive 1 qt=68 address field vol=$FE trk=$11 sec=$09 chk=$E6 (ok).
+2026-05-18 09:52:21.687 -07:00 [VRB] DiskII (slot 6): motor OFF (active drive 1, qt=68).
+2026-05-18 09:54:15.121 -07:00 [INF] Debug console exited normally

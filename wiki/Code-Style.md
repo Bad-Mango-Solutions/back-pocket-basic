@@ -1,5 +1,8 @@
 # Code Style
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
+
+
 Coding standards and style guidelines for the BackPocketBASIC project.
 
 ## Overview
@@ -156,17 +159,19 @@ dataPointer = (position < 0 || position >= dataValues.Count) ? 0 : position;
 return num >= 0 ? (int)Math.Floor(num) : (int)Math.Ceiling(num);
 ```
 
-### Floating-Point Comparisons
+### Processor Status Flags
 
 **From repository memories:**
 
 ```csharp
-// Use epsilon-based comparisons
-private const double EPSILON = 1e-10;
+// Update CPU status flags in place while preserving unrelated bits
+ref var p = ref cpu.Registers.P;
+p = p.SetCarry(accumulator > 0xFF);
+p = p.SetZero(accumulator == 0);
 
-public bool Equals(double a, double b)
+if (p.IsNegativeSet())
 {
-    return Math.Abs(a - b) < EPSILON;
+    // Handle signed arithmetic state
 }
 ```
 
@@ -559,4 +564,4 @@ Before submitting PR, verify:
 
 - **[Development Setup](Development-Setup)** - Environment configuration
 - **[Testing Guide](Testing-Guide)** - Writing tests
-- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution process
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md)** - Contribution process

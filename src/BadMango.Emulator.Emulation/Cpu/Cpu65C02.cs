@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Signaling;
@@ -35,7 +33,50 @@ using Core.Debugger;
 public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
+
+    /// <summary>
+    /// The concrete scheduler, when the event context supplies one, so the
+    /// per-instruction <c>Advance</c> call is a direct (non-interface) call.
+    /// <see langword="null"/> for other <see cref="IScheduler"/> implementations.
+    /// </summary>
+    private readonly Scheduler? concreteScheduler;
+
+    /// <summary>
+    /// The concrete signal bus, when the event context supplies one, so the CPU can
+    /// test <see cref="SignalBus.AnyInterruptPending"/> instead of running the full
+    /// interrupt check every instruction. <see langword="null"/> for other
+    /// <see cref="Core.Interfaces.Signaling.ISignalBus"/> implementations.
+    /// </summary>
+    private readonly SignalBus? concreteSignals;
+
+    /// <summary>
+    /// The I-bit value captured immediately before the previous instruction executed.
+    /// Only meaningful while <see cref="interruptDisableChangePending"/> is set: CLI, SEI
+    /// and PLP poll for IRQ using the I value from before they execute, so the next
+    /// instruction boundary uses this sample instead of the live register.
+    /// </summary>
+    private bool interruptDisableSample;
+
+    /// <summary>
+    /// Set when the previous instruction was CLI, SEI or PLP, whose IRQ poll uses the I value
+    /// from before they executed (the new I is only seen one instruction later). RTI and all
+    /// other instructions leave this clear so the live I value is used at the next boundary.
+    /// </summary>
+    private bool interruptDisableChangePending;
+
     private ITrapRegistry trapRegistry;
+
+    /// <summary>
+    /// The trap registry as its concrete type, when it is one, so the CPU can skip
+    /// the per-instruction lookup while it is empty.
+    /// </summary>
+    private TrapRegistry? concreteTrapRegistry;
+
+    /// <summary>
+    /// <see langword="true"/> when <see cref="trapRegistry"/> is <see cref="NullTrapRegistry"/>,
+    /// which never contains traps.
+    /// </summary>
+    private bool trapRegistryIsNull;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -46,7 +87,10 @@ public sealed class Cpu65C02 : CpuBase
         : base(context)
     {
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        concreteScheduler = context.Scheduler as Scheduler;
+        concreteSignals = context.Signals as SignalBus;
         trapRegistry = NullTrapRegistry.Instance;
+        trapRegistryIsNull = true;
     }
 
     /// <inheritdoc />
@@ -79,7 +123,12 @@ public sealed class Cpu65C02 : CpuBase
     public ITrapRegistry TrapRegistry
     {
         get => trapRegistry;
-        set => trapRegistry = value ?? NullTrapRegistry.Instance;
+        set
+        {
+            trapRegistry = value ?? NullTrapRegistry.Instance;
+            concreteTrapRegistry = trapRegistry as TrapRegistry;
+            trapRegistryIsNull = trapRegistry is NullTrapRegistry;
+        }
     }
 
     /// <inheritdoc/>
@@ -88,25 +137,38 @@ public sealed class Cpu65C02 : CpuBase
         // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
         // The CPU only resets its own state (registers, halt reason, stop flag).
         Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
+        interruptDisableSample = Registers.P.IsInterruptDisabled();
+        interruptDisableChangePending = false;
         HaltReason = HaltState.None;
         ClearStopRequest();
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override CpuStepResult Step()
     {
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
-        // Check for pending interrupts at instruction boundary using the signal bus
-        bool interruptProcessed = CheckInterrupts();
+        // Determine the I value visible at this instruction boundary. Normally this is the
+        // current register value; after CLI/SEI/PLP the poll uses the I value from before
+        // that instruction executed, so its new I is seen one instruction later.
+        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
+
+        // Check for pending interrupts at instruction boundary using the signal bus.
+        // With the concrete SignalBus, a single cached flag tells us whether an NMI
+        // edge is pending or IRQ is asserted; if neither, CheckInterrupts would
+        // return false with no side effects, so skip it.
+        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts(irqMaskedAtBoundary);
         if (interruptProcessed)
         {
+            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisableChangePending = false;
+
             // Interrupt was processed, TCU was updated by ProcessInterrupt
             // Advance the scheduler by the TCU value
             Cycle interruptCycles = Registers.TCU;
-            EventContext.Scheduler.Advance(interruptCycles);
+            AdvanceScheduler(interruptCycles);
 
             // Clear TCU after advancing scheduler
             Registers.TCU = Cycle.Zero;
@@ -131,11 +193,17 @@ public sealed class Cpu65C02 : CpuBase
         // First perform an O(1) address check; only if a trap exists at this
         // address do we proceed with the more expensive context resolution
         // and handler invocation.
-        if (trapRegistry.ContainsAddress(pcBefore))
+        // The lookup is skipped entirely when the registry cannot contain traps
+        // (NullTrapRegistry, or an empty concrete TrapRegistry).
+        if (MayHaveTrapAt(pcBefore))
         {
             var trapResult = trapRegistry.TryExecute(pcBefore, this, Bus, EventContext);
             if (trapResult.Handled)
             {
+                // The trapped instruction replaces a real one and is not CLI/SEI/PLP, so any
+                // delayed I sample from the previous instruction has now been consumed.
+                interruptDisableChangePending = false;
+
                 // Trap was handled - the handler determines how to return
                 // Add cycles from the trap result
                 Registers.TCU += trapResult.CyclesConsumed;
@@ -162,7 +230,7 @@ public sealed class Cpu65C02 : CpuBase
                         // RTI pulls status first, then PC low, then PC high (no +1)
                         Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte status = Read8(statusAddr);
-                        Registers.P = (ProcessorStatusFlags)status;
+                        Registers.P = (ProcessorStatusFlags)status | ProcessorStatusFlags.R;
 
                         Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiLowByte = Read8(rtiLowAddr);
@@ -192,7 +260,7 @@ public sealed class Cpu65C02 : CpuBase
                 Cycle trapCycles = Registers.TCU;
 
                 // Advance the scheduler by the TCU value
-                EventContext.Scheduler.Advance(trapCycles);
+                AdvanceScheduler(trapCycles);
 
                 // Clear TCU after advancing scheduler
                 Registers.TCU = Cycle.Zero;
@@ -232,14 +300,24 @@ public sealed class Cpu65C02 : CpuBase
             DebugListener.OnBeforeStep(in beforeArgs);
         }
 
+        // Capture I before execution: CLI/SEI/PLP poll for IRQ using the pre-execute I value.
+        bool iBeforeExecute = Registers.P.IsInterruptDisabled();
+
         // Execute opcode - handlers now access memory through this CPU instance
         opcodeTable.Execute(opcode, this);
+
+        // Latch the I state for the next IRQ poll. CLI (0x58), SEI (0x78) and PLP (0x28)
+        // poll using the I value from before they executed, so their new I is seen one
+        // instruction later (back-to-back CLI/SEI/PLP each use their own pre-execute I).
+        // RTI and every other instruction use the live I value at the next boundary.
+        interruptDisableSample = iBeforeExecute;
+        interruptDisableChangePending = opcode is 0x58 or 0x78 or 0x28;
 
         // Capture TCU before advancing scheduler (for return value)
         Cycle instructionCycles = Registers.TCU;
 
         // Advance the scheduler by the TCU value (total cycles for this instruction)
-        EventContext.Scheduler.Advance(instructionCycles);
+        AdvanceScheduler(instructionCycles);
 
         // Notify debug listener after execution
         if (DebugListener is not null)
@@ -281,7 +359,28 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AdvanceScheduler(Cycle cycles)
+    {
+        if (concreteScheduler is not null)
+        {
+            concreteScheduler.Advance(cycles);
+        }
+        else
+        {
+            EventContext.Scheduler.Advance(cycles);
+        }
+    }
+
+    private bool MayHaveTrapAt(Addr address)
+    {
+        if (concreteTrapRegistry is not null)
+        {
+            return !concreteTrapRegistry.IsEmpty && concreteTrapRegistry.ContainsAddress(address);
+        }
+
+        return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
+    }
+
     private byte FetchByte()
     {
         var pc = Registers.PC.GetAddr();
@@ -304,7 +403,6 @@ public sealed class Cpu65C02 : CpuBase
     /// to differentiate between data reads and instruction fetches. This enables
     /// features like trap interception and NX (no-execute) enforcement.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private byte InstructionFetch8(Addr address)
     {
         var access = CreateInstructionFetchAccess(address, 8);
@@ -334,8 +432,7 @@ public sealed class Cpu65C02 : CpuBase
     /// If the CPU is in WAI state, interrupts will resume execution.
     /// STP state cannot be resumed by interrupts.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool CheckInterrupts()
+    private bool CheckInterrupts(bool irqMaskedAtBoundary)
     {
         // STP cannot be resumed by interrupts
         if (HaltReason == HaltState.Stp)
@@ -357,12 +454,21 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         // Check for IRQ (maskable by I flag, level-triggered)
-        if (Signals.IsAsserted(SignalLine.IRQ) && !Registers.P.IsInterruptDisabled())
+        if (Signals.IsAsserted(SignalLine.IRQ))
         {
-            // Resume from WAI if halted
+            // WAI clears the halt on any asserted IRQ, but only vectors when I is clear.
             if (HaltReason == HaltState.Wai)
             {
                 HaltReason = HaltState.None;
+
+                if (irqMaskedAtBoundary)
+                {
+                    return false;
+                }
+            }
+            else if (irqMaskedAtBoundary)
+            {
+                return false;
             }
 
             ProcessInterrupt(Cpu65C02Constants.IrqVector);
@@ -385,7 +491,6 @@ public sealed class Cpu65C02 : CpuBase
     /// 5. Load PC from interrupt vector
     /// Total: 7 cycles (handled by caller).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessInterrupt(Addr vector)
     {
         var pc = Registers.PC.GetWord();
@@ -395,10 +500,13 @@ public sealed class Cpu65C02 : CpuBase
         Write8(PushByte(Cpu65C02Constants.StackBase), pc.LowByte());
 
         // Push processor status (with B flag clear for hardware interrupts)
-        Write8(PushByte(Cpu65C02Constants.StackBase), (byte)(Registers.P & ~ProcessorStatusFlags.B));
+        Write8(PushByte(Cpu65C02Constants.StackBase), (byte)((Registers.P | ProcessorStatusFlags.R) & ~ProcessorStatusFlags.B));
 
         // Set I flag to disable further IRQs
         Registers.P.SetInterruptDisable(true);
+
+        // 65C02: clear D flag on interrupt entry (NMOS 6502 leaves D unchanged)
+        Registers.P.SetDecimalMode(false);
 
         // Load PC from interrupt vector
         Registers.PC.SetAddr(Read16(vector));

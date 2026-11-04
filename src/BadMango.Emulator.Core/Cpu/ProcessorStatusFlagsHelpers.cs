@@ -25,20 +25,10 @@ using System.Runtime.CompilerServices;
 /// </remarks>
 public static class ProcessorStatusFlagsHelpers
 {
-    // Flag bit masks
-    private const byte CarryBit = 0x01;        // Bit 0
-    private const byte ZeroBit = 0x02;         // Bit 1
-    private const byte InterruptBit = 0x04;    // Bit 2
-    private const byte DecimalBit = 0x08;      // Bit 3
-    private const byte IndexSizeBit = 0x10;    // Bit 4 (X flag - 65816/65832)
-    private const byte MemorySizeBit = 0x20;   // Bit 5 (M flag - 65816/65832)
-    private const byte OverflowBit = 0x40;     // Bit 6
-    private const byte NegativeBit = 0x80;     // Bit 7
-
     #region Carry Flag (C)
 
     /// <param name="p">The processor status flags.</param>
-    extension(ProcessorStatusFlags p)
+    extension(ref ProcessorStatusFlags p)
     {
         /// <summary>Gets whether the Carry flag is set.</summary>
         /// <returns>True if the Carry flag is set, false otherwise.</returns>
@@ -51,7 +41,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetCarry(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | CarryBit) : (ProcessorStatusFlags)((byte)p & ~CarryBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | CarryBit) : (ProcessorStatusFlags)((byte)p & ~CarryBit);
     }
 
     #endregion
@@ -72,7 +62,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetZero(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | ZeroBit) : (ProcessorStatusFlags)((byte)p & ~ZeroBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | ZeroBit) : (ProcessorStatusFlags)((byte)p & ~ZeroBit);
     }
 
     #endregion
@@ -93,7 +83,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetInterruptDisable(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | InterruptBit) : (ProcessorStatusFlags)((byte)p & ~InterruptBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | InterruptBit) : (ProcessorStatusFlags)((byte)p & ~InterruptBit);
     }
 
     #endregion
@@ -114,7 +104,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetDecimalMode(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | DecimalBit) : (ProcessorStatusFlags)((byte)p & ~DecimalBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | DecimalBit) : (ProcessorStatusFlags)((byte)p & ~DecimalBit);
     }
 
     #endregion
@@ -137,7 +127,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <remarks>Only meaningful in 65816/65832 native modes.</remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetIndexSize8Bit(bool is8Bit)
-            => is8Bit ? (ProcessorStatusFlags)((byte)p | IndexSizeBit) : (ProcessorStatusFlags)((byte)p & ~IndexSizeBit);
+            => p = is8Bit ? (ProcessorStatusFlags)((byte)p | IndexSizeBit) : (ProcessorStatusFlags)((byte)p & ~IndexSizeBit);
     }
 
     #endregion
@@ -160,7 +150,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <remarks>Only meaningful in 65816/65832 native modes.</remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetMemorySize8Bit(bool is8Bit)
-            => is8Bit ? (ProcessorStatusFlags)((byte)p | MemorySizeBit) : (ProcessorStatusFlags)((byte)p & ~MemorySizeBit);
+            => p = is8Bit ? (ProcessorStatusFlags)((byte)p | MemorySizeBit) : (ProcessorStatusFlags)((byte)p & ~MemorySizeBit);
     }
 
     #endregion
@@ -181,7 +171,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetOverflow(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | OverflowBit) : (ProcessorStatusFlags)((byte)p & ~OverflowBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | OverflowBit) : (ProcessorStatusFlags)((byte)p & ~OverflowBit);
     }
 
     #endregion
@@ -202,7 +192,7 @@ public static class ProcessorStatusFlagsHelpers
         /// <returns>The updated processor status flags.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ProcessorStatusFlags SetNegative(bool value)
-            => value ? (ProcessorStatusFlags)((byte)p | NegativeBit) : (ProcessorStatusFlags)((byte)p & ~NegativeBit);
+            => p = value ? (ProcessorStatusFlags)((byte)p | NegativeBit) : (ProcessorStatusFlags)((byte)p & ~NegativeBit);
     }
 
     #endregion
@@ -289,4 +279,14 @@ public static class ProcessorStatusFlagsHelpers
     }
 
     #endregion
+
+    // Flag bit masks
+    private const byte CarryBit = 0x01;        // Bit 0
+    private const byte ZeroBit = 0x02;         // Bit 1
+    private const byte InterruptBit = 0x04;    // Bit 2
+    private const byte DecimalBit = 0x08;      // Bit 3
+    private const byte IndexSizeBit = 0x10;    // Bit 4 (X flag - 65816/65832)
+    private const byte MemorySizeBit = 0x20;   // Bit 5 (M flag - 65816/65832)
+    private const byte OverflowBit = 0x40;     // Bit 6
+    private const byte NegativeBit = 0x80;     // Bit 7
 }

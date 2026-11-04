@@ -29,14 +29,19 @@ using Core.Interfaces.Debugging;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class TracingDebugListener : IDebugStepListener
+public sealed class TracingDebugListener : IActivatableDebugStepListener
 {
     private readonly Lock syncLock = new();
-    private readonly List<TraceRecord> recordBuffer = [];
+    private TraceRecord[]? recordBuffer;
+    private int bufferIndex = 0;
+    private int bufferCount = 0;
     private TextWriter? consoleOutput;
     private StreamWriter? fileOutput;
     private bool isEnabled;
     private int maxBufferedRecords = 10000;
+
+    /// <inheritdoc/>
+    public event EventHandler? IsActiveChanged;
 
     /// <summary>
     /// Gets or sets a value indicating whether tracing is enabled.
@@ -48,8 +53,21 @@ public sealed class TracingDebugListener : IDebugStepListener
     public bool IsEnabled
     {
         get => isEnabled;
-        set => isEnabled = value;
+        set
+        {
+            if (isEnabled == value)
+            {
+                return;
+            }
+
+            isEnabled = value;
+            IsActiveChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>The tracing listener is active exactly while <see cref="IsEnabled"/> is <see langword="true"/>.</remarks>
+    public bool IsActive => isEnabled;
 
     /// <summary>
     /// Gets or sets the maximum number of records to buffer when not outputting immediately.
@@ -61,7 +79,18 @@ public sealed class TracingDebugListener : IDebugStepListener
     public int MaxBufferedRecords
     {
         get => maxBufferedRecords;
-        set => maxBufferedRecords = Math.Max(100, value);
+        set
+        {
+            lock (syncLock)
+            {
+                maxBufferedRecords = Math.Max(100, value);
+
+                // Reallocate buffer if size changed
+                recordBuffer = new TraceRecord[maxBufferedRecords];
+                bufferIndex = 0;
+                bufferCount = 0;
+            }
+        }
     }
 
     /// <summary>
@@ -78,6 +107,20 @@ public sealed class TracingDebugListener : IDebugStepListener
     /// Gets the number of instructions traced since tracing was enabled.
     /// </summary>
     public long InstructionCount { get; private set; }
+
+    /// <summary>
+    /// Gets or sets an optional predicate restricting which program counter values
+    /// produce trace output.
+    /// </summary>
+    /// <remarks>
+    /// When non-null, an instruction is only recorded or written if the predicate
+    /// returns <see langword="true"/> for the executed instruction's PC. This is
+    /// useful for narrowing trace output to a specific address range while diagnosing
+    /// later boot stages without rebuilding the listener. A <see langword="null"/>
+    /// value disables filtering and traces every instruction (subject to
+    /// <see cref="IsEnabled"/>).
+    /// </remarks>
+    public Predicate<uint>? AddressFilter { get; set; }
 
     /// <summary>
     /// Formats a trace record as a single line of text.
@@ -169,7 +212,8 @@ public sealed class TracingDebugListener : IDebugStepListener
     {
         lock (syncLock)
         {
-            recordBuffer.Clear();
+            bufferIndex = 0;
+            bufferCount = 0;
         }
     }
 
@@ -189,7 +233,33 @@ public sealed class TracingDebugListener : IDebugStepListener
     {
         lock (syncLock)
         {
-            return [.. recordBuffer];
+            if (recordBuffer is null || bufferCount == 0)
+            {
+                return [];
+            }
+
+            var result = new List<TraceRecord>(bufferCount);
+
+            // If buffer is full and we've wrapped around, read from current index to end, then wrap
+            if (bufferCount == maxBufferedRecords)
+            {
+                // Buffer is full and has wrapped - read from bufferIndex (oldest) to end
+                for (int i = 0; i < maxBufferedRecords; i++)
+                {
+                    int idx = (bufferIndex + i) % maxBufferedRecords;
+                    result.Add(recordBuffer[idx]);
+                }
+            }
+            else
+            {
+                // Buffer not full yet - read from index 0 to bufferIndex
+                for (int i = 0; i < bufferCount; i++)
+                {
+                    result.Add(recordBuffer[i]);
+                }
+            }
+
+            return result;
         }
     }
 
@@ -202,12 +272,34 @@ public sealed class TracingDebugListener : IDebugStepListener
     {
         lock (syncLock)
         {
-            if (recordBuffer.Count <= count)
+            if (recordBuffer is null || bufferCount == 0)
             {
-                return [.. recordBuffer];
+                return [];
             }
 
-            return recordBuffer.Skip(recordBuffer.Count - count).ToList();
+            int take = Math.Min(count, bufferCount);
+            var result = new List<TraceRecord>(take);
+
+            if (bufferCount == maxBufferedRecords)
+            {
+                // Buffer is full and has wrapped - most recent are right before bufferIndex
+                for (int i = take - 1; i >= 0; i--)
+                {
+                    int idx = (bufferIndex - 1 - i + maxBufferedRecords) % maxBufferedRecords;
+                    result.Add(recordBuffer[idx]);
+                }
+            }
+            else
+            {
+                // Buffer not full - most recent are at end before bufferIndex
+                int startIdx = Math.Max(0, bufferCount - take);
+                for (int i = startIdx; i < bufferCount; i++)
+                {
+                    result.Add(recordBuffer[i]);
+                }
+            }
+
+            return result;
         }
     }
 
@@ -248,6 +340,12 @@ public sealed class TracingDebugListener : IDebugStepListener
             return;
         }
 
+        var filter = AddressFilter;
+        if (filter is not null && !filter(eventData.PC))
+        {
+            return;
+        }
+
         InstructionCount++;
 
         var record = new TraceRecord
@@ -274,13 +372,21 @@ public sealed class TracingDebugListener : IDebugStepListener
         {
             if (BufferOutput)
             {
-                // Remove the oldest records if we're at capacity
-                while (recordBuffer.Count >= maxBufferedRecords)
+                // Lazy initialize the circular buffer array
+                if (recordBuffer is null)
                 {
-                    recordBuffer.RemoveAt(0);
+                    recordBuffer = new TraceRecord[maxBufferedRecords];
                 }
 
-                recordBuffer.Add(record);
+                // Add to circular buffer - no allocations, no List.RemoveAt(0) O(n) operation
+                recordBuffer[bufferIndex] = record;
+                bufferIndex = (bufferIndex + 1) % maxBufferedRecords;
+
+                // Track actual count (caps at maxBufferedRecords when full)
+                if (bufferCount < maxBufferedRecords)
+                {
+                    bufferCount++;
+                }
             }
             else
             {

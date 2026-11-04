@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Common settings for every project in the repository.
+    src/Directory.Build.props and tests/Directory.Build.props import this file
+    and add settings specific to product and test projects.
+    Package versions live in Directory.Packages.props (Central Package Management).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NeutralLanguage>en</NeutralLanguage>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)StyleCop.json" Link="StyleCop.json" />
+  </ItemGroup>
+
+</Project>

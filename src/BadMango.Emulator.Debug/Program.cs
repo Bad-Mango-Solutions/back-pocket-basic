@@ -7,14 +7,18 @@ using Autofac.Extensions.DependencyInjection;
 
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI;
+using BadMango.Emulator.Devices;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.File;
 
 // Configure Serilog
+// For verbose device-level logging, add to the chain below:
+// .MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose)
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -28,6 +32,10 @@ Log.Logger = new LoggerConfiguration()
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
+// Give devices built by the device factory registry (speaker, Disk II, ...) a logger scoped
+// to their type, so device diagnostics such as audio-backend failures reach the log.
+DeviceFactoryRegistry.LoggerFactory = deviceType => Log.Logger.ForContext(deviceType);
+
 try
 {
     Log.Information("Starting Emulator Debug Console");
@@ -39,18 +47,20 @@ try
         {
             builder.RegisterModule<DebugConsoleModule>();
             builder.RegisterModule<DebugUiModule>();
+            builder.RegisterInstance(Log.Logger).As<ILogger>().SingleInstance();
         })
-        .UseSerilog()
+        .UseSerilog(Log.Logger)
         .Build();
 
     // Run the REPL
     using var scope = host.Services.CreateScope();
     var repl = scope.ServiceProvider.GetRequiredService<DebugRepl>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
 
-    Log.Information("Debug console initialized");
+    logger.Information("Debug console initialized");
     repl.Run();
 
-    Log.Information("Debug console exited normally");
+    logger.Information("Debug console exited normally");
     return 0;
 }
 catch (Exception ex)

@@ -34,8 +34,8 @@ Describe the tests you ran to verify your changes:
 ### Test Commands
 ```bash
 # Commands used to test
-dotnet build BackPocketBasic.slnx
-dotnet test BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
+dotnet test BackPocketEmulator.slnx
 ```
 
 ## BASIC Code Examples

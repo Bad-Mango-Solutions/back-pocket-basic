@@ -1,48 +1,34 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>BadMango.Emulator.Configuration</RootNamespace>
-    <NeutralLanguage>en</NeutralLanguage>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Features>IOperation;flow-analysis</Features>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 
     <!-- Package Metadata -->
-    <Company>Bad Mango Solutions</Company>
-    <Product>BackPocketBASIC - Configuration</Product>
+    <Product>BackPocket Emulator - Configuration</Product>
     <Description>Shared configuration services, settings models, and path validation infrastructure for emulator components. Provides cross-cutting configuration functionality that can be consumed by Core, Devices, Systems, Debug, and UI projects.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-basic.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;configuration;settings;6502;apple2</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Autofac" Version="8.3.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
+    <PackageReference Include="Autofac" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="BadMango.Emulator.Configuration.Tests" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

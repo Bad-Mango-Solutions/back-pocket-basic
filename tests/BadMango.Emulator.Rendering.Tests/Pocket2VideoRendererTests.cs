@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Rendering.Tests;
 
 using BadMango.Emulator.Devices;
 
+using Unit.Components;
+
 /// <summary>
 /// Unit tests for the <see cref="Pocket2VideoRenderer"/> class.
 /// </summary>
@@ -1289,6 +1291,7 @@ public class Pocket2VideoRendererTests
     /// Verifies rendering completes in reasonable time (performance baseline).
     /// </summary>
     [Test]
+    [PerformanceTest]
     public void RenderFrame_Performance_CompletesInReasonableTime()
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();

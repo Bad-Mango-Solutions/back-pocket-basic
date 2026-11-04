@@ -177,7 +177,9 @@ public class CompositeIOTargetTests
     }
 
     /// <summary>
-    /// Verifies that Read8 returns floating bus when slot has no ROM.
+    /// Verifies that Read8 returns floating bus when slot has no ROM and no internal
+    /// CXROM image is registered (the "bare Apple ][" case — there is no system ROM
+    /// image backing $C100-$C7FF for unpopulated slots).
     /// </summary>
     [Test]
     public void Read8_SlotRomEmpty_ReturnsFloatingBus()
@@ -189,6 +191,58 @@ public class CompositeIOTargetTests
         byte result = ioPage.Read8(0x100, in access);
 
         Assert.That(result, Is.EqualTo(FloatingBusValue));
+    }
+
+    /// <summary>
+    /// Verifies that when a card publishes no slot ROM but an internal CXROM image
+    /// is registered (the Apple //e and later case), the slot ROM region falls
+    /// through to the internal ROM rather than reading $FF. This matches hardware
+    /// behaviour where a card without its own ROM cannot drive the bus, leaving
+    /// the motherboard's CXROM image visible — and is what allows <c>PR#6</c> to
+    /// boot a Disk II controller that did not supply its own P5A ROM.
+    /// </summary>
+    [Test]
+    public void Read8_SlotRomEmpty_FallsThroughToInternalRom_WhenInternalRomRegistered()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        internalMemory.AsSpan()[0x600] = 0xA9; // sentinel at $C600
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+        ioPage.SetInternalRom(internalRom);
+
+        mockSlotManager.Setup(m => m.SelectExpansionSlot(6));
+        mockSlotManager.Setup(m => m.GetSlotRomRegion(6)).Returns((IBusTarget?)null);
+
+        var access = CreateTestAccess(0xC600, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0x600, in access);
+
+        Assert.That(result, Is.EqualTo(0xA9));
+        mockSlotManager.Verify(m => m.SelectExpansionSlot(6), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that when a card publishes its own slot ROM, that ROM still wins
+    /// over the registered internal CXROM image (the card's own ROM masks the
+    /// motherboard image, just as in real hardware).
+    /// </summary>
+    [Test]
+    public void Read8_SlotRom_CardRomWinsOverInternalRom()
+    {
+        var internalMemory = new PhysicalMemory(PageSize, "InternalRom");
+        internalMemory.AsSpan()[0x600] = 0xDD;
+        var internalRom = new RomTarget(internalMemory.Slice(0, PageSize));
+        ioPage.SetInternalRom(internalRom);
+
+        var cardMemory = new PhysicalMemory(0x100, "Slot6Rom");
+        cardMemory.AsSpan()[0x00] = 0xA9; // sentinel at $C600 (offset 0 of card ROM)
+        var cardRom = new RomTarget(cardMemory.Slice(0, 0x100));
+
+        mockSlotManager.Setup(m => m.SelectExpansionSlot(6));
+        mockSlotManager.Setup(m => m.GetSlotRomRegion(6)).Returns(cardRom);
+
+        var access = CreateTestAccess(0xC600, AccessIntent.DataRead);
+        byte result = ioPage.Read8(0x600, in access);
+
+        Assert.That(result, Is.EqualTo(0xA9));
     }
 
     /// <summary>

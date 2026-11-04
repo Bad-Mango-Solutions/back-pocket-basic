@@ -171,6 +171,25 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
     protected static ExecutionOptions ParseCommonOptions(string[] args)
     {
         var options = new ExecutionOptions();
+        ApplyCommonOptions(args, options);
+        return options;
+    }
+
+    /// <summary>
+    /// Applies the common execution options parsed from <paramref name="args"/> onto the
+    /// provided <paramref name="options"/> instance, overwriting any defaults.
+    /// </summary>
+    /// <param name="args">The command arguments.</param>
+    /// <param name="options">The execution options instance to update.</param>
+    /// <remarks>
+    /// Use this overload when the caller needs to seed <paramref name="options"/> with
+    /// non-default values (for example, <see cref="RunCommand"/> seeds unlimited limits)
+    /// before applying user-supplied switches.
+    /// </remarks>
+    protected static void ApplyCommonOptions(string[] args, ExecutionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(options);
 
         foreach (var arg in args)
         {
@@ -239,8 +258,6 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
                 }
             }
         }
-
-        return options;
     }
 
     /// <summary>

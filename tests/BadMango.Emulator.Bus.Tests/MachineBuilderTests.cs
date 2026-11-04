@@ -782,6 +782,409 @@ public class MachineBuilderTests
         Assert.That(ex!.Message, Does.Contain("unknown-handler"));
     }
 
+    /// <summary>
+    /// Verifies that <see cref="MachineBuilder.FromProfile"/> passes the optional per-card
+    /// <see cref="System.Text.Json.JsonElement"/> configuration blob through to the registered
+    /// slot-card factory. This is the plumbing required by config-driven cards such as the
+    /// Disk II controller and SmartPort.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCardFactory_ReceivesConfigBlob()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Parse a config blob that the fake "diskii"-style factory will require.
+        using var configDoc = System.Text.Json.JsonDocument.Parse(
+            "{\"drive1\":\"foo.dsk\",\"drive2\":\"bar.dsk\"}");
+        var configElement = configDoc.RootElement.Clone();
+
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
+            {
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                    },
+                ],
+            },
+            Devices = new()
+            {
+                Slots = new()
+                {
+                    Enabled = true,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 6,
+                            Type = "fakediskii",
+                            Config = configElement,
+                        },
+                    ],
+                },
+            },
+        };
+
+        System.Text.Json.JsonElement? capturedConfig = null;
+        int callCount = 0;
+        var fakeCard = new FakeSlotCard();
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+
+        builder.RegisterSlotCardFactory("fakediskii", (_, cfg) =>
+        {
+            callCount++;
+            capturedConfig = cfg;
+            return fakeCard;
+        });
+
+        builder.FromProfile(profile);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callCount, Is.EqualTo(1), "Slot-card factory should be invoked exactly once.");
+            Assert.That(capturedConfig.HasValue, Is.True, "Factory should receive the config blob from SlotCardProfile.Config.");
+            Assert.That(capturedConfig!.Value.GetProperty("drive1").GetString(), Is.EqualTo("foo.dsk"));
+            Assert.That(capturedConfig!.Value.GetProperty("drive2").GetString(), Is.EqualTo("bar.dsk"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that slot-card factories registered without per-card configuration still
+    /// receive a <see langword="null"/> <see cref="System.Text.Json.JsonElement"/> when the
+    /// profile entry omits the <c>config</c> property. This guards the "ignore the config
+    /// argument" adaptation of legacy parameterless registrations.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCardFactory_ReceivesNullConfig_WhenProfileOmitsConfig()
+    {
+        var mockCpu = CreateMockCpu();
+
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
+            {
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                    },
+                ],
+            },
+            Devices = new()
+            {
+                Slots = new()
+                {
+                    Enabled = true,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 4,
+                            Type = "fakecard",
+
+                            // No Config specified - factory should receive null.
+                        },
+                    ],
+                },
+            },
+        };
+
+        System.Text.Json.JsonElement? capturedConfig = default;
+        bool factoryCalled = false;
+        var fakeCard = new FakeSlotCard();
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+
+        builder.RegisterSlotCardFactory("fakecard", (_, cfg) =>
+        {
+            factoryCalled = true;
+            capturedConfig = cfg;
+            return fakeCard;
+        });
+
+        builder.FromProfile(profile);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(factoryCalled, Is.True);
+            Assert.That(capturedConfig.HasValue, Is.False, "Factory should receive null when profile omits config.");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="MachineBuilder.FromProfile"/> consumes a per-card
+    /// <c>config.rom</c> string by looking up the named entry in <c>memory.rom-images</c>,
+    /// loading the bytes, and pushing them into the freshly-built slot card via a
+    /// public <c>LoadBootRom(byte[])</c> method. This is the wiring required for the
+    /// Disk II controller (and any other card with a slot ROM) to honour the
+    /// user-supplied $C600 P5A image declared in the profile.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCard_ConfigRom_LoadsBootRomBytesIntoCard()
+    {
+        var mockCpu = CreateMockCpu();
+
+        // Lay down a sentinel ROM file on disk.
+        string romPath = Path.Combine(Path.GetTempPath(), $"bm-config-rom-{Guid.NewGuid():N}.rom");
+        var romBytes = new byte[256];
+        romBytes[0] = 0xA9; // LDA #imm
+        romBytes[1] = 0xC6;
+        romBytes[2] = 0x60; // RTS
+        File.WriteAllBytes(romPath, romBytes);
+
+        try
+        {
+            using var configDoc = System.Text.Json.JsonDocument.Parse(
+                "{\"rom\":\"slot6-boot-rom\"}");
+            var configElement = configDoc.RootElement.Clone();
+
+            var profile = new Core.Configuration.MachineProfile
+            {
+                Name = "test-profile",
+                DisplayName = "Test Profile",
+                Description = "Test",
+                AddressSpace = 16,
+                Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+                Memory = new()
+                {
+                    RomImages =
+                    [
+                        new()
+                        {
+                            Name = "slot6-boot-rom",
+                            Source = romPath,
+                            Size = "0x100",
+                            Required = true,
+                        },
+                    ],
+                    Regions =
+                    [
+                        new()
+                        {
+                            Name = "test-composite",
+                            Type = "composite",
+                            Start = "0xC000",
+                            Size = "0x1000",
+                            Permissions = "rw",
+                        },
+                    ],
+                },
+                Devices = new()
+                {
+                    Slots = new()
+                    {
+                        Enabled = true,
+                        Cards =
+                        [
+                            new()
+                            {
+                                Slot = 6,
+                                Type = "fakebootcard",
+                                Config = configElement,
+                            },
+                        ],
+                    },
+                },
+            };
+
+            var fakeCard = new FakeBootRomSlotCard();
+
+            var builder = new MachineBuilder()
+                .WithCpuFactory(_ => mockCpu.Object);
+
+            builder.RegisterSlotCardFactory("fakebootcard", (_, _) => fakeCard);
+
+            builder.FromProfile(profile);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeCard.LoadedRom, Is.Not.Null, "LoadBootRom should have been invoked.");
+                Assert.That(fakeCard.LoadedRom!.Length, Is.EqualTo(256));
+                Assert.That(fakeCard.LoadedRom[0], Is.EqualTo((byte)0xA9));
+                Assert.That(fakeCard.LoadedRom[1], Is.EqualTo((byte)0xC6));
+                Assert.That(fakeCard.LoadedRom[2], Is.EqualTo((byte)0x60));
+            });
+        }
+        finally
+        {
+            if (File.Exists(romPath))
+            {
+                File.Delete(romPath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="MachineBuilder.FromProfile"/> raises a clear diagnostic
+    /// when <c>config.rom</c> names a ROM image that is not declared in
+    /// <c>memory.rom-images</c>, instead of silently dropping the configuration.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCard_ConfigRom_UnknownRomImage_Throws()
+    {
+        var mockCpu = CreateMockCpu();
+
+        using var configDoc = System.Text.Json.JsonDocument.Parse(
+            "{\"rom\":\"missing-rom\"}");
+        var configElement = configDoc.RootElement.Clone();
+
+        var profile = new Core.Configuration.MachineProfile
+        {
+            Name = "test-profile",
+            DisplayName = "Test Profile",
+            Description = "Test",
+            AddressSpace = 16,
+            Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+            Memory = new()
+            {
+                Regions =
+                [
+                    new()
+                    {
+                        Name = "test-composite",
+                        Type = "composite",
+                        Start = "0xC000",
+                        Size = "0x1000",
+                        Permissions = "rw",
+                    },
+                ],
+            },
+            Devices = new()
+            {
+                Slots = new()
+                {
+                    Enabled = true,
+                    Cards =
+                    [
+                        new()
+                        {
+                            Slot = 6,
+                            Type = "fakebootcard-missing",
+                            Config = configElement,
+                        },
+                    ],
+                },
+            },
+        };
+
+        var builder = new MachineBuilder()
+            .WithCpuFactory(_ => mockCpu.Object);
+        builder.RegisterSlotCardFactory("fakebootcard-missing", (_, _) => new FakeBootRomSlotCard());
+
+        var ex = Assert.Throws<InvalidOperationException>(() => builder.FromProfile(profile));
+        Assert.That(ex!.Message, Does.Contain("missing-rom"));
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="MachineBuilder.FromProfile"/> raises a clear diagnostic
+    /// when <c>config.rom</c> targets a slot card whose type does not implement the
+    /// reflected <c>LoadBootRom(byte[])</c> contract — preventing silent loss of the
+    /// requested ROM image.
+    /// </summary>
+    [Test]
+    public void FromProfile_SlotCard_ConfigRom_CardWithoutLoadBootRom_Throws()
+    {
+        var mockCpu = CreateMockCpu();
+
+        string romPath = Path.Combine(Path.GetTempPath(), $"bm-config-rom-{Guid.NewGuid():N}.rom");
+        File.WriteAllBytes(romPath, new byte[256]);
+
+        try
+        {
+            using var configDoc = System.Text.Json.JsonDocument.Parse(
+                "{\"rom\":\"slot6-boot-rom\"}");
+            var configElement = configDoc.RootElement.Clone();
+
+            var profile = new Core.Configuration.MachineProfile
+            {
+                Name = "test-profile",
+                DisplayName = "Test Profile",
+                Description = "Test",
+                AddressSpace = 16,
+                Cpu = new() { Type = "65C02", ClockSpeed = 1000000 },
+                Memory = new()
+                {
+                    RomImages =
+                    [
+                        new()
+                        {
+                            Name = "slot6-boot-rom",
+                            Source = romPath,
+                            Size = "0x100",
+                            Required = true,
+                        },
+                    ],
+                    Regions =
+                    [
+                        new()
+                        {
+                            Name = "test-composite",
+                            Type = "composite",
+                            Start = "0xC000",
+                            Size = "0x1000",
+                            Permissions = "rw",
+                        },
+                    ],
+                },
+                Devices = new()
+                {
+                    Slots = new()
+                    {
+                        Enabled = true,
+                        Cards =
+                        [
+                            new()
+                            {
+                                Slot = 6,
+                                Type = "fakecard-noloader",
+                                Config = configElement,
+                            },
+                        ],
+                    },
+                },
+            };
+
+            var builder = new MachineBuilder()
+                .WithCpuFactory(_ => mockCpu.Object);
+            builder.RegisterSlotCardFactory("fakecard-noloader", (_, _) => new FakeSlotCard());
+
+            var ex = Assert.Throws<InvalidOperationException>(() => builder.FromProfile(profile));
+            Assert.That(ex!.Message, Does.Contain("LoadBootRom"));
+        }
+        finally
+        {
+            if (File.Exists(romPath))
+            {
+                File.Delete(romPath);
+            }
+        }
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();
@@ -794,5 +1197,103 @@ public class MachineBuilderTests
     private sealed class TestComponent
     {
         public string Name { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Minimal <see cref="ISlotCard"/> implementation used by slot-card factory tests
+    /// to verify that <see cref="MachineBuilder.RegisterSlotCardFactory"/> and
+    /// <see cref="MachineBuilder.FromProfile"/> plumb the per-card configuration blob
+    /// through to the factory.
+    /// </summary>
+    private sealed class FakeSlotCard : ISlotCard
+    {
+        private readonly string deviceType;
+
+        public FakeSlotCard()
+            : this(nameof(FakeSlotCard).ToLowerInvariant())
+        {
+        }
+
+        public FakeSlotCard(string deviceType)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(deviceType);
+            this.deviceType = deviceType;
+        }
+
+        public string Name => "FakeSlotCard";
+
+        public string DeviceType => this.deviceType;
+
+        public PeripheralKind Kind => PeripheralKind.SlotCard;
+
+        public int SlotNumber { get; set; }
+
+        public SlotIOHandlers? IOHandlers => null;
+
+        public IBusTarget? ROMRegion => null;
+
+        public IBusTarget? ExpansionROMRegion => null;
+
+        public void Initialize(IEventContext context)
+        {
+        }
+
+        public void Reset()
+        {
+        }
+
+        public void OnExpansionROMSelected()
+        {
+        }
+
+        public void OnExpansionROMDeselected()
+        {
+        }
+    }
+
+    /// <summary>
+    /// Slot-card test double exposing a public <c>LoadBootRom(byte[])</c> method that
+    /// captures the bytes pushed in by <see cref="MachineBuilder.FromProfile"/> when a
+    /// per-card <c>config.rom</c> entry is resolved against <c>memory.rom-images</c>.
+    /// </summary>
+    private sealed class FakeBootRomSlotCard : ISlotCard
+    {
+        public string Name => "FakeBootRomSlotCard";
+
+        public string DeviceType => "fakebootcard";
+
+        public PeripheralKind Kind => PeripheralKind.SlotCard;
+
+        public int SlotNumber { get; set; }
+
+        public SlotIOHandlers? IOHandlers => null;
+
+        public IBusTarget? ROMRegion => null;
+
+        public IBusTarget? ExpansionROMRegion => null;
+
+        public byte[]? LoadedRom { get; private set; }
+
+        public void LoadBootRom(byte[] romData)
+        {
+            ArgumentNullException.ThrowIfNull(romData);
+            LoadedRom = (byte[])romData.Clone();
+        }
+
+        public void Initialize(IEventContext context)
+        {
+        }
+
+        public void Reset()
+        {
+        }
+
+        public void OnExpansionROMSelected()
+        {
+        }
+
+        public void OnExpansionROMDeselected()
+        {
+        }
     }
 }

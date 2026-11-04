@@ -24,7 +24,6 @@ public enum ProcessorStatusFlags : byte
     /// </summary>
     V = 1 << 6,
 
-#pragma warning disable CA1069 // Enums values should not be duplicated
     /// <summary>
     /// Reserved flag. Always set to 1.
     /// </summary>
@@ -37,10 +36,8 @@ public enum ProcessorStatusFlags : byte
     /// This flag is used in processors that support both 8-bit and 16-bit accumulator modes.
     /// When CP is cleared (indicating native mode), this flag is ignored.
     /// </remarks>
-    M = 1 << 5,
-#pragma warning restore CA1069 // Enums values should not be duplicated
+    M = R,
 
-#pragma warning disable CA1069 // Enums values should not be duplicated
     /// <summary>
     /// Break flag. Set if the interrupt was a non-maskable interrupt (NMI) or a software interrupt (BRK).
     /// </summary>
@@ -56,8 +53,7 @@ public enum ProcessorStatusFlags : byte
     /// <remarks>
     /// When CP is cleared (indicating native mode), this flag is ignored.
     /// </remarks>
-    X = 1 << 4,
-#pragma warning restore CA1069 // Enums values should not be duplicated
+    X = B,
 
     /// <summary>
     /// Decimal mode flag. Set if the processor is in decimal (BCD) mode.

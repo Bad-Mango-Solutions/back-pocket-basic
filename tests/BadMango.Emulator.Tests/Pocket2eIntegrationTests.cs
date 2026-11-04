@@ -1018,6 +1018,211 @@ public class Pocket2eIntegrationTests
         });
     }
 
+    // ─── Language Card P0 regression tests ──────────────────────────────────────
+
+    /// <summary>
+    /// Regression test for the P0 ROM-shadowing bug: after DOS 3.3's `LDA $C081`
+    /// twice (the R*2 write-enable sequence), reads from $E000-$FFFF must continue
+    /// to return ROM content, NOT zero-filled Language Card RAM.
+    /// </summary>
+    /// <remarks>
+    /// Before the fix, the high LC layer was activated with <c>ReadExecute</c>
+    /// permissions on every soft switch that set <c>writeEnabled</c>, causing
+    /// $E000-$FFFF to read $00 from the zero-filled LC RAM. The next CPU instruction
+    /// would interpret $00 as <c>BRK</c>, vector through $FFFE (also $00 from RAM)
+    /// to $0000, and crash. This test reproduces that exact sequence and ensures
+    /// ROM is no longer silently shadowed.
+    /// </remarks>
+    [Test]
+    public void LanguageCard_DoubleC081_RomAtE000RemainsReadable()
+    {
+        // Arrange
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        // Sanity: in the default $C082-equivalent power-on state, $E000 reads ROM ($EA).
+        Assume.That(machine.Cpu.Read8(0xE000), Is.EqualTo(0xEA), "Stub ROM should fill $E000 with $EA NOPs at power-on");
+
+        // Act - DOS 3.3 R*2 protocol: two consecutive reads of $C081 enable LC RAM writes.
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Read8(LcBank2RomRead);
+
+        // Assert - $E000-$FFFF must still read from ROM, not zero-filled LC RAM.
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.Read8(0xE000), Is.EqualTo(0xEA), "$E000 must remain readable as ROM ($EA NOP) after R*2 on $C081");
+            Assert.That(machine.Cpu.Read8(0xF000), Is.EqualTo(0xEA), "$F000 must remain readable as ROM ($EA NOP) after R*2 on $C081");
+            Assert.That(machine.Cpu.Read8(0xFFFC), Is.EqualTo(0x00), "$FFFC (reset vector low) must remain readable from stub ROM after R*2 on $C081");
+            Assert.That(machine.Cpu.Read8(0xFFFD), Is.EqualTo(0xFF), "$FFFD (reset vector high) must remain readable from stub ROM after R*2 on $C081");
+            Assert.That(machine.Cpu.Read8(0xFF00), Is.EqualTo(0x4C), "$FF00 (JMP opcode in stub ROM) must remain readable after R*2 on $C081");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that in $C081 split mode, writes to $E000-$FFFF land in the Language
+    /// Card high RAM and can be read back after switching to $C083 (full RAM read mode).
+    /// </summary>
+    /// <remarks>
+    /// This is the positive companion to <see cref="LanguageCard_DoubleC081_RomAtE000RemainsReadable"/>:
+    /// not only must ROM reads survive split mode, the split-mode writes must actually
+    /// reach LC RAM, which is exactly what DOS 3.3's ROM-to-RAM copy at $BFCB requires.
+    /// </remarks>
+    [Test]
+    public void LanguageCard_SplitModeWrites_LandInLcRamAndAreReadableAfterC083()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        // Enter Bank 2 split mode via R*2 on $C081.
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Read8(LcBank2RomRead);
+
+        // Write a recognizable pattern through the split mapping into $E000 LC RAM.
+        machine.Cpu.Write8(0xE000, 0xDE);
+        machine.Cpu.Write8(0xE100, 0xAD);
+        machine.Cpu.Write8(0xFFFE, 0xBE);
+
+        // The same addresses must still read ROM (split mode = ROM read, RAM write).
+        Assert.That(machine.Cpu.Read8(0xE000), Is.EqualTo(0xEA), "$E000 must still read ROM ($EA) in split mode after a split-mode write");
+
+        // Switch to Bank 2 full-RAM read/write mode via R*2 on $C083 and read back.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        machine.Cpu.Read8(LcBank2RamWrite);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.Read8(0xE000), Is.EqualTo(0xDE), "$E000 LC RAM must retain the split-mode write");
+            Assert.That(machine.Cpu.Read8(0xE100), Is.EqualTo(0xAD), "$E100 LC RAM must retain the split-mode write");
+            Assert.That(machine.Cpu.Read8(0xFFFE), Is.EqualTo(0xBE), "$FFFE LC RAM must retain the split-mode write");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that split-mode writes target the currently selected $D000-$DFFF bank
+    /// (Bank 1 vs. Bank 2) and that the other bank is unaffected.
+    /// </summary>
+    [Test]
+    public void LanguageCard_SplitModeWrites_AreBankSpecificFor_D000_Region()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        // Bank 1 split mode via R*2 on $C089: write 0x11 to $D000.
+        machine.Cpu.Read8(LcBank1RomWrite + 1); // $C089
+        machine.Cpu.Read8(LcBank1RomWrite + 1);
+        machine.Cpu.Write8(0xD000, 0x11);
+
+        // ROM at $D000 must remain $EA in split mode.
+        Assert.That(machine.Cpu.Read8(0xD000), Is.EqualTo(0xEA), "$D000 must still read ROM in Bank 1 split mode");
+
+        // Bank 2 split mode via R*2 on $C081: write 0x22 to $D000.
+        machine.Cpu.Read8(LcBank2RomRead); // $C081
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Write8(0xD000, 0x22);
+
+        Assert.That(machine.Cpu.Read8(0xD000), Is.EqualTo(0xEA), "$D000 must still read ROM in Bank 2 split mode");
+
+        // Switch to Bank 2 full-RAM read mode ($C083 R*2) and read.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        machine.Cpu.Read8(LcBank2RamWrite);
+        byte bank2Value = machine.Cpu.Read8(0xD000);
+
+        // Switch to Bank 1 full-RAM read mode ($C08B R*2) and read.
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Read8(LcBank1RamWrite);
+        byte bank1Value = machine.Cpu.Read8(0xD000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bank1Value, Is.EqualTo(0x11), "Bank 1 RAM at $D000 must hold the Bank-1 split-mode write");
+            Assert.That(bank2Value, Is.EqualTo(0x22), "Bank 2 RAM at $D000 must hold the Bank-2 split-mode write");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that returning to full-ROM mode ($C082) restores plain ROM access at
+    /// both $D000-$DFFF and $E000-$FFFF even after split-mode writes have populated
+    /// LC RAM with arbitrary bytes.
+    /// </summary>
+    [Test]
+    public void LanguageCard_C082_FullRomMode_RestoresRomReadsAfterSplitPollution()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        // Pollute LC RAM via Bank 2 split-mode writes.
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Write8(0xE000, 0xFF);
+        machine.Cpu.Write8(0xD000, 0xFF);
+        machine.Cpu.Write8(0xFFFC, 0xFF);
+
+        // Back to full ROM mode ($C082; this address has no convenient named constant
+        // but corresponds to "Bank 2 / RAM disabled / write disabled").
+        machine.Cpu.Read8(0xC082);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.Read8(0xD000), Is.EqualTo(0xEA), "$D000 must read ROM in $C082 full-ROM mode");
+            Assert.That(machine.Cpu.Read8(0xE000), Is.EqualTo(0xEA), "$E000 must read ROM in $C082 full-ROM mode");
+            Assert.That(machine.Cpu.Read8(0xFFFC), Is.EqualTo(0x00), "$FFFC must still read ROM reset-vector low in $C082 full-ROM mode");
+            Assert.That(machine.Cpu.Read8(0xFFFD), Is.EqualTo(0xFF), "$FFFD must still read ROM reset-vector high in $C082 full-ROM mode");
+        });
+    }
+
+    /// <summary>
+    /// End-to-end test that proves the original DOS-3.3-style crash no longer occurs:
+    /// after the R*2 sequence on $C081, the CPU can execute an instruction fetched from
+    /// $E000 and the resulting state matches the expected behavior of executing $EA (NOP)
+    /// rather than $00 (BRK).
+    /// </summary>
+    [Test]
+    public void LanguageCard_AfterDoubleC081_InstructionFetchAtE000_ExecutesRomNop()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        // Enter split mode.
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Read8(LcBank2RomRead);
+
+        // Set PC to $E000 and single-step.
+        machine.Cpu.SetPC(0xE000);
+        var pcBefore = machine.Cpu.GetPC();
+        machine.Cpu.Step();
+        var pcAfter = machine.Cpu.GetPC();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pcBefore, Is.EqualTo(0xE000), "PC should be set to $E000 before stepping");
+
+            // NOP ($EA) is a 1-byte / 2-cycle instruction that advances PC by 1.
+            // BRK ($00) would push state and vector through $FFFE/$FFFF instead.
+            Assert.That(pcAfter, Is.EqualTo(0xE001), "After executing ROM NOP at $E000, PC should advance to $E001 (proving ROM, not BRK, was fetched)");
+            Assert.That(machine.Cpu.Halted, Is.False, "CPU should not be halted after a single NOP");
+        });
+    }
+
     // ─── Helper Methods ─────────────────────────────────────────────────────────
     private static Mock<ISlotCard> CreateMockSlotCard(string name)
     {

@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Core.Configuration;
 
+using BadMango.Unit.Components;
+
 /// <summary>
 /// Unit tests for motherboard device factory registration and profile loading.
 /// </summary>
@@ -27,6 +29,37 @@ public class MotherboardDeviceFactoryTests
         // Assert - The factory was registered (we verify by building a machine with a profile)
         // Since there's no direct way to query registered factories, we just ensure no exception
         Assert.That(builder, Is.Not.Null);
+    }
+
+    /// <summary>
+    /// Verifies that the speaker factory registered by RegisterSpeakerDeviceFactory obtains
+    /// its logger from <see cref="DeviceFactoryRegistry.LoggerFactory"/>.
+    /// </summary>
+    [Test]
+    public void RegisterSpeakerDeviceFactory_PassesConfiguredLogger()
+    {
+        var requestedTypes = new List<Type>();
+        var previous = DeviceFactoryRegistry.LoggerFactory;
+        DeviceFactoryRegistry.LoggerFactory = t =>
+        {
+            requestedTypes.Add(t);
+            return Generator.Log().Object;
+        };
+        try
+        {
+            var builder = CreateBuilderWithFactoriesAndCpu();
+            builder.FromProfile(CreateProfileWithSpeaker());
+            var machine = builder.Build();
+
+            var speaker = machine.GetComponent<ISpeakerDevice>();
+            Assert.That(speaker, Is.InstanceOf<SpeakerController>());
+            Assert.That(requestedTypes, Does.Contain(typeof(SpeakerController)));
+            (speaker as IDisposable)?.Dispose();
+        }
+        finally
+        {
+            DeviceFactoryRegistry.LoggerFactory = previous;
+        }
     }
 
     /// <summary>

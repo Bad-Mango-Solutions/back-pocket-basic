@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
@@ -126,6 +124,18 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
 
     /// <inheritdoc />
     public int Count => traps.Count;
+
+    /// <summary>
+    /// Gets a value indicating whether no trap addresses are registered.
+    /// </summary>
+    /// <remarks>
+    /// Cheap check used by the CPU to skip the per-instruction
+    /// <see cref="ContainsAddress"/> lookup when no traps exist.
+    /// </remarks>
+    public bool IsEmpty
+    {
+        get => trappedAddresses.Count == 0;
+    }
 
     /// <inheritdoc />
     public void Register(
@@ -408,21 +418,18 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsAddress(Addr address)
     {
         return trappedAddresses.ContainsKey(address);
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address)
     {
         return HasTrap(address, TrapOperation.Call);
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address, TrapOperation operation)
     {
         // Fast pre-check: if no trap exists at this address at all, skip the key scan

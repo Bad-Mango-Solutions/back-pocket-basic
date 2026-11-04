@@ -6,7 +6,7 @@ This guide provides step-by-step instructions for renaming the default branch fr
 
 ### Step 1: Rename the Branch on GitHub
 
-1. Navigate to your repository on GitHub: https://github.com/Bad-Mango-Solutions/back-pocket-basic
+1. Navigate to your repository on GitHub: https://github.com/Bad-Mango-Solutions/back-pocket-emulator
 2. Click on **Settings** tab
 3. In the left sidebar, click **Branches**
 4. Under "Default branch", click the pencil/edit icon next to the current default branch
@@ -84,8 +84,8 @@ git status
 New clones will automatically use the `main` branch:
 
 ```bash
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 ```
 
 ### Updating References in Documentation
@@ -205,9 +205,9 @@ git branch --show-current
 
 # Clone fresh
 cd ..
-mv back-pocket-basic back-pocket-basic-old
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+mv back-pocket-emulator back-pocket-emulator-old
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Apply stashed changes if needed
 # (from the old directory)

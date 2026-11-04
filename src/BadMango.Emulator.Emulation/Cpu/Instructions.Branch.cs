@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -19,7 +17,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCC.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BCC(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -53,7 +50,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCS.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BCS(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -87,7 +83,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BEQ.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BEQ(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -121,7 +116,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BNE.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BNE(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -155,7 +149,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BMI.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BMI(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -189,7 +182,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BPL.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BPL(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -223,7 +215,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVC.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BVC(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -257,7 +248,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVS.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BVS(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -295,7 +285,6 @@ public static partial class Instructions
     /// This instruction is unique to the 65C02 and was not present in the original 6502.
     /// It always branches unconditionally.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BRA(AddressingModeHandler addressingMode)
     {
         return cpu =>

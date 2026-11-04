@@ -9,4 +9,5 @@ global using BadMango.Emulator.Debug.Infrastructure.Commands;
 global using BadMango.Emulator.Debug.UI;
 global using BadMango.Emulator.Debug.UI.Services;
 global using BadMango.Emulator.Debug.UI.StatusMonitor;
+
 global using Moq;

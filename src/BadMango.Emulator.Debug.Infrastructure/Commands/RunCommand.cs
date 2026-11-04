@@ -42,8 +42,9 @@ public sealed class RunCommand : ExecutionCommandBase
     /// <inheritdoc/>
     public override string DetailedDescription =>
         "Executes CPU instructions continuously until the processor halts (STP or WAI), " +
-        "a breakpoint is hit, a stop is requested, or configured limits are reached. " +
-        "Use instruction and cycle limits to prevent infinite loops. " +
+        "a breakpoint is hit, or a stop is requested. By default no instruction, cycle, " +
+        "or timeout limit is applied — execution continues until externally stopped. " +
+        "Use --instructions=<n>, --cycles=<n>, or --timeout=<ms> to enforce explicit limits. " +
         "Optional tracing captures execution history for debugging.";
 
     /// <inheritdoc/>
@@ -54,15 +55,17 @@ public sealed class RunCommand : ExecutionCommandBase
         new("--trace-file", null, "path", "Write trace output to specified file", null),
         new("--trace-last", null, "int", "Show only last N trace records", "100"),
         new("--trace-buffer-size", null, "int", "Maximum buffered trace records", "10000"),
-        new("--cycles", null, "int", "Maximum cycles to execute", "10000000"),
-        new("--instructions", null, "int", "Maximum instructions to execute", "1000000"),
+        new("--cycles", null, "int", "Maximum cycles to execute", "unlimited"),
+        new("--instructions", null, "int", "Maximum instructions to execute", "unlimited"),
+        new("--timeout", null, "int", "Maximum wall-clock milliseconds to execute", "unlimited"),
     ];
 
     /// <inheritdoc/>
     public override IReadOnlyList<string> Examples { get; } =
     [
-        "run                          Execute until halt or default limits",
+        "run                          Execute until halt, breakpoint, or stop",
         "run 1000                     Execute up to 1000 instructions",
+        "run --cycles=50000           Execute up to 50,000 cycles",
         "run --trace                  Execute with instruction tracing",
         "run --trace-buffer --trace-last=50   Buffer and show last 50 instructions",
     ];
@@ -123,7 +126,16 @@ public sealed class RunCommand : ExecutionCommandBase
 
     private static ExecutionOptions ParseRunOptions(string[] args)
     {
-        var options = ParseCommonOptions(args);
+        // RunCommand should default to unlimited execution. Start from the unlimited
+        // baseline and let ParseCommonOptions populate any explicit user limits.
+        var options = new ExecutionOptions
+        {
+            InstructionLimit = int.MaxValue,
+            CycleLimit = long.MaxValue,
+            TimeoutMs = 0,
+        };
+
+        ApplyCommonOptions(args, options);
 
         // Parse positional argument as instruction limit
         foreach (var arg in args)

@@ -16,6 +16,7 @@ using BadMango.Emulator.Debug.UI.Editor.Views;
 using BadMango.Emulator.Debug.UI.StatusMonitor;
 using BadMango.Emulator.Debug.UI.Views;
 using BadMango.Emulator.Devices.Interfaces;
+using BadMango.Emulator.Storage.Media;
 using BadMango.Emulator.TextEditor;
 
 /// <summary>
@@ -38,7 +39,7 @@ using BadMango.Emulator.TextEditor;
 /// displays, text editors, and memory viewers.
 /// </para>
 /// </remarks>
-/// <seealso href="https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/specs/video/Pocket2e%20Debug%20Video%20Window%20(Avalonia)%20%E2%80%94%20Specification.md#8-threading-model">
+/// <seealso href="https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/specs/video/Pocket2e%20Debug%20Video%20Window%20(Avalonia)%20%E2%80%94%20Specification.md#8-threading-model">
 /// Threading Model Specification
 /// </seealso>
 public class DebugWindowManager : IDebugWindowManager
@@ -181,6 +182,24 @@ public class DebugWindowManager : IDebugWindowManager
             {
                 var pocketWatchExtension = new PocketWatchStatusExtension(clockDevice);
                 statsProvider.RegisterExtension(pocketWatchExtension);
+            }
+
+            // Register one extension per disk controller installed on the machine.
+            // This surfaces motor / head / phase activity alongside the live
+            // address-field stream parsed from each drive, mirroring the
+            // text-mode `diskmon` command in the status window. The same
+            // pattern will host SmartPort / SCSI controllers once they
+            // implement IDiskController.
+            var slotManager = machine.GetComponent<ISlotManager>();
+            if (slotManager is not null)
+            {
+                for (var slot = 1; slot <= 7; slot++)
+                {
+                    if (slotManager.GetCard(slot) is IDiskController disk)
+                    {
+                        statsProvider.RegisterExtension(new DiskIIStatusExtension(disk, slot));
+                    }
+                }
             }
 
             window.SetStatsProvider(statsProvider);

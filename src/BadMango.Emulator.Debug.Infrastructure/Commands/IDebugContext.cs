@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Storage.Formats;
 
 using Bus.Interfaces;
 
@@ -73,6 +74,49 @@ public interface IDebugContext : ICommandContext
     TracingDebugListener? TracingListener { get; }
 
     /// <summary>
+    /// Gets the composite CPU step listener that fans out debug callbacks to
+    /// every registered observer (tracing, watchpoints, etc.).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// May be <see langword="null"/> when no system is attached. Commands that want
+    /// to observe instruction execution should add themselves here rather than
+    /// calling <see cref="Core.Interfaces.Cpu.ICpu.AttachDebugger"/> directly, so
+    /// they do not displace other observers.
+    /// </para>
+    /// <para>
+    /// To keep the emulator fast when no debugging feature is in use, the composite
+    /// is attached to the CPU only while it has active listeners: tracing is enabled,
+    /// at least one watchpoint exists, or any listener that does not implement
+    /// <see cref="IActivatableDebugStepListener"/> has been added. Adding or removing
+    /// listeners (or toggling their activity) attaches or detaches it automatically.
+    /// </para>
+    /// </remarks>
+    CompositeDebugStepListener? StepListener { get; }
+
+    /// <summary>
+    /// Gets the breakpoint manager for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// Breakpoints are implemented as <see cref="Bus.TrapOperation.Call"/> traps
+    /// on the active <see cref="Bus.Interfaces.ITrapRegistry"/>. Always non-<see langword="null"/>
+    /// on a fresh <see cref="DebugContext"/>; the manager is fully wired only after
+    /// a system is attached.
+    /// </remarks>
+    BreakpointManager Breakpoints { get; }
+
+    /// <summary>
+    /// Gets the watchpoint manager for the debug session.
+    /// </summary>
+    /// <remarks>
+    /// Watchpoints are implemented as a <see cref="Core.Interfaces.Debugging.IDebugStepListener"/>
+    /// that inspects each instruction's effective address. Always non-<see langword="null"/>
+    /// on a fresh <see cref="DebugContext"/>; the manager is fully wired only after
+    /// a system is attached.
+    /// </remarks>
+    WatchpointManager Watchpoints { get; }
+
+    /// <summary>
     /// Gets a value indicating whether a system is attached to this debug context.
     /// </summary>
     /// <remarks>
@@ -114,4 +158,33 @@ public interface IDebugContext : ICommandContext
     /// </para>
     /// </remarks>
     IDebugPathResolver? PathResolver { get; }
+
+    /// <summary>
+    /// Gets the disk image factory used by debug commands that operate on disk images
+    /// (e.g. <c>disk create</c> / <c>disk info</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The factory exposes the same format detection and opener that runtime controllers
+    /// use, so that images authored by debug commands round-trip through the same code
+    /// path that real mounts use.
+    /// </para>
+    /// <para>
+    /// May be null if no factory has been attached to the debug context. Commands
+    /// should check for null and report a clear error in that case.
+    /// </para>
+    /// </remarks>
+    DiskImageFactory? DiskImageFactory { get; }
+
+    /// <summary>
+    /// Gets the registry that owns the <see cref="DiskImageOpenResult"/> handles produced
+    /// by the runtime <c>disk insert</c> path so their underlying file backends can be
+    /// released on eject, re-mount, or context teardown instead of leaking until process
+    /// exit.
+    /// </summary>
+    /// <value>
+    /// The mounted-disk registry. Always non-<see langword="null"/> on a fresh
+    /// <see cref="DebugContext"/>; lifetime follows the context itself.
+    /// </value>
+    MountedDiskRegistry MountedDisks { get; }
 }

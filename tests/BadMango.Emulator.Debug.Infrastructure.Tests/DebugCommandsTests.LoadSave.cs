@@ -179,6 +179,140 @@ public partial class DebugCommandsTests
     }
 
     /// <summary>
+    /// Verifies that LoadCommand loads only the requested length starting at the
+    /// specified file offset.
+    /// </summary>
+    [Test]
+    public void LoadCommand_LoadsRange_WhenOffsetAndLengthSpecified()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "load-range-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string testFile = Path.Combine(tempDir, "image.dsk");
+        byte[] testData = [0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80];
+        File.WriteAllBytes(testFile, testData);
+
+        try
+        {
+            var command = new LoadCommand();
+            var result = command.Execute(debugContext, [testFile, "$200", "$2", "$3"]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True);
+                Assert.That(ReadByte(bus, 0x200), Is.EqualTo(0x30));
+                Assert.That(ReadByte(bus, 0x201), Is.EqualTo(0x40));
+                Assert.That(ReadByte(bus, 0x202), Is.EqualTo(0x50));
+
+                // Byte after the requested range should not be written from the file
+                Assert.That(ReadByte(bus, 0x203), Is.Not.EqualTo(0x60));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that LoadCommand loads from offset to end-of-file when length is omitted.
+    /// </summary>
+    [Test]
+    public void LoadCommand_LoadsRemainder_WhenOnlyOffsetSpecified()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "load-offset-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string testFile = Path.Combine(tempDir, "image.dsk");
+        byte[] testData = [0xAA, 0xBB, 0xCC, 0xDD];
+        File.WriteAllBytes(testFile, testData);
+
+        try
+        {
+            var command = new LoadCommand();
+            var result = command.Execute(debugContext, [testFile, "$300", "$1"]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.True);
+                Assert.That(ReadByte(bus, 0x300), Is.EqualTo(0xBB));
+                Assert.That(ReadByte(bus, 0x301), Is.EqualTo(0xCC));
+                Assert.That(ReadByte(bus, 0x302), Is.EqualTo(0xDD));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that LoadCommand returns an error when offset is past end of file.
+    /// </summary>
+    [Test]
+    public void LoadCommand_ReturnsError_WhenOffsetPastEndOfFile()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "load-bad-offset-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string testFile = Path.Combine(tempDir, "image.dsk");
+        File.WriteAllBytes(testFile, [0x01, 0x02, 0x03, 0x04]);
+
+        try
+        {
+            var command = new LoadCommand();
+            var result = command.Execute(debugContext, [testFile, "$0", "$10"]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.False);
+                Assert.That(result.Message, Does.Contain("past end of file"));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that LoadCommand returns an error when requested length exceeds available file bytes.
+    /// </summary>
+    [Test]
+    public void LoadCommand_ReturnsError_WhenLengthExceedsAvailableBytes()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "load-bad-length-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string testFile = Path.Combine(tempDir, "image.dsk");
+        File.WriteAllBytes(testFile, [0x01, 0x02, 0x03, 0x04]);
+
+        try
+        {
+            var command = new LoadCommand();
+            var result = command.Execute(debugContext, [testFile, "$0", "$0", "$10"]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Success, Is.False);
+                Assert.That(result.Message, Does.Contain("exceeds bytes available"));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies that LoadCommand can load from library:// path when file exists.
     /// </summary>
     [Test]

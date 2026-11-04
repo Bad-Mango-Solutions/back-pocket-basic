@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using BadMango.Emulator.Core.Configuration;
 using BadMango.Emulator.Debug.Infrastructure;
+using BadMango.Emulator.Storage.Formats;
 
 using Bus.Interfaces;
 
@@ -26,8 +27,10 @@ using Core.Interfaces.Cpu;
 /// for bus-oriented debugging. Commands use the bus directly for memory operations.
 /// </para>
 /// </remarks>
-public sealed class DebugContext : IDebugContext
+public sealed class DebugContext : IDebugContext, IDisposable
 {
+    private readonly Lock attachmentLock = new();
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugContext"/> class.
     /// </summary>
@@ -106,6 +109,15 @@ public sealed class DebugContext : IDebugContext
     public TracingDebugListener? TracingListener { get; private set; }
 
     /// <inheritdoc/>
+    public CompositeDebugStepListener? StepListener { get; private set; }
+
+    /// <inheritdoc/>
+    public BreakpointManager Breakpoints { get; } = new();
+
+    /// <inheritdoc/>
+    public WatchpointManager Watchpoints { get; } = new();
+
+    /// <inheritdoc/>
     public bool IsSystemAttached => this.Cpu is not null && this.Bus is not null && this.Disassembler is not null;
 
     /// <inheritdoc/>
@@ -117,6 +129,12 @@ public sealed class DebugContext : IDebugContext
     /// <inheritdoc/>
     public IDebugPathResolver? PathResolver { get; private set; }
 
+    /// <inheritdoc/>
+    public DiskImageFactory? DiskImageFactory { get; private set; }
+
+    /// <inheritdoc/>
+    public MountedDiskRegistry MountedDisks { get; } = new();
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>
@@ -126,6 +144,7 @@ public sealed class DebugContext : IDebugContext
     {
         var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
         context.AttachPathResolver(new DebugPathResolver());
+        context.AttachDiskImageFactory(new DiskImageFactory());
         return context;
     }
 
@@ -218,12 +237,26 @@ public sealed class DebugContext : IDebugContext
         ArgumentNullException.ThrowIfNull(disassembler);
         ArgumentNullException.ThrowIfNull(machineInfo);
 
+        // If a composite listener is already wired from a previous AttachMachine call
+        // (e.g. profile reload), tear down the old debugger attachment before
+        // overwriting this.Cpu — otherwise the outgoing CPU is left with a dangling
+        // listener and the managers remain attached to the stale CPU.
+        if (this.StepListener is not null)
+        {
+            this.Breakpoints.Detach();
+            this.Watchpoints.Detach();
+            this.UnwireStepListener();
+            this.Cpu?.DetachDebugger();
+        }
+
         this.Machine = machine;
         this.Cpu = machine.Cpu;
         this.Bus = machine.Bus;
         this.Disassembler = disassembler;
         this.MachineInfo = machineInfo;
         this.TracingListener = tracingListener;
+
+        WireDebuggingManagers();
     }
 
     /// <summary>
@@ -277,15 +310,161 @@ public sealed class DebugContext : IDebugContext
     }
 
     /// <summary>
+    /// Attaches a disk image factory to this debug context.
+    /// </summary>
+    /// <param name="diskImageFactory">The disk image factory to attach.</param>
+    public void AttachDiskImageFactory(DiskImageFactory diskImageFactory)
+    {
+        ArgumentNullException.ThrowIfNull(diskImageFactory);
+        this.DiskImageFactory = diskImageFactory;
+    }
+
+    /// <summary>
     /// Detaches all emulator components from this debug context.
     /// </summary>
+    /// <remarks>
+    /// Disposes any retained <see cref="DiskImageOpenResult"/> handles tracked in
+    /// <see cref="MountedDisks"/>, releasing every file backend opened by the runtime
+    /// <c>disk insert</c> path. The registry itself remains usable for subsequent
+    /// re-attachment.
+    /// </remarks>
     public void DetachSystem()
     {
+        // Tear down debugger-side managers before the CPU/Machine references go away.
+        this.Breakpoints.Detach();
+        this.Watchpoints.Detach();
+        this.Watchpoints.SetLogOutput(null);
+        this.UnwireStepListener();
+        this.Cpu?.DetachDebugger();
+
         this.Cpu = null;
         this.Bus = null;
         this.Disassembler = null;
         this.MachineInfo = null;
         this.TracingListener = null;
         this.Machine = null;
+
+        // Mounted-disk file handles only make sense while a machine is attached;
+        // release them eagerly so the host filesystem is not still holding the
+        // image files after the machine goes away. Use Clear (not Dispose) so the
+        // registry remains usable if a new machine is attached on top.
+        this.MountedDisks.Clear();
+    }
+
+    /// <summary>
+    /// Disposes the <see cref="MountedDisks"/> registry and therefore every retained
+    /// <see cref="DiskImageOpenResult"/> (and its underlying file handle).
+    /// </summary>
+    public void Dispose() => this.MountedDisks.Dispose();
+
+    /// <summary>
+    /// Wires the composite debug listener, breakpoint manager, and watchpoint
+    /// manager to the currently attached CPU and machine. The composite is only
+    /// attached to the CPU while it has active listeners (see
+    /// <see cref="UpdateDebuggerAttachment"/>). Does nothing if
+    /// <see cref="Cpu"/> is <see langword="null"/>.
+    /// Callers are responsible for tearing down any previous attachment before
+    /// invoking this method (see <see cref="DetachSystem"/>).
+    /// </summary>
+    private void WireDebuggingManagers()
+    {
+        if (this.Cpu is null)
+        {
+            return;
+        }
+
+        // Build a composite listener so tracing and watchpoints (and any other
+        // observers added later) can coexist on the CPU's single debugger slot.
+        var composite = new CompositeDebugStepListener();
+        if (this.TracingListener is not null)
+        {
+            composite.Add(this.TracingListener);
+        }
+
+        if (this.Bus is not null)
+        {
+            this.Watchpoints.AttachWithBus(this.Cpu, this.Bus);
+        }
+        else
+        {
+            this.Watchpoints.Attach(this.Cpu);
+        }
+
+        this.Watchpoints.SetLogOutput(this.Output);
+        composite.Add(this.Watchpoints);
+
+        // Only pay for per-instruction debug callbacks (trace building, step event
+        // arguments, listener dispatch) while something actually consumes them:
+        // tracing enabled, at least one watchpoint, or any other listener added to
+        // the composite. Replace whatever was attached before (e.g. a bare tracing
+        // listener) and then attach the composite only if it is active.
+        this.Cpu.DetachDebugger();
+        this.StepListener = composite;
+        composite.ActiveListenersChanged += this.OnStepListenerActivityChanged;
+        this.UpdateDebuggerAttachment();
+
+        // Wire breakpoints if the machine exposes a trap registry.
+        var registry = this.Machine?.GetComponent<Bus.Interfaces.ITrapRegistry>();
+        if (registry is not null)
+        {
+            this.Breakpoints.Attach(this.Cpu, registry);
+        }
+    }
+
+    /// <summary>
+    /// Detaches the current composite listener from its managed listeners and
+    /// events so a stale composite cannot re-attach itself later.
+    /// Does not detach the debugger from the CPU.
+    /// </summary>
+    private void UnwireStepListener()
+    {
+        var composite = this.StepListener;
+        if (composite is null)
+        {
+            return;
+        }
+
+        composite.ActiveListenersChanged -= this.OnStepListenerActivityChanged;
+        composite.Remove(this.Watchpoints);
+        if (this.TracingListener is not null)
+        {
+            composite.Remove(this.TracingListener);
+        }
+
+        this.StepListener = null;
+    }
+
+    private void OnStepListenerActivityChanged(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(sender, this.StepListener))
+        {
+            this.UpdateDebuggerAttachment();
+        }
+    }
+
+    /// <summary>
+    /// Attaches <see cref="StepListener"/> to the CPU while it has active
+    /// listeners, and detaches it otherwise.
+    /// </summary>
+    private void UpdateDebuggerAttachment()
+    {
+        lock (this.attachmentLock)
+        {
+            var composite = this.StepListener;
+            var cpu = this.Cpu;
+            if (composite is null || cpu is null)
+            {
+                return;
+            }
+
+            if (composite.HasActiveListeners)
+            {
+                cpu.AttachDebugger(composite);
+            }
+            else
+            {
+                cpu.DetachDebugger();
+            }
+        }
     }
 }

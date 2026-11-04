@@ -323,24 +323,35 @@ $C600:  LDX #$20        ; Timing constant
 
 #### Stage 2: Boot Sector Code ($0801)
 
-The boot sector contains the **Boot 1** loader:
+The boot sector contains the **Boot 1** loader. The ROM jumps unconditionally to `$0801`; the
+byte at `$0800` is part of the on-disk loader, not a ROM-side check.
 
-```assembly
-; Boot sector 0 code (DOS 3.3 or ProDOS)
-$0801:  ; For ProDOS:
-        ; Load PRODOS file from disk
-        ; (sectors 0-9 of track 0)
-        
-        LDX #$00        ; Starting sector
-LOAD_LOOP:
-        JSR READ_SECTOR
-        INC DEST_PAGE   ; Next page
-        INX             ; Next sector
-        CPX #$0A        ; 10 sectors
-        BNE LOAD_LOOP
-        
-        JMP $2000       ; Jump to ProDOS loader
+**DOS 3.3 boot sector (Track 0, Sector 0) — first bytes:**
+
 ```
+$0800:  $01             ; Sector-chain count (additional sectors to load)
+$0801:  $A5 $27         ; LDA $27 — first executed opcode
+$0803:  $C9 $09         ; CMP #$09
+$0805:  $D0 $18         ; BNE ...
+        ; ... remainder of Boot 1 loader
+```
+
+**Bootability signature for DOS 3.3 (block/sector offsets 0–4):** `01 A5 27 C9 09`
+
+**ProDOS PBOOT loader (Block 0) — first bytes:**
+
+```
+$0800:  $01             ; Boot block indicator
+$0801:  $38             ; SEC — first executed opcode
+$0802:  $B0 $03         ; BCS +3
+$0804:  $4C $1C $09     ; JMP $091C (error path)
+        ; ... remainder of PBOOT loader
+```
+
+**Bootability signature for ProDOS (block offsets 0–3):** `01 38 B0 03`
+
+A freshly formatted disk leaves T0/S0 (or block 0) as all `$00` bytes, which is not a valid
+boot sector.
 
 #### Stage 3: ProDOS Load
 
@@ -438,30 +449,18 @@ SMARTPORT_CALL:
 
 #### Stage 1: ProDOS Bootstrap
 
-SmartPort block 0 contains a boot block:
+SmartPort block 0 contains a ProDOS PBOOT boot block. The SmartPort firmware loads block 0 to
+`$0800` and jumps to `$0801`, identical to the Disk II convention:
 
-```assembly
-$0800:  ; Boot block header
-        DB $01          ; Boot block indicator
-        ; ... loader code ...
-        
-$0801:  ; Load ProDOS from disk
-        ; SmartPort uses 512-byte blocks
-        ; ProDOS is at blocks 0-15 (approximately)
-        
-        LDA #$00        ; Start at block 0
-        STA BLOCK_NUM
-LOAD_PRODOS:
-        JSR SMARTPORT_READ
-        INC BLOCK_NUM
-        INC DEST_PAGE
-        INC DEST_PAGE   ; 2 pages per block
-        LDA BLOCK_NUM
-        CMP #$10        ; 16 blocks
-        BNE LOAD_PRODOS
-        
-        JMP $2000
 ```
+$0800:  $01             ; Boot block indicator
+$0801:  $38             ; SEC — first executed opcode (ProDOS PBOOT)
+$0802:  $B0 $03         ; BCS +3
+$0804:  $4C ...         ; JMP (error path if carry clear)
+        ; ... remainder of PBOOT loader
+```
+
+**Bootability signature (block offsets 0–3):** `01 38 B0 03`
 
 **Final State:** Same as Disk II - ProDOS loaded, BASIC.SYSTEM ready
 

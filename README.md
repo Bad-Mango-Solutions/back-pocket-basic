@@ -1,60 +1,17 @@
-# BackPocketBASIC
+# BackPocket Emulator
 
 <p align="center">
-  <img src="back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+  <img src="back-pocket-logo.png" alt="BackPocket Emulator Logo" width="200">
 </p>
 
-A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502 CPU emulation and Apple II memory space emulation.
+A .NET emulator for the WDC 65C02 (Apple IIe-class "Pocket2e" machine), with an architecture built to grow into the 65816 and a theoretical 32-bit 65832.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+> **Looking for the Applesoft BASIC interpreter?** It now lives in its own repository, with history preserved: [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+
 ## Features
-
-### Complete Applesoft BASIC Implementation
-
-- **Program Control**: `REM`, `LET`, `DIM`, `DEF FN`, `END`, `STOP`, `CLEAR`
-- **Flow Control**: `GOTO`, `GOSUB`/`RETURN`, `ON...GOTO`, `ON...GOSUB`, `IF...THEN`, `FOR...TO...STEP...NEXT`
-- **I/O**: `PRINT`, `INPUT`, `GET`, `DATA`, `READ`, `RESTORE`
-- **Memory/System**: `PEEK`, `POKE`, `CALL`, `HIMEM:`, `LOMEM:`, `&`, `USR`
-- **Text Display**: `HOME`, `HTAB`, `VTAB`, `INVERSE`, `FLASH`, `NORMAL`
-- **Graphics** (stubbed for future UI): `GR`, `HGR`, `HGR2`, `TEXT`, `COLOR=`, `HCOLOR=`, `PLOT`, `HPLOT`, `DRAW`, `XDRAW`
-
-### Built-in Functions
-
-| Category | Functions |
-|----------|-----------|
-| **Math** | `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN` |
-| **String** | `LEN`, `VAL`, `ASC`, `MID$`, `LEFT$`, `RIGHT$`, `STR$`, `CHR$` |
-| **Utility** | `PEEK`, `FRE`, `POS`, `SCRN`, `PDL`, `TAB`, `SPC`, `USR` |
-
-### Custom Extensions
-
-- **`SLEEP`** - Pauses execution for a specified number of milliseconds
-  ```basic
-  10 SLEEP 1000
-  REM Pauses for 1 second
-  ```
-
-### Machine Language Integration
-
-- **`&` (Ampersand)** - Calls a machine language routine at address $03F5 (1013)
-  ```basic
-  10 REM SET UP AN RTS AT $03F5
-  20 POKE 1013, 96
-  30 &
-  40 PRINT "RETURNED FROM ML"
-  ```
-
-- **`USR`** - Calls a user machine language routine with a floating-point parameter
-  ```basic
-  10 REM SET UP AN RTS AT $000A
-  20 POKE 10, 96
-  30 X = USR(3.14159)
-  40 PRINT "RESULT: "; X
-  ```
-  The parameter is evaluated and stored in FAC1 at $009D before the routine is called.
-  The routine should return its result in FAC1.
 
 ### Multi-CPU Emulation (65C02/65816/65832)
 
@@ -64,9 +21,6 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 - **65832-Ready**: Foundation for future 32-bit 65832 support
 - **Extension Methods**: Size-aware register access (byte/word/dword views) adapts to CPU mode
 - **Runtime Mode Detection**: Instructions adapt behavior based on CPU flags (E, M, X)
-- **64KB Memory**: Emulated memory space matching Apple II memory map
-- **Memory Operations**: `PEEK`, `POKE`, `CALL`, `&`, and `USR` operate with bounds checking
-- **ProDOS Emulation**: System call emulation layer
 
 ## Getting Started
 
@@ -78,83 +32,17 @@ A fully-featured Applesoft BASIC interpreter written in .NET, complete with 6502
 
 ```bash
 # Clone the repository
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Build the solution
-dotnet build BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
 
 # Run tests
-dotnet test BackPocketBasic.slnx
+dotnet test BackPocketEmulator.slnx
 
 # Run tests with statement coverage
-dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
-```
-
-### Running a BASIC Program
-
-```bash
-dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- <path-to-basic-file>
-```
-
-Or after building:
-
-```bash
-./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/demo.bas
-```
-
-## Sample Programs
-
-Several sample programs are included in the `samples/` directory:
-
-| File | Description |
-|------|-------------|
-| `demo.bas` | Comprehensive demo of language features |
-| `primes.bas` | Prime number finder |
-| `fibonacci.bas` | Fibonacci sequence generator |
-| `memory.bas` | PEEK/POKE memory demonstration |
-| `sleep.bas` | SLEEP command countdown demo |
-
-### Example: Hello World
-
-```basic
-10 REM HELLO WORLD PROGRAM
-20 HOME
-30 PRINT "HELLO, WORLD!"
-40 END
-```
-
-### Example: Using Variables and Loops
-
-```basic
-10 REM CALCULATE FACTORIAL
-20 INPUT "ENTER A NUMBER: "; N
-30 F = 1
-40 FOR I = 1 TO N
-50 F = F * I
-60 NEXT I
-70 PRINT N; "! = "; F
-80 END
-```
-
-### Example: User-Defined Functions
-
-```basic
-10 DEF FN SQUARE(X) = X * X
-20 DEF FN CUBE(X) = X * X * X
-30 FOR I = 1 TO 5
-40 PRINT I; " SQUARED = "; FN SQUARE(I); ", CUBED = "; FN CUBE(I)
-50 NEXT I
-60 END
-```
-
-### Example: Using PEEK and POKE
-
-```basic
-10 REM STORE AND RETRIEVE VALUES FROM MEMORY
-20 POKE 768, 42
-30 PRINT "VALUE AT 768: "; PEEK(768)
-40 END
+dotnet test BackPocketEmulator.slnx --collect "XPlat Code Coverage"
 ```
 
 ## Architecture
@@ -162,51 +50,59 @@ Several sample programs are included in the `samples/` directory:
 ### Project Structure
 
 ```
-back-pocket-basic/
+back-pocket-emulator/
 ├── src/
-│   ├── BadMango.Basic/                # Core BASIC interpreter library
-│   │   ├── AST/                       # Abstract Syntax Tree nodes
-│   │   ├── Emulation/                 # Legacy 6502 and Apple II emulation
-│   │   ├── Execution/                 # Interpreter implementation
-│   │   ├── IO/                        # I/O abstraction
-│   │   ├── Lexer/                     # Tokenizer
-│   │   ├── Parser/                    # Parser
-│   │   ├── Runtime/                   # Runtime environment
-│   │   └── Tokens/                    # Token definitions
-│   ├── BadMango.Basic.Console/        # Console application (assembly: bpbasic)
-│   │
-│   ├── BadMango.Emulator.Core/        # Core emulator abstractions
-│   │   ├── Cpu/                       # CPU state, registers, instructions
-│   │   ├── Interfaces/                # Core interfaces (IMemory, ICpu)
-│   │   └── Signaling/                 # Interrupt and signal handling
-│   ├── BadMango.Emulator.Emulation/   # CPU implementations
-│   │   └── Cpu/                       # 65C02, 65816, 65832 implementations
-│   ├── BadMango.Emulator.Bus/         # System bus and memory management
-│   ├── BadMango.Emulator.Devices/     # Peripheral device implementations
-│   ├── BadMango.Emulator.Systems/     # Complete system configurations
-│   ├── BadMango.Emulator.Debug/       # Debugging infrastructure
-│   ├── BadMango.Emulator.Infrastructure/ # Event and registration utilities
-│   ├── BadMango.Emulator.Interop/     # Interoperability layer
-│   ├── BadMango.Emulator.Configuration/ # Configuration management
-│   ├── BadMango.Emulator.UI/          # Avalonia-based GUI (optional)
-│   └── BadMango.Emulator.UI.Abstractions/ # UI abstraction interfaces
+│   ├── BadMango.Emulator.Core/                 # CPU contracts, registers, signals, machine profiles
+│   ├── BadMango.Emulator.Bus/                  # Main bus, memory map, device registry, machine builder
+│   ├── BadMango.Emulator.Emulation/            # 65C02 CPU; 65816 and 65832 placeholders
+│   │   └── Cpu/
+│   ├── BadMango.Emulator.Devices/              # Peripherals (video, keyboard, speaker, Disk II, cards)
+│   ├── BadMango.Emulator.Storage/              # Disk images, block media, GCR nibblizing
+│   ├── BadMango.Emulator.Rendering/            # Pixel buffers and character rendering
+│   ├── BadMango.Emulator.Systems/              # Pocket2e machine composition
+│   ├── BadMango.Emulator.Infrastructure/       # Event aggregator
+│   ├── BadMango.Emulator.Configuration/        # App settings and path validation
+│   ├── BadMango.Emulator.UI.Abstractions/      # UI contracts
+│   ├── BadMango.Emulator.UI/                   # Avalonia host (bpui)
+│   ├── BadMango.Emulator.TextEditor/           # Avalonia editor
+│   ├── BadMango.Emulator.Debug.Infrastructure/ # REPL, commands, breakpoints, trace
+│   ├── BadMango.Emulator.Debug.UI/             # Avalonia windows for the console debugger
+│   ├── BadMango.Emulator.Debug/                # Console host (emudbg)
+│   └── BadMango.Emulator.Interop/              # Reserved for native and Rust interop
 │
 ├── tests/
-│   ├── BadMango.Basic.Tests/          # BASIC interpreter unit tests
-│   ├── BadMango.Emulator.Tests/       # Emulator core tests
-│   ├── BadMango.Emulator.Bus.Tests/   # Bus and memory tests
-│   ├── BadMango.Emulator.Devices.Tests/ # Device tests
-│   └── ... (additional test projects)
+│   ├── BadMango.Unit.Components/               # Shared test helpers
+│   ├── BadMango.Emulator.Tests/                # CPU, machine, and cross-project tests
+│   ├── BadMango.Emulator.Bus.Tests/
+│   ├── BadMango.Emulator.Configuration.Tests/
+│   ├── BadMango.Emulator.Debug.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Debug.Tests/
+│   ├── BadMango.Emulator.Debug.UI.Tests/
+│   ├── BadMango.Emulator.Devices.Tests/
+│   ├── BadMango.Emulator.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Rendering.Tests/
+│   ├── BadMango.Emulator.Storage.Tests/
+│   ├── BadMango.Emulator.TextEditor.Tests/
+│   └── BadMango.Emulator.UI.Tests/
 │
-├── samples/                           # Sample BASIC programs
+├── profiles/                          # Machine profile JSON
+├── schemas/                           # machine-profile.schema.json
+├── roms/                              # Apple II ROM images
+├── disks/                             # Sample disk images
+├── samples/                           # Sample machine-code programs
+├── specs/                             # Architecture and device specifications
+├── reference/                         # Design notes
+├── references/                        # Additional reference notes
 ├── wiki/                              # GitHub Wiki documentation
-└── BackPocketBasic.slnx               # Solution file
+└── BackPocketEmulator.slnx            # Solution file
 ```
+
+How these projects reference each other is described in [CONTRIBUTING.md](CONTRIBUTING.md#project-structure).
 
 ### Technologies Used
 
 - **.NET 10.0** - Runtime and SDK
-- **Avalonia UI 11.2+** - Cross-platform GUI framework (Emulator UI)
+- **Avalonia UI 12** - Cross-platform GUI framework (Emulator UI)
 - **Microsoft.Extensions.Hosting** - Application hosting model
 - **Serilog** - Structured logging
 - **Autofac** - Dependency injection
@@ -215,14 +111,6 @@ back-pocket-basic/
 - **Moq** - Mocking framework
 
 ### Key Components
-
-#### BASIC Interpreter
-
-1. **Lexer** (`BasicLexer`) - Tokenizes BASIC source code into tokens
-2. **Parser** (`BasicParser`) - Parses tokens into an Abstract Syntax Tree
-3. **Interpreter** (`BasicInterpreter`) - Executes the AST using the visitor pattern
-4. **Memory** (`AppleMemory`) - 64KB emulated memory space for `PEEK`/`POKE`
-5. **Apple System** (`AppleSystem`) - Coordinates CPU and memory emulation
 
 #### Advanced Emulator Framework
 
@@ -246,60 +134,6 @@ back-pocket-basic/
    - Thunderclock and PocketWatch cards
 5. **UI** (`BadMango.Emulator.UI`) - Avalonia-based graphical interface
 
-## Language Reference
-
-### Variables
-
-- **Numeric variables**: `A`, `X1`, `COUNT` (only first 2 characters are significant)
-- **String variables**: `A$`, `NAME$` (end with `$`)
-- **Integer variables**: `N%`, `I%` (end with `%`)
-
-### Arrays
-
-Arrays are 0-based but `DIM` specifies the maximum index:
-
-```basic
-10 DIM A(10)        : REM Creates array with indices 0-10 (11 elements)
-20 DIM B(5,5)       : REM 2-dimensional array
-30 A(5) = 100
-40 B(2,3) = 50
-```
-
-### Operators
-
-| Operator | Description |
-|----------|-------------|
-| `+` | Addition / String concatenation |
-| `-` | Subtraction |
-| `*` | Multiplication |
-| `/` | Division |
-| `^` | Exponentiation |
-| `=` | Equal to |
-| `<>` or `><` | Not equal to |
-| `<` | Less than |
-| `>` | Greater than |
-| `<=` | Less than or equal |
-| `>=` | Greater than or equal |
-| `AND` | Logical AND |
-| `OR` | Logical OR |
-| `NOT` | Logical NOT |
-
-### Memory Map
-
-The emulated Apple II memory map:
-
-| Address Range | Description |
-|---------------|-------------|
-| `$0000-$00FF` | Zero Page |
-| `$0100-$01FF` | Stack |
-| `$0400-$07FF` | Text Page 1 / Lo-Res Page 1 |
-| `$0800-$0BFF` | Text Page 2 / Lo-Res Page 2 |
-| `$0800-$95FF` | BASIC Program Area |
-| `$2000-$3FFF` | Hi-Res Page 1 |
-| `$4000-$5FFF` | Hi-Res Page 2 |
-| `$C000-$CFFF` | I/O Space (Soft Switches) |
-| `$D000-$FFFF` | ROM Area |
-
 ## Logging
 
 Logs are written to:
@@ -308,9 +142,6 @@ Logs are written to:
 
 ## Future Enhancements
 
-- [ ] Graphics UI for `GR`, `HGR`, `PLOT`, `HPLOT` commands
-- [ ] Interactive REPL mode
-- [ ] File I/O commands (`OPEN`, `CLOSE`, `PRINT#`, `INPUT#`)
 - [ ] 65816 extended processor mode
 - [ ] Disk image support
 
@@ -332,6 +163,8 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Third-party components distributed with the application, and their licenses, are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Acknowledgments
 

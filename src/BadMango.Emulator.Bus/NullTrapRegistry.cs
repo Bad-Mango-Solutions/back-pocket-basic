@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Interfaces;
@@ -172,29 +170,24 @@ public sealed class NullTrapRegistry : ITrapRegistry
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TrapResult TryExecute(Addr address, ICpu cpu, IMemoryBus bus, IEventContext context)
     {
         return TrapResult.NotHandled;
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TrapResult TryExecute(Addr address, TrapOperation operation, ICpu cpu, IMemoryBus bus, IEventContext context)
     {
         return TrapResult.NotHandled;
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsAddress(Addr address) => false;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address) => false;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasTrap(Addr address, TrapOperation operation) => false;
 
     /// <inheritdoc />

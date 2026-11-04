@@ -6,7 +6,6 @@ namespace BadMango.Emulator.UI;
 
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 
 using BadMango.Emulator.UI.ViewModels;
@@ -34,13 +33,10 @@ public partial class App : Application
     /// <inheritdoc />
     public override void OnFrameworkInitializationCompleted()
     {
-        // Remove Avalonia's data validation to avoid duplicate validations with CommunityToolkit.Mvvm
-        // Check if validators exist before removing (supports headless testing scenarios)
-        if (BindingPlugins.DataValidators.Count > 0)
-        {
-            BindingPlugins.DataValidators.RemoveAt(0);
-        }
-
+        // Note: In Avalonia 11.x, the recommended CommunityToolkit.Mvvm workaround was to remove
+        // the first BindingPlugins.DataValidators entry to avoid duplicate validations. In
+        // Avalonia 12, the binding system was rewritten (compiled bindings are now standard) and
+        // BindingPlugins was made internal. The workaround is no longer required and removed.
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainViewModel = AppHost?.Services.GetRequiredService<MainWindowViewModel>();
