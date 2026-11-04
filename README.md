@@ -143,6 +143,8 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+Third-party components distributed with the application, and their licenses, are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## Acknowledgments
 
 - Apple II and Applesoft BASIC are trademarks of Apple Inc.
