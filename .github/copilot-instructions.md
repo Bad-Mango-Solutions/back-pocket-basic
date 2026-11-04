@@ -114,6 +114,14 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 - **Log outside hot loops.** Logging belongs at well-defined boundaries (configuration, mount/eject, error paths, lifecycle transitions). Do not log per CPU cycle, per scan-line, per emitted nibble, or inside any other timing-sensitive inner loop. Lift logging out of the loop or guard it with `logger.IsEnabled(LogEventLevel.Verbose)` when verbose detail is genuinely needed.
 - **Use structured logging.** Prefer `logger.Warning("Foo {Bar} failed because {Reason}.", bar, reason)` over interpolated or concatenated strings so messages remain queryable.
 
+## Exception handling
+- **Never use a bare `catch` or `catch (Exception)`.** Catch only the specific exceptions the called code is documented or known to throw. When several share the same handling, use one filtered clause: `catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)`.
+- **No empty catch blocks.** Log the exception with the injected `ILogger`, or add a comment explaining why ignoring it is correct. Prefer not catching at all when there is nothing useful to do.
+- **Don't catch what can't be thrown.** Do not wrap calls in `try`/`catch` for exception types they never throw. APIs that report failure through return values or error state (e.g. native interop such as OpenAL's `AL.GetError()`, `TryXxx` methods, `bool` results) must have that result checked instead.
+- **Best-effort teardown still logs.** Cleanup in `Dispose`/`finally` may continue past failures, but must log them rather than discard them silently.
+- **Preserve the cause when translating.** When rethrowing as a different type, pass the original as the `innerException`; use `throw;` (never `throw ex;`) to rethrow unchanged.
+- **Prefer guard helpers.** Use `ArgumentNullException.ThrowIfNull`, `ArgumentException.ThrowIfNullOrEmpty`, `ArgumentOutOfRangeException.ThrowIfNegative`, `ObjectDisposedException.ThrowIf`, etc. instead of hand-written checks.
+
 ## Testing helpers
 - **Use `BadMango.Unit.Components` for shared test utilities.** All new test projects should reference `tests/BadMango.Unit.Components/BadMango.Unit.Components.csproj`.
   - **`Generator`** — random data generation. Use `Generator.Log()` to obtain a preconfigured `Mock<ILogger>` whose `ForContext` chain returns the same mock, which is the canonical way to inject a logger into a class under test.

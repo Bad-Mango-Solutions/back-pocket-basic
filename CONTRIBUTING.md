@@ -175,6 +175,15 @@ public object EvaluateExpression(Expression expression)
 }
 ```
 
+### Exception Handling
+
+- Never use a bare `catch` or `catch (Exception)`; catch only the specific exceptions the called code is documented or known to throw. Combine types that share handling with `catch (Exception ex) when (ex is A or B)`
+- No empty catch blocks: log the exception (with the injected Serilog `ILogger`) or comment why ignoring it is correct. Prefer not catching at all
+- Don't wrap calls in `try`/`catch` for exceptions they can't throw. APIs that report errors through return codes or error state (e.g. native interop such as OpenAL's `AL.GetError()`) must have that result checked instead
+- Best-effort teardown (`Dispose`, `finally`) may continue past failures but should still log them
+- When translating an exception, keep the original as the `InnerException`; rethrow unchanged with `throw;`
+- Use guard helpers such as `ArgumentNullException.ThrowIfNull` instead of hand-written argument checks
+
 ### Project Structure
 
 - **AST/**: Abstract Syntax Tree node definitions
