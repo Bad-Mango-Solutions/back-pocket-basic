@@ -12,3 +12,4 @@ Sources are mostly flat in this directory, with `Speaker/`, `Interfaces/`, and `
 - Language card
 - Disk II controller
 - Thunderclock and PocketWatch cards
+- Character ROM and Character Device
