@@ -1,10 +1,13 @@
 # Testing Guide
 
-Comprehensive guide for running and writing tests for BackPocketBASIC.
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+
+Guide for running and writing tests for BackPocket Emulator.
 
 ## Overview
 
-The project uses NUnit for unit testing and Moq for mocking. All tests are in the `tests/BadMango.Basic.Tests` project.
+The solution uses NUnit and Moq. Test projects live under `tests/`, and every test project references `tests/BadMango.Unit.Components`. Which project covers which library is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). Examples later on this page that name `BadMango.Basic` are from the interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Running Tests
 
@@ -12,22 +15,19 @@ The project uses NUnit for unit testing and Moq for mocking. All tests are in th
 
 ```bash
 # Run all tests
-dotnet test BackPocketBasic.slnx
+dotnet test BackPocketEmulator.slnx
 
 # Run with verbose output
-dotnet test BackPocketBasic.slnx --verbosity detailed
+dotnet test BackPocketEmulator.slnx --verbosity detailed
 
 # Run specific test class
-dotnet test --filter FullyQualifiedName~BasicInterpreterTests
+dotnet test --filter FullyQualifiedName~InterruptAndHaltTests
 
-# Run specific test method
-dotnet test --filter Name=Print_OutputsCorrectText
+# Run tests matching a name pattern
+dotnet test --filter Name~Cycle
 
-# Run tests matching pattern
-dotnet test --filter Name~Print
-
-# Run tests in category
-dotnet test --filter Category=Parser
+# Run one test project
+dotnet test tests/BadMango.Emulator.Bus.Tests/BadMango.Emulator.Bus.Tests.csproj
 ```
 
 ### Visual Studio
@@ -55,15 +55,20 @@ With .NET Core Test Explorer extension:
 ### Directory Structure
 
 ```
-tests/BadMango.Basic.Tests/
-├── InterpreterTests.cs      # High-level interpreter tests
-├── LexerTests.cs            # Tokenization tests
-├── ParserTests.cs           # Parsing tests
-├── EmulationTests.cs        # 6502 CPU/memory tests
-├── RuntimeTests.cs          # Runtime environment tests
-├── BuiltInFunctionTests.cs  # Function tests
-├── CommandTests.cs          # Individual command tests
-└── IntegrationTests.cs      # End-to-end tests
+tests/
+├── BadMango.Unit.Components/                        # Shared helpers
+├── BadMango.Emulator.Tests/                         # CPU, machine, and cross-project tests
+├── BadMango.Emulator.Bus.Tests/
+├── BadMango.Emulator.Configuration.Tests/
+├── BadMango.Emulator.Debug.Infrastructure.Tests/
+├── BadMango.Emulator.Debug.Tests/
+├── BadMango.Emulator.Debug.UI.Tests/
+├── BadMango.Emulator.Devices.Tests/
+├── BadMango.Emulator.Infrastructure.Tests/
+├── BadMango.Emulator.Rendering.Tests/
+├── BadMango.Emulator.Storage.Tests/
+├── BadMango.Emulator.TextEditor.Tests/
+└── BadMango.Emulator.UI.Tests/
 ```
 
 ### Test Categories
@@ -490,7 +495,7 @@ public void ExecuteProgram_Fibonacci_ProducesCorrectSequence()
 dotnet tool install -g dotnet-coverage
 
 # Run tests with coverage
-dotnet test BackPocketBasic.slnx --collect:"XPlat Code Coverage"
+dotnet test BackPocketEmulator.slnx --collect:"XPlat Code Coverage"
 
 # Coverage report will be in TestResults folder
 ```
@@ -581,7 +586,7 @@ Tests that sometimes pass, sometimes fail:
 - **[Development Setup](Development-Setup)** - Environment setup
 - **[Code Style](Code-Style)** - Coding standards
 - **[Architecture Overview](Architecture-Overview)** - System design
-- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution guidelines
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md)** - Contribution guidelines
 
 ## External Resources
 

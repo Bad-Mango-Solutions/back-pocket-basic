@@ -1,90 +1,42 @@
-# Welcome to the BackPocketBASIC Wiki
+# BackPocket Emulator
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Bad-Mango-Solutions/back-pocket-basic/main/back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+  <img src="https://raw.githubusercontent.com/Bad-Mango-Solutions/back-pocket-emulator/main/back-pocket-logo.png" alt="BackPocket Emulator Logo" width="200">
 </p>
 
-A fully-featured Applesoft BASIC interpreter and Apple II emulator framework written in .NET, featuring multi-CPU emulation (65C02/65816/65832) and a modular architecture.
+A .NET emulator for the WDC 65C02 (Apple IIe-class Pocket2e machine), built to grow into the 65816 and a theoretical 32-bit 65832.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## What is BackPocketBASIC?
+The Applesoft BASIC interpreter (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Language, sample, and extension pages still in this wiki describe that interpreter.
 
-BackPocketBASIC is a comprehensive project with two main components:
+## Getting started
 
-1. **Applesoft BASIC Interpreter** - A complete implementation of the BASIC programming language supplied with Apple II computers, allowing you to run vintage programs on modern hardware.
+1. **[Installation](Installation)** - Clone this repository and build `BackPocketEmulator.slnx`
+2. **[Development Setup](Development-Setup)** - Fork, restore, and run tests
+3. **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md)** - Project structure and contribution workflow
 
-2. **Apple II Emulator Framework** - A modular, extensible emulator supporting multiple CPU variants (65C02, 65816, 65832) with accurate peripheral emulation.
+## Emulator documentation
 
-## Key Features
+- **[Architecture Overview](Architecture-Overview)** - Where the old interpreter writeup stopped, and where the current layout lives
+- **[6502 Emulation](6502-Emulation)** - CPU notes, including the current `BadMango.Emulator` projects
+- **[Memory Map](Memory-Map)** - Apple II memory layout
+- **[Testing Guide](Testing-Guide)** - NUnit layout for this repository
 
-### BASIC Interpreter
-- **Complete Language Support**: Full implementation of Applesoft BASIC commands and syntax
-- **Legacy 6502 Emulation**: Integrated 6502 CPU for PEEK, POKE, and CALL operations
-- **Memory Space Emulation**: 64KB emulated memory matching the Apple II memory map
-- **Custom Extensions**: Modern additions like the SLEEP command
+## Projects
 
-### Emulator Framework
-- **Multi-CPU Architecture**: Unified codebase supporting 65C02 (65816/65832 stubs available)
-- **Modular Design**: Separate projects for CPU, bus, devices, and systems
-- **Peripheral Support**: Keyboard, speaker, video modes, clock cards
-- **Cross-Platform UI**: Avalonia-based GUI for machine management
-- **Extensible**: Easy to add new devices and system configurations
+Every project in `BackPocketEmulator.slnx` is listed in the [project structure section of CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). The two hosts are:
 
-## Getting Started
-
-New to this project? Start here:
-
-1. **[Installation](Installation)** - Get the prerequisites and build the project
-2. **[Quick Start](Quick-Start)** - Run your first BASIC program
-3. **[Language Reference](Language-Reference)** - Learn the Applesoft BASIC commands
-4. **[Sample Programs](Sample-Programs)** - Explore example programs
-
-## User Guide
-
-- **[Language Reference](Language-Reference)** - Complete reference for all commands
-- **[Built-in Functions](Built-in-Functions)** - Math, string, and utility functions
-- **[Custom Extensions](Custom-Extensions)** - Modern additions like the SLEEP command
-- **[Sample Programs](Sample-Programs)** - Guided walkthroughs
-
-## Technical Documentation
-
-For developers and those interested in the internals:
-
-- **[Architecture Overview](Architecture-Overview)** - Project structure and components
-- **[6502 Emulation](6502-Emulation)** - CPU emulation details and multi-CPU architecture
-- **[Memory Map](Memory-Map)** - Detailed memory layout ($0000-$FFFF)
-- **[API Reference](API-Reference)** - Integrating the interpreter library
-
-## Contributing
-
-Want to contribute? We'd love your help!
-
-- **[Development Setup](Development-Setup)** - Set up your environment
-- **[Testing Guide](Testing-Guide)** - Running and writing tests
-- **[Code Style](Code-Style)** - Coding standards and guidelines
-
-## Project Modules
-
-| Module | Description |
-|--------|-------------|
-| `BadMango.Basic` | Applesoft BASIC interpreter with integrated 6502 |
-| `BadMango.Basic.Console` | Command-line interface (bpbasic) |
-| `BadMango.Emulator.Core` | CPU abstractions and interfaces |
-| `BadMango.Emulator.Emulation` | 65C02 implementation (65816/65832 stubs) |
-| `BadMango.Emulator.Bus` | System bus and memory management |
-| `BadMango.Emulator.Devices` | Peripheral device implementations |
-| `BadMango.Emulator.UI` | Avalonia-based graphical interface |
+| Project | Assembly | Role |
+| --- | --- | --- |
+| `BadMango.Emulator.Debug` | `emudbg` | Console debugger |
+| `BadMango.Emulator.UI` | `bpui` | Avalonia GUI |
 
 ## Resources
 
-- **[GitHub Repository](https://github.com/Bad-Mango-Solutions/back-pocket-basic)**
-- **[Issue Tracker](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)**
-- **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)**
+- **[GitHub Repository](https://github.com/Bad-Mango-Solutions/back-pocket-emulator)**
+- **[Issue Tracker](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues)**
+- **[Applesoft BASIC interpreter](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy)**
 
-## About
-
-This project is an educational endeavor to preserve and modernize Applesoft BASIC and Apple II emulation. Apple II and Applesoft BASIC are trademarks of Apple Inc. This project is not affiliated with Apple Inc.
-
-**License**: MIT License - see the [LICENSE](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/LICENSE) file for details.
+**License**: MIT. See [LICENSE](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/LICENSE).

@@ -1,17 +1,5 @@
 # BadMango.Emulator.Systems
 
-Complete system implementations combining CPU, memory, and devices.
+Composes a CPU, bus, and devices into a bootable machine.
 
-## Structure
-
-- **/AppleII/** - Classic Apple II system configuration
-- **/IIgs/** - Apple IIgs system (planned)
-- **/Cpu65832/** - Hypothetical 65832-based system (planned)
-
-## Purpose
-
-Each system directory integrates CPU emulation, memory models, and devices into complete, faithful emulations of historical (and hypothetical) computer systems.
-
-## Status
-
-Placeholder - subdirectories created for future implementation.
+The current system is Pocket2e, an Apple IIe-enhanced style 65C02 machine, built by `Pocket2eMachineBuilderExtensions`. This project references `BadMango.Emulator.Bus`, `BadMango.Emulator.Core`, `BadMango.Emulator.Emulation`, and `BadMango.Emulator.Devices`.

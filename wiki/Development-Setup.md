@@ -1,10 +1,10 @@
 # Development Setup
 
-Complete guide for setting up your development environment to contribute to BackPocketBASIC.
+Complete guide for setting up your development environment to contribute to BackPocket Emulator.
 
 ## Overview
 
-This guide covers everything you need to start developing on the project. For general contribution guidelines, see [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md).
+This guide covers everything you need to start developing on the project. For general contribution guidelines, see [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ This guide covers everything you need to start developing on the project. For ge
 
 ### 1. Fork the Repository
 
-1. Visit [https://github.com/Bad-Mango-Solutions/back-pocket-basic](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
+1. Visit [https://github.com/Bad-Mango-Solutions/back-pocket-emulator](https://github.com/Bad-Mango-Solutions/back-pocket-emulator)
 2. Click **Fork** button (top-right)
 3. Create fork in your GitHub account
 
@@ -38,11 +38,11 @@ This guide covers everything you need to start developing on the project. For ge
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/YOUR_USERNAME/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Add upstream remote
-git remote add upstream https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
+git remote add upstream https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
 
 # Verify remotes
 git remote -v
@@ -50,22 +50,22 @@ git remote -v
 
 **Expected output:**
 ```
-origin    https://github.com/YOUR_USERNAME/back-pocket-basic.git (fetch)
-origin    https://github.com/YOUR_USERNAME/back-pocket-basic.git (push)
-upstream  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (fetch)
-upstream  https://github.com/Bad-Mango-Solutions/back-pocket-basic.git (push)
+origin    https://github.com/YOUR_USERNAME/back-pocket-emulator.git (fetch)
+origin    https://github.com/YOUR_USERNAME/back-pocket-emulator.git (push)
+upstream  https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git (fetch)
+upstream  https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git (push)
 ```
 
 ### 3. Restore Dependencies
 
 ```bash
-dotnet restore BackPocketBasic.slnx
+dotnet restore BackPocketEmulator.slnx
 ```
 
 ### 4. Build the Solution
 
 ```bash
-dotnet build BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
 ```
 
 **Expected:**
@@ -78,21 +78,18 @@ Build succeeded.
 ### 5. Run Tests
 
 ```bash
-dotnet test BackPocketBasic.slnx --verbosity normal
+dotnet test BackPocketEmulator.slnx --verbosity normal
 ```
 
-**Expected:**
-```
-Passed! - Failed:     0, Passed:   103, Skipped:     0, Total:   103
-```
+The run should finish with no failed tests.
 
 ### 6. Verify Installation
 
 ```bash
-dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj
 ```
 
-Should execute the demo program successfully.
+That starts the `emudbg` console debugger.
 
 ## IDE Configuration
 
@@ -100,7 +97,7 @@ Should execute the demo program successfully.
 
 #### Setup
 
-1. Open `BackPocketBasic.slnx`
+1. Open `BackPocketEmulator.slnx`
 2. Visual Studio will restore NuGet packages automatically
 3. Build: **Ctrl+Shift+B**
 4. Run tests: **Test → Run All Tests**
@@ -158,14 +155,14 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
       "label": "build",
       "command": "dotnet",
       "type": "process",
-      "args": ["build", "BackPocketBasic.slnx"],
+      "args": ["build", "BackPocketEmulator.slnx"],
       "problemMatcher": "$msCompile"
     },
     {
       "label": "test",
       "command": "dotnet",
       "type": "process",
-      "args": ["test", "BackPocketBasic.slnx"],
+      "args": ["test", "BackPocketEmulator.slnx"],
       "problemMatcher": "$msCompile"
     }
   ]
@@ -176,7 +173,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 #### Setup
 
-1. Open `BackPocketBasic.slnx`
+1. Open `BackPocketEmulator.slnx`
 2. Rider will restore packages automatically
 3. Build: **Ctrl+F9** (Windows/Linux) or **Cmd+F9** (Mac)
 4. Run tests: **Alt+Shift+T** or use Test Explorer
@@ -188,45 +185,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 ## Project Structure
 
-```
-back-pocket-basic/
-├── .github/                    # GitHub workflows and templates
-├── src/
-│   ├── BadMango.Basic/         # Core BASIC interpreter
-│   │   ├── AST/                # Abstract Syntax Tree
-│   │   ├── Emulation/          # Legacy 6502 emulation
-│   │   ├── Execution/          # Interpreter
-│   │   ├── IO/                 # I/O abstraction
-│   │   ├── Lexer/              # Tokenization
-│   │   ├── Parser/             # Parsing
-│   │   ├── Runtime/            # Runtime state
-│   │   └── Tokens/             # Token definitions
-│   ├── BadMango.Basic.Console/ # CLI application
-│   │
-│   ├── BadMango.Emulator.Core/ # Core emulator abstractions
-│   │   ├── Cpu/                # CPU state and registers
-│   │   ├── Interfaces/         # Core interfaces
-│   │   └── Signaling/          # Interrupt handling
-│   ├── BadMango.Emulator.Emulation/ # CPU implementations
-│   │   └── Cpu/                # 65C02, 65816, 65832
-│   ├── BadMango.Emulator.Bus/  # System bus
-│   ├── BadMango.Emulator.Devices/ # Peripherals
-│   ├── BadMango.Emulator.Systems/ # System configs
-│   ├── BadMango.Emulator.Debug/ # Debugging
-│   ├── BadMango.Emulator.UI/   # Avalonia GUI
-│   └── ... (additional modules)
-│
-├── tests/
-│   ├── BadMango.Basic.Tests/   # BASIC interpreter tests
-│   ├── BadMango.Emulator.Tests/ # Emulator tests
-│   └── ... (additional test projects)
-│
-├── samples/                    # Sample BASIC programs
-├── wiki/                       # GitHub Wiki documentation
-├── .editorconfig               # Code style configuration
-├── StyleCop.json               # StyleCop rules
-└── BackPocketBasic.slnx        # Solution file
-```
+Every project in `BackPocketEmulator.slnx` is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Development Workflow
 
@@ -247,11 +206,11 @@ git checkout -b feature/your-feature-name
 2. **Add/update tests** - See [Testing Guide](Testing-Guide)
 3. **Build** to check for errors:
    ```bash
-   dotnet build BackPocketBasic.slnx
+   dotnet build BackPocketEmulator.slnx
    ```
 4. **Run tests** to verify:
    ```bash
-   dotnet test BackPocketBasic.slnx
+   dotnet test BackPocketEmulator.slnx
    ```
 
 ### Committing Changes
@@ -271,7 +230,7 @@ git push origin feature/your-feature-name
 
 1. Go to your fork on GitHub
 2. Click **Pull Request**
-3. Select base: `Bad-Mango-Solutions/back-pocket-basic` main
+3. Select base: `Bad-Mango-Solutions/back-pocket-emulator` main
 4. Select compare: `your-fork` feature/your-feature-name
 5. Fill out PR template
 6. Submit pull request
@@ -282,46 +241,46 @@ git push origin feature/your-feature-name
 
 ```bash
 # Debug build
-dotnet build BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
 
 # Release build
-dotnet build BackPocketBasic.slnx --configuration Release
+dotnet build BackPocketEmulator.slnx --configuration Release
 
 # Clean build
-dotnet clean BackPocketBasic.slnx
-dotnet build BackPocketBasic.slnx
+dotnet clean BackPocketEmulator.slnx
+dotnet build BackPocketEmulator.slnx
 
 # Build specific project
-dotnet build src/BadMango.Basic/BadMango.Basic.csproj
+dotnet build src/BadMango.Emulator.Core/BadMango.Emulator.Core.csproj
 ```
 
 ### Test Commands
 
 ```bash
 # Run all tests
-dotnet test BackPocketBasic.slnx
+dotnet test BackPocketEmulator.slnx
 
 # Run with detailed output
-dotnet test BackPocketBasic.slnx --verbosity detailed
+dotnet test BackPocketEmulator.slnx --verbosity detailed
 
 # Run specific test class
-dotnet test --filter FullyQualifiedName~BasicInterpreterTests
+dotnet test --filter FullyQualifiedName~InterruptAndHaltTests
 
-# Run specific test method
-dotnet test --filter Name=Print_OutputsText
+# Run tests matching a name pattern
+dotnet test --filter Name~Cycle
 
 # Run tests with coverage (if dotnet-coverage installed)
-dotnet test BackPocketBasic.slnx --collect:"XPlat Code Coverage"
+dotnet test BackPocketEmulator.slnx --collect:"XPlat Code Coverage"
 ```
 
 ### Running the Console App
 
 ```bash
 # Run with dotnet run
-dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj -- samples/demo.bas
+dotnet run --project src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj
 
 # Or run the built executable
-./src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic samples/demo.bas
+./src/BadMango.Emulator.Debug/bin/Debug/net10.0/emudbg
 ```
 
 ## Code Quality Tools
@@ -330,10 +289,10 @@ dotnet run --project src/BadMango.Basic.Console/BadMango.Basic.Console.csproj --
 
 ```bash
 # Format code
-dotnet format BackPocketBasic.slnx
+dotnet format BackPocketEmulator.slnx
 
 # Check formatting without changes
-dotnet format BackPocketBasic.slnx --verify-no-changes
+dotnet format BackPocketEmulator.slnx --verify-no-changes
 ```
 
 ### Static Analysis
@@ -353,10 +312,9 @@ Project includes `.editorconfig` with code style rules:
 ### Console Application
 
 **Visual Studio:**
-1. Set `BadMango.Basic.Console` as startup project
+1. Set `BadMango.Emulator.Debug` as startup project
 2. Right-click → **Properties → Debug**
-3. Set **Application arguments**: `samples/demo.bas`
-4. Press **F5** to debug
+3. Press **F5** to debug
 
 **VS Code:**
 1. Create `.vscode/launch.json`:
@@ -368,8 +326,8 @@ Project includes `.editorconfig` with code style rules:
       "name": "Debug Console App",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/BadMango.Basic.Console/bin/Debug/net10.0/bpbasic.dll",
-      "args": ["samples/demo.bas"],
+      "program": "${workspaceFolder}/src/BadMango.Emulator.Debug/bin/Debug/net10.0/emudbg.dll",
+      "args": [],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false
     }
@@ -407,7 +365,7 @@ dotnet --version
 ```bash
 # Clear NuGet cache
 dotnet nuget locals all --clear
-dotnet restore BackPocketBasic.slnx
+dotnet restore BackPocketEmulator.slnx
 ```
 
 ### Test Failures
@@ -450,8 +408,8 @@ git rebase main
 
 ### Documentation
 
-- [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md) - Contribution guidelines
-- [SETUP_GUIDE.md](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/SETUP_GUIDE.md) - Repository setup
+- [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md) - Contribution guidelines
+- [SETUP_GUIDE.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/SETUP_GUIDE.md) - Repository setup
 - [Testing Guide](Testing-Guide) - Writing tests
 - [Code Style](Code-Style) - Coding standards
 
@@ -464,8 +422,8 @@ git rebase main
 
 ## Getting Help
 
-- **Questions?** Open a [Discussion](https://github.com/Bad-Mango-Solutions/back-pocket-basic/discussions)
-- **Found a bug?** Open an [Issue](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)
+- **Questions?** Open a [Discussion](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/discussions)
+- **Found a bug?** Open an [Issue](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues)
 - **Need clarification?** Comment on the relevant issue or PR
 
 ## Next Steps

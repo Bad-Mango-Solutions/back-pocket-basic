@@ -1,5 +1,8 @@
 # Sample Programs
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+
 Guided walkthroughs of the sample programs included in the `samples/` directory.
 
 ## Overview
@@ -447,7 +450,7 @@ Demonstrates the Apple II speaker emulation with timed beeps.
 - **[Language Reference](Language-Reference)** - Learn all commands
 - **[Built-in Functions](Built-in-Functions)** - Explore functions
 - **[Custom Extensions](Custom-Extensions)** - Modern additions
-- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Share your programs
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy/blob/main/CONTRIBUTING.md)** - Share your programs
 
 ## External Resources
 

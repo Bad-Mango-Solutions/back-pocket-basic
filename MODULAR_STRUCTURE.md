@@ -1,106 +1,40 @@
 # Modular Solution Layout
 
-This document describes the modular project structure created for the 65832/BackPocket Emulator evolution.
+`BackPocketEmulator.slnx` splits the 65C02 emulator into one project per responsibility. On disk, projects are direct children of `src/` and `tests/`. The solution file groups those same projects into virtual folders for the IDE: `/src/emulator/`, `/src/emulator/infrastructure/`, `/src/emulator/ui/`, and `/tests/`.
 
-## Project Structure
+The contributor-facing map, including every project reference, is [CONTRIBUTING.md](CONTRIBUTING.md#project-structure). The Applesoft BASIC interpreter moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Namespaces in this repository are `BadMango.Emulator.*`.
 
-```
-/src/
-├── BadMango.Emulator.Core/              # Core interfaces
-│   ├── ICpu.cs                          # CPU emulator interface
-│   ├── IMemory.cs                       # Memory management interface
-│   ├── IBus.cs                          # System bus interface
-│   └── IPeripheral.cs                   # Peripheral device interface
-│
-├── BadMango.Emulator.Emulation/         # CPU & memory emulation
-│   ├── Cpu/                             # CPU implementations
-│   │   ├── Cpu65C02.cs                  # WDC 65C02 (placeholder)
-│   │   ├── Cpu65816.cs                  # WDC 65816/Apple IIgs (placeholder)
-│   │   └── Cpu65832.cs                  # Hypothetical 65832 (placeholder)
-│   └── MemoryModels/                    # Memory model implementations
-│
-├── BadMango.Emulator.Devices/           # Device implementations
-│   ├── Video/                           # Video subsystem
-│   ├── Keyboard/                        # Keyboard input
-│   ├── Timer/                           # Timer devices
-│   └── MMU/                             # Memory Management Unit
-│
-├── BadMango.Emulator.Systems/           # Complete system configurations
-│   ├── AppleII/                         # Apple II system
-│   ├── IIgs/                            # Apple IIgs system (planned)
-│   └── Cpu65832/                        # 65832 system (planned)
-│
-├── BadMango.Emulator.UI/                # User interface
-│   └── AvaloniaApp/                     # Avalonia-based UI (planned)
-│
-└── BadMango.Emulator.Interop/           # Native/Rust interop
-    └── RustBridge/                      # Rust integration (planned)
-```
+## Libraries
 
-## Design Principles
+| Project | Responsibility |
+| --- | --- |
+| `BadMango.Emulator.Core` | CPU contracts and state, signal bus, machine-profile models |
+| `BadMango.Emulator.Bus` | Main bus, layered memory map, device registry, machine builder, `IPeripheral` |
+| `BadMango.Emulator.Emulation` | `Cpu65C02`, plus `Cpu65816` and `Cpu65832` placeholder types |
+| `BadMango.Emulator.Devices` | Keyboard, video, speaker, language card, Disk II, clock cards, game I/O |
+| `BadMango.Emulator.Storage` | Disk-image formats, storage backends, GCR nibblizing |
+| `BadMango.Emulator.Rendering` | Pixel buffers and character rendering |
+| `BadMango.Emulator.Systems` | Pocket2e machine composition |
+| `BadMango.Emulator.Infrastructure` | Event aggregator, with no emulator project references |
+| `BadMango.Emulator.Configuration` | Application settings and path validation |
+| `BadMango.Emulator.UI.Abstractions` | UI contracts used without referencing the GUI executable |
+| `BadMango.Emulator.TextEditor` | Avalonia text editor |
+| `BadMango.Emulator.Debug.Infrastructure` | REPL, commands, breakpoints, trace |
+| `BadMango.Emulator.Debug.UI` | Avalonia windows hosted by the console debugger |
+| `BadMango.Emulator.Interop` | Leaf project reserved for native and Rust interop. References `Core` |
 
-### Naming Conventions
+## Hosts
 
-- **Namespace Pattern**: `BadMango.Emulator.*` (not `BadMango.Basic.*`)
-- **CPU Naming**: Use `Cpu65C02`, `Cpu65816`, `Cpu65832` (no dots or special characters)
-  - ✓ Correct: `Cpu65C02`, `Cpu65816`
-  - ✗ Incorrect: `Cpu.65C02`, `Cpu-65816`
+| Project | Assembly | Responsibility |
+| --- | --- | --- |
+| `BadMango.Emulator.Debug` | `emudbg` | Console debugger. References Core, Bus, Emulation, Debug.Infrastructure, and Debug.UI |
+| `BadMango.Emulator.UI` | `bpui` | Avalonia GUI. References Core, Infrastructure, and UI.Abstractions |
 
-### Modularity
+## Tests
 
-Each project has a specific responsibility:
+`tests/BadMango.Unit.Components` is the shared test library. Every `tests/BadMango.Emulator.*.Tests` project references it and the library it covers. `BadMango.Emulator.Tests` is the cross-project suite for the CPU, machine builder, Emulation, Systems, and Core. `BadMango.Emulator.Interop` has no paired test project.
 
-1. **Core** - Defines contracts and extension points
-2. **Emulation** - Implements CPU and memory behavior
-3. **Devices** - Implements peripheral hardware
-4. **Systems** - Integrates components into complete systems
-5. **UI** - Provides user-facing interfaces
-6. **Interop** - Enables performance-critical native code
+## Naming
 
-### Extension Points
-
-The `IPeripheral` interface allows pluggable devices:
-```csharp
-public interface IPeripheral
-{
-    string Name { get; }
-    void Reset();
-    byte? ReadIO(int address);
-    bool WriteIO(int address, byte value);
-}
-```
-
-This enables future additions like:
-- Disk controllers
-- Network cards
-- Printer interfaces
-- Expansion slot cards
-
-## Current Status
-
-- ✅ All projects created with proper structure
-- ✅ Core interfaces defined
-- ✅ CPU placeholder classes created
-- ✅ Subdirectories organized
-- ✅ Solution file updated
-- ✅ All projects build with 0 warnings
-- ✅ All existing tests pass (429/429)
-
-## Next Steps
-
-Future implementations will populate these projects with:
-1. Complete CPU emulators (65C02, 65816, 65832)
-2. Memory models (64KB, banked, extended)
-3. Device implementations (video, keyboard, etc.)
-4. System integrations (Apple II, IIgs configurations)
-5. Avalonia-based graphical UI
-6. Rust interop for performance-critical code
-
-## Benefits
-
-This modular structure provides:
-- **Scalability** - Easy to add new CPU architectures
-- **Maintainability** - Clear separation of concerns
-- **Testability** - Each component can be tested independently
-- **Extensibility** - Well-defined extension points for devices
-- **Flexibility** - Support multiple system configurations
+- CPU types are `Cpu65C02`, `Cpu65816`, and `Cpu65832`.
+- A library and its tests share the library name plus a `.Tests` suffix, except for the cross-project suite `BadMango.Emulator.Tests` and the helper library `BadMango.Unit.Components`.

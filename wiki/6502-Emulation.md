@@ -1,14 +1,13 @@
 # 6502 Emulation
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+
 Details about the CPU emulation architecture and Apple II hardware emulation.
 
 ## Overview
 
-BackPocketBASIC includes two levels of CPU emulation:
-
-1. **Legacy Emulation** (`BadMango.Basic.Emulation`) - A focused 6502 implementation integrated with the BASIC interpreter for `PEEK`, `POKE`, and `CALL` operations.
-
-2. **Advanced Emulator Framework** (`BadMango.Emulator.*`) - A comprehensive, modular emulator supporting multiple CPU variants (65C02, 65816, 65832) with accurate peripheral emulation.
+This repository's CPU implementation is `BadMango.Emulator.Emulation` (`Cpu65C02`, with `Cpu65816` and `Cpu65832` placeholder types) on top of `BadMango.Emulator.Core` and `BadMango.Emulator.Bus`. The older 6502 types used by the Applesoft interpreter (`BadMango.Basic.Emulation`, including `Cpu6502` and `AppleSystem`) moved with that project to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Class locations later on this page that start with `src/BadMango.Basic/` are paths in that repository.
 
 ## Table of Contents
 

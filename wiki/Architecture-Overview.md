@@ -1,11 +1,13 @@
 # Architecture Overview
 
-Comprehensive overview of the BackPocketBASIC project structure and architecture.
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+
+The current emulator layout, with every project and its references, is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). The component writeup below describes the Applesoft BASIC interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Table of Contents
 
 - [Project Structure](#project-structure)
-- [Module Overview](#module-overview)
 - [Core Components](#core-components)
 - [Emulator Framework](#emulator-framework)
 - [Execution Pipeline](#execution-pipeline)
@@ -15,83 +17,7 @@ Comprehensive overview of the BackPocketBASIC project structure and architecture
 
 ## Project Structure
 
-```
-back-pocket-basic/
-├── src/
-│   ├── BadMango.Basic/                # Core BASIC interpreter library
-│   │   ├── AST/                       # Abstract Syntax Tree nodes
-│   │   ├── Emulation/                 # Legacy 6502 and Apple II emulation
-│   │   ├── Execution/                 # Interpreter implementation
-│   │   ├── IO/                        # I/O abstraction layer
-│   │   ├── Lexer/                     # Tokenization (source → tokens)
-│   │   ├── Parser/                    # Parsing (tokens → AST)
-│   │   ├── Runtime/                   # Runtime environment & state
-│   │   └── Tokens/                    # Token type definitions
-│   ├── BadMango.Basic.Console/        # Console application (bpbasic)
-│   │
-│   ├── BadMango.Emulator.Core/        # Core emulator abstractions
-│   │   ├── Cpu/                       # CPU state, registers, opcode handling
-│   │   ├── Interfaces/                # IMemory, ICpu, IDebugger interfaces
-│   │   ├── Configuration/             # CPU capabilities and modes
-│   │   └── Signaling/                 # Interrupt and event signaling
-│   ├── BadMango.Emulator.Emulation/   # CPU implementations
-│   │   ├── Cpu/                       # 65C02, 65816, 65832 implementations
-│   │   └── Debugging/                 # Debug support for CPUs
-│   ├── BadMango.Emulator.Bus/         # System bus and memory management
-│   │   ├── MainBus                    # Primary system bus
-│   │   ├── PhysicalMemory             # RAM/ROM memory
-│   │   ├── DeviceRegistry             # Device management
-│   │   └── Scheduler                  # Event scheduling
-│   ├── BadMango.Emulator.Devices/     # Peripheral device implementations
-│   │   ├── KeyboardController         # Keyboard input
-│   │   ├── SpeakerController          # Audio output
-│   │   ├── VideoModeController        # Display modes
-│   │   └── DiskII*                    # Disk II controller stubs
-│   ├── BadMango.Emulator.Systems/     # Complete system configurations
-│   ├── BadMango.Emulator.Debug/       # Debugging infrastructure
-│   ├── BadMango.Emulator.Debug.Infrastructure/ # Debug service support
-│   ├── BadMango.Emulator.Infrastructure/ # Event and registration utilities
-│   ├── BadMango.Emulator.Interop/     # Native interoperability
-│   ├── BadMango.Emulator.Configuration/ # Configuration management
-│   ├── BadMango.Emulator.UI/          # Avalonia-based GUI
-│   └── BadMango.Emulator.UI.Abstractions/ # UI abstraction interfaces
-│
-├── tests/
-│   ├── BadMango.Basic.Tests/          # BASIC interpreter tests
-│   ├── BadMango.Emulator.Tests/       # Emulator core tests
-│   ├── BadMango.Emulator.Bus.Tests/   # Bus and memory tests
-│   ├── BadMango.Emulator.Devices.Tests/ # Device tests
-│   ├── BadMango.Emulator.Configuration.Tests/
-│   ├── BadMango.Emulator.Debug.Tests/
-│   ├── BadMango.Emulator.Debug.Infrastructure.Tests/
-│   ├── BadMango.Emulator.Infrastructure.Tests/
-│   └── BadMango.Emulator.UI.Tests/    # UI ViewModel tests
-│
-├── samples/                           # Sample BASIC programs
-├── wiki/                              # GitHub Wiki documentation
-├── schemas/                           # JSON schemas
-├── specs/                             # Specifications
-├── reference/                         # Reference materials
-├── profiles/                          # Machine profiles
-├── BackPocketBasic.slnx               # Solution file
-├── README.md                          # Project overview
-├── CONTRIBUTING.md                    # Contribution guidelines
-└── SETUP_GUIDE.md                     # Setup instructions
-```
-
-## Module Overview
-
-| Module | Purpose |
-|--------|---------|
-| **BadMango.Basic** | Applesoft BASIC interpreter with integrated 6502 emulation |
-| **BadMango.Basic.Console** | Command-line interface for running BASIC programs |
-| **BadMango.Emulator.Core** | CPU abstractions, interfaces, and common types |
-| **BadMango.Emulator.Emulation** | 65C02 implementation (65816/65832 stubs) |
-| **BadMango.Emulator.Bus** | System bus, memory mapping, device routing |
-| **BadMango.Emulator.Devices** | Peripheral hardware emulation |
-| **BadMango.Emulator.Systems** | Complete system configurations (Apple II, IIgs) |
-| **BadMango.Emulator.Debug** | Debugging and tracing infrastructure |
-| **BadMango.Emulator.UI** | Cross-platform Avalonia GUI |
+Every project in this repository is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` are not projects in `BackPocketEmulator.slnx`; they moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Core Components
 
