@@ -52,23 +52,19 @@ public sealed class Cpu65C02 : CpuBase
     private readonly SignalBus? concreteSignals;
 
     /// <summary>
-    /// The I-bit value sampled at the previous instruction boundary. This value is used
-    /// for the next IRQ poll so CLI/SEI/PLP take effect one instruction later while RTI
-    /// restores the value immediately.
+    /// The I-bit value captured immediately before the previous instruction executed.
+    /// Only meaningful while <see cref="interruptDisableChangePending"/> is set: CLI, SEI
+    /// and PLP poll for IRQ using the I value from before they execute, so the next
+    /// instruction boundary uses this sample instead of the live register.
     /// </summary>
     private bool interruptDisableSample;
 
     /// <summary>
-    /// Set when the previous instruction modified I with the 65C02 delayed semantics and
-    /// the new value must be sampled only after the next instruction completes.
+    /// Set when the previous instruction was CLI, SEI or PLP, whose IRQ poll uses the I value
+    /// from before they executed (the new I is only seen one instruction later). RTI and all
+    /// other instructions leave this clear so the live I value is used at the next boundary.
     /// </summary>
     private bool interruptDisableChangePending;
-
-    /// <summary>
-    /// The deferred interrupt-disable value that becomes visible at the next instruction boundary
-    /// after a CLI/SEI/PLP instruction completes.
-    /// </summary>
-    private bool interruptDisablePendingValue;
 
     private ITrapRegistry trapRegistry;
 
@@ -144,7 +140,6 @@ public sealed class Cpu65C02 : CpuBase
         // The CPU only resets its own state (registers, halt reason, stop flag).
         Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
         interruptDisableSample = Registers.P.IsInterruptDisabled();
-        interruptDisablePendingValue = interruptDisableSample;
         interruptDisableChangePending = false;
         HaltReason = HaltState.None;
         ClearStopRequest();
@@ -158,8 +153,8 @@ public sealed class Cpu65C02 : CpuBase
         Registers.TCU = Cycle.Zero;
 
         // Determine the I value visible at this instruction boundary. Normally this is the
-        // current register value; CLI/SEI/PLP defer their visible effect by one instruction
-        // and therefore keep the previous boundary sample for one poll.
+        // current register value; after CLI/SEI/PLP the poll uses the I value from before
+        // that instruction executed, so its new I is seen one instruction later.
         bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
 
         // Check for pending interrupts at instruction boundary using the signal bus.
@@ -208,6 +203,10 @@ public sealed class Cpu65C02 : CpuBase
             var trapResult = trapRegistry.TryExecute(pcBefore, this, Bus, EventContext);
             if (trapResult.Handled)
             {
+                // The trapped instruction replaces a real one and is not CLI/SEI/PLP, so any
+                // delayed I sample from the previous instruction has now been consumed.
+                interruptDisableChangePending = false;
+
                 // Trap was handled - the handler determines how to return
                 // Add cycles from the trap result
                 Registers.TCU += trapResult.CyclesConsumed;
@@ -235,9 +234,6 @@ public sealed class Cpu65C02 : CpuBase
                         Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte status = Read8(statusAddr);
                         Registers.P = (ProcessorStatusFlags)status | ProcessorStatusFlags.R;
-                        interruptDisableSample = Registers.P.IsInterruptDisabled();
-                        interruptDisablePendingValue = interruptDisableSample;
-                        interruptDisableChangePending = false;
 
                         Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiLowByte = Read8(rtiLowAddr);
@@ -307,40 +303,18 @@ public sealed class Cpu65C02 : CpuBase
             DebugListener.OnBeforeStep(in beforeArgs);
         }
 
+        // Capture I before execution: CLI/SEI/PLP poll for IRQ using the pre-execute I value.
+        bool iBeforeExecute = Registers.P.IsInterruptDisabled();
+
         // Execute opcode - handlers now access memory through this CPU instance
         opcodeTable.Execute(opcode, this);
 
-        // Latch the I state that will be sampled at the next instruction boundary.
-        // CLI/SEI/PLP change I immediately, but the next IRQ poll still uses the previous
-        // boundary sample. The new value becomes the sample only after the following instruction.
-        // RTI restores I immediately and therefore updates the sample right away.
-        bool currentI = Registers.P.IsInterruptDisabled();
-        if (opcode == 0x40)
-        {
-            interruptDisableSample = currentI;
-            interruptDisablePendingValue = currentI;
-            interruptDisableChangePending = false;
-        }
-        else if (opcode is 0x58 or 0x78 or 0x28)
-        {
-            // Keep this boundary value for the next IRQ poll; the pending new value is
-            // applied after the following instruction.
-            interruptDisableSample = irqMaskedAtBoundary;
-            interruptDisablePendingValue = currentI;
-            interruptDisableChangePending = true;
-        }
-        else if (interruptDisableChangePending)
-        {
-            interruptDisableSample = interruptDisablePendingValue;
-            interruptDisablePendingValue = currentI;
-            interruptDisableChangePending = false;
-        }
-        else
-        {
-            interruptDisableSample = currentI;
-            interruptDisablePendingValue = currentI;
-            interruptDisableChangePending = false;
-        }
+        // Latch the I state for the next IRQ poll. CLI (0x58), SEI (0x78) and PLP (0x28)
+        // poll using the I value from before they executed, so their new I is seen one
+        // instruction later (back-to-back CLI/SEI/PLP each use their own pre-execute I).
+        // RTI and every other instruction use the live I value at the next boundary.
+        interruptDisableSample = iBeforeExecute;
+        interruptDisableChangePending = opcode is 0x58 or 0x78 or 0x28;
 
         // Capture TCU before advancing scheduler (for return value)
         Cycle instructionCycles = Registers.TCU;

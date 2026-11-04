@@ -120,7 +120,7 @@ public class InterruptAndHaltTests : CpuTestBase
         Write(0x2000, 0x40); // RTI
         Write(0x01FF, 0x00); // stack value with I cleared
         Cpu.Reset();
-        Cpu.Registers.P = ProcessorStatusFlags.I;
+        Cpu.Registers.P = ProcessorStatusFlags.I | ProcessorStatusFlags.R;
         Cpu.Registers.SP.SetByte(0xFE);
 
         Cpu.Step(); // PLP should not clear I until next boundary
@@ -130,6 +130,67 @@ public class InterruptAndHaltTests : CpuTestBase
 
         Cpu.Step(); // IRQ taken on the next boundary after the NOP
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
+    }
+
+    /// <summary>
+    /// Verifies that with an IRQ held, <c>CLI; SEI</c> takes the IRQ right after SEI because
+    /// SEI polls using the I value from before it executed (cleared by CLI), and the pushed
+    /// status has I set by SEI.
+    /// </summary>
+    [Test]
+    public void IRQ_TakenAfterSEI_WhenCLIImmediatelyPrecedesSEI()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0x78); // SEI
+        Write(0x1002, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset(); // I=1, SP=$FF
+        Cpu.SignalIRQ(); // IRQ line asserted and held
+
+        Cpu.Step(); // CLI - polls with I=1 from before CLI, so no IRQ
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "IRQ should not be taken before CLI's change is visible");
+
+        Cpu.Step(); // SEI - the boundary before SEI still uses CLI's pre-execute I=1, so no IRQ yet
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "SEI should execute before the IRQ is taken");
+
+        Cpu.Step(); // SEI polled with its pre-execute I=0, so the IRQ is taken now
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "IRQ should be taken right after SEI");
+
+        byte p = Read(0x01FD);
+        byte lo = Read(0x01FE);
+        byte hi = Read(0x01FF);
+        Assert.That(p & 0x04, Is.EqualTo(0x04), "Pushed P should have I set by SEI");
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1002), "Pushed PC should point to the instruction after SEI");
+    }
+
+    /// <summary>
+    /// Verifies that with an IRQ held, <c>CLI; CLI</c> takes the IRQ right after the second CLI
+    /// because it polls using the I value from before it executed (already cleared by the first CLI).
+    /// </summary>
+    [Test]
+    public void IRQ_TakenAfterSecondCLI_WhenCLIsAreBackToBack()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        WriteWord(0xFFFE, 0x2000);
+        Write(0x1000, 0x58); // CLI
+        Write(0x1001, 0x58); // CLI
+        Write(0x1002, 0xEA); // NOP
+        Write(0x2000, 0x40); // RTI
+        Cpu.Reset(); // I=1, SP=$FF
+        Cpu.SignalIRQ(); // IRQ line asserted and held
+
+        Cpu.Step(); // First CLI
+        Cpu.Step(); // Second CLI
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002), "Both CLIs should execute before the IRQ is taken");
+
+        Cpu.Step(); // IRQ taken right after the second CLI, before the NOP
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "IRQ should be taken right after the second CLI");
+
+        byte lo = Read(0x01FE);
+        byte hi = Read(0x01FF);
+        Assert.That((hi << 8) | lo, Is.EqualTo(0x1002), "Pushed PC should point to the instruction after the second CLI");
     }
 
     /// <summary>
