@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 using Interfaces;
 
@@ -185,8 +184,7 @@ public sealed partial class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte Read8(in BusAccess access)
+public byte Read8(in BusAccess access)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
         Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -228,8 +226,7 @@ public sealed partial class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write8(in BusAccess access, byte value)
+public void Write8(in BusAccess access, byte value)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
         Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);

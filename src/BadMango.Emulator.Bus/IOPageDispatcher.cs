@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Flat dispatch table for the $C000-$C0FF soft switch region.
@@ -87,8 +86,7 @@ public sealed class IOPageDispatcher
     /// The value returned by the registered handler, or $FF (floating bus)
     /// if no handler is registered.
     /// </returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte Read(byte offset, in BusAccess context)
+public byte Read(byte offset, in BusAccess context)
     {
         var handler = readHandlers[offset];
         return handler is not null ? handler(offset, in context) : FloatingBusValue;
@@ -103,8 +101,7 @@ public sealed class IOPageDispatcher
     /// <remarks>
     /// If no handler is registered for the offset, the write is silently ignored (no-op).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write(byte offset, byte value, in BusAccess context)
+public void Write(byte offset, byte value, in BusAccess context)
     {
         var handler = writeHandlers[offset];
         handler?.Invoke(offset, value, in context);

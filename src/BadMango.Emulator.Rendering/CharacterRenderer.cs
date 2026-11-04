@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Rendering;
 
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Provides methods for rendering Apple II character ROM data to pixel buffers.
@@ -54,8 +53,7 @@ public static class CharacterRenderer
     /// <param name="destY">The destination Y coordinate in the pixel buffer.</param>
     /// <param name="foregroundColor">The BGRA color for set pixels.</param>
     /// <returns><see langword="true"/> if the character was rendered successfully; otherwise, <see langword="false"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool RenderCharacter(
+public static bool RenderCharacter(
         Span<uint> pixels,
         int stride,
         ReadOnlySpan<byte> romData,
@@ -90,8 +88,7 @@ public static class CharacterRenderer
     /// <param name="foregroundColor">The BGRA color for set pixels.</param>
     /// <param name="scale">The scale factor (1 = 1:1, 2 = 2x, etc.).</param>
     /// <returns><see langword="true"/> if the character was rendered successfully; otherwise, <see langword="false"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool RenderCharacterScaled(
+public static bool RenderCharacterScaled(
         Span<uint> pixels,
         int stride,
         ReadOnlySpan<byte> romData,
@@ -129,8 +126,7 @@ public static class CharacterRenderer
     /// <param name="destY">The destination Y coordinate in the pixel buffer.</param>
     /// <param name="foregroundColor">The BGRA color for set pixels.</param>
     /// <param name="scale">The scale factor (1 = 1:1, 2 = 2x, etc.).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void RenderScanline(
+public static void RenderScanline(
         Span<uint> pixels,
         int stride,
         byte scanlineData,
@@ -162,8 +158,7 @@ public static class CharacterRenderer
     /// </summary>
     /// <param name="charCode">The character code (0-255).</param>
     /// <returns>A string describing the character and its display mode.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string GetCharacterDisplayString(int charCode)
+public static string GetCharacterDisplayString(int charCode)
     {
         return charCode switch
         {

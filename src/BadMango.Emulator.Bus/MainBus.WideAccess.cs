@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Wide access (16/32-bit) operations and decomposition helpers for the main memory bus.
@@ -12,8 +11,7 @@ using System.Runtime.CompilerServices;
 public sealed partial class MainBus
 {
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Word Read16(in BusAccess access)
+public Word Read16(in BusAccess access)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 2))
@@ -53,8 +51,7 @@ public sealed partial class MainBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write16(in BusAccess access, Word value)
+public void Write16(in BusAccess access, Word value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 2))
@@ -99,8 +96,7 @@ public sealed partial class MainBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DWord Read32(in BusAccess access)
+public DWord Read32(in BusAccess access)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 4))
@@ -140,8 +136,7 @@ public sealed partial class MainBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write32(in BusAccess access, DWord value)
+public void Write32(in BusAccess access, DWord value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 4))
@@ -431,8 +426,7 @@ public sealed partial class MainBus
     /// <param name="address">The starting address.</param>
     /// <param name="bytes">The number of bytes in the access.</param>
     /// <returns><see langword="true"/> if the access crosses a page boundary; otherwise, <see langword="false"/>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool CrossesPageBoundary(Addr address, int bytes)
+private static bool CrossesPageBoundary(Addr address, int bytes)
     {
         return ((address & DefaultPageMask) + (uint)(bytes - 1)) > DefaultPageMask;
     }

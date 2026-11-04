@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 using Interfaces;
 
@@ -177,8 +176,7 @@ public abstract class CompositeTargetBase : ICompositeTarget
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public virtual byte Read8(Addr physicalAddress, in BusAccess access)
+public virtual byte Read8(Addr physicalAddress, in BusAccess access)
     {
         // Try to resolve to a subregion target
         var target = ResolveTarget(physicalAddress, access.Intent);
@@ -198,8 +196,7 @@ public abstract class CompositeTargetBase : ICompositeTarget
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public virtual void Write8(Addr physicalAddress, byte value, in BusAccess access)
+public virtual void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         // Try to resolve to a subregion target
         var target = ResolveTarget(physicalAddress, access.Intent);

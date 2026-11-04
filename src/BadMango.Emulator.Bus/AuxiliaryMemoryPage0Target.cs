@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -104,8 +103,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         var (target, targetOffset) = ResolveReadTarget(offset);
@@ -113,8 +111,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         var (target, targetOffset) = ResolveWriteTarget(offset);
@@ -142,8 +139,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     /// </summary>
     /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
     /// <returns>A tuple of the target and the offset within that target.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private (IBusTarget Target, int Offset) ResolveReadTarget(int offset)
+private (IBusTarget Target, int Offset) ResolveReadTarget(int offset)
     {
         // Zero page ($0000-$00FF): Controlled by ALTZP
         if (offset < ZeroPageEnd)
@@ -196,8 +192,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     /// </summary>
     /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
     /// <returns>A tuple of the target and the offset within that target.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private (IBusTarget Target, int Offset) ResolveWriteTarget(int offset)
+private (IBusTarget Target, int Offset) ResolveWriteTarget(int offset)
     {
         // Zero page ($0000-$00FF): Controlled by ALTZP
         if (offset < ZeroPageEnd)

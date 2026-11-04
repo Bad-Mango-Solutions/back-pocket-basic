@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -146,8 +145,7 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override CpuStepResult Step()
+public override CpuStepResult Step()
     {
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
@@ -362,8 +360,7 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AdvanceScheduler(Cycle cycles)
+private void AdvanceScheduler(Cycle cycles)
     {
         if (concreteScheduler is not null)
         {
@@ -374,9 +371,7 @@ public sealed class Cpu65C02 : CpuBase
             EventContext.Scheduler.Advance(cycles);
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool MayHaveTrapAt(Addr address)
+private bool MayHaveTrapAt(Addr address)
     {
         if (concreteTrapRegistry is not null)
         {
@@ -385,9 +380,7 @@ public sealed class Cpu65C02 : CpuBase
 
         return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private byte FetchByte()
+private byte FetchByte()
     {
         var pc = Registers.PC.GetAddr();
         Registers.PC.Advance();
@@ -409,8 +402,7 @@ public sealed class Cpu65C02 : CpuBase
     /// to differentiate between data reads and instruction fetches. This enables
     /// features like trap interception and NX (no-execute) enforcement.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private byte InstructionFetch8(Addr address)
+private byte InstructionFetch8(Addr address)
     {
         var access = CreateInstructionFetchAccess(address, 8);
         var result = Bus.TryRead8(access);
@@ -439,8 +431,7 @@ public sealed class Cpu65C02 : CpuBase
     /// If the CPU is in WAI state, interrupts will resume execution.
     /// STP state cannot be resumed by interrupts.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool CheckInterrupts(bool irqMaskedAtBoundary)
+private bool CheckInterrupts(bool irqMaskedAtBoundary)
     {
         // STP cannot be resumed by interrupts
         if (HaltReason == HaltState.Stp)
@@ -499,8 +490,7 @@ public sealed class Cpu65C02 : CpuBase
     /// 5. Load PC from interrupt vector
     /// Total: 7 cycles (handled by caller).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ProcessInterrupt(Addr vector)
+private void ProcessInterrupt(Addr vector)
     {
         var pc = Registers.PC.GetWord();
 

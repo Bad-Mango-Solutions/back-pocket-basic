@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 using Interfaces;
 
@@ -70,15 +69,13 @@ public sealed class RamTarget : IBusTarget
     public uint Size => (uint)memory.Length;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         return memory.Span[(int)physicalAddress];
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         memory.Span[(int)physicalAddress] = value;
     }
@@ -89,8 +86,7 @@ public sealed class RamTarget : IBusTarget
     /// <param name="physicalAddress">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 16-bit value at the address (little-endian).</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Word Read16(Addr physicalAddress, in BusAccess access)
+public Word Read16(Addr physicalAddress, in BusAccess access)
     {
         var span = memory.Span;
         int index = (int)physicalAddress;
@@ -103,8 +99,7 @@ public sealed class RamTarget : IBusTarget
     /// <param name="physicalAddress">The physical address to write to.</param>
     /// <param name="value">The 16-bit value to write (little-endian).</param>
     /// <param name="access">The access context.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write16(Addr physicalAddress, Word value, in BusAccess access)
+public void Write16(Addr physicalAddress, Word value, in BusAccess access)
     {
         var span = memory.Span;
         int index = (int)physicalAddress;
@@ -118,8 +113,7 @@ public sealed class RamTarget : IBusTarget
     /// <param name="physicalAddress">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 32-bit value at the address (little-endian).</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DWord Read32(Addr physicalAddress, in BusAccess access)
+public DWord Read32(Addr physicalAddress, in BusAccess access)
     {
         var span = memory.Span;
         int index = (int)physicalAddress;
@@ -136,8 +130,7 @@ public sealed class RamTarget : IBusTarget
     /// <param name="physicalAddress">The physical address to write to.</param>
     /// <param name="value">The 32-bit value to write (little-endian).</param>
     /// <param name="access">The access context.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
+public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
     {
         var span = memory.Span;
         int index = (int)physicalAddress;

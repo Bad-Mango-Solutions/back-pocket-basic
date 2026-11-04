@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Rendering;
 
 using System.Buffers;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Avalonia;
@@ -88,8 +87,7 @@ public sealed class PixelBuffer : IDisposable
     /// </summary>
     /// <returns>A span of pixels that can be written to directly.</returns>
     /// <exception cref="ObjectDisposedException">Thrown when the buffer has been disposed.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Span<uint> GetPixels()
+public Span<uint> GetPixels()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         return MemoryMarshal.Cast<byte, uint>(buffer.Span);
@@ -100,8 +98,7 @@ public sealed class PixelBuffer : IDisposable
     /// </summary>
     /// <param name="color">The BGRA color value to fill with.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the buffer has been disposed.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Fill(uint color)
+public void Fill(uint color)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         GetPixels().Fill(color);
@@ -117,8 +114,7 @@ public sealed class PixelBuffer : IDisposable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when coordinates are outside the buffer bounds.
     /// </exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetPixel(int x, int y, uint color)
+public void SetPixel(int x, int y, uint color)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -146,8 +142,7 @@ public sealed class PixelBuffer : IDisposable
     /// <exception cref="InvalidOperationException">
     /// Thrown when the underlying buffer array cannot be accessed.
     /// </exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Commit()
+public void Commit()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -182,16 +177,12 @@ public sealed class PixelBuffer : IDisposable
         bitmap = null;
         disposed = true;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AllocateBuffer()
+private void AllocateBuffer()
     {
         bufferOwner = MemoryPool<byte>.Shared.Rent(byteSize);
         buffer = bufferOwner.Memory[..byteSize];
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void CreateBitmap()
+private void CreateBitmap()
     {
         bitmap = new(
             new(Width, Height),

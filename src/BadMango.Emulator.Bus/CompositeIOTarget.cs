@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
 
 using Interfaces;
 
@@ -100,8 +99,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         base.Capabilities | TargetCaps.HasSideEffects | TargetCaps.TimingSensitive;
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override byte Read8(Addr physicalAddress, in BusAccess access)
+public override byte Read8(Addr physicalAddress, in BusAccess access)
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
 
@@ -114,8 +112,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override void Write8(Addr physicalAddress, byte value, in BusAccess access)
+public override void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         ushort offset = (ushort)(physicalAddress & 0x0FFF);
 

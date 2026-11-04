@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Bus;
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Cpu;
@@ -90,8 +89,7 @@ public sealed class Machine : IMachine
     /// <inheritdoc />
     public Cycle Now
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scheduler.Now;
+get => Scheduler.Now;
     }
 
     /// <inheritdoc />

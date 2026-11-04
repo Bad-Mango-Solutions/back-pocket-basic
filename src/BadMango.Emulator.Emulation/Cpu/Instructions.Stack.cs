@@ -5,7 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
 
 using Core.Cpu;
 
@@ -19,8 +18,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PHA.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PHA(AddressingModeHandler addressingMode)
+public static OpcodeHandler PHA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -41,8 +39,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PHP.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PHP(AddressingModeHandler addressingMode)
+public static OpcodeHandler PHP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -63,8 +60,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PLA.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PLA(AddressingModeHandler addressingMode)
+public static OpcodeHandler PLA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -87,8 +83,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PLP.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PLP(AddressingModeHandler addressingMode)
+public static OpcodeHandler PLP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -109,8 +104,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PHX.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PHX(AddressingModeHandler addressingMode)
+public static OpcodeHandler PHX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -131,8 +125,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PLX.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PLX(AddressingModeHandler addressingMode)
+public static OpcodeHandler PLX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -155,8 +148,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PHY.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PHY(AddressingModeHandler addressingMode)
+public static OpcodeHandler PHY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -177,8 +169,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes PLY.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler PLY(AddressingModeHandler addressingMode)
+public static OpcodeHandler PLY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
