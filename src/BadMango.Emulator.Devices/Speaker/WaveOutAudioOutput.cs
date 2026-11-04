@@ -69,6 +69,8 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
         ringBuffer = new(sampleRate * MaxBufferedMilliseconds / 1000);
         sampleChunk = new short[BufferSamples];
 
+        OpenAlNativeLibrary.EnsureConfigured();
+
         try
         {
             device = ALC.OpenDevice(null);
