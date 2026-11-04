@@ -31,9 +31,17 @@ How OpenAL Soft is used:
   file listed above in the application folder, or by removing it so the system OpenAL library is used.
   No recompilation or relinking of BackPocket Emulator is required.
 - The complete corresponding source code for the distributed version is available from the upstream
-  repository at the `1.23.1` tag. If you received a binary distribution of BackPocket Emulator and
-  cannot obtain that source, open an issue at
-  <https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues> to request a copy.
+  repository at the `1.23.1` tag.
+
+### Written offer for OpenAL Soft source code
+
+For at least three years after we last distribute a binary of BackPocket Emulator that includes
+OpenAL Soft, Bad Mango Solutions will give anyone who receives that binary a complete copy of the
+corresponding OpenAL Soft source code (version `1.23.1`, unmodified), for no more than the cost of
+physically performing the distribution. To request it, open an issue at
+<https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues> titled "OpenAL Soft source
+request". This offer is made under Section 6 of the GNU Library General Public License, version 2,
+and is in addition to the upstream source link above.
 
 ## Managed (.NET) libraries
 
