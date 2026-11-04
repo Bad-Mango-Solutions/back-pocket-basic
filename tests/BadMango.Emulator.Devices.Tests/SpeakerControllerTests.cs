@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
+using BadMango.Unit.Components;
 
 using Moq;
 
@@ -384,6 +385,33 @@ public class SpeakerControllerTests
         short[] split = RenderToggleThenSilence(flushPoints: [700, 1_300, 2_000]);
 
         Assert.That(split, Is.EqualTo(single));
+    }
+
+    /// <summary>
+    /// Verifies that the logger-injecting constructor rejects a null logger.
+    /// </summary>
+    [Test]
+    public void Constructor_WithNullLogger_Throws()
+    {
+        Assert.That(() => new SpeakerController(null!), Throws.ArgumentNullException);
+    }
+
+    /// <summary>
+    /// Verifies that the logger-injecting constructor yields a usable controller whether
+    /// host audio opens or the controller falls back to silent output.
+    /// </summary>
+    [Test]
+    public void Constructor_WithLogger_CreatesUsableController()
+    {
+        var logger = Generator.Log();
+
+        var speaker = new SpeakerController(logger.Object);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(speaker.Name, Is.EqualTo("Speaker Controller"));
+            Assert.That(speaker.Dispose, Throws.Nothing);
+        });
     }
 
     private static short[] RenderToggleThenSilence(ulong[] flushPoints)

@@ -60,7 +60,7 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     /// <param name="sampleRate">The sample rate of the audio output, in samples per second.</param>
     /// <param name="bitsPerSample">The number of bits per audio sample (e.g., 16 for 16-bit audio).</param>
     /// <param name="channels">The number of audio channels (e.g., 1 for mono, 2 for stereo).</param>
-    /// <param name="logger">The logger for OpenAL errors; defaults to the global Serilog logger.</param>
+    /// <param name="logger">The logger used to report OpenAL errors.</param>
     /// <exception cref="PlatformNotSupportedException">
     /// The audio format is unsupported, the OpenAL native library cannot be loaded, or OpenAL
     /// reports an error while opening the device or preparing the stream.
@@ -69,8 +69,10 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     /// This constructor sets up OpenAL streaming playback and starts a background thread
     /// that continuously feeds queued PCM data.
     /// </remarks>
-    public OpenAlAudioOutput(int sampleRate, int bitsPerSample, int channels, ILogger? logger = null)
+    public OpenAlAudioOutput(int sampleRate, int bitsPerSample, int channels, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+
         if (bitsPerSample != 16)
         {
             throw new PlatformNotSupportedException("OpenAL output currently supports only 16-bit PCM samples.");
@@ -82,11 +84,11 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
         }
 
         this.sampleRate = sampleRate;
-        this.logger = logger ?? Log.ForContext<OpenAlAudioOutput>();
+        this.logger = logger.ForContext<OpenAlAudioOutput>();
         ringBuffer = new(sampleRate * MaxBufferedMilliseconds / 1000);
         sampleChunk = new short[BufferSamples];
 
-        OpenAlNativeLibrary.EnsureConfigured();
+        OpenAlNativeLibrary.EnsureConfigured(this.logger);
 
         try
         {

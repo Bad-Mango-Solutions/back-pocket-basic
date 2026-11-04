@@ -53,11 +53,14 @@ internal static class OpenAlNativeLibrary
     /// <summary>
     /// Configures OpenTK to load the bundled OpenAL Soft library, once per process.
     /// </summary>
+    /// <param name="logger">The logger used to report which library was selected.</param>
     /// <remarks>
     /// Must run before the first OpenAL call; OpenTK resolves the library on first use.
     /// </remarks>
-    internal static void EnsureConfigured()
+    internal static void EnsureConfigured(ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+
         lock (ConfigureLock)
         {
             if (configured)
@@ -69,7 +72,7 @@ internal static class OpenAlNativeLibrary
 
             if (OpenALLibraryNameContainer.OverridePath is not null)
             {
-                Log.ForContext(typeof(OpenAlNativeLibrary)).Debug(
+                logger.Debug(
                     "OpenAL library override already set to {Path}; leaving it unchanged",
                     OpenALLibraryNameContainer.OverridePath);
                 return;
@@ -81,11 +84,11 @@ internal static class OpenAlNativeLibrary
             if (path is not null && NativeLibrary.TryLoad(path, out _))
             {
                 OpenALLibraryNameContainer.OverridePath = path;
-                Log.ForContext(typeof(OpenAlNativeLibrary)).Debug("Using bundled OpenAL library {Path}", path);
+                logger.Debug("Using bundled OpenAL library {Path}", path);
             }
             else
             {
-                Log.ForContext(typeof(OpenAlNativeLibrary)).Debug(
+                logger.Debug(
                     "Bundled OpenAL library {FileName} not found or not loadable (candidate {Path}); using the system OpenAL library",
                     fileName,
                     path);

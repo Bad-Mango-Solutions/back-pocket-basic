@@ -10,6 +10,8 @@ using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
 
+using Serilog;
+
 /// <summary>
 /// Speaker controller handling $C030 toggle with audio output.
 /// </summary>
@@ -56,6 +58,11 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     // Per-sample multiplier for the exponential relaxation toward zero.
     private static readonly double DecayPerSample = Math.Exp(-1.0 / (SampleRate * SpeakerDecayTimeConstantSeconds));
 
+    // Sink-less logger for the parameterless constructor; never touches the global Log.Logger facade.
+    private static readonly Lazy<ILogger> SilentLogger = new(
+        () => new LoggerConfiguration().CreateLogger(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private readonly Queue<(ulong Cycle, bool State)> pendingToggles = new();
     private readonly Lock syncLock = new();
     private readonly List<short> audioBuffer = [];
@@ -72,13 +79,25 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private IMachine? machine;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SpeakerController"/> class.
+    /// Initializes a new instance of the <see cref="SpeakerController"/> class
+    /// that discards audio-backend diagnostics.
     /// </summary>
     public SpeakerController()
+        : this(SilentLogger.Value)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SpeakerController"/> class.
+    /// </summary>
+    /// <param name="logger">The logger used to report audio-backend errors and fallback.</param>
+    public SpeakerController(ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+
         try
         {
-            audioOutput = new OpenAlAudioOutput(SampleRate, BitsPerSample, Channels);
+            audioOutput = new OpenAlAudioOutput(SampleRate, BitsPerSample, Channels, logger);
         }
         catch (Exception ex) when (ex is PlatformNotSupportedException
                                        or ThreadStateException
@@ -94,6 +113,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             // is in an invalid state to start, and InvalidOperationException from the
             // Thread.Name setter when a name is rejected.
             // Fall back to silent output so the emulator still runs without audio.
+            logger.ForContext<SpeakerController>().Warning(ex, "Host audio output is unavailable; speaker output will be silent");
             audioOutput = new NullAudioOutput();
         }
 
