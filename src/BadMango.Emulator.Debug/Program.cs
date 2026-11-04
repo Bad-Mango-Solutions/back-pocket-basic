@@ -7,6 +7,7 @@ using Autofac.Extensions.DependencyInjection;
 
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI;
+using BadMango.Emulator.Devices;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +30,10 @@ Log.Logger = new LoggerConfiguration()
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
+
+// Give devices built by the device factory registry (speaker, Disk II, ...) a logger scoped
+// to their type, so device diagnostics such as audio-backend failures reach the log.
+DeviceFactoryRegistry.LoggerFactory = deviceType => Log.Logger.ForContext(deviceType);
 
 try
 {

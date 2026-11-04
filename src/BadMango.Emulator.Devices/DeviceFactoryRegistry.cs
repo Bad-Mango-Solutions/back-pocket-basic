@@ -30,7 +30,10 @@ using Serilog;
 /// <item><description>
 /// Expose a public constructor whose parameters are all either resolvable by the registry
 /// (currently <see cref="ILogger"/> via <see cref="LoggerFactory"/>) or have default values.
-/// A public parameterless constructor is the simplest such case.
+/// A public parameterless constructor is the simplest such case. When a type exposes several
+/// resolvable constructors, the one with the most parameters is used, so a device that offers
+/// both a parameterless and an <see cref="ILogger"/> constructor (for example
+/// <see cref="Speaker.SpeakerController"/>) receives the configured logger.
 /// </description></item>
 /// </list>
 /// <para>
@@ -198,6 +201,20 @@ public static class DeviceFactoryRegistry
     }
 
     /// <summary>
+    /// Resolves the logger handed to a device constructed by a registry or extension factory.
+    /// </summary>
+    /// <param name="deviceType">The type of the device being constructed.</param>
+    /// <returns>
+    /// The logger returned by <see cref="LoggerFactory"/>, or a sink-less logger when no
+    /// factory is configured (or it returns <see langword="null"/>).
+    /// </returns>
+    internal static ILogger ResolveLogger(Type deviceType)
+    {
+        ArgumentNullException.ThrowIfNull(deviceType);
+        return LoggerFactory?.Invoke(deviceType) ?? SilentLoggerInstance.Value;
+    }
+
+    /// <summary>
     /// Scans for device types and creates factory registrations.
     /// </summary>
     private static void DiscoverDevices()
@@ -265,20 +282,14 @@ public static class DeviceFactoryRegistry
     }
 
     /// <summary>
-    /// Finds a public constructor the registry can satisfy, preferring a parameterless
-    /// constructor when one exists; otherwise, selects the resolvable public constructor
-    /// with the most parameters.
+    /// Finds a public constructor the registry can satisfy, selecting the resolvable public
+    /// constructor with the most parameters. A parameterless constructor is always resolvable,
+    /// so it is chosen only when no richer resolvable constructor exists.
     /// </summary>
     private static ConstructorInfo? FindResolvableConstructor(Type deviceType)
     {
-        // Prefer parameterless when present — it's unambiguous and matches the historical contract.
-        var parameterless = deviceType.GetConstructor(Type.EmptyTypes);
-        if (parameterless is not null)
-        {
-            return parameterless;
-        }
-
-        // Otherwise pick the public constructor with the most parameters that we can fully resolve.
+        // Pick the public constructor with the most parameters that we can fully resolve, so
+        // devices that also offer a logger-taking constructor receive the configured logger.
         ConstructorInfo? best = null;
         var bestParamCount = -1;
         foreach (var candidate in deviceType.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
@@ -323,7 +334,7 @@ public static class DeviceFactoryRegistry
     {
         if (parameter.ParameterType == typeof(ILogger))
         {
-            return LoggerFactory?.Invoke(deviceType) ?? Log.Logger;
+            return ResolveLogger(deviceType);
         }
 
         return parameter.DefaultValue;

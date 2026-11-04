@@ -204,4 +204,35 @@ public class DeviceFactoryRegistryTests
             DeviceFactoryRegistry.LoggerFactory = previous;
         }
     }
+
+    /// <summary>
+    /// Verifies that the auto-discovered speaker factory uses the logger-taking
+    /// <see cref="SpeakerController"/> constructor and obtains its logger from
+    /// <see cref="DeviceFactoryRegistry.LoggerFactory"/>.
+    /// </summary>
+    [Test]
+    public void SpeakerFactory_UsesConfiguredLoggerFactory()
+    {
+        DeviceFactoryRegistry.EnsureInitialized();
+        var loggerMock = Generator.Log();
+        var requestedTypes = new List<Type>();
+        var previous = DeviceFactoryRegistry.LoggerFactory;
+        DeviceFactoryRegistry.LoggerFactory = t =>
+        {
+            requestedTypes.Add(t);
+            return loggerMock.Object;
+        };
+        try
+        {
+            var factory = DeviceFactoryRegistry.MotherboardDeviceFactories["speaker"];
+            using var device = factory(null!) as IDisposable;
+
+            Assert.That(device, Is.InstanceOf<SpeakerController>());
+            Assert.That(requestedTypes, Does.Contain(typeof(SpeakerController)));
+        }
+        finally
+        {
+            DeviceFactoryRegistry.LoggerFactory = previous;
+        }
+    }
 }
