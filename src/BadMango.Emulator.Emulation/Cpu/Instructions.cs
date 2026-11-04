@@ -41,7 +41,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDA with the given addressing mode.</returns>
-public static OpcodeHandler LDA(AddressingModeHandler addressingMode)
+    public static OpcodeHandler LDA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -78,7 +78,7 @@ public static OpcodeHandler LDA(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDX with the given addressing mode.</returns>
-public static OpcodeHandler LDX(AddressingModeHandler addressingMode)
+    public static OpcodeHandler LDX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -115,7 +115,7 @@ public static OpcodeHandler LDX(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LDY with the given addressing mode.</returns>
-public static OpcodeHandler LDY(AddressingModeHandler addressingMode)
+    public static OpcodeHandler LDY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -152,7 +152,7 @@ public static OpcodeHandler LDY(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STA with the given addressing mode.</returns>
-public static OpcodeHandler STA(AddressingModeHandler addressingMode)
+    public static OpcodeHandler STA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -174,7 +174,7 @@ public static OpcodeHandler STA(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STX with the given addressing mode.</returns>
-public static OpcodeHandler STX(AddressingModeHandler addressingMode)
+    public static OpcodeHandler STX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -196,7 +196,7 @@ public static OpcodeHandler STX(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STY with the given addressing mode.</returns>
-public static OpcodeHandler STY(AddressingModeHandler addressingMode)
+    public static OpcodeHandler STY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -233,7 +233,7 @@ public static OpcodeHandler STY(AddressingModeHandler addressingMode)
     /// cycles are entirely delegated to <paramref name="addressingMode"/>; the
     /// only state mutation here is the TCU increment.
     /// </remarks>
-public static OpcodeHandler NOP(AddressingModeHandler addressingMode, int instructionCycles = 1)
+    public static OpcodeHandler NOP(AddressingModeHandler addressingMode, int instructionCycles = 1)
     {
         return cpu =>
         {
@@ -256,7 +256,7 @@ public static OpcodeHandler NOP(AddressingModeHandler addressingMode, int instru
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes BRK.</returns>
-public static OpcodeHandler BRK(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BRK(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
