@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Devices.Storage;
+namespace BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Host-side options used to create a new blank disk image.

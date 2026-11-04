@@ -1,13 +1,13 @@
-// <copyright file="ITrackSectorMedia.cs" company="Bad Mango Solutions">
+// <copyright file="ITrackMedia.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
-/// Defines track-stream operations for storage media.
+/// Defines track-based operations for storage media.
 /// </summary>
-public interface ITrackSectorMedia : IStorageMedia
+public interface ITrackMedia : IStorageMedia
 {
     /// <summary>
     /// Attempts to read a track image into the provided buffer.

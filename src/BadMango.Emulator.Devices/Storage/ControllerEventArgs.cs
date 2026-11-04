@@ -2,9 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Devices.Storage;
-
-using BadMango.Emulator.Devices.Interfaces;
+namespace BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Event payload for controller drive topology or drive-state transitions.

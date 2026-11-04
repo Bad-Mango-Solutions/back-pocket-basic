@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Devices.Interfaces;
 
-using BadMango.Emulator.Devices.Storage;
-
 /// <summary>
 /// Host-side abstraction for a storage controller managing one or more drives.
 /// </summary>

@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Devices.Interfaces;
 
-using BadMango.Emulator.Devices.Storage;
-
 /// <summary>
 /// Host-side tooling API for disk image creation and format conversion.
 /// </summary>

@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
-using BadMango.Emulator.Devices.Storage;
 
 /// <summary>
 /// Unit tests for host-side storage abstraction interface contracts.
@@ -128,13 +127,13 @@ public class StorageAbstractionInterfaceTests
         Assert.Multiple(() =>
         {
             Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(IBlockMedia)), Is.True);
-            Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(ITrackSectorMedia)), Is.True);
+            Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(ITrackMedia)), Is.True);
             Assert.That(typeof(IStorageMedia).IsAssignableFrom(typeof(INibbleStreamMedia)), Is.True);
 
             Assert.That(typeof(IBlockMedia).GetMethod(nameof(IBlockMedia.ReadBlock)), Is.Not.Null);
             Assert.That(typeof(IBlockMedia).GetMethod(nameof(IBlockMedia.WriteBlock)), Is.Not.Null);
-            Assert.That(typeof(ITrackSectorMedia).GetMethod(nameof(ITrackSectorMedia.TryReadTrack)), Is.Not.Null);
-            Assert.That(typeof(ITrackSectorMedia).GetMethod(nameof(ITrackSectorMedia.TryWriteTrack)), Is.Not.Null);
+            Assert.That(typeof(ITrackMedia).GetMethod(nameof(ITrackMedia.TryReadTrack)), Is.Not.Null);
+            Assert.That(typeof(ITrackMedia).GetMethod(nameof(ITrackMedia.TryWriteTrack)), Is.Not.Null);
             Assert.That(typeof(INibbleStreamMedia).GetMethod(nameof(INibbleStreamMedia.TryReadNibbles)), Is.Not.Null);
             Assert.That(typeof(INibbleStreamMedia).GetMethod(nameof(INibbleStreamMedia.TryWriteNibbles)), Is.Not.Null);
 

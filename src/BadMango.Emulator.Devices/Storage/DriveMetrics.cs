@@ -2,7 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Devices.Storage;
+namespace BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Captures host-observable metrics for a drive mechanism.

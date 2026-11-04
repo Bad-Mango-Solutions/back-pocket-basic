@@ -2,9 +2,7 @@
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
-namespace BadMango.Emulator.Devices.Storage;
-
-using BadMango.Emulator.Devices.Interfaces;
+namespace BadMango.Emulator.Devices.Interfaces;
 
 /// <summary>
 /// Indicates the type of drive transition reported by <see cref="IStorageController.DriveChanged"/>.
