@@ -9,6 +9,8 @@ using System.Diagnostics.CodeAnalysis;
 using BadMango.Emulator.Devices.Interfaces;
 using OpenTK.Audio.OpenAL;
 
+using Serilog;
+
 /// <summary>
 /// Cross-platform streaming audio output backed by OpenAL.
 /// </summary>
@@ -21,6 +23,12 @@ using OpenTK.Audio.OpenAL;
 /// Incoming samples are enqueued by <see cref="Play(short[])"/> and consumed on a dedicated
 /// background thread. Buffer overruns drop the oldest samples to keep playback latency bounded.
 /// </para>
+/// <para>
+/// OpenAL reports failures through <c>alGetError</c>/<c>alcGetError</c> rather than exceptions,
+/// so every stage checks the error state explicitly. Setup failures surface as
+/// <see cref="PlatformNotSupportedException"/> so callers can fall back to silent output; failures
+/// while streaming or tearing down are logged, and persistent streaming errors stop playback.
+/// </para>
 /// </remarks>
 [ExcludeFromCodeCoverage]
 internal sealed class OpenAlAudioOutput : IAudioOutput
@@ -28,8 +36,10 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     private const int BufferCount = 3;
     private const int BufferSamples = 1024;
     private const int MaxBufferedMilliseconds = 200;
+    private const int MaxConsecutiveStreamErrors = 3;
 
     private readonly int sampleRate;
+    private readonly ILogger logger;
     private readonly AudioSampleRingBuffer ringBuffer;
     private readonly short[] sampleChunk;
     private readonly Thread playbackThread;
@@ -49,11 +59,16 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     /// <param name="sampleRate">The sample rate of the audio output, in samples per second.</param>
     /// <param name="bitsPerSample">The number of bits per audio sample (e.g., 16 for 16-bit audio).</param>
     /// <param name="channels">The number of audio channels (e.g., 1 for mono, 2 for stereo).</param>
+    /// <param name="logger">The logger for OpenAL errors; defaults to the global Serilog logger.</param>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The audio format is unsupported, the OpenAL native library cannot be loaded, or OpenAL
+    /// reports an error while opening the device or preparing the stream.
+    /// </exception>
     /// <remarks>
     /// This constructor sets up OpenAL streaming playback and starts a background thread
     /// that continuously feeds queued PCM data.
     /// </remarks>
-    public OpenAlAudioOutput(int sampleRate, int bitsPerSample, int channels)
+    public OpenAlAudioOutput(int sampleRate, int bitsPerSample, int channels, ILogger? logger = null)
     {
         if (bitsPerSample != 16)
         {
@@ -66,6 +81,7 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
         }
 
         this.sampleRate = sampleRate;
+        this.logger = logger ?? Log.ForContext<OpenAlAudioOutput>();
         ringBuffer = new(sampleRate * MaxBufferedMilliseconds / 1000);
         sampleChunk = new short[BufferSamples];
 
@@ -73,36 +89,18 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
 
         try
         {
-            device = ALC.OpenDevice(null);
-            if (device == default)
-            {
-                throw new PlatformNotSupportedException("OpenAL device could not be opened.");
-            }
-
-            context = ALC.CreateContext(device, Array.Empty<int>());
-            if (context == default)
-            {
-                throw new PlatformNotSupportedException("OpenAL context could not be created.");
-            }
-
-            _ = ALC.MakeContextCurrent(context);
-
-            source = AL.GenSource();
-            buffers = AL.GenBuffers(BufferCount);
-
-            for (var i = 0; i < BufferCount; i++)
-            {
-                FillSampleChunk();
-                AL.BufferData(buffers[i], ALFormat.Mono16, sampleChunk, sampleRate);
-                AL.SourceQueueBuffer(source, buffers[i]);
-            }
-
-            AL.SourcePlay(source);
+            InitializeAudio();
         }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException or PlatformNotSupportedException)
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            // OpenTK resolves the native library on the first AL/ALC call.
+            CleanupAudioResources();
+            throw new PlatformNotSupportedException("The OpenAL native library could not be loaded.", ex);
+        }
+        catch (PlatformNotSupportedException)
         {
             CleanupAudioResources();
-            throw new PlatformNotSupportedException("OpenAL playback is unavailable on this host.", ex);
+            throw;
         }
 
         playbackThread = new(PlaybackLoop)
@@ -145,49 +143,122 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
         samplesAvailable.Dispose();
     }
 
+    /// <summary>
+    /// Throws if OpenAL has recorded an error; used during setup so callers fall back to silent output.
+    /// </summary>
+    /// <param name="operation">A description of the operation that was attempted.</param>
+    private static void ThrowOnAlError(string operation)
+    {
+        ALError error = AL.GetError();
+        if (error != ALError.NoError)
+        {
+            throw new PlatformNotSupportedException($"OpenAL failed to {operation}: {error}.");
+        }
+    }
+
+    private void InitializeAudio()
+    {
+        device = ALC.OpenDevice(null);
+        if (device == default)
+        {
+            throw new PlatformNotSupportedException("OpenAL device could not be opened.");
+        }
+
+        context = ALC.CreateContext(device, (int[]?)null);
+        if (context == default)
+        {
+            throw new PlatformNotSupportedException($"OpenAL context could not be created: {ALC.GetError(device)}.");
+        }
+
+        if (!ALC.MakeContextCurrent(context))
+        {
+            throw new PlatformNotSupportedException($"OpenAL context could not be made current: {ALC.GetError(device)}.");
+        }
+
+        // Discard any error left over from before this instance owned the context.
+        _ = AL.GetError();
+
+        source = AL.GenSource();
+        ThrowOnAlError("generate a source");
+
+        buffers = AL.GenBuffers(BufferCount);
+        ThrowOnAlError("generate buffers");
+
+        foreach (int buffer in buffers)
+        {
+            FillSampleChunk();
+            AL.BufferData(buffer, ALFormat.Mono16, sampleChunk, sampleRate);
+            AL.SourceQueueBuffer(source, buffer);
+        }
+
+        ThrowOnAlError("queue the initial buffers");
+
+        AL.SourcePlay(source);
+        ThrowOnAlError("start playback");
+    }
+
     private void PlaybackLoop()
     {
+        CancellationToken token = cts.Token;
+        int consecutiveErrors = 0;
+
         try
         {
-            _ = ALC.MakeContextCurrent(context);
-
-            while (!cts.Token.IsCancellationRequested)
+            if (!ALC.MakeContextCurrent(context))
             {
-                AL.GetSource(source, ALGetSourcei.BuffersProcessed, out var processed);
-                while (processed-- > 0)
-                {
-                    int processedBuffer = AL.SourceUnqueueBuffer(source);
-                    FillSampleChunk();
-                    AL.BufferData(processedBuffer, ALFormat.Mono16, sampleChunk, sampleRate);
-                    AL.SourceQueueBuffer(source, processedBuffer);
-                }
+                logger.Error("OpenAL context could not be made current on the playback thread ({Error}); speaker playback stopped", ALC.GetError(device));
+                return;
+            }
+
+            while (!token.IsCancellationRequested)
+            {
+                RefillProcessedBuffers();
 
                 AL.GetSource(source, ALGetSourcei.SourceState, out var stateValue);
                 if ((ALSourceState)stateValue != ALSourceState.Playing)
                 {
+                    // Starved or underrun: restart once the queue is refilled.
                     AL.SourcePlay(source);
                 }
 
-                _ = samplesAvailable.Wait(5, cts.Token);
+                if (LogAlError("stream audio"))
+                {
+                    if (++consecutiveErrors >= MaxConsecutiveStreamErrors)
+                    {
+                        logger.Error("OpenAL reported {Count} consecutive streaming errors; speaker playback stopped", consecutiveErrors);
+                        return;
+                    }
+                }
+                else
+                {
+                    consecutiveErrors = 0;
+                }
+
+                _ = samplesAvailable.Wait(5, token);
             }
         }
         catch (OperationCanceledException)
         {
-            // Normal shutdown.
-        }
-        catch (InvalidOperationException)
-        {
-            // Backend failure: stop playback loop and allow silent operation.
+            // Dispose cancelled the wait; normal shutdown.
         }
         finally
         {
-            try
+            if (!ALC.MakeContextCurrent(ALContext.Null))
             {
-                _ = ALC.MakeContextCurrent(default);
+                logger.Debug("OpenAL context could not be released on the playback thread");
             }
-            catch (InvalidOperationException)
-            {
-            }
+        }
+    }
+
+    private void RefillProcessedBuffers()
+    {
+        AL.GetSource(source, ALGetSourcei.BuffersProcessed, out var processed);
+        while (processed-- > 0)
+        {
+            int processedBuffer = AL.SourceUnqueueBuffer(source);
+            FillSampleChunk();
+            AL.BufferData(processedBuffer, ALFormat.Mono16, sampleChunk, sampleRate);
+            AL.SourceQueueBuffer(source, processedBuffer);
         }
     }
 
@@ -201,52 +272,69 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
         }
     }
 
+    /// <summary>
+    /// Logs and clears any recorded OpenAL error.
+    /// </summary>
+    /// <param name="operation">A description of the operation that was attempted.</param>
+    /// <returns><see langword="true"/> if an error was recorded; otherwise, <see langword="false"/>.</returns>
+    private bool LogAlError(string operation)
+    {
+        ALError error = AL.GetError();
+        if (error == ALError.NoError)
+        {
+            return false;
+        }
+
+        logger.Warning("OpenAL error {Error} while trying to {Operation}", error, operation);
+        return true;
+    }
+
+    /// <summary>
+    /// Releases OpenAL resources on a best-effort basis, logging any errors reported.
+    /// </summary>
     private void CleanupAudioResources()
     {
-        try
+        if (context != default)
         {
-            if (source != 0)
+            // Source and buffer names belong to the context, which must be current to delete them.
+            if (ALC.MakeContextCurrent(context))
             {
-                AL.SourceStop(source);
-                AL.DeleteSource(source);
+                if (source != 0)
+                {
+                    AL.SourceStop(source);
+                    AL.DeleteSource(source);
+                }
+
+                if (buffers.Length > 0)
+                {
+                    AL.DeleteBuffers(buffers);
+                }
+
+                _ = LogAlError("release the source and buffers");
             }
-        }
-        catch (InvalidOperationException)
-        {
+            else
+            {
+                logger.Warning("OpenAL context could not be made current for cleanup ({Error})", ALC.GetError(device));
+            }
+
+            _ = ALC.MakeContextCurrent(ALContext.Null);
+            ALC.DestroyContext(context);
+
+            AlcError contextError = ALC.GetError(device);
+            if (contextError != AlcError.NoError)
+            {
+                logger.Warning("OpenAL error {Error} while destroying the context", contextError);
+            }
         }
 
-        try
+        if (device != default && !ALC.CloseDevice(device))
         {
-            if (buffers.Length > 0)
-            {
-                AL.DeleteBuffers(buffers);
-            }
-        }
-        catch (InvalidOperationException)
-        {
+            logger.Warning("OpenAL device could not be closed");
         }
 
-        try
-        {
-            if (context != default)
-            {
-                _ = ALC.MakeContextCurrent(default);
-                ALC.DestroyContext(context);
-            }
-        }
-        catch (InvalidOperationException)
-        {
-        }
-
-        try
-        {
-            if (device != default)
-            {
-                ALC.CloseDevice(device);
-            }
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        source = 0;
+        buffers = [];
+        context = default;
+        device = default;
     }
 }
