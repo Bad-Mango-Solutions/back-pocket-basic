@@ -82,7 +82,7 @@ That command starts the `emudbg` console debugger.
 
 ## Directory Structure
 
-`src/` and `tests/` hold one directory per project in `BackPocketEmulator.slnx`. The full list, including `profiles/`, `schemas/`, `roms/`, `disks/`, `samples/`, `specs/`, and `wiki/`, is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure).
+`src/` and `tests/` hold one directory per project in `BackPocketEmulator.slnx`. The full list, including `profiles/`, `schemas/`, `roms/`, `disks/`, `samples/`, `specs/`, and `wiki/`, is in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure).
 
 ## Building Individual Projects
 

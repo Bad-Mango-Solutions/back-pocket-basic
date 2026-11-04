@@ -1,13 +1,13 @@
 # Testing Guide
 
-> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
 
 
 Guide for running and writing tests for BackPocket Emulator.
 
 ## Overview
 
-The solution uses NUnit and Moq. Test projects live under `tests/`, and every test project references `tests/BadMango.Unit.Components`. Which project covers which library is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). Examples later on this page that name `BadMango.Basic` are from the interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+The solution uses NUnit and Moq. Test projects live under `tests/`, and every test project references `tests/BadMango.Unit.Components`. Which project covers which library is listed in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). Examples later on this page that name `BadMango.Basic` are from the interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Running Tests
 

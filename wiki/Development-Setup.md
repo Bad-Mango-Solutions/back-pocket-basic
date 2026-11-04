@@ -185,7 +185,7 @@ Project includes `.editorconfig` - Visual Studio will automatically apply settin
 
 ## Project Structure
 
-Every project in `BackPocketEmulator.slnx` is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+Every project in `BackPocketEmulator.slnx` is listed in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Development Workflow
 

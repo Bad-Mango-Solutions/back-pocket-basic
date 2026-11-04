@@ -1,6 +1,6 @@
 # Wiki Documentation
 
-This directory contains the wiki markdown for BackPocket Emulator. GitHub wiki sync copies it to the repository wiki. The emulator project list is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). Pages about the Applesoft BASIC interpreter describe code that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+This directory contains the wiki markdown for BackPocket Emulator. GitHub wiki sync copies it to the repository wiki. The emulator project list is in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). Pages about the Applesoft BASIC interpreter describe code that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## About This Wiki
 

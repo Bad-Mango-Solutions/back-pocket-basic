@@ -1,9 +1,9 @@
 # Architecture Overview
 
-> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
 
 
-The current emulator layout, with every project and its references, is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). The component writeup below describes the Applesoft BASIC interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+The current emulator layout, with every project and its references, is in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). The component writeup below describes the Applesoft BASIC interpreter that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ The current emulator layout, with every project and its references, is in [CONTR
 
 ## Project Structure
 
-Every project in this repository is listed in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` are not projects in `BackPocketEmulator.slnx`; they moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+Every project in this repository is listed in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` are not projects in `BackPocketEmulator.slnx`; they moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## Core Components
 
