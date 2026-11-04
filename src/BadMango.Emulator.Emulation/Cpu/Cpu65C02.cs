@@ -157,9 +157,10 @@ public sealed class Cpu65C02 : CpuBase
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
-        // Use the I value latched at the previous instruction boundary. CLI/SEI/PLP defer their
-        // effect by one instruction, while RTI takes effect immediately.
-        bool irqMaskedAtBoundary = interruptDisableSample;
+        // Determine the I value visible at this instruction boundary. Normally this is the
+        // current register value; CLI/SEI/PLP defer their visible effect by one instruction
+        // and therefore keep the previous boundary sample for one poll.
+        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
 
         // Check for pending interrupts at instruction boundary using the signal bus.
         // With the concrete SignalBus, a single cached flag tells us whether an NMI
@@ -319,8 +320,9 @@ public sealed class Cpu65C02 : CpuBase
         }
         else if (opcode is 0x58 or 0x78 or 0x28)
         {
-            // Keep the previous boundary value for the next IRQ poll; the pending new value is
+            // Keep this boundary value for the next IRQ poll; the pending new value is
             // applied after the following instruction.
+            interruptDisableSample = irqMaskedAtBoundary;
             interruptDisablePendingValue = currentI;
             interruptDisableChangePending = true;
         }

@@ -24,8 +24,8 @@ using TestHelpers;
 public class Cpu65C02StepFastPathTests : CpuTestBase
 {
     /// <summary>
-    /// A level-triggered IRQ asserted while masked stays pending and is taken as
-    /// soon as CLI clears the I flag.
+    /// A level-triggered IRQ asserted while masked stays pending and is taken
+    /// after the post-CLI delay window completes.
     /// </summary>
     [Test]
     public void MaskedIrq_RemainsPending_TakenAfterCli()
@@ -44,7 +44,10 @@ public class Cpu65C02StepFastPathTests : CpuTestBase
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
 
         Cpu.Step();        // CLI
-        Cpu.Step();        // IRQ taken
+        Cpu.Step();        // NOP executes in the post-CLI delay window
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1004));
+
+        Cpu.Step();        // IRQ taken on the following boundary
 
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
     }
@@ -171,7 +174,8 @@ public class Cpu65C02StepFastPathTests : CpuTestBase
 
     /// <summary>
     /// With a non-<see cref="SignalBus"/> implementation the CPU still performs the
-    /// full interrupt check every step (no pre-check is available).
+    /// full interrupt check every step (no pre-check is available), including the
+    /// delayed CLI/SEI/PLP IRQ-mask semantics.
     /// </summary>
     [Test]
     public void CustomSignalBus_InterruptStillTaken()
@@ -187,6 +191,8 @@ public class Cpu65C02StepFastPathTests : CpuTestBase
 
         cpu.Step(); // CLI
         signals.IrqAsserted = true;
+        cpu.Step(); // NOP executes before IRQ is taken
+        Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
         cpu.Step(); // IRQ
 
         Assert.That(cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
