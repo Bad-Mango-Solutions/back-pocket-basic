@@ -1,0 +1,291 @@
+name: Project Iteration Assignment
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, only log planned changes without updating project items"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  assign-iteration:
+    name: Assign current iteration to selected items
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign iteration for selected items
+        uses: actions/github-script@v7
+        env:
+          ORG_LOGIN: Bad-Mango-Solutions
+          PROJECT_NUMBER: '3'
+          TARGET_STATUS: Selected
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        with:
+          # Use org/repo secret PROJECT_TOKEN. GITHUB_TOKEN cannot write org-level Projects.
+          # PROJECT_TOKEN must have organization Projects read/write permissions.
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const orgLogin = process.env.ORG_LOGIN;
+            const projectNumber = Number.parseInt(process.env.PROJECT_NUMBER, 10);
+            const targetStatus = process.env.TARGET_STATUS;
+            const dryRun = `${process.env.DRY_RUN}`.toLowerCase() === 'true';
+
+            const query = `
+              query GetProjectData($org: String!, $projectNumber: Int!, $cursor: String) {
+                organization(login: $org) {
+                  projectV2(number: $projectNumber) {
+                    id
+                    fields(first: 50) {
+                      nodes {
+                        ... on ProjectV2FieldCommon {
+                          id
+                          name
+                        }
+                        ... on ProjectV2SingleSelectField {
+                          options {
+                            id
+                            name
+                          }
+                        }
+                        ... on ProjectV2IterationField {
+                          configuration {
+                            iterations {
+                              id
+                              title
+                              startDate
+                              duration
+                            }
+                            completedIterations {
+                              id
+                              title
+                              startDate
+                              duration
+                            }
+                          }
+                        }
+                      }
+                    }
+                    items(first: 100, after: $cursor) {
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                      nodes {
+                        id
+                        content {
+                          __typename
+                          ... on Issue {
+                            number
+                            title
+                          }
+                          ... on PullRequest {
+                            number
+                            title
+                          }
+                        }
+                        fieldValues(first: 50) {
+                          nodes {
+                            ... on ProjectV2ItemFieldSingleSelectValue {
+                              name
+                              optionId
+                              field {
+                                ... on ProjectV2FieldCommon {
+                                  id
+                                  name
+                                }
+                              }
+                            }
+                            ... on ProjectV2ItemFieldIterationValue {
+                              title
+                              iterationId
+                              field {
+                                ... on ProjectV2FieldCommon {
+                                  id
+                                  name
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const mutation = `
+              mutation SetIteration(
+                $projectId: ID!
+                $itemId: ID!
+                $fieldId: ID!
+                $iterationId: String!
+              ) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { iterationId: $iterationId }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            `;
+
+            const toUtcDate = (value) => new Date(`${value}T00:00:00Z`);
+            const today = new Date();
+            const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+            let cursor = null;
+            const allItems = [];
+            let projectId = null;
+            let statusField = null;
+            let iterationField = null;
+            let selectedOptionId = null;
+            const iterationById = new Map();
+
+            while (true) {
+              const result = await github.graphql(query, {
+                org: orgLogin,
+                projectNumber,
+                cursor,
+              });
+
+              const project = result.organization?.projectV2;
+              if (!project) {
+                core.setFailed(`Project ${orgLogin}#${projectNumber} was not found.`);
+                return;
+              }
+
+              projectId = project.id;
+
+              for (const field of project.fields.nodes ?? []) {
+                if (field?.name === 'Status') {
+                  statusField = field;
+                  if (Array.isArray(field.options)) {
+                    const selectedOption = field.options.find((option) => option.name === targetStatus);
+                    selectedOptionId = selectedOption?.id ?? selectedOptionId;
+                  }
+                }
+
+                if (field?.name === 'Iteration') {
+                  iterationField = field;
+                  const config = field.configuration;
+                  const candidates = [
+                    ...(config?.iterations ?? []),
+                    ...(config?.completedIterations ?? []),
+                  ];
+
+                  for (const iteration of candidates) {
+                    if (iteration?.id) {
+                      iterationById.set(iteration.id, iteration);
+                    }
+                  }
+                }
+              }
+
+              const itemConnection = project.items;
+              allItems.push(...(itemConnection?.nodes ?? []));
+
+              if (!itemConnection?.pageInfo?.hasNextPage) {
+                break;
+              }
+
+              cursor = itemConnection.pageInfo.endCursor;
+            }
+
+            if (!statusField) {
+              core.setFailed('Status field was not found on the project.');
+              return;
+            }
+
+            if (!iterationField) {
+              core.setFailed('Iteration field was not found on the project.');
+              return;
+            }
+
+            const activeIteration = [...iterationById.values()].find((iteration) => {
+              if (!iteration?.startDate || !Number.isInteger(iteration.duration)) {
+                return false;
+              }
+
+              const start = toUtcDate(iteration.startDate);
+              const endExclusive = new Date(start);
+              endExclusive.setUTCDate(endExclusive.getUTCDate() + iteration.duration);
+              return todayUtc >= start && todayUtc < endExclusive;
+            });
+
+            if (!activeIteration) {
+              core.warning(`No iteration covers ${todayUtc.toISOString().slice(0, 10)} (UTC). No items will be updated.`);
+              core.notice(`Scanned ${allItems.length} project items. Updated 0 items.`);
+              return;
+            }
+
+            const changedItems = [];
+            const skippedWithIteration = [];
+            const skippedStatus = [];
+
+            for (const item of allItems) {
+              const values = item.fieldValues?.nodes ?? [];
+
+              const statusValue = values.find((value) =>
+                value?.field?.id === statusField.id &&
+                (value.optionId === selectedOptionId || value.name === targetStatus));
+
+              if (!statusValue) {
+                skippedStatus.push(item.id);
+                continue;
+              }
+
+              const iterationValue = values.find((value) => value?.field?.id === iterationField.id);
+              if (iterationValue?.iterationId) {
+                skippedWithIteration.push(item.id);
+                continue;
+              }
+
+              const contentType = item.content?.__typename;
+              const contentNumber = item.content?.number;
+              const contentTitle = item.content?.title ?? '(untitled)';
+              const itemLabel = contentType && contentNumber
+                ? `${contentType} #${contentNumber}`
+                : `Project item ${item.id}`;
+
+              if (dryRun) {
+                core.info(`[dry-run] Would set ${itemLabel}: ${contentTitle} -> ${activeIteration.title}`);
+                changedItems.push(itemLabel);
+                continue;
+              }
+
+              await github.graphql(mutation, {
+                projectId,
+                itemId: item.id,
+                fieldId: iterationField.id,
+                iterationId: activeIteration.id,
+              });
+
+              core.info(`Set ${itemLabel}: ${contentTitle} -> ${activeIteration.title}`);
+              changedItems.push(itemLabel);
+            }
+
+            const mode = dryRun ? 'Dry run' : 'Update run';
+            const summaryLine = `${mode} summary: ${changedItems.length} item(s) ${dryRun ? 'would be updated' : 'updated'}, ${skippedWithIteration.length} already had iteration, ${skippedStatus.length} not in status ${targetStatus}.`;
+            const iterationLine = `Iteration used: ${activeIteration.title} (${activeIteration.startDate}, ${activeIteration.duration} day(s))`;
+
+            core.notice(summaryLine);
+            core.notice(iterationLine);
+
+            await core.summary
+              .addHeading('Project Iteration Assignment')
+              .addRaw(`${summaryLine}\n`)
+              .addRaw(`${iterationLine}\n`)
+              .write();
