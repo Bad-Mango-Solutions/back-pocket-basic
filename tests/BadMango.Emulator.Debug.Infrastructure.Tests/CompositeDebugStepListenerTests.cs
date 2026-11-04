@@ -172,8 +172,9 @@ public class CompositeDebugStepListenerTests
     /// Verifies that concurrent add/remove while another thread dispatches does
     /// not throw and leaves the composite in a consistent state.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
-    public void ConcurrentMutationAndDispatch_IsSafe()
+    public async System.Threading.Tasks.Task ConcurrentMutationAndDispatch_IsSafe()
     {
         var composite = new CompositeDebugStepListener();
         var listeners = Enumerable.Range(0, 8).Select(_ => new CallbackListener(() => { })).ToArray();
@@ -200,7 +201,7 @@ public class CompositeDebugStepListenerTests
         }
 
         cts.Cancel();
-        Assert.DoesNotThrowAsync(async () => await dispatcher);
+        await Assert.DoesNotThrowAsync(async () => await dispatcher);
 
         foreach (var l in listeners)
         {

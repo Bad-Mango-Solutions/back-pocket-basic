@@ -1,24 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>BadMango.Emulator.Devices</RootNamespace>
-    <NeutralLanguage>en</NeutralLanguage>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Features>IOperation;flow-analysis</Features>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    
+
     <!-- Package Metadata -->
-    <Company>Bad Mango Solutions</Company>
     <Product>BackPocket Emulator - Devices</Product>
     <Description>Device implementations for video, keyboard, timer, and MMU components.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;devices;peripherals</PackageTags>
   </PropertyGroup>
 
@@ -28,21 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.203">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="OpenTK.Audio.OpenAL" Version="4.9.4" />
-    <PackageReference Include="Serilog" Version="4.3.1" />
-    <PackageReference Include="Silk.NET.OpenAL.Soft.Native" Version="1.23.1" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
+    <PackageReference Include="OpenTK.Audio.OpenAL" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Silk.NET.OpenAL.Soft.Native" />
   </ItemGroup>
 
   <ItemGroup>
@@ -59,6 +34,17 @@
     <EmbeddedResource Include="Resources\boot.rom">
       <LogicalName>BadMango.Emulator.Devices.Resources.boot.rom</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

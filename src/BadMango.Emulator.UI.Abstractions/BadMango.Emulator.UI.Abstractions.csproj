@@ -1,24 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>BadMango.Emulator.UI.Abstractions</RootNamespace>
-    <NeutralLanguage>en</NeutralLanguage>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Features>IOperation;flow-analysis</Features>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 
     <!-- Package Metadata -->
-    <Company>Bad Mango Solutions</Company>
     <Product>BackPocket Emulator - UI Abstractions</Product>
     <Description>Shared interfaces, enums, and data structures for emulator UI components. Provides contracts that can be referenced without depending on the full UI implementation.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;ui;abstractions;contracts;6502;apple2</PackageTags>
   </PropertyGroup>
 
@@ -28,24 +15,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.203">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="BadMango.Emulator.UI" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI.Tests" />
     <InternalsVisibleTo Include="BadMango.Emulator.UI.Abstractions.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

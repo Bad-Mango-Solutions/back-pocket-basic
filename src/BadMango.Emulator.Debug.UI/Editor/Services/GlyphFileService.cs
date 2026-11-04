@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.UI.Editor.Services;
 
 using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 
 using Models;
@@ -165,7 +166,7 @@ public sealed class GlyphFileService : IGlyphFileService
 
         // Save bitmap to file
         using var stream = File.Create(path);
-        pixelBuffer.Bitmap.Save(stream);
+        pixelBuffer.Bitmap.Save(stream, options: PngBitmapEncoderOptions.Default);
 
         return Task.CompletedTask;
     }
