@@ -41,7 +41,9 @@ public static class DeviceFactoryExtensions
         /// </para>
         /// <para>
         /// The speaker controller handles the $C030 soft switch and records toggle events
-        /// for audio synthesis.
+        /// for audio synthesis. It receives the logger from
+        /// <see cref="DeviceFactoryRegistry.LoggerFactory"/> (or a sink-less logger when none is
+        /// configured) so host audio failures and the silent-output fallback are reported.
         /// </para>
         /// <para>
         /// Prefer using <see cref="RegisterStandardDeviceFactories"/> which registers all
@@ -50,7 +52,9 @@ public static class DeviceFactoryExtensions
         /// </remarks>
         public MachineBuilder RegisterSpeakerDeviceFactory()
         {
-            return builder.RegisterMotherboardDeviceFactory("speaker", _ => new SpeakerController());
+            return builder.RegisterMotherboardDeviceFactory(
+                "speaker",
+                _ => new SpeakerController(DeviceFactoryRegistry.ResolveLogger(typeof(SpeakerController))));
         }
 
         /// <summary>
