@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -24,8 +22,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be ZeroPage).</param>
     /// <param name="bit">The bit number to reset (0-7).</param>
     /// <returns>An opcode handler that executes RMB with the given bit number.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RMB(AddressingModeHandler addressingMode, int bit)
+public static OpcodeHandler RMB(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
         {
@@ -55,8 +52,7 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be ZeroPage).</param>
     /// <param name="bit">The bit number to set (0-7).</param>
     /// <returns>An opcode handler that executes SMB with the given bit number.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler SMB(AddressingModeHandler addressingMode, int bit)
+public static OpcodeHandler SMB(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
         {
@@ -91,8 +87,7 @@ public static partial class Instructions
     /// Base 3 cycles (addressing mode handles 2); +1 if branch taken; +1 more if page cross on branch.
     /// No flag changes.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BBR(AddressingModeHandler addressingMode, int bit)
+public static OpcodeHandler BBR(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
         {
@@ -151,8 +146,7 @@ public static partial class Instructions
     /// Base 3 cycles (addressing mode handles 2); +1 if branch taken; +1 more if page cross on branch.
     /// No flag changes.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler BBS(AddressingModeHandler addressingMode, int bit)
+public static OpcodeHandler BBS(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
         {

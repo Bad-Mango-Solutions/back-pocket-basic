@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Rendering;
 
-using System.Runtime.CompilerServices;
-
 // ReSharper disable once GrammarMistakeInComment
 
 /// <summary>
@@ -26,7 +24,6 @@ public static class ScaledPixelWriter
     /// <param name="y">The Y coordinate of the top-left corner of the scaled pixel.</param>
     /// <param name="color">The BGRA color value.</param>
     /// <param name="scale">The scale factor (1 = 1x1, 2 = 2x2, etc.).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void WriteScaledPixel(
         Span<uint> pixels,
         int stride,
@@ -59,7 +56,6 @@ public static class ScaledPixelWriter
     /// <returns>
     /// <see langword="true"/> if at least one pixel was written; otherwise, <see langword="false"/>.
     /// </returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool WriteScaledPixelSafe(
         Span<uint> pixels,
         int stride,
@@ -99,7 +95,6 @@ public static class ScaledPixelWriter
     /// <param name="width">The width of the rectangle.</param>
     /// <param name="height">The height of the rectangle.</param>
     /// <param name="color">The BGRA color value.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FillRectangle(
         Span<uint> pixels,
         int stride,
@@ -131,7 +126,6 @@ public static class ScaledPixelWriter
     /// <param name="width">The width of the rectangle.</param>
     /// <param name="height">The height of the rectangle.</param>
     /// <param name="color">The BGRA color value.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FillRectangleSafe(
         Span<uint> pixels,
         int stride,

@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core;
 using Core.Cpu;
 
@@ -20,8 +18,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>
     /// <returns>An opcode handler that executes JMP.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
+public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -40,8 +37,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Absolute).</param>
     /// <returns>An opcode handler that executes JSR.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
+public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -73,8 +69,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTS.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
+public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -102,8 +97,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTI.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler RTI(AddressingModeHandler addressingMode)
+public static OpcodeHandler RTI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

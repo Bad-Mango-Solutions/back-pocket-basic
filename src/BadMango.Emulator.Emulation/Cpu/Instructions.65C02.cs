@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -19,8 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STZ with the given addressing mode.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STZ(AddressingModeHandler addressingMode)
+public static OpcodeHandler STZ(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -45,8 +42,7 @@ public static partial class Instructions
     /// Tests the bits in the accumulator against memory, sets the Z flag if (A AND M) is zero,
     /// then sets the bits in memory that are set in the accumulator (M = M OR A).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TSB(AddressingModeHandler addressingMode)
+public static OpcodeHandler TSB(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -87,8 +83,7 @@ public static partial class Instructions
     /// Tests the bits in the accumulator against memory, sets the Z flag if (A AND M) is zero,
     /// then clears the bits in memory that are set in the accumulator (M = M AND (NOT A)).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler TRB(AddressingModeHandler addressingMode)
+public static OpcodeHandler TRB(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -129,8 +124,7 @@ public static partial class Instructions
     /// Puts the processor into a low-power state until an interrupt occurs.
     /// The CPU will resume execution when IRQ (if I flag clear) or NMI is signaled.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler WAI(AddressingModeHandler addressingMode)
+public static OpcodeHandler WAI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -155,8 +149,7 @@ public static partial class Instructions
     /// Stops the processor permanently until a hardware reset occurs.
     /// This is the deepest halt state and cannot be resumed by interrupts.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OpcodeHandler STP(AddressingModeHandler addressingMode)
+public static OpcodeHandler STP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

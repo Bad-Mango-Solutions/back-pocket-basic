@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Rendering;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Devices;
 
 /// <summary>
@@ -584,7 +582,6 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// <summary>
     /// Sets a 2×2 pixel block at the specified position.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void SetPixel2x2(Span<uint> pixels, int x, int y, uint color)
     {
         int stride = CanonicalWidth;
@@ -602,7 +599,6 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// <summary>
     /// Sets a 1×2 pixel block at the specified position (half-width for 80-column mode).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void SetPixel1x2(Span<uint> pixels, int x, int y, uint color)
     {
         int stride = CanonicalWidth;
@@ -618,7 +614,6 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
     /// <summary>
     /// Fills a rectangular block with the specified color.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void FillBlock(Span<uint> pixels, int x, int y, int width, int height, uint color)
     {
         int stride = CanonicalWidth;

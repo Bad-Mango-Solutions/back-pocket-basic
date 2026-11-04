@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Devices;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -224,7 +222,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(scanline, 7);
@@ -242,7 +239,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
     {
         var source = GetCharacterSource(useAltCharSet);
@@ -268,7 +264,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte GetCharacterScanlineWithEffects(
         byte charCode,
         int scanline,
@@ -296,7 +291,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GetScanlineRow(
         ReadOnlySpan<byte> characterCodes,
         int scanline,
@@ -493,7 +487,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     /// <param name="charCode">The character code.</param>
     /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
     /// <returns>The byte offset to the character's first scanline.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetCharacterOffset(byte charCode, bool useAltCharSet)
     {
         // Bank 1 = lower half ($0000-$07FF), Bank 2 = upper half ($0800-$0FFF)
@@ -506,7 +499,6 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     /// </summary>
     /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
     /// <returns>The physical memory containing the character data, or null if unavailable.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private PhysicalMemory? GetCharacterSource(bool useAltCharSet)
     {
         // Check if we should use glyph RAM overlay
