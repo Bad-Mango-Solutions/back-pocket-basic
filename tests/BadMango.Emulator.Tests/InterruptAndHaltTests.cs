@@ -144,16 +144,16 @@ public class InterruptAndHaltTests : CpuTestBase
         Write(0x2001, 0xEA);
         Cpu.Reset();
 
-        Cpu.Step(); // CLI -> I clear at next boundary
+        Cpu.Step(); // CLI -> I remains set until next boundary
         Cpu.SignalIRQ();
-        Cpu.Step(); // Enter IRQ handler, I set by interrupt entry
+        Cpu.Step(); // IRQ should not be taken until after the next instruction; still on CLI's next boundary
         Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True);
 
-        Cpu.SignalIRQ();
+        Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
         Cpu.Step(); // RTI should restore the previous I state immediately
         Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False);
 
-        Cpu.Step(); // With the restored mask, the pending IRQ should not re-enter immediately
+        Cpu.Step(); // With the restored mask, the next pending IRQ should not re-enter immediately
         Assert.That(Cpu.Registers.PC.GetWord(), Is.Not.EqualTo(0x2000));
     }
 
@@ -706,19 +706,21 @@ public class InterruptAndHaltTests : CpuTestBase
         Cpu.Reset();
 
         // Act
-        Cpu.Step(); // Execute CLI
-        Cpu.SignalIRQ(); // Signal IRQ (asserts on signal bus)
-        Cpu.Step(); // Process IRQ (pushes PC and P, jumps to IRQ vector)
+        Cpu.Step(); // Execute CLI; the next instruction still sees the old I state.
+        Cpu.SignalIRQ();
+        Cpu.Step(); // LDA executes before the IRQ is serviced.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should advance past the next instruction before IRQ");
 
-        // Deassert IRQ before executing RTI, simulating device acknowledgment
-        // In a real system, the interrupt handler would read the device's status
-        // register which clears the interrupt. For this test, we manually deassert.
+        Cpu.Step(); // Now the pending IRQ is serviced.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000), "PC should jump to the IRQ vector");
+
+        // Deassert IRQ before executing RTI, simulating device acknowledgment.
         Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
 
-        Cpu.Step(); // Execute RTI
+        Cpu.Step(); // Execute RTI and restore the previous state immediately.
 
         // Assert
-        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1001), "PC should be restored to instruction after CLI");
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1003), "PC should be restored to the instruction after the CLI-delayed IRQ window");
         Assert.That(Cpu.Registers.P & ProcessorStatusFlags.I, Is.EqualTo((ProcessorStatusFlags)0), "I flag should be restored to clear");
     }
 
