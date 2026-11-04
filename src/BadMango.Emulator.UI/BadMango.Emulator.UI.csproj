@@ -2,26 +2,13 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>bpui</AssemblyName>
     <RootNamespace>BadMango.Emulator.UI</RootNamespace>
-    <NeutralLanguage>en</NeutralLanguage>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Features>IOperation;flow-analysis</Features>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 
     <!-- Package Metadata -->
-    <Company>Bad Mango Solutions</Company>
     <Product>BackPocket Emulator - UI</Product>
     <Description>Avalonia-based cross-platform emulator user interface for BackPocket Emulator.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;ui;avalonia;apple2;6502</PackageTags>
   </PropertyGroup>
 
@@ -64,7 +51,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
     <AvaloniaResource Include="..\..\back-pocket-logo.png" Link="back-pocket-logo.png" />
   </ItemGroup>
 

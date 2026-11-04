@@ -1,24 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>BadMango.Emulator.Devices</RootNamespace>
-    <NeutralLanguage>en</NeutralLanguage>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Features>IOperation;flow-analysis</Features>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    
+
     <!-- Package Metadata -->
-    <Company>Bad Mango Solutions</Company>
     <Product>BackPocket Emulator - Devices</Product>
     <Description>Device implementations for video, keyboard, timer, and MMU components.</Description>
-    <Copyright>Copyright (c) Bad Mango Solutions</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageTags>applesoft;basic;emulator;devices;peripherals</PackageTags>
   </PropertyGroup>
 
@@ -31,10 +18,6 @@
     <PackageReference Include="OpenTK.Audio.OpenAL" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Silk.NET.OpenAL.Soft.Native" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="..\..\StyleCop.json" Link="StyleCop.json" />
   </ItemGroup>
 
   <ItemGroup>
