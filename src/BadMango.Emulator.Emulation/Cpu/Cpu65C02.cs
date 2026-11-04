@@ -235,6 +235,9 @@ public sealed class Cpu65C02 : CpuBase
                         Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte status = Read8(statusAddr);
                         Registers.P = (ProcessorStatusFlags)status | ProcessorStatusFlags.R;
+                        interruptDisableSample = Registers.P.IsInterruptDisabled();
+                        interruptDisablePendingValue = interruptDisableSample;
+                        interruptDisableChangePending = false;
 
                         Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiLowByte = Read8(rtiLowAddr);

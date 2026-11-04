@@ -89,19 +89,21 @@ public class InterruptAndHaltTests : CpuTestBase
     {
         WriteWord(0xFFFC, 0x1000);
         WriteWord(0xFFFE, 0x2000);
-        Write(0x1000, 0x78); // SEI
+        Write(0x1000, 0x58); // CLI
         Write(0x1001, 0xEA); // NOP
+        Write(0x1002, 0x78); // SEI
+        Write(0x1003, 0xEA); // NOP
         Write(0x2000, 0x40); // RTI
         Cpu.Reset();
 
-        Cpu.SignalIRQ();
-        Cpu.Step(); // SEI: pending IRQ still taken after the next instruction
+        Cpu.Step(); // CLI
+        Cpu.Step(); // NOP - establishes I=0 at the next boundary
+        Cpu.Step(); // SEI
         Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True);
 
-        Cpu.Step(); // NOP should execute before the IRQ is taken
-        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1002));
+        Cpu.SignalIRQ(); // IRQ becomes pending during SEI
 
-        Cpu.Step(); // IRQ is taken on the following boundary
+        Cpu.Step(); // Pending IRQ is taken at the next boundary before NOP executes
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
     }
 
@@ -138,20 +140,24 @@ public class InterruptAndHaltTests : CpuTestBase
     {
         WriteWord(0xFFFC, 0x1000);
         WriteWord(0xFFFE, 0x2000);
-        Write(0x1000, 0x40); // RTI
+        Write(0x1000, 0x58); // CLI
         Write(0x1001, 0xEA); // NOP
+        Write(0x1002, 0x40); // RTI
+        Write(0x1003, 0xEA); // NOP
         Write(0x2000, 0xEA); // NOP in IRQ handler
         Cpu.Reset();
         Cpu.Registers.SP.SetByte(0xFC);
         Write(0x01FD, 0x04); // pulled status: I set
-        Write(0x01FE, 0x01); // return low byte -> $1001
+        Write(0x01FE, 0x03); // return low byte -> $1003
         Write(0x01FF, 0x10); // return high byte
 
-        Cpu.SignalIRQ();
-        Cpu.Step(); // RTI restores I=1 while IRQ is held asserted.
+        Cpu.Step(); // CLI
+        Cpu.Step(); // NOP
+        Cpu.Step(); // RTI restores I=1 while no IRQ is pending.
         Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "RTI should restore I immediately on the same instruction");
-        Cpu.Step(); // If restoration is immediate, the held IRQ remains masked.
-        Assert.That(Cpu.Registers.PC.GetWord(), Is.Not.EqualTo(0x2000));
+        Cpu.SignalIRQ(); // IRQ becomes pending during RTI
+        Cpu.Step(); // If restoration is immediate, the pending IRQ remains masked.
+        Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x1004));
     }
 
     /// <summary>
