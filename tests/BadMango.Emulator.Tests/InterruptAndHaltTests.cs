@@ -144,16 +144,13 @@ public class InterruptAndHaltTests : CpuTestBase
         Write(0x2001, 0xEA);
         Cpu.Reset();
 
-        Cpu.Step(); // CLI -> I remains set until next boundary
+        Cpu.Step(); // CLI clears I immediately; the next boundary still samples the previous mask.
         Cpu.SignalIRQ();
-        Cpu.Step(); // IRQ should not be taken until after the next instruction; still on CLI's next boundary
-        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True);
+        Cpu.Step(); // The pending IRQ is still masked until the next boundary, so RTI executes normally.
+        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False, "RTI restores I immediately on the same instruction");
 
         Cpu.EventContext.Signals.Deassert(Core.Signaling.SignalLine.IRQ, 0, new(Cpu.GetCycles()));
-        Cpu.Step(); // RTI should restore the previous I state immediately
-        Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.False);
-
-        Cpu.Step(); // With the restored mask, the next pending IRQ should not re-enter immediately
+        Cpu.Step(); // Now the next boundary sees the restored mask and no re-entry is triggered.
         Assert.That(Cpu.Registers.PC.GetWord(), Is.Not.EqualTo(0x2000));
     }
 

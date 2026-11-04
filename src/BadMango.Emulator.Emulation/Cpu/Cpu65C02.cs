@@ -157,10 +157,9 @@ public sealed class Cpu65C02 : CpuBase
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
-        // Use the latched I state from the previous boundary when a delayed CLI/SEI/PLP
-        // change is still waiting to become visible. Otherwise, the live P.I value is the
-        // correct sample for the next boundary.
-        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
+        // Use the I value latched at the previous instruction boundary. CLI/SEI/PLP defer their
+        // effect by one instruction, while RTI takes effect immediately.
+        bool irqMaskedAtBoundary = interruptDisableSample;
 
         // Check for pending interrupts at instruction boundary using the signal bus.
         // With the concrete SignalBus, a single cached flag tells us whether an NMI
@@ -307,10 +306,10 @@ public sealed class Cpu65C02 : CpuBase
         // Execute opcode - handlers now access memory through this CPU instance
         opcodeTable.Execute(opcode, this);
 
-        // Latch the I state for the next boundary. CLI/SEI/PLP modify I during this
-        // instruction, but the new value must not be observed until the following boundary.
-        // RTI restores the flag immediately, so it updates the sample immediately instead of
-        // waiting for the next instruction.
+        // Latch the I state that will be sampled at the next instruction boundary.
+        // CLI/SEI/PLP change I immediately, but the next IRQ poll still uses the previous
+        // boundary sample. The new value becomes the sample only after the following instruction.
+        // RTI restores I immediately and therefore updates the sample right away.
         bool currentI = Registers.P.IsInterruptDisabled();
         if (opcode == 0x40)
         {
@@ -320,6 +319,8 @@ public sealed class Cpu65C02 : CpuBase
         }
         else if (opcode is 0x58 or 0x78 or 0x28)
         {
+            // Keep the previous boundary value for the next IRQ poll; the pending new value is
+            // applied after the following instruction.
             interruptDisablePendingValue = currentI;
             interruptDisableChangePending = true;
         }
