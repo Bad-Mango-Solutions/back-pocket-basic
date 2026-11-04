@@ -51,6 +51,13 @@ public sealed class Cpu65C02 : CpuBase
     /// </summary>
     private readonly SignalBus? concreteSignals;
 
+    /// <summary>
+    /// The I-bit value sampled at the previous instruction boundary. This value is used
+    /// for the next IRQ poll so CLI/SEI/PLP take effect one instruction later while RTI
+    /// restores the value immediately.
+    /// </summary>
+    private bool interruptDisableSample;
+
     private ITrapRegistry trapRegistry;
 
     /// <summary>
@@ -124,6 +131,7 @@ public sealed class Cpu65C02 : CpuBase
         // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
         // The CPU only resets its own state (registers, halt reason, stop flag).
         Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
+        interruptDisableSample = Registers.P.IsInterruptDisabled();
         HaltReason = HaltState.None;
         ClearStopRequest();
     }
@@ -135,13 +143,25 @@ public sealed class Cpu65C02 : CpuBase
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
+        // Use the latched I state from the previous boundary for this poll. CLI/SEI/PLP
+        // change I during the current instruction, so the next boundary continues to see
+        // the prior value; RTI and interrupt entry update the sample immediately.
+        bool irqMaskedAtBoundary = interruptDisableSample;
+
         // Check for pending interrupts at instruction boundary using the signal bus.
         // With the concrete SignalBus, a single cached flag tells us whether an NMI
         // edge is pending or IRQ is asserted; if neither, CheckInterrupts would
         // return false with no side effects, so skip it.
-        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts();
+        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts(irqMaskedAtBoundary);
         if (interruptProcessed)
         {
+            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisablePendingValue = interruptDisableSample;
+            interruptDisableChangedThisInstruction = false;
+            interruptDisableRestoredThisInstruction = false;
+            interruptDisableChangePending = false;
+
             // Interrupt was processed, TCU was updated by ProcessInterrupt
             // Advance the scheduler by the TCU value
             Cycle interruptCycles = Registers.TCU;
@@ -276,6 +296,40 @@ public sealed class Cpu65C02 : CpuBase
         // Execute opcode - handlers now access memory through this CPU instance
         opcodeTable.Execute(opcode, this);
 
+        // Latch the I state for the next boundary. CLI/SEI/PLP modify I during this
+        // instruction, but the new value must not be observed until the following boundary.
+        // RTI restores the flag immediately, so it updates the sample in-place instead of
+        // waiting for the next instruction.
+        if (Trace.Instruction == CpuInstructions.RTI)
+        {
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisablePendingValue = interruptDisableSample;
+            interruptDisableChangePending = false;
+        }
+        else if (interruptDisableChangePending)
+        {
+            interruptDisableSample = interruptDisablePendingValue;
+            interruptDisablePendingValue = false;
+            interruptDisableChangePending = false;
+
+            if (Trace.Instruction is CpuInstructions.CLI or CpuInstructions.SEI or CpuInstructions.PLP)
+            {
+                interruptDisablePendingValue = Registers.P.IsInterruptDisabled();
+                interruptDisableChangePending = true;
+            }
+        }
+        else if (Trace.Instruction is CpuInstructions.CLI or CpuInstructions.SEI or CpuInstructions.PLP)
+        {
+            interruptDisablePendingValue = Registers.P.IsInterruptDisabled();
+            interruptDisableChangePending = true;
+        }
+        else
+        {
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisablePendingValue = interruptDisableSample;
+            interruptDisableChangePending = false;
+        }
+
         // Capture TCU before advancing scheduler (for return value)
         Cycle instructionCycles = Registers.TCU;
 
@@ -400,7 +454,7 @@ public sealed class Cpu65C02 : CpuBase
     /// STP state cannot be resumed by interrupts.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool CheckInterrupts()
+    private bool CheckInterrupts(bool irqMaskedAtBoundary)
     {
         // STP cannot be resumed by interrupts
         if (HaltReason == HaltState.Stp)
@@ -429,12 +483,12 @@ public sealed class Cpu65C02 : CpuBase
             {
                 HaltReason = HaltState.None;
 
-                if (Registers.P.IsInterruptDisabled())
+                if (irqMaskedAtBoundary)
                 {
                     return false;
                 }
             }
-            else if (Registers.P.IsInterruptDisabled())
+            else if (irqMaskedAtBoundary)
             {
                 return false;
             }
