@@ -1,6 +1,7 @@
 name: Sync Wiki
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -36,7 +37,7 @@ jobs:
       - name: Sync wiki folder
         run: |
           echo "Syncing wiki files..."
-          rsync -av --delete wiki/ wiki-repo/
+          rsync -av --delete --exclude .git wiki/ wiki-repo/
           
       - name: Check for changes
         id: check_changes
