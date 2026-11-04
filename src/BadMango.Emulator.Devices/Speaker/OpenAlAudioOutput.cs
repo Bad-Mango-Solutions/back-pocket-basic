@@ -1,4 +1,4 @@
-// <copyright file="WaveOutAudioOutput.cs" company="Bad Mango Solutions">
+// <copyright file="OpenAlAudioOutput.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -23,7 +23,7 @@ using OpenTK.Audio.OpenAL;
 /// </para>
 /// </remarks>
 [ExcludeFromCodeCoverage]
-internal sealed class WaveOutAudioOutput : IAudioOutput
+internal sealed class OpenAlAudioOutput : IAudioOutput
 {
     private const int BufferCount = 3;
     private const int BufferSamples = 1024;
@@ -44,7 +44,7 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
     private bool disposed;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="WaveOutAudioOutput"/> class with the specified audio configuration.
+    /// Initializes a new instance of the <see cref="OpenAlAudioOutput"/> class with the specified audio configuration.
     /// </summary>
     /// <param name="sampleRate">The sample rate of the audio output, in samples per second.</param>
     /// <param name="bitsPerSample">The number of bits per audio sample (e.g., 16 for 16-bit audio).</param>
@@ -53,7 +53,7 @@ internal sealed class WaveOutAudioOutput : IAudioOutput
     /// This constructor sets up OpenAL streaming playback and starts a background thread
     /// that continuously feeds queued PCM data.
     /// </remarks>
-    public WaveOutAudioOutput(int sampleRate, int bitsPerSample, int channels)
+    public OpenAlAudioOutput(int sampleRate, int bitsPerSample, int channels)
     {
         if (bitsPerSample != 16)
         {

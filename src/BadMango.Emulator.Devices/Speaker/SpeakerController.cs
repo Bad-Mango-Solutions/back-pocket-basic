@@ -78,14 +78,14 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         try
         {
-            audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
+            audioOutput = new OpenAlAudioOutput(SampleRate, BitsPerSample, Channels);
         }
         catch (Exception ex) when (ex is PlatformNotSupportedException
                                        or ThreadStateException
                                        or InvalidOperationException
                                        or OutOfMemoryException)
         {
-            // WaveOutAudioOutput creates and starts a dedicated playback thread.
+            // OpenAlAudioOutput creates and starts a dedicated playback thread.
             // Thread.Start throws PlatformNotSupportedException where threads are
             // unavailable (e.g. single-threaded WASM), OutOfMemoryException when the
             // runtime cannot allocate the thread, ThreadStateException if the thread
