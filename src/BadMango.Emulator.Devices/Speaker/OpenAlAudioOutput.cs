@@ -37,6 +37,7 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     private const int BufferSamples = 1024;
     private const int MaxBufferedMilliseconds = 200;
     private const int MaxConsecutiveStreamErrors = 3;
+    private const int DisposeJoinTimeoutMilliseconds = 2000;
 
     private readonly int sampleRate;
     private readonly ILogger logger;
@@ -51,7 +52,7 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     private int source;
     private int[] buffers = [];
 
-    private bool disposed;
+    private int disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OpenAlAudioOutput"/> class with the specified audio configuration.
@@ -108,13 +109,23 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
             IsBackground = true,
             Name = "SpeakerController-Playback",
         };
-        playbackThread.Start();
+
+        try
+        {
+            playbackThread.Start();
+        }
+        catch (Exception ex) when (ex is ThreadStateException or OutOfMemoryException or PlatformNotSupportedException)
+        {
+            // The playback thread owns cleanup once it runs; if it never starts, release here.
+            CleanupAudioResources();
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public void Play(short[] samples)
     {
-        if (disposed || samples.Length == 0)
+        if (Volatile.Read(ref disposed) != 0 || samples.Length == 0)
         {
             return;
         }
@@ -124,20 +135,28 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The playback thread releases the OpenAL resources itself as it exits, so they are never
+    /// freed while it may still be using them. If the thread does not exit in time, it still
+    /// cleans up when it does, and the synchronization primitives are left for it.
+    /// </remarks>
     public void Dispose()
     {
-        if (disposed)
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
         {
             return;
         }
 
-        disposed = true;
-
         cts.Cancel();
         samplesAvailable.Set();
-        playbackThread.Join(1000);
 
-        CleanupAudioResources();
+        if (!playbackThread.Join(DisposeJoinTimeoutMilliseconds))
+        {
+            logger.Warning(
+                "Speaker playback thread did not exit within {Timeout} ms; it will release OpenAL resources when it exits",
+                DisposeJoinTimeoutMilliseconds);
+            return;
+        }
 
         cts.Dispose();
         samplesAvailable.Dispose();
@@ -243,10 +262,9 @@ internal sealed class OpenAlAudioOutput : IAudioOutput
         }
         finally
         {
-            if (!ALC.MakeContextCurrent(ALContext.Null))
-            {
-                logger.Debug("OpenAL context could not be released on the playback thread");
-            }
+            // The playback thread is the sole owner of the OpenAL resources once started, so it
+            // releases them here; Dispose never frees them while this loop may still run.
+            CleanupAudioResources();
         }
     }
 
