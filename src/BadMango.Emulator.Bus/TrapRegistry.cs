@@ -134,7 +134,7 @@ public sealed class TrapRegistry : ITrapRegistry, ITrapRegistryObserver
     /// </remarks>
     public bool IsEmpty
     {
-get => trappedAddresses.Count == 0;
+        get => trappedAddresses.Count == 0;
     }
 
     /// <inheritdoc />

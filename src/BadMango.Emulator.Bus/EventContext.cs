@@ -63,7 +63,7 @@ public sealed class EventContext : IEventContext
     /// <inheritdoc />
     public Cycle Now
     {
-get => Scheduler.Now;
+        get => Scheduler.Now;
     }
 
     /// <inheritdoc />

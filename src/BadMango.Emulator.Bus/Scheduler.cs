@@ -86,13 +86,13 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// <inheritdoc />
     public Cycle Now
     {
-get => now;
+        get => now;
     }
 
     /// <inheritdoc />
     public int PendingEventCount
     {
-get => eventQueue.Count;
+        get => eventQueue.Count;
     }
 
     /// <summary>
