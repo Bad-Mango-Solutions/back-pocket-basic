@@ -278,5 +278,14 @@ jobs:
             }
 
             const mode = dryRun ? 'Dry run' : 'Update run';
-            core.notice(`${mode} summary: ${changedItems.length} item(s) ${dryRun ? 'would be updated' : 'updated'}, ${skippedWithIteration.length} already had iteration, ${skippedStatus.length} not in status ${targetStatus}.`);
-            core.notice(`Iteration used: ${activeIteration.title} (${activeIteration.startDate}, ${activeIteration.duration} day(s))`);
+            const summaryLine = `${mode} summary: ${changedItems.length} item(s) ${dryRun ? 'would be updated' : 'updated'}, ${skippedWithIteration.length} already had iteration, ${skippedStatus.length} not in status ${targetStatus}.`;
+            const iterationLine = `Iteration used: ${activeIteration.title} (${activeIteration.startDate}, ${activeIteration.duration} day(s))`;
+
+            core.notice(summaryLine);
+            core.notice(iterationLine);
+
+            await core.summary
+              .addHeading('Project Iteration Assignment')
+              .addRaw(`${summaryLine}\n`)
+              .addRaw(`${iterationLine}\n`)
+              .write();
