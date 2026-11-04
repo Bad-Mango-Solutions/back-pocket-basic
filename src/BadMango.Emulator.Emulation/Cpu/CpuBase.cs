@@ -102,45 +102,45 @@ public abstract class CpuBase : ICpu
     /// <inheritdoc />
     public ref Registers Registers
     {
-get => ref registers;
+        get => ref registers;
     }
 
     /// <inheritdoc/>
     public bool Halted
     {
-get => haltReason != HaltState.None;
+        get => haltReason != HaltState.None;
     }
 
     /// <inheritdoc/>
     public HaltState HaltReason
     {
-get => haltReason;
-set => haltReason = value;
+        get => haltReason;
+        set => haltReason = value;
     }
 
     /// <inheritdoc/>
     public bool IsWaitingForInterrupt
     {
-get => haltReason == HaltState.Wai;
+        get => haltReason == HaltState.Wai;
     }
 
     /// <inheritdoc/>
     public bool IsDebuggerAttached
     {
-get => debugListener is not null;
+        get => debugListener is not null;
     }
 
     /// <inheritdoc/>
     public bool IsStopRequested
     {
-get => stopRequested;
+        get => stopRequested;
     }
 
     /// <inheritdoc/>
     public InstructionTrace Trace
     {
-get => trace;
-set => trace = value;
+        get => trace;
+        set => trace = value;
     }
 
     /// <summary>

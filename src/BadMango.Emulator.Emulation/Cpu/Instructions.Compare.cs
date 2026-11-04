@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CMP with the given addressing mode.</returns>
-public static OpcodeHandler CMP(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CMP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -62,7 +62,7 @@ public static OpcodeHandler CMP(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CPX with the given addressing mode.</returns>
-public static OpcodeHandler CPX(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CPX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -107,7 +107,7 @@ public static OpcodeHandler CPX(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CPY with the given addressing mode.</returns>
-public static OpcodeHandler CPY(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CPY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

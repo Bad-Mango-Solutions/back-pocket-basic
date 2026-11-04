@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ADC with the given addressing mode.</returns>
-public static OpcodeHandler ADC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ADC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -123,7 +123,7 @@ public static OpcodeHandler ADC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes SBC with the given addressing mode.</returns>
-public static OpcodeHandler SBC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler SBC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -230,7 +230,7 @@ public static OpcodeHandler SBC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes INC with the given addressing mode.</returns>
-public static OpcodeHandler INC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler INC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -260,7 +260,7 @@ public static OpcodeHandler INC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes DEC with the given addressing mode.</returns>
-public static OpcodeHandler DEC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler DEC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -290,7 +290,7 @@ public static OpcodeHandler DEC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes INX.</returns>
-public static OpcodeHandler INX(AddressingModeHandler addressingMode)
+    public static OpcodeHandler INX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -313,7 +313,7 @@ public static OpcodeHandler INX(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes INY.</returns>
-public static OpcodeHandler INY(AddressingModeHandler addressingMode)
+    public static OpcodeHandler INY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -336,7 +336,7 @@ public static OpcodeHandler INY(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes DEX.</returns>
-public static OpcodeHandler DEX(AddressingModeHandler addressingMode)
+    public static OpcodeHandler DEX(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -359,7 +359,7 @@ public static OpcodeHandler DEX(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes DEY.</returns>
-public static OpcodeHandler DEY(AddressingModeHandler addressingMode)
+    public static OpcodeHandler DEY(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -385,7 +385,7 @@ public static OpcodeHandler DEY(AddressingModeHandler addressingMode)
     /// <remarks>
     /// Alternate mnemonic for INC A. Operates on the accumulator register.
     /// </remarks>
-public static OpcodeHandler INA(AddressingModeHandler addressingMode)
+    public static OpcodeHandler INA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -411,7 +411,7 @@ public static OpcodeHandler INA(AddressingModeHandler addressingMode)
     /// <remarks>
     /// Alternate mnemonic for DEC A. Operates on the accumulator register.
     /// </remarks>
-public static OpcodeHandler DEA(AddressingModeHandler addressingMode)
+    public static OpcodeHandler DEA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

@@ -188,8 +188,8 @@ dotnet_diagnostic.SA1623.severity = none
 
 # SA1501: Statement should not be on a single line
 dotnet_diagnostic.SA1500.severity = warning
-dotnet_diagnostic.SA1501.severity = warning
-dotnet_diagnostic.SA1502.severity = warning
+dotnet_diagnostic.SA1501.severity = none
+dotnet_diagnostic.SA1502.severity = none
 dotnet_diagnostic.SA1503.severity = warning
 dotnet_diagnostic.SA1504.severity = warning
 dotnet_diagnostic.SA1505.severity = warning
@@ -203,6 +203,9 @@ dotnet_diagnostic.SA1513.severity = warning
 
 # SA1135: Using directives should be qualified
 dotnet_diagnostic.SA1135.severity = none
+
+dotnet_diagnostic.SA1137.severity = warning
+dotnet_diagnostic.IDS0055.severity = warning
 
 # NUnit2021: Incompatible types for EqualTo constraint
 dotnet_diagnostic.NUnit2021.severity = suggestion

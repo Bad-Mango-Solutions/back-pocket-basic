@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCC.</returns>
-public static OpcodeHandler BCC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BCC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -50,7 +50,7 @@ public static OpcodeHandler BCC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BCS.</returns>
-public static OpcodeHandler BCS(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BCS(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -83,7 +83,7 @@ public static OpcodeHandler BCS(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BEQ.</returns>
-public static OpcodeHandler BEQ(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BEQ(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -116,7 +116,7 @@ public static OpcodeHandler BEQ(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BNE.</returns>
-public static OpcodeHandler BNE(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BNE(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -149,7 +149,7 @@ public static OpcodeHandler BNE(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BMI.</returns>
-public static OpcodeHandler BMI(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BMI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -182,7 +182,7 @@ public static OpcodeHandler BMI(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BPL.</returns>
-public static OpcodeHandler BPL(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BPL(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -215,7 +215,7 @@ public static OpcodeHandler BPL(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVC.</returns>
-public static OpcodeHandler BVC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BVC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -248,7 +248,7 @@ public static OpcodeHandler BVC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Relative).</param>
     /// <returns>An opcode handler that executes BVS.</returns>
-public static OpcodeHandler BVS(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BVS(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -285,7 +285,7 @@ public static OpcodeHandler BVS(AddressingModeHandler addressingMode)
     /// This instruction is unique to the 65C02 and was not present in the original 6502.
     /// It always branches unconditionally.
     /// </remarks>
-public static OpcodeHandler BRA(AddressingModeHandler addressingMode)
+    public static OpcodeHandler BRA(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

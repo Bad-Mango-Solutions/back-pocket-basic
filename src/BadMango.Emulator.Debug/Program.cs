@@ -17,10 +17,11 @@ using Serilog.Events;
 using Serilog.Sinks.File;
 
 // Configure Serilog
+// For verbose device-level logging, add to the chain below:
+// .MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose)
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    ////.MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose) // Uncomment for verbose device-level logging
     .Enrich.FromLogContext()
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
