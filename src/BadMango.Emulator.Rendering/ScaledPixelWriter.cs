@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Rendering;
 
-
 // ReSharper disable once GrammarMistakeInComment
 
 /// <summary>

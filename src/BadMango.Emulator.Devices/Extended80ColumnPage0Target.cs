@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Devices;
 
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -110,7 +109,7 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         int subPage = offset >> SubPageShift;
@@ -123,7 +122,7 @@ public byte Read8(Addr physicalAddress, in BusAccess access)
     }
 
     /// <inheritdoc />
-public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         int subPage = offset >> SubPageShift;

@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-
 using Core;
 
 using Interfaces;
@@ -113,7 +112,7 @@ get => eventQueue.Count;
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-public EventHandle ScheduleAt(Cycle due, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
+    public EventHandle ScheduleAt(Cycle due, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
     {
         ArgumentNullException.ThrowIfNull(callback, nameof(callback));
 
@@ -128,7 +127,7 @@ public EventHandle ScheduleAt(Cycle due, ScheduledEventKind kind, int priority, 
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-public EventHandle ScheduleAfter(Cycle delta, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
+    public EventHandle ScheduleAfter(Cycle delta, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
     {
         return ScheduleAt(now + delta, kind, priority, callback, tag);
     }
@@ -147,7 +146,7 @@ public EventHandle ScheduleAfter(Cycle delta, ScheduledEventKind kind, int prior
     }
 
     /// <inheritdoc />
-public void Advance(Cycle delta)
+    public void Advance(Cycle delta)
     {
         if (delta == 0)
         {
@@ -170,7 +169,7 @@ public void Advance(Cycle delta)
     }
 
     /// <inheritdoc />
-public Cycle? PeekNextDue()
+    public Cycle? PeekNextDue()
     {
         // Skip cancelled events to find the next valid one
         while (eventQueue.TryPeek(out var nextEvent, out _))

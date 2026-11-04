@@ -87,7 +87,7 @@ public sealed class PixelBuffer : IDisposable
     /// </summary>
     /// <returns>A span of pixels that can be written to directly.</returns>
     /// <exception cref="ObjectDisposedException">Thrown when the buffer has been disposed.</exception>
-public Span<uint> GetPixels()
+    public Span<uint> GetPixels()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         return MemoryMarshal.Cast<byte, uint>(buffer.Span);
@@ -98,7 +98,7 @@ public Span<uint> GetPixels()
     /// </summary>
     /// <param name="color">The BGRA color value to fill with.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the buffer has been disposed.</exception>
-public void Fill(uint color)
+    public void Fill(uint color)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         GetPixels().Fill(color);
@@ -114,7 +114,7 @@ public void Fill(uint color)
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when coordinates are outside the buffer bounds.
     /// </exception>
-public void SetPixel(int x, int y, uint color)
+    public void SetPixel(int x, int y, uint color)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -142,7 +142,7 @@ public void SetPixel(int x, int y, uint color)
     /// <exception cref="InvalidOperationException">
     /// Thrown when the underlying buffer array cannot be accessed.
     /// </exception>
-public void Commit()
+    public void Commit()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -177,12 +177,14 @@ public void Commit()
         bitmap = null;
         disposed = true;
     }
-private void AllocateBuffer()
+
+    private void AllocateBuffer()
     {
         bufferOwner = MemoryPool<byte>.Shared.Rent(byteSize);
         buffer = bufferOwner.Memory[..byteSize];
     }
-private void CreateBitmap()
+
+    private void CreateBitmap()
     {
         bitmap = new(
             new(Width, Height),

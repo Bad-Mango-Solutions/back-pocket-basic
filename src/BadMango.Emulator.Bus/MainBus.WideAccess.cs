@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-
 /// <summary>
 /// Wide access (16/32-bit) operations and decomposition helpers for the main memory bus.
 /// </summary>
@@ -181,7 +180,7 @@ public void Write32(in BusAccess access, DWord value)
     }
 
     /// <inheritdoc />
-    public BusResult<Word> TryRead16(in BusAccess access)
+public BusResult<Word> TryRead16(in BusAccess access)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 2))
@@ -241,7 +240,7 @@ public void Write32(in BusAccess access, DWord value)
     }
 
     /// <inheritdoc />
-    public BusResult TryWrite16(in BusAccess access, Word value)
+public BusResult TryWrite16(in BusAccess access, Word value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 2))
@@ -301,7 +300,7 @@ public void Write32(in BusAccess access, DWord value)
     }
 
     /// <inheritdoc />
-    public BusResult<DWord> TryRead32(in BusAccess access)
+public BusResult<DWord> TryRead32(in BusAccess access)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 4))
@@ -361,7 +360,7 @@ public void Write32(in BusAccess access, DWord value)
     }
 
     /// <inheritdoc />
-    public BusResult TryWrite32(in BusAccess access, DWord value)
+public BusResult TryWrite32(in BusAccess access, DWord value)
     {
         // Cross-page check: always decompose
         if (CrossesPageBoundary(access.Address, 4))
@@ -434,7 +433,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 16-bit read into two 8-bit reads.
     /// </summary>
-    private Word DecomposeRead16(in BusAccess access)
+private Word DecomposeRead16(in BusAccess access)
     {
         var access0 = access with { WidthBits = 8 };
         byte low = Read8(access0);
@@ -448,7 +447,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 16-bit write into two 8-bit writes.
     /// </summary>
-    private void DecomposeWrite16(in BusAccess access, Word value)
+private void DecomposeWrite16(in BusAccess access, Word value)
     {
         var access0 = access with { WidthBits = 8 };
         Write8(access0, (byte)value);
@@ -460,7 +459,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 32-bit read into four 8-bit reads.
     /// </summary>
-    private DWord DecomposeRead32(in BusAccess access)
+private DWord DecomposeRead32(in BusAccess access)
     {
         var access0 = access with { WidthBits = 8 };
         byte b0 = Read8(access0);
@@ -480,7 +479,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 32-bit write into four 8-bit writes.
     /// </summary>
-    private void DecomposeWrite32(in BusAccess access, DWord value)
+private void DecomposeWrite32(in BusAccess access, DWord value)
     {
         var access0 = access with { WidthBits = 8 };
         Write8(access0, (byte)value);
@@ -498,7 +497,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 16-bit try-read into two 8-bit try-reads.
     /// </summary>
-    private BusResult<Word> DecomposeTryRead16(in BusAccess access)
+private BusResult<Word> DecomposeTryRead16(in BusAccess access)
     {
         var access0 = access with { WidthBits = 8 };
         var result0 = TryRead8(access0);
@@ -521,7 +520,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 16-bit try-write into two 8-bit try-writes.
     /// </summary>
-    private BusResult DecomposeTryWrite16(in BusAccess access, Word value)
+private BusResult DecomposeTryWrite16(in BusAccess access, Word value)
     {
         var access0 = access with { WidthBits = 8 };
         var result0 = TryWrite8(access0, (byte)value);
@@ -543,7 +542,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 32-bit try-read into four 8-bit try-reads.
     /// </summary>
-    private BusResult<DWord> DecomposeTryRead32(in BusAccess access)
+private BusResult<DWord> DecomposeTryRead32(in BusAccess access)
     {
         var access0 = access with { WidthBits = 8 };
         var result0 = TryRead8(access0);
@@ -580,7 +579,7 @@ private static bool CrossesPageBoundary(Addr address, int bytes)
     /// <summary>
     /// Decomposes a 32-bit try-write into four 8-bit try-writes.
     /// </summary>
-    private BusResult DecomposeTryWrite32(in BusAccess access, DWord value)
+private BusResult DecomposeTryWrite32(in BusAccess access, DWord value)
     {
         var access0 = access with { WidthBits = 8 };
         var result0 = TryWrite8(access0, (byte)value);

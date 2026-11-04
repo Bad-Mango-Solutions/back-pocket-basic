@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-
 using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
@@ -70,7 +69,7 @@ public sealed class AuxiliaryMemoryGeneralTarget : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         Addr targetOffset = physicalAddress - baseOffset;
         var target = controller.IsRamRdEnabled ? auxMemory : mainMemory;
@@ -78,7 +77,7 @@ public byte Read8(Addr physicalAddress, in BusAccess access)
     }
 
     /// <inheritdoc />
-public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         Addr targetOffset = physicalAddress - baseOffset;
         var target = controller.IsRamWrtEnabled ? auxMemory : mainMemory;

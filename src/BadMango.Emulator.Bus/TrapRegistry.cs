@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 
@@ -419,19 +418,19 @@ get => trappedAddresses.Count == 0;
     }
 
     /// <inheritdoc />
-public bool ContainsAddress(Addr address)
+    public bool ContainsAddress(Addr address)
     {
         return trappedAddresses.ContainsKey(address);
     }
 
     /// <inheritdoc />
-public bool HasTrap(Addr address)
+    public bool HasTrap(Addr address)
     {
         return HasTrap(address, TrapOperation.Call);
     }
 
     /// <inheritdoc />
-public bool HasTrap(Addr address, TrapOperation operation)
+    public bool HasTrap(Addr address, TrapOperation operation)
     {
         // Fast pre-check: if no trap exists at this address at all, skip the key scan
         if (!trappedAddresses.ContainsKey(address))

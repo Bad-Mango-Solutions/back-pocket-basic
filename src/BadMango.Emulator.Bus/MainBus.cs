@@ -185,7 +185,7 @@ public sealed partial class MainBus : IMemoryBus
     }
 
     /// <inheritdoc />
-public byte Read8(in BusAccess access)
+    public byte Read8(in BusAccess access)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
         Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);
@@ -227,7 +227,7 @@ public byte Read8(in BusAccess access)
     }
 
     /// <inheritdoc />
-public void Write8(in BusAccess access, byte value)
+    public void Write8(in BusAccess access, byte value)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
         Addr physicalAddress = page.PhysicalBase + (access.Address & PageMask);

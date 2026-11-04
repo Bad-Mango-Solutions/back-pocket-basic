@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Devices;
 
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -223,7 +222,7 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
     }
 
     /// <inheritdoc />
-public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
+    public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(scanline, 7);
 
@@ -240,7 +239,7 @@ public byte GetCharacterScanline(byte charCode, int scanline, bool useAltCharSet
     }
 
     /// <inheritdoc />
-public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
+    public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
     {
         var source = GetCharacterSource(useAltCharSet);
 
@@ -265,7 +264,7 @@ public Memory<byte> GetCharacterBitmap(byte charCode, bool useAltCharSet)
     }
 
     /// <inheritdoc />
-public byte GetCharacterScanlineWithEffects(
+    public byte GetCharacterScanlineWithEffects(
         byte charCode,
         int scanline,
         bool useAltCharSet,
@@ -292,7 +291,7 @@ public byte GetCharacterScanlineWithEffects(
     }
 
     /// <inheritdoc />
-public void GetScanlineRow(
+    public void GetScanlineRow(
         ReadOnlySpan<byte> characterCodes,
         int scanline,
         bool useAltCharSet,
@@ -488,7 +487,7 @@ public void GetScanlineRow(
     /// <param name="charCode">The character code.</param>
     /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
     /// <returns>The byte offset to the character's first scanline.</returns>
-private static int GetCharacterOffset(byte charCode, bool useAltCharSet)
+    private static int GetCharacterOffset(byte charCode, bool useAltCharSet)
     {
         // Bank 1 = lower half ($0000-$07FF), Bank 2 = upper half ($0800-$0FFF)
         int baseOffset = useAltCharSet ? CharacterSetSize : 0;
@@ -500,7 +499,7 @@ private static int GetCharacterOffset(byte charCode, bool useAltCharSet)
     /// </summary>
     /// <param name="useAltCharSet">Whether to use the alternate character set.</param>
     /// <returns>The physical memory containing the character data, or null if unavailable.</returns>
-private PhysicalMemory? GetCharacterSource(bool useAltCharSet)
+    private PhysicalMemory? GetCharacterSource(bool useAltCharSet)
     {
         // Check if we should use glyph RAM overlay
         // Bank 1 = lower half ($0000-$07FF), Bank 2 = upper half ($0800-$0FFF)

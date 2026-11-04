@@ -5,7 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-
 using Core;
 using Core.Cpu;
 

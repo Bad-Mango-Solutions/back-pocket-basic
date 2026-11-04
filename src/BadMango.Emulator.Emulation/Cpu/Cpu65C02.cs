@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Signaling;
@@ -145,7 +144,7 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     /// <inheritdoc/>
-public override CpuStepResult Step()
+    public override CpuStepResult Step()
     {
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
@@ -360,7 +359,7 @@ public override CpuStepResult Step()
     }
 
     // ─── Private Helper Methods ─────────────────────────────────────────
-private void AdvanceScheduler(Cycle cycles)
+    private void AdvanceScheduler(Cycle cycles)
     {
         if (concreteScheduler is not null)
         {
@@ -371,7 +370,8 @@ private void AdvanceScheduler(Cycle cycles)
             EventContext.Scheduler.Advance(cycles);
         }
     }
-private bool MayHaveTrapAt(Addr address)
+
+    private bool MayHaveTrapAt(Addr address)
     {
         if (concreteTrapRegistry is not null)
         {
@@ -380,7 +380,8 @@ private bool MayHaveTrapAt(Addr address)
 
         return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
     }
-private byte FetchByte()
+
+    private byte FetchByte()
     {
         var pc = Registers.PC.GetAddr();
         Registers.PC.Advance();
@@ -402,7 +403,7 @@ private byte FetchByte()
     /// to differentiate between data reads and instruction fetches. This enables
     /// features like trap interception and NX (no-execute) enforcement.
     /// </remarks>
-private byte InstructionFetch8(Addr address)
+    private byte InstructionFetch8(Addr address)
     {
         var access = CreateInstructionFetchAccess(address, 8);
         var result = Bus.TryRead8(access);
@@ -431,7 +432,7 @@ private byte InstructionFetch8(Addr address)
     /// If the CPU is in WAI state, interrupts will resume execution.
     /// STP state cannot be resumed by interrupts.
     /// </remarks>
-private bool CheckInterrupts(bool irqMaskedAtBoundary)
+    private bool CheckInterrupts(bool irqMaskedAtBoundary)
     {
         // STP cannot be resumed by interrupts
         if (HaltReason == HaltState.Stp)
@@ -490,7 +491,7 @@ private bool CheckInterrupts(bool irqMaskedAtBoundary)
     /// 5. Load PC from interrupt vector
     /// Total: 7 cycles (handled by caller).
     /// </remarks>
-private void ProcessInterrupt(Addr vector)
+    private void ProcessInterrupt(Addr vector)
     {
         var pc = Registers.PC.GetWord();
 

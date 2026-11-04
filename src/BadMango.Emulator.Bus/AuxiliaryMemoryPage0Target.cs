@@ -4,7 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-
 using BadMango.Emulator.Bus.Interfaces;
 
 /// <summary>
@@ -103,7 +102,7 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr physicalAddress, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         var (target, targetOffset) = ResolveReadTarget(offset);
@@ -111,7 +110,7 @@ public byte Read8(Addr physicalAddress, in BusAccess access)
     }
 
     /// <inheritdoc />
-public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     {
         int offset = (int)(physicalAddress & 0x0FFF);
         var (target, targetOffset) = ResolveWriteTarget(offset);
@@ -139,7 +138,7 @@ public void Write8(Addr physicalAddress, byte value, in BusAccess access)
     /// </summary>
     /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
     /// <returns>A tuple of the target and the offset within that target.</returns>
-private (IBusTarget Target, int Offset) ResolveReadTarget(int offset)
+    private (IBusTarget Target, int Offset) ResolveReadTarget(int offset)
     {
         // Zero page ($0000-$00FF): Controlled by ALTZP
         if (offset < ZeroPageEnd)
@@ -192,7 +191,7 @@ private (IBusTarget Target, int Offset) ResolveReadTarget(int offset)
     /// </summary>
     /// <param name="offset">The offset within page 0 (0x000-0xFFF).</param>
     /// <returns>A tuple of the target and the offset within that target.</returns>
-private (IBusTarget Target, int Offset) ResolveWriteTarget(int offset)
+    private (IBusTarget Target, int Offset) ResolveWriteTarget(int offset)
     {
         // Zero page ($0000-$00FF): Controlled by ALTZP
         if (offset < ZeroPageEnd)
