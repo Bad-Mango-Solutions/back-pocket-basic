@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes STZ with the given addressing mode.</returns>
-public static OpcodeHandler STZ(AddressingModeHandler addressingMode)
+    public static OpcodeHandler STZ(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -42,7 +42,7 @@ public static OpcodeHandler STZ(AddressingModeHandler addressingMode)
     /// Tests the bits in the accumulator against memory, sets the Z flag if (A AND M) is zero,
     /// then sets the bits in memory that are set in the accumulator (M = M OR A).
     /// </remarks>
-public static OpcodeHandler TSB(AddressingModeHandler addressingMode)
+    public static OpcodeHandler TSB(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -83,7 +83,7 @@ public static OpcodeHandler TSB(AddressingModeHandler addressingMode)
     /// Tests the bits in the accumulator against memory, sets the Z flag if (A AND M) is zero,
     /// then clears the bits in memory that are set in the accumulator (M = M AND (NOT A)).
     /// </remarks>
-public static OpcodeHandler TRB(AddressingModeHandler addressingMode)
+    public static OpcodeHandler TRB(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -124,7 +124,7 @@ public static OpcodeHandler TRB(AddressingModeHandler addressingMode)
     /// Puts the processor into a low-power state until an interrupt occurs.
     /// The CPU will resume execution when IRQ (if I flag clear) or NMI is signaled.
     /// </remarks>
-public static OpcodeHandler WAI(AddressingModeHandler addressingMode)
+    public static OpcodeHandler WAI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -149,7 +149,7 @@ public static OpcodeHandler WAI(AddressingModeHandler addressingMode)
     /// Stops the processor permanently until a hardware reset occurs.
     /// This is the deepest halt state and cannot be resumed by interrupts.
     /// </remarks>
-public static OpcodeHandler STP(AddressingModeHandler addressingMode)
+    public static OpcodeHandler STP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

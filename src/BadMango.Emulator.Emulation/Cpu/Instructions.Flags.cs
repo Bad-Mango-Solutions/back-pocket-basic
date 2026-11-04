@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLC.</returns>
-public static OpcodeHandler CLC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CLC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -38,7 +38,7 @@ public static OpcodeHandler CLC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SEC.</returns>
-public static OpcodeHandler SEC(AddressingModeHandler addressingMode)
+    public static OpcodeHandler SEC(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -59,7 +59,7 @@ public static OpcodeHandler SEC(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLI.</returns>
-public static OpcodeHandler CLI(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CLI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -80,7 +80,7 @@ public static OpcodeHandler CLI(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SEI.</returns>
-public static OpcodeHandler SEI(AddressingModeHandler addressingMode)
+    public static OpcodeHandler SEI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -101,7 +101,7 @@ public static OpcodeHandler SEI(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLD.</returns>
-public static OpcodeHandler CLD(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CLD(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -122,7 +122,7 @@ public static OpcodeHandler CLD(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SED.</returns>
-public static OpcodeHandler SED(AddressingModeHandler addressingMode)
+    public static OpcodeHandler SED(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -143,7 +143,7 @@ public static OpcodeHandler SED(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLV.</returns>
-public static OpcodeHandler CLV(AddressingModeHandler addressingMode)
+    public static OpcodeHandler CLV(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

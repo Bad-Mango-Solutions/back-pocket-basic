@@ -18,7 +18,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>
     /// <returns>An opcode handler that executes JMP.</returns>
-public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
+    public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -37,7 +37,7 @@ public static OpcodeHandler JMP(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Absolute).</param>
     /// <returns>An opcode handler that executes JSR.</returns>
-public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
+    public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -69,7 +69,7 @@ public static OpcodeHandler JSR(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTS.</returns>
-public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
+    public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -97,7 +97,7 @@ public static OpcodeHandler RTS(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes RTI.</returns>
-public static OpcodeHandler RTI(AddressingModeHandler addressingMode)
+    public static OpcodeHandler RTI(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

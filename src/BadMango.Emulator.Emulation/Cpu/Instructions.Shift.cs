@@ -17,7 +17,7 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ASL on the accumulator.</returns>
-public static OpcodeHandler ASLa(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ASLa(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -52,7 +52,7 @@ public static OpcodeHandler ASLa(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ASL on memory.</returns>
-public static OpcodeHandler ASL(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ASL(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -91,7 +91,7 @@ public static OpcodeHandler ASL(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes LSR on the accumulator.</returns>
-public static OpcodeHandler LSRa(AddressingModeHandler addressingMode)
+    public static OpcodeHandler LSRa(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -126,7 +126,7 @@ public static OpcodeHandler LSRa(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LSR on memory.</returns>
-public static OpcodeHandler LSR(AddressingModeHandler addressingMode)
+    public static OpcodeHandler LSR(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -165,7 +165,7 @@ public static OpcodeHandler LSR(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROL on the accumulator.</returns>
-public static OpcodeHandler ROLa(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ROLa(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -201,7 +201,7 @@ public static OpcodeHandler ROLa(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROL on memory.</returns>
-public static OpcodeHandler ROL(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ROL(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -242,7 +242,7 @@ public static OpcodeHandler ROL(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROR on the accumulator.</returns>
-public static OpcodeHandler RORa(AddressingModeHandler addressingMode)
+    public static OpcodeHandler RORa(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {
@@ -278,7 +278,7 @@ public static OpcodeHandler RORa(AddressingModeHandler addressingMode)
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROR on memory.</returns>
-public static OpcodeHandler ROR(AddressingModeHandler addressingMode)
+    public static OpcodeHandler ROR(AddressingModeHandler addressingMode)
     {
         return cpu =>
         {

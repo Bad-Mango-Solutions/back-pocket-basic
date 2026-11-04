@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Devices.Speaker;
 using System.Diagnostics.CodeAnalysis;
 
 using BadMango.Emulator.Devices.Interfaces;
+
 using OpenTK.Audio.OpenAL;
 
 using Serilog;
