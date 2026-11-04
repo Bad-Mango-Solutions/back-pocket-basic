@@ -85,7 +85,9 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
                                        or InvalidOperationException
                                        or OutOfMemoryException)
         {
-            // OpenAlAudioOutput creates and starts a dedicated playback thread.
+            // OpenAlAudioOutput throws PlatformNotSupportedException when the OpenAL
+            // native library cannot be loaded or OpenAL reports a setup error.
+            // It also creates and starts a dedicated playback thread.
             // Thread.Start throws PlatformNotSupportedException where threads are
             // unavailable (e.g. single-threaded WASM), OutOfMemoryException when the
             // runtime cannot allocate the thread, ThreadStateException if the thread
