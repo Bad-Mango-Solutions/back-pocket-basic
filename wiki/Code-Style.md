@@ -1,5 +1,8 @@
 # Code Style
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
+
+
 Coding standards and style guidelines for the BackPocketBASIC project.
 
 ## Overview
@@ -561,4 +564,4 @@ Before submitting PR, verify:
 
 - **[Development Setup](Development-Setup)** - Environment configuration
 - **[Testing Guide](Testing-Guide)** - Writing tests
-- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Contribution process
+- **[Contributing](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md)** - Contribution process

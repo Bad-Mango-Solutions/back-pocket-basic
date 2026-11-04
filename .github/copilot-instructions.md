@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository contains code to emulate an Applesoft BASIC interpreter, enhancing its capabilities and performance. The project is structured to facilitate contributions, maintainability, and adherence to coding standards.
+This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2e machine), structured so it can grow into the 65816 and a theoretical 32-bit 65832. The Applesoft BASIC interpreter projects (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). The current project layout is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure).
 
 ### Target Framework
 
@@ -111,7 +111,7 @@ This repository contains code to emulate an Applesoft BASIC interpreter, enhanci
 ## Logging
 - **Use Serilog `ILogger`.** All new code that needs to log MUST take `Serilog.ILogger` as a constructor parameter and store it in a `private readonly` field. Call `logger.ForContext<TThis>()` once in the constructor when a per-class context is desired.
 - **Do not use `System.Diagnostics.Trace` or `System.Diagnostics.Debug` for application logging.** They are not testable, are not configurable, and bypass the configured Serilog sinks. Reserve `Debug.Assert`-style invariants for genuine programmer-error checks only.
-- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The frontend application projects (e.g. `BadMango.Emulator.UI`, `BadMango.Basic.Console`) are responsible for configuring `Log.Logger` and registering an `ILogger` instance with Autofac at startup.
+- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The host executables (`BadMango.Emulator.UI` and `BadMango.Emulator.Debug`) are responsible for configuring Serilog and registering an `ILogger` instance with Autofac at startup. `BadMango.Emulator.Debug` assigns `Log.Logger`.
 - **Make classes DI-friendly.** Constructors should accept their collaborators (including the `ILogger`) as parameters; avoid `new`-ing services or loggers internally so consumers can substitute test doubles.
 - **Log outside hot loops.** Logging belongs at well-defined boundaries (configuration, mount/eject, error paths, lifecycle transitions). Do not log per CPU cycle, per scan-line, per emitted nibble, or inside any other timing-sensitive inner loop. Lift logging out of the loop or guard it with `logger.IsEnabled(LogEventLevel.Verbose)` when verbose detail is genuinely needed.
 - **Use structured logging.** Prefer `logger.Warning("Foo {Bar} failed because {Reason}.", bar, reason)` over interpolated or concatenated strings so messages remain queryable.

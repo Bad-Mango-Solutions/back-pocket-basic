@@ -7,6 +7,7 @@ Thank you for your interest in contributing to BackPocket Emulator! This documen
 - [Code of Conduct](#code-of-conduct)
 - [How Can I Contribute?](#how-can-i-contribute)
 - [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
 - [Coding Guidelines](#coding-guidelines)
 - [Testing Guidelines](#testing-guidelines)
@@ -80,6 +81,114 @@ This project is committed to providing a welcoming and inclusive environment for
    dotnet test BackPocketEmulator.slnx
    ```
 
+## Project Structure
+
+`BackPocketEmulator.slnx` is the solution (.NET 10, NUnit, StyleCop). On disk, every project is a direct child of `src/` or `tests/`. The solution also groups those projects into virtual folders for the IDE (`/src/emulator/`, `/src/emulator/infrastructure/`, `/src/emulator/ui/`, and `/tests/`).
+
+The Applesoft BASIC interpreter (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+
+```
+back-pocket-emulator/
+├── BackPocketEmulator.slnx          # Solution
+├── src/
+│   ├── BadMango.Emulator.Core/                 # CPU contracts, registers, signals, machine profiles
+│   ├── BadMango.Emulator.Bus/                  # Main bus, memory map, device registry, machine builder
+│   ├── BadMango.Emulator.Emulation/            # 65C02 CPU; 65816 and 65832 placeholders
+│   ├── BadMango.Emulator.Devices/              # Peripherals (video, keyboard, speaker, Disk II, cards)
+│   ├── BadMango.Emulator.Storage/              # Disk images, block media, GCR nibblizing
+│   ├── BadMango.Emulator.Rendering/            # Pixel buffers and character rendering
+│   ├── BadMango.Emulator.Systems/              # Pocket2e machine composition
+│   ├── BadMango.Emulator.Infrastructure/       # Event aggregator (no emulator dependencies)
+│   ├── BadMango.Emulator.Configuration/        # App settings models and path validation
+│   ├── BadMango.Emulator.UI.Abstractions/      # UI contracts without the Avalonia app
+│   ├── BadMango.Emulator.UI/                   # Avalonia host, assembly name bpui
+│   ├── BadMango.Emulator.TextEditor/           # Avalonia editor with syntax highlighting
+│   ├── BadMango.Emulator.Debug.Infrastructure/ # REPL, commands, breakpoints, trace
+│   ├── BadMango.Emulator.Debug.UI/             # Avalonia windows for the console debugger
+│   ├── BadMango.Emulator.Debug/                # Console host, assembly name emudbg
+│   └── BadMango.Emulator.Interop/              # Reserved for native and Rust interop
+├── tests/
+│   ├── BadMango.Unit.Components/                        # Shared NUnit and Serilog test helpers
+│   ├── BadMango.Emulator.Tests/                         # CPU, machine, and cross-project tests
+│   ├── BadMango.Emulator.Bus.Tests/
+│   ├── BadMango.Emulator.Configuration.Tests/
+│   ├── BadMango.Emulator.Debug.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Debug.Tests/
+│   ├── BadMango.Emulator.Debug.UI.Tests/
+│   ├── BadMango.Emulator.Devices.Tests/
+│   ├── BadMango.Emulator.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Rendering.Tests/
+│   ├── BadMango.Emulator.Storage.Tests/
+│   ├── BadMango.Emulator.TextEditor.Tests/
+│   └── BadMango.Emulator.UI.Tests/
+├── profiles/                          # Machine profile JSON
+├── schemas/                           # machine-profile.schema.json
+├── roms/                              # Apple II ROM images
+├── disks/                             # Sample disk images
+├── samples/                           # Sample machine-code programs
+├── specs/                             # Architecture and device specifications
+├── reference/                         # Design notes
+├── references/                        # Additional reference notes
+├── wiki/                              # Wiki markdown (synced to the GitHub wiki)
+└── .github/                           # CI workflows, issue templates, Copilot instructions
+```
+
+Editor and analyzer settings live in `.editorconfig`, `StyleCop.json`, and `BackPocketEmulator.slnx.DotSettings`. Longer guides (`README.md`, this file, `SETUP_GUIDE.md`, and the implementation notes) sit at the repository root next to those folders. CI workflows are under `.github/workflows/`.
+
+### What each project does
+
+| Project | Role | Project references |
+| --- | --- | --- |
+| `BadMango.Emulator.Core` | CPU contracts and state (registers, opcode table, status flags), signal bus, machine-profile models and loader, debug-step listener contracts | none |
+| `BadMango.Emulator.Infrastructure` | Event aggregator and Autofac registration. Safe for any component to reference | none |
+| `BadMango.Emulator.Configuration` | Application settings, settings migration, and path validation | none |
+| `BadMango.Emulator.Storage` | Storage backends, sector and block media, disk-image factory, GCR 6-and-2 nibblizer | none |
+| `BadMango.Emulator.TextEditor` | Reusable Avalonia text editor (assembly source and other file types) | none |
+| `BadMango.Emulator.Bus` | `MainBus`, layered memory mapping, I/O page dispatch, device registry, `Machine` and `MachineBuilder`, peripheral contracts | Core |
+| `BadMango.Emulator.Emulation` | `Cpu65C02` and shared instruction and addressing-mode implementation. `Cpu65816` and `Cpu65832` are placeholders in the same project | Core, Bus |
+| `BadMango.Emulator.Devices` | Keyboard, video, speaker, language card, 80-column card, game I/O, Disk II, Thunderclock, and PocketWatch | Bus, Storage |
+| `BadMango.Emulator.Rendering` | Pixel buffers, character renderer, and Pocket2e video renderer | Devices |
+| `BadMango.Emulator.Systems` | Pocket2e (Apple IIe-class 65C02) machine builder extensions | Bus, Core, Emulation, Devices |
+| `BadMango.Emulator.Debug.Infrastructure` | Debug REPL, command modules, breakpoints, watchpoints, and tracing | Bus, Core, Devices, Emulation, Rendering, Storage, Systems |
+| `BadMango.Emulator.Debug.UI` | Avalonia popup windows (video, glyph editor, status monitors) used by the console debugger. Library, not an executable | Bus, Debug.Infrastructure, Devices, Rendering, TextEditor |
+| `BadMango.Emulator.Debug` | `emudbg` console host. Configures Serilog and starts the REPL | Core, Bus, Emulation, Debug.Infrastructure, Debug.UI |
+| `BadMango.Emulator.UI.Abstractions` | Theme, settings, and pop-out contracts shared without taking a dependency on the GUI executable | Configuration, Infrastructure |
+| `BadMango.Emulator.UI` | `bpui` Avalonia application (MVVM, Autofac, generic host). Configures Serilog at startup | Core, Infrastructure, UI.Abstractions |
+| `BadMango.Emulator.Interop` | Leaf project reserved for native and Rust interop | Core |
+| `BadMango.Unit.Components` | Test support only: `Generator` (including `Generator.Log()`), NUnit Serilog sink, performance-test helper. Every test project references it | none |
+| `BadMango.Emulator.Tests` | CPU, disassembler, machine-builder, profile, device, storage, and debug-infrastructure tests. This is the test project for Emulation, Systems, and Core | Unit.Components, Bus, Core, Debug.Infrastructure, Devices, Emulation, Storage, Systems |
+| `BadMango.Emulator.Bus.Tests` | Bus, memory map, and device-registry tests | Unit.Components, Bus |
+| `BadMango.Emulator.Configuration.Tests` | Settings and path-validation tests | Unit.Components, Configuration |
+| `BadMango.Emulator.Debug.Infrastructure.Tests` | REPL command tests | Unit.Components, Bus, Debug.Infrastructure, Storage |
+| `BadMango.Emulator.Debug.Tests` | Console host module tests | Unit.Components, Debug |
+| `BadMango.Emulator.Debug.UI.Tests` | Debug window and video-window tests | Unit.Components, Debug.Infrastructure, Debug.UI |
+| `BadMango.Emulator.Devices.Tests` | Peripheral tests | Unit.Components, Core, Devices, Storage |
+| `BadMango.Emulator.Infrastructure.Tests` | Event aggregator tests | Unit.Components, Infrastructure |
+| `BadMango.Emulator.Rendering.Tests` | Pixel buffer and character renderer tests | Unit.Components, Rendering |
+| `BadMango.Emulator.Storage.Tests` | Disk image and GCR tests | Unit.Components, Storage |
+| `BadMango.Emulator.TextEditor.Tests` | Editor and syntax-highlighting tests | Unit.Components, Debug.Infrastructure, TextEditor |
+| `BadMango.Emulator.UI.Tests` | Avalonia headless tests for the GUI host | Unit.Components, Configuration, Infrastructure, UI.Abstractions, UI |
+
+`BadMango.Emulator.Emulation`, `BadMango.Emulator.Systems`, and `BadMango.Emulator.Core` are covered by `BadMango.Emulator.Tests`. `BadMango.Emulator.Interop` is the library project without a paired test project.
+
+### How the projects relate
+
+Machine construction runs from the contracts outward:
+
+1. `Core` defines CPU state, signaling, and machine profiles. `Bus` implements the memory map and builds a `Machine` from a profile.
+2. `Emulation` executes instructions against that bus. `Devices` plugs peripherals into the bus and reads media through `Storage`. `Rendering` turns device video state into pixels.
+3. `Systems` is the Pocket2e recipe: it wires `Cpu65C02`, the bus, and the devices into one machine.
+4. `Debug.Infrastructure` drives that machine from a REPL. `Debug.UI` and `TextEditor` add Avalonia windows. `Debug` is the executable that hosts both (`dotnet run --project src/BadMango.Emulator.Debug/BadMango.Emulator.Debug.csproj`).
+5. `UI.Abstractions` and `UI` are the graphical host (`dotnet run --project src/BadMango.Emulator.UI/BadMango.Emulator.UI.csproj`). That host references `Core`, `Infrastructure`, and `UI.Abstractions`.
+6. `Infrastructure` and `Configuration` sit beside the machine. The GUI abstractions use both. The machine projects do not.
+
+Solution virtual folders, for orientation in an IDE:
+
+- `/src/emulator/`: Bus, Devices, Interop, Systems
+- `/src/emulator/infrastructure/`: Configuration, Core, Debug.Infrastructure, Emulation, Infrastructure, Rendering, Storage, TextEditor, UI.Abstractions
+- `/src/emulator/ui/`: Debug, Debug.UI, UI
+- `/tests/`: every test project, including `BadMango.Unit.Components`
+
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -130,11 +239,11 @@ git commit -m "Brief description of changes"
 
 Examples:
 ```
-Add support for FLASH command in text mode
+Add 65C02 interrupt sampling after CLI
 
-Fix off-by-one error in array bounds checking
+Fix off-by-one error in bus page mapping
 
-Improve performance of lexer tokenization
+Record a bus fault when a device read is unmapped
 
 Fixes #123
 ```
@@ -167,9 +276,8 @@ Example:
 /// <summary>
 /// Executes a single CPU instruction and returns the cycles consumed.
 /// </summary>
-/// <param name="expression">The expression to evaluate.</param>
-/// <returns>The numeric or string result of the expression.</returns>
-public object EvaluateExpression(Expression expression)
+/// <returns>The cycle count consumed by the instruction.</returns>
+public int Step()
 {
     // Implementation
 }
@@ -184,15 +292,6 @@ public object EvaluateExpression(Expression expression)
 - When translating an exception, keep the original as the `InnerException`; rethrow unchanged with `throw;`
 - Use guard helpers such as `ArgumentNullException.ThrowIfNull` instead of hand-written argument checks
 
-### Project Structure
-
-- **AST/**: Abstract Syntax Tree node definitions
-- **Emulation/**: 6502 CPU and Apple II emulation
-- **Execution/**: Interpreter implementation
-- **Lexer/**: Tokenization logic
-- **Parser/**: Parsing logic
-- **Runtime/**: Runtime environment and state
-
 ### Naming Conventions
 
 - Classes: `PascalCase`
@@ -206,7 +305,7 @@ public object EvaluateExpression(Expression expression)
 
 ### Unit Tests
 
-- Tests are in `tests/BadMango.Emulator.*.Tests/`
+- Tests live in `tests/`. Shared helpers are `tests/BadMango.Unit.Components/`. See [Project Structure](#project-structure) for which test project covers which library.
 - Use NUnit framework
 - Follow Arrange-Act-Assert pattern
 - One logical assertion per test when possible
@@ -214,18 +313,16 @@ public object EvaluateExpression(Expression expression)
 Example:
 ```csharp
 [Test]
-public void Print_Statement_Outputs_Text()
+public void Cycle_Zero_HasValueZero()
 {
     // Arrange
-    var program = "10 PRINT \"HELLO\"";
-    var interpreter = CreateInterpreter();
-    
+    var cycle = Cycle.Zero;
+
     // Act
-    interpreter.Run(program);
-    var output = GetOutput();
-    
+    var value = cycle.Value;
+
     // Assert
-    Assert.That(output, Is.EqualTo("HELLO\n"));
+    Assert.That(value, Is.EqualTo(0ul));
 }
 ```
 
@@ -248,10 +345,10 @@ public void Print_Statement_Outputs_Text()
 dotnet test --filter FullyQualifiedName~InterruptAndHaltTests
 
 # Run tests matching a name pattern
-dotnet test --filter Name~Print
+dotnet test --filter Name~Cycle
 
-# Run tests in a category
-dotnet test --filter Category=Parser
+# Run one test project
+dotnet test tests/BadMango.Emulator.Bus.Tests/BadMango.Emulator.Bus.Tests.csproj
 ```
 
 ## Submitting Changes

@@ -1,5 +1,8 @@
 # Quick Start
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md).
+
+
 Get started with BackPocketBASIC in just a few minutes!
 
 ## Prerequisites
@@ -351,8 +354,8 @@ Now that you know the basics:
 ## Getting Help
 
 - **[Language Reference](Language-Reference)** - Complete command documentation
-- **[GitHub Issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)** - Report bugs or ask questions
-- **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)** - Learn how to contribute
+- **[GitHub Issues](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy/issues)** - Report bugs or ask questions
+- **[Contributing Guide](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy/blob/main/CONTRIBUTING.md)** - Learn how to contribute
 
 ## External Resources
 

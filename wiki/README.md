@@ -1,6 +1,6 @@
 # Wiki Documentation
 
-This directory contains the wiki documentation for the BackPocketBASIC project.
+This directory contains the wiki markdown for BackPocket Emulator. GitHub wiki sync copies it to the repository wiki. The emulator project list is in [CONTRIBUTING.md](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md#project-structure). Pages about the Applesoft BASIC interpreter describe code that moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
 
 ## About This Wiki
 
@@ -46,13 +46,13 @@ To upload these files to the actual GitHub wiki:
 
 ```bash
 # Clone the wiki repository
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.wiki.git
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.wiki.git
 
 # Copy files from this directory
-cp wiki/*.md back-pocket-basic.wiki/
+cp wiki/*.md back-pocket-emulator.wiki/
 
 # Commit and push
-cd back-pocket-basic.wiki
+cd back-pocket-emulator.wiki
 git add .
 git commit -m "Initialize wiki documentation"
 git push origin master
@@ -60,7 +60,7 @@ git push origin master
 
 ### Method 2: Manual Upload
 
-1. Go to the repository wiki: https://github.com/Bad-Mango-Solutions/back-pocket-basic/wiki
+1. Go to the repository wiki: https://github.com/Bad-Mango-Solutions/back-pocket-emulator/wiki
 2. Create each page using the wiki editor
 3. Copy content from corresponding `.md` file
 4. Save each page
@@ -103,7 +103,7 @@ For example:
 
 External links use full URLs:
 ```markdown
-[GitHub Repo](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
+[GitHub Repo](https://github.com/Bad-Mango-Solutions/back-pocket-emulator)
 ```
 
 ## Maintaining the Wiki
@@ -163,4 +163,4 @@ grip wiki/Home.md
 ## Contact
 
 Questions about the wiki? Open an issue on GitHub:
-https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues
+https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues
