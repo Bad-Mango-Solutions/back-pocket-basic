@@ -24,4 +24,15 @@
     <InternalsVisibleTo Include="BadMango.Emulator.Emulation" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>
