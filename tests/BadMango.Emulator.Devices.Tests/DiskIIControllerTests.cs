@@ -218,6 +218,56 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// A 36-track image (the occasional extra-outer-cylinder 5.25" layout) must let
+    /// the stepper reach the additional cylinder: qtCount = 144 and the clamp lands
+    /// at qt=140 (= track 35), not at the 35-track-disk ceiling of qt=136. The
+    /// backing media is a real <see cref="SectorImageMedia"/> so the test exercises
+    /// the same geometry plumbing as a production 36-track <c>.dsk</c> mount.
+    /// </summary>
+    [Test]
+    public void PhaseStepper_CanReachOuterCylinder_OfThirtySixTrackDisk()
+    {
+        var (controller, dispatcher, ctx, _, _) = BuildHarness();
+
+        var geometry = new DiskGeometry(36, 16, 256, SectorOrder.Dos33);
+        Assume.That(geometry.QuarterTrackCount, Is.EqualTo(144), "Sanity: 36-track geometry must expose 144 quarter-tracks.");
+        var backing = new RamStorageBackend(geometry.TotalBytes);
+        var media = new SectorImageMedia(backing, geometry).As525Media();
+        controller.Mount(0, media);
+
+        // 36-track geometry → qtCount = 144; the last whole-track boundary is
+        // qt=140 (= track 35). 17 cycles advance the head to qt=136 (phase 0); the
+        // 18th cycle's pulses 0 (phase 1 ON, +2 → qt=138) and 1 (phase 2 ON, +2 →
+        // qt=140) reach the extra cylinder. Pulses 2 and 3 in cycle 18 then try to
+        // step further forward but the clamp pins at qt=140.
+        byte[] forwardOnPulses = { 0xE3, 0xE5, 0xE7, 0xE1 };
+        byte[] forwardOffPulses = { 0xE0, 0xE2, 0xE4, 0xE6 };
+        for (int cycle = 0; cycle < 18; cycle++)
+        {
+            for (int p = 0; p < 4; p++)
+            {
+                _ = dispatcher.Read(forwardOnPulses[p], in ctx);
+                _ = dispatcher.Read(forwardOffPulses[p], in ctx);
+            }
+        }
+
+        var afterSeek = controller.GetDriveSnapshot(0);
+        Assert.That(afterSeek.QuarterTrack, Is.EqualTo(140), "Head must reach track 35 (qt=140) on a 36-track disk.");
+
+        // The head is now at qt=140 with phase 0 latched (cycle 18 ended with the
+        // phase-3-off / phase-0-on / phase-3-off sequence, so currentPhase from the
+        // head position is (140>>1)&3 = 2 but the latch is phase 0). A forward
+        // attempt requires advancing from the *head's* current phase 2 — that is,
+        // pulsing phase 3 ON, which would try to step to qt=142 and clamp to qt=140.
+        // (Pulsing phase 1 ON here would step *backward* to qt=138; that is not what
+        // the clamp is meant to test.)
+        _ = dispatcher.Read(0xE7, in ctx); // phase 3 ON — forward request from phase 2
+        _ = dispatcher.Read(0xE4, in ctx); // phase 2 OFF
+        var clamped = controller.GetDriveSnapshot(0);
+        Assert.That(clamped.QuarterTrack, Is.EqualTo(140), "Head must clamp at qt=140 on a 36-track disk, not advance past the extra cylinder.");
+    }
+
+    /// <summary>
     /// Verifies the Q6/Q7 write-protect dispatch path: Q6=1, Q7=0 returns the
     /// current drive's WP status in the high bit (FR-D5).
     /// </summary>
