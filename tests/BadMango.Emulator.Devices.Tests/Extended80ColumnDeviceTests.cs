@@ -574,6 +574,52 @@ public class Extended80ColumnDeviceTests
     /// from unmapped memory.
     /// </summary>
     [Test]
+    public void AuxSplitRamTarget_DoesNotAdvertiseWideAccess()
+    {
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
+
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+        var context = CreateTestContext();
+
+        dispatcher.Write(0x05, 0x00, in context);
+        dispatcher.Write(0x03, 0x00, in context);
+
+        var page = machine.Bus.GetPageEntryByIndex(1);
+        Assert.That(page.SupportsPeek, Is.True, "aux split mapping should remain readable without side-effects");
+        Assert.That(page.SupportsPoke, Is.True, "aux split mapping should remain writeable without side-effects");
+        Assert.That(page.SupportsWide, Is.False, "65C02-style aux RAM should not advertise atomic wide access");
+        Assert.That(page.Caps.HasFlag(TargetCaps.SupportsWide), Is.False, "wide access flag should not leak from the underlying RAM target");
+    }
+
+    [Test]
     public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
     {
         // Arrange: build a machine with main RAM at $0000-$BFFF and the
