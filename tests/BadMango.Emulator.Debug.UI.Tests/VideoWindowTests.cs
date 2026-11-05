@@ -117,6 +117,18 @@ public class VideoWindowTests
     }
 
     /// <summary>
+    /// Verifies that VBlank frames are marshaled at Normal priority rather than Render.
+    /// Avalonia 12.1.5's render-priority band can drop Render-priority work while
+    /// Background timers (the FPS overlay) still run, which looks like FPS 0.0.
+    /// </summary>
+    [Test]
+    public void VBlankUiPriority_IsNormal()
+    {
+        Assert.That(VideoWindow.VBlankUiPriority, Is.EqualTo(DispatcherPriority.Normal));
+        Assert.That(VideoWindow.VBlankUiPriority, Is.Not.EqualTo(DispatcherPriority.Render));
+    }
+
+    /// <summary>
     /// Verifies DetachMachine can be called without a machine attached.
     /// </summary>
     [AvaloniaTest]

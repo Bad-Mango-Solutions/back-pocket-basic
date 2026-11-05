@@ -165,6 +165,20 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
+    /// Dispatcher priority used to marshal VBlank frames onto the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// Avalonia 12.1.5 introduced a dedicated render-priority band
+    /// (<c>UiThreadRender</c> / <c>AfterRender</c> / <c>BeforeRender</c>).
+    /// Posting at <see cref="DispatcherPriority.Render"/> was observed to leave
+    /// <c>ProcessVBlankFrame</c> unrun (FPS overlay stuck at 0.0 from the Background
+    /// timer) while the CPU, disk, and speaker kept running. <see cref="DispatcherPriority.Normal"/>
+    /// is processed on a regular dispatcher pump. The frame still presents via
+    /// <c>InvalidateVisual</c> after <see cref="PixelBuffer.Commit"/>.
+    /// </remarks>
+    internal static DispatcherPriority VBlankUiPriority { get; } = DispatcherPriority.Normal;
+
+    /// <summary>
     /// Attaches the video window to a machine instance.
     /// </summary>
     /// <param name="machine">The machine to attach to.</param>
@@ -507,10 +521,11 @@ public partial class VideoWindow : Window
             Trace.TraceError($"Video window failed to capture display snapshot: {ex}");
         }
 
-        // Only queue a UI render if one isn't already pending
+        // Only queue a UI render if one isn't already pending.
+        // Use Normal rather than Render: see VBlankUiPriority remarks.
         if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
         {
-            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, VBlankUiPriority);
         }
     }
 
