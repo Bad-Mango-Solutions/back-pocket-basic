@@ -276,6 +276,12 @@ public class DebugWindowManager : IDebugWindowManager
     {
         if (window is VideoWindow videoWindow)
         {
+            var machine = ResolveMachineFromContext(context);
+            if (machine is not null)
+            {
+                videoWindow.AttachMachine(machine);
+            }
+
             ApplyVideoWindowContext(videoWindow, context);
         }
     }
@@ -314,6 +320,16 @@ public class DebugWindowManager : IDebugWindowManager
         {
             window.ForceRedraw();
         }
+    }
+
+    private static IMachine? ResolveMachineFromContext(object? context)
+    {
+        return context switch
+        {
+            IMachine machine => machine,
+            VideoWindowContext { Machine: not null } videoContext => videoContext.Machine,
+            _ => null,
+        };
     }
 
     private static GlyphEditorWindow CreateGlyphEditorWindow(object? context)
@@ -356,8 +372,9 @@ public class DebugWindowManager : IDebugWindowManager
     {
         var window = new VideoWindow(this.logger);
 
-        // If context is IMachine, attach it to the window
-        if (context is IMachine machine)
+        // If context provides a machine, attach it to the window.
+        var machine = ResolveMachineFromContext(context);
+        if (machine is not null)
         {
             window.AttachMachine(machine);
         }

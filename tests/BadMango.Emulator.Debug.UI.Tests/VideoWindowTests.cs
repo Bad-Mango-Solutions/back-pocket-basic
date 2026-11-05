@@ -139,7 +139,8 @@ public class VideoWindowTests
         Assert.Multiple(() =>
         {
             Assert.That(fpsDisplay, Is.Not.Null);
-            Assert.That(fpsDisplay!.Text, Is.EqualTo("30.0 FPS  vb:60 ui:25"));
+            Assert.That(fpsDisplay!.Text, Does.StartWith("30.0 FPS  vb:60 ui:25"));
+            Assert.That(fpsDisplay.Text, Does.Contain("ATT "));
             Assert.That((int)frameCountField.GetValue(window)!, Is.EqualTo(0));
             Assert.That((int)vblankCountField.GetValue(window)!, Is.EqualTo(0));
             Assert.That((int)uiFrameCountField.GetValue(window)!, Is.EqualTo(0));
@@ -904,7 +905,7 @@ public class VideoWindowTests
 
     /// <summary>
     /// Renders a reference frame with a fresh renderer, mirroring the window's defaults
-    /// (default character ROM, green monochrome, flash off).
+    /// (default character ROM, color mode, flash off).
     /// </summary>
     /// <param name="mode">Video mode.</param>
     /// <param name="isPage2">Whether page 2 is displayed.</param>
@@ -937,7 +938,7 @@ public class VideoWindowTests
             false,
             false,
             true,
-            DisplayColorMode.Green,
+            DisplayColorMode.Color,
             readAux);
 
         return pixels;

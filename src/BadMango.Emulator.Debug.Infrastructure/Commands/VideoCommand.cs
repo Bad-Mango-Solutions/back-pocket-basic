@@ -145,15 +145,8 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Ok();
         }
 
-        // Get machine from debug context to pass to video window
-        object? machineContext = null;
-        if (context is IDebugContext debugContext)
-        {
-            machineContext = debugContext.Machine;
-        }
-
         // Fire and forget - don't block the REPL
-        _ = windowManager.ShowWindowAsync("Video", machineContext);
+        _ = windowManager.ShowWindowAsync("Video", CreateWindowContext(context));
         return CommandResult.Ok("Opening video window...");
     }
 
@@ -191,8 +184,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Video window not available in headless mode.");
         }
 
-        // Pass scale as context to the window
-        _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { Scale = scale });
+        _ = windowManager.ShowWindowAsync("Video", CreateWindowContext(context, videoContext => videoContext.Scale = scale));
         return CommandResult.Ok($"Setting video scale to {scale}×...");
     }
 
@@ -222,7 +214,7 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Video window not available in headless mode.");
         }
 
-        _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { ColorMode = mode });
+        _ = windowManager.ShowWindowAsync("Video", CreateWindowContext(context, videoContext => videoContext.ColorMode = mode));
         return CommandResult.Ok($"Setting color mode to {args[0]}...");
     }
 
@@ -249,7 +241,11 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             }
         }
 
-        _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { ToggleFps = true, ShowFps = showFps });
+        _ = windowManager.ShowWindowAsync("Video", CreateWindowContext(context, videoContext =>
+        {
+            videoContext.ToggleFps = true;
+            videoContext.ShowFps = showFps;
+        }));
         return CommandResult.Ok(showFps.HasValue
             ? $"FPS display {(showFps.Value ? "enabled" : "disabled")}."
             : "FPS display toggled.");
@@ -267,7 +263,18 @@ public sealed class VideoCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("Video window is not open. Use 'video open' first.");
         }
 
-        _ = windowManager.ShowWindowAsync("Video", new VideoWindowContext { ForceRefresh = true });
+        _ = windowManager.ShowWindowAsync("Video", CreateWindowContext(context, videoContext => videoContext.ForceRefresh = true));
         return CommandResult.Ok("Display refreshed.");
+    }
+
+    private VideoWindowContext CreateWindowContext(ICommandContext context, Action<VideoWindowContext>? configure = null)
+    {
+        var videoContext = new VideoWindowContext
+        {
+            Machine = (context as IDebugContext)?.Machine,
+        };
+
+        configure?.Invoke(videoContext);
+        return videoContext;
     }
 }

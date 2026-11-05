@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.UI.Views;
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -83,13 +84,14 @@ public partial class VideoWindow : Window
 
     private int scale = 2;
     private bool showFps;
-    private DisplayColorMode colorMode = DisplayColorMode.Green;
+    private DisplayColorMode colorMode = DisplayColorMode.Color;
     private int frameCount;
     private int vblankCount;
     private int uiFrameCount;
     private int flashFrameCounter;
     private bool flashState;
     private double lastFps;
+    private string attachmentDiagnostic = "ATT detached";
 
     // Track Left/Right Alt state separately since Avalonia's KeyModifiers.Alt doesn't distinguish
     private bool leftAltPressed;
@@ -169,7 +171,7 @@ public partial class VideoWindow : Window
     /// <summary>
     /// Gets or sets the display color mode.
     /// </summary>
-    /// <value>The color mode (Green, Amber, White, or Color). Default is Green.</value>
+    /// <value>The color mode (Green, Amber, White, or Color). Default is Color.</value>
     public DisplayColorMode ColorMode
     {
         get => colorMode;
@@ -211,6 +213,11 @@ public partial class VideoWindow : Window
     {
         ArgumentNullException.ThrowIfNull(machine);
 
+        var previousVideoDevice = videoDevice;
+
+        // Always detach first so reattachment is idempotent and cannot duplicate handlers.
+        DetachMachine();
+
         this.machine = machine;
         this.memoryBus = machine.Bus;
         this.videoDevice = machine.GetComponent<IVideoDevice>();
@@ -249,6 +256,8 @@ public partial class VideoWindow : Window
         {
             videoDevice.VBlankOccurred += OnVBlankOccurred;
         }
+
+        attachmentDiagnostic = CreateAttachmentDiagnostic(previousVideoDevice, videoDevice);
     }
 
     /// <summary>
@@ -276,6 +285,9 @@ public partial class VideoWindow : Window
         mainRam = ReadOnlyMemory<byte>.Empty;
         characterRom = Memory<byte>.Empty;
         snapshotValid = false;
+        Interlocked.Exchange(ref vblankPending, 0);
+        characterRomUpdatePending = false;
+        attachmentDiagnostic = "ATT detached";
 
         lock (snapshotLock)
         {
@@ -685,7 +697,7 @@ public partial class VideoWindow : Window
         var vblankFrames = Interlocked.Exchange(ref vblankCount, 0);
         var vblankRate = (int)Math.Round(vblankFrames / elapsedSeconds, MidpointRounding.AwayFromZero);
         var uiFrameRate = (int)Math.Round(uiFrameCount / elapsedSeconds, MidpointRounding.AwayFromZero);
-        FpsDisplay.Text = $"{lastFps:F1} FPS  vb:{vblankRate} ui:{uiFrameRate}";
+        FpsDisplay.Text = $"{lastFps:F1} FPS  vb:{vblankRate} ui:{uiFrameRate} {attachmentDiagnostic}";
         frameCount = 0;
         uiFrameCount = 0;
     }
@@ -829,5 +841,14 @@ public partial class VideoWindow : Window
         }
 
         keyboardDevice.SetModifiers(modifiers);
+    }
+
+    private string CreateAttachmentDiagnostic(IVideoDevice? previousDevice, IVideoDevice? currentDevice)
+    {
+        int windowId = RuntimeHelpers.GetHashCode(this);
+        int deviceId = currentDevice is null ? 0 : RuntimeHelpers.GetHashCode(currentDevice);
+        bool hasVideoDevice = currentDevice is not null;
+        bool replacedDevice = previousDevice is not null && !ReferenceEquals(previousDevice, currentDevice);
+        return $"ATT vw:{windowId} vd:{deviceId} hasvd:{hasVideoDevice} replaced:{replacedDevice}";
     }
 }
