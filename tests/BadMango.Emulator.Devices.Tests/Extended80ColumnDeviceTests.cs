@@ -619,6 +619,11 @@ public class Extended80ColumnDeviceTests
         Assert.That(page.Caps.HasFlag(TargetCaps.SupportsWide), Is.False, "wide access flag should not leak from the underlying RAM target");
     }
 
+    /// <summary>
+    /// Regression test for the ProDOS auxiliary-RAM probe bug: when the
+    /// $0080-$00B5 boot helper toggles WRCARDRAM and RDCARDRAM on, then
+    /// toggles back to main RAM, the base main-RAM mapping must remain intact.
+    /// </summary>
     [Test]
     public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
     {
