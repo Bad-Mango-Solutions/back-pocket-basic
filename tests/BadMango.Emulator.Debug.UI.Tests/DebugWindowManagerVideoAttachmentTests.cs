@@ -177,7 +177,7 @@ public class DebugWindowManagerVideoAttachmentTests
             false,
             false,
             true,
-            DisplayColorMode.Green,
+            DisplayColorMode.Color,
             null);
 
         return pixels;
