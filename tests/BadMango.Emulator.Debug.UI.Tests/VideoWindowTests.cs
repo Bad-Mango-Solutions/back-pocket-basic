@@ -782,6 +782,40 @@ public class VideoWindowTests
     }
 
     /// <summary>
+    /// Verifies that ForceRedraw paints immediately when already on the UI thread,
+    /// without requiring a later dispatcher flush. This is the <c>video refresh</c>
+    /// path, which calls ForceRedraw from inside an existing UI-thread InvokeAsync.
+    /// </summary>
+    [AvaloniaTest]
+    public void ForceRedraw_WhenOnUiThread_PaintsImmediately()
+    {
+        Assert.That(Dispatcher.UIThread.CheckAccess(), Is.True);
+
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expected = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.ForceRedraw();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+            mockBus.Verify(b => b.Read8(It.IsAny<BusAccess>()), Times.Never);
+        });
+    }
+
+    /// <summary>
     /// Verifies that auxiliary display memory is taken from physical aux RAM, so
     /// 80-column text renders correctly without any bus reads.
     /// </summary>

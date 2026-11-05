@@ -257,16 +257,27 @@ public partial class VideoWindow : Window
     /// Forces an immediate redraw of the video display.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A fresh display memory snapshot is captured from physical RAM before rendering,
     /// so the redraw reflects current memory even if no VBlank has occurred recently.
+    /// </para>
+    /// <para>
+    /// When already on the UI thread (for example <c>video refresh</c>, which calls
+    /// this from inside <c>Dispatcher.UIThread.InvokeAsync</c>), the capture and
+    /// render run inline. Posting another <c>InvokeAsync</c> in that case used to
+    /// discard exceptions and could skip the paint. Off the UI thread the work is
+    /// marshaled with <c>InvokeAsync</c>; exceptions are logged and rethrown.
+    /// </para>
     /// </remarks>
     public void ForceRedraw()
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
+        if (Dispatcher.UIThread.CheckAccess())
         {
-            CaptureDisplaySnapshot();
-            RenderFrame();
-        });
+            RedrawFromCurrentMemory();
+            return;
+        }
+
+        Dispatcher.UIThread.InvokeAsync(RedrawFromCurrentMemory);
     }
 
     /// <inheritdoc/>
@@ -485,7 +496,16 @@ public partial class VideoWindow : Window
         // Capture display memory snapshot on the emulator thread while CPU is paused.
         // This is the key to preventing 80-column flicker: the firmware modifies
         // PAGE1/PAGE2 buffers between VBlanks, but we capture a stable copy here.
-        CaptureDisplaySnapshot();
+        // Swallow snapshot failures so they cannot unwind VideoDevice.OnVBlankStart
+        // and tear down the CPU run loop.
+        try
+        {
+            CaptureDisplaySnapshot();
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError($"Video window failed to capture display snapshot: {ex}");
+        }
 
         // Only queue a UI render if one isn't already pending
         if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
@@ -572,11 +592,36 @@ public partial class VideoWindow : Window
             ReloadCharacterRom();
         }
 
-        // Render frame
-        RenderFrame();
+        // Render frame. Count the VBlank even if rendering throws so that a
+        // render failure shows up as a non-zero FPS with a stale picture,
+        // rather than looking like VBlank itself has stopped.
+        try
+        {
+            RenderFrame();
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError($"Video window failed to render VBlank frame: {ex}");
+        }
 
-        // Update FPS counter
         frameCount++;
+    }
+
+    /// <summary>
+    /// Captures a fresh snapshot and renders it, logging and rethrowing on failure.
+    /// </summary>
+    private void RedrawFromCurrentMemory()
+    {
+        try
+        {
+            CaptureDisplaySnapshot();
+            RenderFrame();
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError($"Video window redraw failed: {ex}");
+            throw;
+        }
     }
 
     private void OnFpsTimer(object? sender, EventArgs e)
