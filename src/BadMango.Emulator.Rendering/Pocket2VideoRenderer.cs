@@ -523,10 +523,12 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
         DisplayColorMode colorMode)
     {
         int maxScanlines = mixedMode ? 160 : HiResScanlines;
+        bool useArtifactColor = colorMode == DisplayColorMode.Color;
 
         // Get foreground color based on color mode
         uint foregroundColor = DisplayColors.GetForegroundColor(colorMode);
         uint backgroundColor = DisplayColors.GetBackgroundColor(colorMode);
+        Span<byte> lineBytes = stackalloc byte[HiResBytesPerLine];
 
         for (int scanline = 0; scanline < maxScanlines; scanline++)
         {
@@ -535,14 +537,22 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
 
             for (int byteCol = 0; byteCol < HiResBytesPerLine; byteCol++)
             {
-                byte data = readMemory((ushort)(lineAddr + byteCol));
+                lineBytes[byteCol] = readMemory((ushort)(lineAddr + byteCol));
+            }
+
+            for (int byteCol = 0; byteCol < HiResBytesPerLine; byteCol++)
+            {
+                byte data = lineBytes[byteCol];
+                bool useShiftedPalette = (data & 0x80) != 0;
                 int pixelX = byteCol * CharWidth * 2; // 7 pixels per byte, 2× scaling
 
                 // Render 7 pixels from this byte
                 for (int bit = 0; bit < 7; bit++)
                 {
                     bool isSet = (data & (1 << bit)) != 0;
-                    uint color = isSet ? foregroundColor : backgroundColor;
+                    uint color = useArtifactColor
+                        ? GetHiResArtifactColor(lineBytes, byteCol, bit, isSet, useShiftedPalette)
+                        : (isSet ? foregroundColor : backgroundColor);
 
                     // Write 2×2 block for each source pixel
                     int x = pixelX + (bit * 2);
@@ -550,6 +560,48 @@ public sealed class Pocket2VideoRenderer : IVideoRenderer
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Computes Apple II hi-res artifact color for a single pixel.
+    /// </summary>
+    /// <param name="lineBytes">The 40-byte hi-res scanline data.</param>
+    /// <param name="byteCol">The byte column (0-39).</param>
+    /// <param name="bit">The pixel bit index (0-6).</param>
+    /// <param name="isSet">A value indicating whether the current pixel bit is set.</param>
+    /// <param name="useShiftedPalette">A value indicating whether bit 7 palette shift is active.</param>
+    /// <returns>The color to render for the current pixel.</returns>
+    private uint GetHiResArtifactColor(
+        ReadOnlySpan<byte> lineBytes,
+        int byteCol,
+        int bit,
+        bool isSet,
+        bool useShiftedPalette)
+    {
+        if (!isSet)
+        {
+            return DisplayColors.Black;
+        }
+
+        bool previousSet = bit > 0
+            ? (lineBytes[byteCol] & (1 << (bit - 1))) != 0
+            : byteCol > 0 && (lineBytes[byteCol - 1] & (1 << 6)) != 0;
+
+        bool nextSet = bit < 6
+            ? (lineBytes[byteCol] & (1 << (bit + 1))) != 0
+            : byteCol + 1 < HiResBytesPerLine && (lineBytes[byteCol + 1] & 1) != 0;
+
+        if (previousSet || nextSet)
+        {
+            return DisplayColors.WhitePhosphor;
+        }
+
+        int sourceColumn = (byteCol * CharWidth) + bit;
+        bool evenColumn = (sourceColumn & 1) == 0;
+
+        return useShiftedPalette
+            ? (evenColumn ? DisplayColors.LoResMediumBlue : DisplayColors.LoResOrange)
+            : (evenColumn ? DisplayColors.LoResPurple : DisplayColors.LoResLightGreen);
     }
 
     /// <summary>

@@ -846,6 +846,92 @@ public class Pocket2VideoRendererTests
     }
 
     /// <summary>
+    /// Verifies color hi-res isolated pixels follow phase and palette rules.
+    /// </summary>
+    /// <param name="byteValue">The hi-res byte value for the first byte on line 0.</param>
+    /// <param name="bit">The bit index expected to be lit.</param>
+    /// <param name="expectedColor">The expected artifact color.</param>
+    [TestCase((byte)0x01, 0, DisplayColors.LoResPurple)]
+    [TestCase((byte)0x02, 1, DisplayColors.LoResLightGreen)]
+    [TestCase((byte)0x81, 0, DisplayColors.LoResMediumBlue)]
+    [TestCase((byte)0x82, 1, DisplayColors.LoResOrange)]
+    public void RenderFrame_HiResColorMode_IsolatedBitsUsePhaseAndPalette(
+        byte byteValue,
+        int bit,
+        uint expectedColor)
+    {
+        renderer.Clear(pixelBuffer);
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.HiRes,
+            addr => addr == 0x2000 ? byteValue : (byte)0x00,
+            ReadOnlySpan<byte>.Empty,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            colorMode: DisplayColorMode.Color);
+
+        int pixelX = bit * 2;
+        Assert.That(pixelBuffer[pixelX], Is.EqualTo(expectedColor));
+    }
+
+    /// <summary>
+    /// Verifies adjacent set bits across byte boundaries render white in color hi-res.
+    /// </summary>
+    [Test]
+    public void RenderFrame_HiResColorMode_AdjacentSetBitsAcrossByteBoundary_RenderWhite()
+    {
+        renderer.Clear(pixelBuffer);
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.HiRes,
+            addr => addr switch
+            {
+                0x2000 => 0x40, // bit 6 set
+                0x2001 => 0x01, // bit 0 set (adjacent in next byte)
+                _ => 0x00,
+            },
+            ReadOnlySpan<byte>.Empty,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            colorMode: DisplayColorMode.Color);
+
+        Assert.That(pixelBuffer[12], Is.EqualTo(DisplayColors.WhitePhosphor));
+        Assert.That(pixelBuffer[14], Is.EqualTo(DisplayColors.WhitePhosphor));
+    }
+
+    /// <summary>
+    /// Verifies clear-bit carry across byte boundaries remains black in color hi-res.
+    /// </summary>
+    [Test]
+    public void RenderFrame_HiResColorMode_ClearBoundaryBit_RemainsBlack()
+    {
+        renderer.Clear(pixelBuffer);
+
+        renderer.RenderFrame(
+            pixelBuffer,
+            VideoMode.HiRes,
+            addr => addr == 0x2000 ? (byte)0x40 : (byte)0x00,
+            ReadOnlySpan<byte>.Empty,
+            useAltCharSet: false,
+            isPage2: false,
+            flashState: false,
+            noFlash1Enabled: false,
+            noFlash2Enabled: true,
+            colorMode: DisplayColorMode.Color);
+
+        Assert.That(pixelBuffer[12], Is.EqualTo(DisplayColors.LoResPurple));
+        Assert.That(pixelBuffer[14], Is.EqualTo(DisplayColors.Black));
+    }
+
+    /// <summary>
     /// Verifies hi-res page 1 reads from $2000-$3FFF.
     /// </summary>
     [Test]
