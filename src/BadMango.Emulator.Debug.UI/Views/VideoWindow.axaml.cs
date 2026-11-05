@@ -285,7 +285,7 @@ public partial class VideoWindow : Window
         mainRam = ReadOnlyMemory<byte>.Empty;
         characterRom = Memory<byte>.Empty;
         snapshotValid = false;
-        vblankPending = 0;
+        Interlocked.Exchange(ref vblankPending, 0);
         characterRomUpdatePending = false;
         attachmentDiagnostic = "ATT detached";
 
