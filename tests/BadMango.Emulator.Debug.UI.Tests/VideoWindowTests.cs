@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.UI.Tests;
 
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 
@@ -107,6 +108,45 @@ public class VideoWindowTests
     }
 
     /// <summary>
+    /// Verifies FPS overlay includes per-second VBlank and UI frame counters.
+    /// </summary>
+    [AvaloniaTest]
+    public void UpdateFpsDisplay_ShowsVBlankAndUiCountersPerSecond()
+    {
+        var window = new VideoWindow();
+
+        var frameCountField = typeof(VideoWindow).GetField(
+            "frameCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var vblankCountField = typeof(VideoWindow).GetField(
+            "vblankCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var uiFrameCountField = typeof(VideoWindow).GetField(
+            "uiFrameCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var updateMethod = typeof(VideoWindow).GetMethod(
+            "UpdateFpsDisplay",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        frameCountField!.SetValue(window, 30);
+        vblankCountField!.SetValue(window, 60);
+        uiFrameCountField!.SetValue(window, 25);
+
+        updateMethod!.Invoke(window, [1.0d]);
+
+        var fpsDisplay = window.FindControl<TextBlock>("FpsDisplay");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fpsDisplay, Is.Not.Null);
+            Assert.That(fpsDisplay!.Text, Is.EqualTo("30.0 FPS  vb:60 ui:25"));
+            Assert.That((int)frameCountField.GetValue(window)!, Is.EqualTo(0));
+            Assert.That((int)vblankCountField.GetValue(window)!, Is.EqualTo(0));
+            Assert.That((int)uiFrameCountField.GetValue(window)!, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     /// Verifies ForceRedraw can be called without throwing.
     /// </summary>
     [AvaloniaTest]
@@ -114,6 +154,18 @@ public class VideoWindowTests
     {
         var window = new VideoWindow();
         Assert.DoesNotThrow(() => window.ForceRedraw());
+    }
+
+    /// <summary>
+    /// Verifies that VBlank frames are marshaled at Normal priority rather than Render.
+    /// Avalonia 12.1.5's render-priority band can drop Render-priority work while
+    /// Background timers (the FPS overlay) still run, which looks like FPS 0.0.
+    /// </summary>
+    [Test]
+    public void VBlankUiPriority_IsNormal()
+    {
+        Assert.That(VideoWindow.VBlankUiPriority, Is.EqualTo(DispatcherPriority.Normal));
+        Assert.That(VideoWindow.VBlankUiPriority, Is.Not.EqualTo(DispatcherPriority.Render));
     }
 
     /// <summary>
@@ -773,6 +825,40 @@ public class VideoWindowTests
 
         window.ForceRedraw();
         Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+            mockBus.Verify(b => b.Read8(It.IsAny<BusAccess>()), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that ForceRedraw paints immediately when already on the UI thread,
+    /// without requiring a later dispatcher flush. This is the <c>video refresh</c>
+    /// path, which calls ForceRedraw from inside an existing UI-thread InvokeAsync.
+    /// </summary>
+    [AvaloniaTest]
+    public void ForceRedraw_WhenOnUiThread_PaintsImmediately()
+    {
+        Assert.That(Dispatcher.UIThread.CheckAccess(), Is.True);
+
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expected = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.ForceRedraw();
 
         Assert.Multiple(() =>
         {

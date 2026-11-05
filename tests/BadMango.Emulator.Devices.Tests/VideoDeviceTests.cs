@@ -660,6 +660,53 @@ public class VideoDeviceTests
     }
 
     /// <summary>
+    /// Verifies that a throwing <see cref="VideoDevice.VBlankOccurred"/> handler does not
+    /// prevent <c>OnVBlankEnd</c> from being scheduled, so vertical blanking still clears
+    /// and the next VBlank can fire.
+    /// </summary>
+    [Test]
+    public void VBlank_SchedulesEndBeforeListeners_SoThrowingHandlerDoesNotStickVBlank()
+    {
+        var (scheduler, eventContext) = CreateSchedulerContext();
+        device.Initialize(eventContext);
+
+        int vblankCount = 0;
+        device.VBlankOccurred += () =>
+        {
+            vblankCount++;
+            if (vblankCount == 1)
+            {
+                throw new InvalidOperationException("listener failed");
+            }
+        };
+
+        ulong vblankStartCycle = VideoDevice.CyclesPerFrame - VideoDevice.VBlankDurationCycles;
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => scheduler.Advance(new Core.Cycle(vblankStartCycle)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ex!.Message, Is.EqualTo("listener failed"));
+            Assert.That(device.IsVerticalBlanking, Is.True, "Should be in VBL after start, even if the listener threw");
+            Assert.That(vblankCount, Is.EqualTo(1));
+        });
+
+        Assert.DoesNotThrow(
+            () => scheduler.Advance(new Core.Cycle(VideoDevice.VBlankDurationCycles)),
+            "OnVBlankEnd must already have been scheduled before the listener threw");
+        Assert.That(device.IsVerticalBlanking, Is.False, "VBL should clear after the scheduled end");
+
+        Assert.DoesNotThrow(
+            () => scheduler.Advance(new Core.Cycle(vblankStartCycle)),
+            "The next VBlank start should still be scheduled");
+        Assert.Multiple(() =>
+        {
+            Assert.That(vblankCount, Is.EqualTo(2), "A subsequent VBlankOccurred should still fire");
+            Assert.That(device.IsVerticalBlanking, Is.True);
+        });
+    }
+
+    /// <summary>
     /// Verifies that VBlank reschedules itself for continuous operation.
     /// </summary>
     [Test]
