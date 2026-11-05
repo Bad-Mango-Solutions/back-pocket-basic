@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.UI.Tests;
 
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 
@@ -104,6 +105,45 @@ public class VideoWindowTests
 
         window.ShowFps = false;
         Assert.That(window.ShowFps, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies FPS overlay includes per-second VBlank and UI frame counters.
+    /// </summary>
+    [AvaloniaTest]
+    public void UpdateFpsDisplay_ShowsVBlankAndUiCountersPerSecond()
+    {
+        var window = new VideoWindow();
+
+        var frameCountField = typeof(VideoWindow).GetField(
+            "frameCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var vblankCountField = typeof(VideoWindow).GetField(
+            "vblankCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var uiFrameCountField = typeof(VideoWindow).GetField(
+            "uiFrameCount",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var updateMethod = typeof(VideoWindow).GetMethod(
+            "UpdateFpsDisplay",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        frameCountField!.SetValue(window, 30);
+        vblankCountField!.SetValue(window, 60);
+        uiFrameCountField!.SetValue(window, 25);
+
+        updateMethod!.Invoke(window, [1.0d]);
+
+        var fpsDisplay = window.FindControl<TextBlock>("FpsDisplay");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fpsDisplay, Is.Not.Null);
+            Assert.That(fpsDisplay!.Text, Is.EqualTo("30.0 FPS  vb:60 ui:25"));
+            Assert.That((int)frameCountField.GetValue(window)!, Is.EqualTo(0));
+            Assert.That((int)vblankCountField.GetValue(window)!, Is.EqualTo(0));
+            Assert.That((int)uiFrameCountField.GetValue(window)!, Is.EqualTo(0));
+        });
     }
 
     /// <summary>

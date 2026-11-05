@@ -85,6 +85,8 @@ public partial class VideoWindow : Window
     private bool showFps;
     private DisplayColorMode colorMode = DisplayColorMode.Green;
     private int frameCount;
+    private int vblankCount;
+    private int uiFrameCount;
     private int flashFrameCounter;
     private bool flashState;
     private double lastFps;
@@ -522,6 +524,8 @@ public partial class VideoWindow : Window
     /// </remarks>
     private void OnVBlankOccurred()
     {
+        Interlocked.Increment(ref vblankCount);
+
         // Capture display memory snapshot on the emulator thread while CPU is paused.
         // This is the key to preventing 80-column flicker: the firmware modifies
         // PAGE1/PAGE2 buffers between VBlanks, but we capture a stable copy here.
@@ -622,9 +626,9 @@ public partial class VideoWindow : Window
             ReloadCharacterRom();
         }
 
-        // Render frame. Count the VBlank even if rendering throws so that a
-        // render failure shows up as a non-zero FPS with a stale picture,
-        // rather than looking like VBlank itself has stopped.
+        // Render the frame, but keep the counters moving even when rendering throws.
+        // This preserves a non-zero FPS and makes a stale image look like a render
+        // issue instead of a stopped VBlank signal.
         try
         {
             RenderFrame();
@@ -633,8 +637,11 @@ public partial class VideoWindow : Window
         {
             logger.Error(ex, "Video window failed to render VBlank frame");
         }
-
-        frameCount++;
+        finally
+        {
+            frameCount++;
+            uiFrameCount++;
+        }
     }
 
     /// <summary>
@@ -658,11 +665,29 @@ public partial class VideoWindow : Window
     {
         if (fpsStopwatch.ElapsedMilliseconds >= 1000)
         {
-            lastFps = frameCount / (fpsStopwatch.ElapsedMilliseconds / 1000.0);
-            FpsDisplay.Text = $"{lastFps:F1} FPS";
-            frameCount = 0;
+            UpdateFpsDisplay(fpsStopwatch.ElapsedMilliseconds / 1000.0);
             fpsStopwatch.Restart();
         }
+    }
+
+    /// <summary>
+    /// Updates FPS overlay values using per-second rates for FPS, VBlank callbacks, and UI frames.
+    /// </summary>
+    /// <param name="elapsedSeconds">The elapsed interval in seconds.</param>
+    private void UpdateFpsDisplay(double elapsedSeconds)
+    {
+        if (elapsedSeconds <= 0)
+        {
+            return;
+        }
+
+        lastFps = frameCount / elapsedSeconds;
+        var vblankFrames = Interlocked.Exchange(ref vblankCount, 0);
+        var vblankRate = (int)Math.Round(vblankFrames / elapsedSeconds, MidpointRounding.AwayFromZero);
+        var uiFrameRate = (int)Math.Round(uiFrameCount / elapsedSeconds, MidpointRounding.AwayFromZero);
+        FpsDisplay.Text = $"{lastFps:F1} FPS  vb:{vblankRate} ui:{uiFrameRate}";
+        frameCount = 0;
+        uiFrameCount = 0;
     }
 
     /// <summary>
