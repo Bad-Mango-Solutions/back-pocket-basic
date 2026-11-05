@@ -12,6 +12,9 @@ internal static class ImageFixtures
     /// <summary>The total payload byte length of a standard 35-track / 16-sector / 256-byte image.</summary>
     public const int FivePointTwoFiveBytes = 35 * 16 * 256;
 
+    /// <summary>The total payload byte length of an extra-track 36-track / 16-sector / 256-byte image.</summary>
+    public const int FivePointTwoFiveExtraTrackBytes = 36 * 16 * 256;
+
     /// <summary>
     /// Returns a deterministic 35-track / 16-sector / 256-byte payload seeded by
     /// <paramref name="seed"/>.
@@ -21,6 +24,20 @@ internal static class ImageFixtures
     public static byte[] Random525Payload(int seed)
     {
         var data = new byte[FivePointTwoFiveBytes];
+        new Random(seed).NextBytes(data);
+        return data;
+    }
+
+    /// <summary>
+    /// Returns a deterministic 36-track / 16-sector / 256-byte payload seeded by
+    /// <paramref name="seed"/>. Used to verify the storage stack handles the
+    /// occasional extra-outer-cylinder 5.25" image.
+    /// </summary>
+    /// <param name="seed">Random seed.</param>
+    /// <returns>A buffer of <see cref="FivePointTwoFiveExtraTrackBytes"/> bytes.</returns>
+    public static byte[] Random525ExtraTrackPayload(int seed)
+    {
+        var data = new byte[FivePointTwoFiveExtraTrackBytes];
         new Random(seed).NextBytes(data);
         return data;
     }

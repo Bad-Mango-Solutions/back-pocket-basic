@@ -128,6 +128,107 @@ public class DiskImageFactoryTests
     }
 
     /// <summary>
+    /// A 36-track <c>.do</c> image (147456 bytes — the occasional extra-outer-cylinder
+    /// 5.25" layout) opens with a 36-track geometry rather than being rejected for
+    /// not matching the standard 35-track size.
+    /// </summary>
+    [Test]
+    public void Open_DoFile_AcceptsThirtySixTrackPayload()
+    {
+        var payload = ImageFixtures.Random525ExtraTrackPayload(101);
+        var path = this.Temp(payload, ".do");
+
+        var factory = new DiskImageFactory();
+        var result = (Image525AndBlockResult)factory.Open(path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Format, Is.EqualTo(DiskImageFormat.Dos33SectorImage));
+            Assert.That(result.SectorOrder, Is.EqualTo(SectorOrder.Dos33));
+            Assert.That(result.TrackMedia.Geometry.TrackCount, Is.EqualTo(36));
+            Assert.That(result.TrackMedia.Geometry.QuarterTrackCount, Is.EqualTo(144));
+            Assert.That(result.BlockMedia.BlockCount, Is.EqualTo(36 * 8));
+        });
+    }
+
+    /// <summary>
+    /// A 36-track <c>.po</c> image opens with the ProDOS sector order and exposes
+    /// 36 × 8 = 288 ProDOS blocks.
+    /// </summary>
+    [Test]
+    public void Open_PoFile_AcceptsThirtySixTrackPayload()
+    {
+        var payload = ImageFixtures.Random525ExtraTrackPayload(102);
+        var path = this.Temp(payload, ".po");
+
+        var factory = new DiskImageFactory();
+        var result = (Image525AndBlockResult)factory.Open(path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Format, Is.EqualTo(DiskImageFormat.ProDosSectorImage));
+            Assert.That(result.SectorOrder, Is.EqualTo(SectorOrder.ProDos));
+            Assert.That(result.TrackMedia.Geometry.TrackCount, Is.EqualTo(36));
+            Assert.That(result.BlockMedia.BlockCount, Is.EqualTo(288));
+        });
+    }
+
+    /// <summary>
+    /// A 36-track <c>.dsk</c> with a DOS 3.3 VTOC at track 17 sniffs as DOS-ordered
+    /// and reports a 36-track geometry.
+    /// </summary>
+    [Test]
+    public void Open_DskFile_SniffsAndOpensThirtySixTrack()
+    {
+        var payload = ImageFixtures.Random525ExtraTrackPayload(103);
+        ImageFixtures.WriteDosVtoc(payload);
+        var path = this.Temp(payload, ".dsk");
+
+        var factory = new DiskImageFactory();
+        var result = (Image525AndBlockResult)factory.Open(path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.SectorOrder, Is.EqualTo(SectorOrder.Dos33));
+            Assert.That(result.WasOrderSniffed, Is.True);
+            Assert.That(result.TrackMedia.Geometry.TrackCount, Is.EqualTo(36));
+        });
+    }
+
+    /// <summary>
+    /// A magic-sniffed (extension-less or unknown-extension) 36-track 5.25" payload
+    /// also opens as a sector image rather than falling through to the block-image
+    /// or "unknown format" paths.
+    /// </summary>
+    [Test]
+    public void Open_ByMagic_AcceptsThirtySixTrackPayload()
+    {
+        var payload = ImageFixtures.Random525ExtraTrackPayload(104);
+        ImageFixtures.WriteDosVtoc(payload);
+        var path = this.Temp(payload, ".img");
+
+        var factory = new DiskImageFactory();
+        var result = (Image525AndBlockResult)factory.Open(path);
+
+        Assert.That(result.TrackMedia.Geometry.TrackCount, Is.EqualTo(36));
+    }
+
+    /// <summary>
+    /// A 5.25" sector image of an unsupported size (neither 35- nor 36-track) is
+    /// rejected with a clear error that names both acceptable sizes.
+    /// </summary>
+    [Test]
+    public void Open_DoFile_NonStandardSize_Throws()
+    {
+        var payload = new byte[34 * 16 * 256]; // 34 tracks — unsupported
+        var path = this.Temp(payload, ".do");
+
+        var factory = new DiskImageFactory();
+        var ex = Assert.Throws<InvalidDataException>(() => factory.Open(path));
+        Assert.That(ex!.Message, Does.Contain("143360").And.Contain("147456"));
+    }
+
+    /// <summary>
     /// A <c>.nib</c> image opens as a 5.25"-only result.
     /// </summary>
     [Test]

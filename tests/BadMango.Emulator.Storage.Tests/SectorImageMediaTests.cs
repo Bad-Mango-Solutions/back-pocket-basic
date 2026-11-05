@@ -168,4 +168,60 @@ public class SectorImageMediaTests
         var geometry = new DiskGeometry(0, 16, 256, SectorOrder.Dos33);
         Assert.Throws<ArgumentOutOfRangeException>(() => new SectorImageMedia(backend, geometry));
     }
+
+    /// <summary>
+    /// A 36-track 5.25" image (147456-byte payload) round-trips through the GCR
+    /// nibblizer and exposes the extra outer cylinder (track 35 → qt 140) without
+    /// throwing on quarter-track validation.
+    /// </summary>
+    /// <param name="order">Backing-image sector order.</param>
+    [TestCase(SectorOrder.Dos33)]
+    [TestCase(SectorOrder.ProDos)]
+    public void ThirtySixTrack_RoundTripsThroughGcr(SectorOrder order)
+    {
+        var payload = ImageFixtures.Random525ExtraTrackPayload(seed: 5000 + (int)order);
+        using var backend = new RamStorageBackend(payload);
+        var geometry = new DiskGeometry(36, 16, 256, order);
+        var image = new SectorImageMedia(backend, geometry);
+        var media = image.As525Media();
+
+        Assert.That(media.Geometry.TrackCount, Is.EqualTo(36));
+        Assert.That(media.Geometry.QuarterTrackCount, Is.EqualTo(144));
+
+        // The new outer cylinder lives at qt=140 (= track 35); reading it must
+        // succeed (no ArgumentOutOfRange) and decode every sector.
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        media.ReadTrack(quarterTrack: 35 * 4, nibbles);
+
+        var decoded = new byte[16 * 256];
+        var mask = GcrEncoder.DecodeTrack(nibbles, decoded);
+        Assert.That(mask, Is.EqualTo(0xFFFF), $"outer track decode ({order})");
+
+        for (var phys = 0; phys < 16; phys++)
+        {
+            var logical = SectorSkew.PhysicalToLogical(order, phys);
+            var srcOff = ((35 * 16) + logical) * 256;
+            var actual = decoded.AsSpan(phys * 256, 256).ToArray();
+            var expected = payload.AsSpan(srcOff, 256).ToArray();
+            Assert.That(actual, Is.EqualTo(expected), $"track 35 phys {phys} ({order})");
+        }
+
+        // The block view must report 36 × 8 = 288 ProDOS blocks.
+        Assert.That(image.AsBlockMedia().BlockCount, Is.EqualTo(288));
+    }
+
+    /// <summary>
+    /// Reading the quarter-track just past the 36-track extent throws — the clamp
+    /// is the controller's responsibility, but the media must defend itself.
+    /// </summary>
+    [Test]
+    public void ThirtySixTrack_QuarterTrackBeyondExtent_Throws()
+    {
+        using var backend = new RamStorageBackend(ImageFixtures.FivePointTwoFiveExtraTrackBytes);
+        var geometry = new DiskGeometry(36, 16, 256, SectorOrder.Dos33);
+        var media = new SectorImageMedia(backend, geometry).As525Media();
+
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        Assert.Throws<ArgumentOutOfRangeException>(() => media.ReadTrack(quarterTrack: 144, nibbles));
+    }
 }

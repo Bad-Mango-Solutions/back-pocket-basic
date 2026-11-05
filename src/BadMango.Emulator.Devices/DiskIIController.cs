@@ -589,14 +589,19 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         var qtCount = media is not null ? media.Geometry.QuarterTrackCount : 4 * 35;
 
         // FR-D4: clamp at track 0 and the last even quarter-track that still maps
-        // to a real cylinder. For a 35-track disk this is qt=136 (= track 34); the
-        // stepper moves in two-quarter-track increments, so the highest reachable
-        // even index is `qtCount - 4` (the last whole-track boundary). An earlier
-        // formula clamped at `2 * trackCount - 2` which limited the head to qt=68
-        // (= track 17 / $11) on standard media, making the upper half of the disk
-        // unreachable — anything beyond DOS catalog track $11 silently became a
-        // permanent I/O ERROR because RWTS read back the address-field track of
-        // the clamp position instead of the requested track.
+        // to a real cylinder. For a 35-track disk this is qt=136 (= track 34); for
+        // a 36-track image (the occasional extra outer cylinder shipped by a few
+        // period titles and copy-protection schemes) this is qt=140 (= track 35).
+        // The stepper moves in two-quarter-track increments, so the highest
+        // reachable even index is `qtCount - 4` — the last whole-track boundary —
+        // which is driven by the mounted media's geometry (Geometry.QuarterTrackCount)
+        // rather than a hard-coded 35-track constant, so the four extra quads on a
+        // 36-track image are reachable. An earlier formula clamped at
+        // `2 * trackCount - 2` which limited the head to qt=68 (= track 17 / $11)
+        // on standard media, making the upper half of the disk unreachable —
+        // anything beyond DOS catalog track $11 silently became a permanent
+        // I/O ERROR because RWTS read back the address-field track of the clamp
+        // position instead of the requested track.
         var maxQuarter = qtCount - 4;
         var newQuarter = drive.QuarterTrack + delta;
         if (newQuarter < 0)
