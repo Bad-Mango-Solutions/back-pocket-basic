@@ -97,8 +97,16 @@ public partial class VideoWindow : Window
     /// <summary>
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
     /// </summary>
+    public VideoWindow()
+        : this(null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VideoWindow"/> class.
+    /// </summary>
     /// <param name="logger">The logger to use for video-window errors.</param>
-    public VideoWindow(ILogger? logger = null)
+    public VideoWindow(ILogger? logger)
     {
         this.logger = logger ?? Serilog.Core.Logger.None;
 
