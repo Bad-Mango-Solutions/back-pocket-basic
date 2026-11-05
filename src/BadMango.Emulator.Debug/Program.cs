@@ -5,6 +5,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
+using BadMango.Emulator.Debug;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI;
 using BadMango.Emulator.Devices;
@@ -19,6 +20,8 @@ using Serilog.Sinks.File;
 // Configure Serilog
 // For verbose device-level logging, add to the chain below:
 // .MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose)
+var debugLogEventStream = new DebugLogEventStream();
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -30,6 +33,9 @@ Log.Logger = new LoggerConfiguration()
         "logs/emudbg-.log",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Sink(
+        new DebugLogWindowSink(debugLogEventStream),
+        restrictedToMinimumLevel: LogEventLevel.Warning)
     .CreateLogger();
 
 // Give devices built by the device factory registry (speaker, Disk II, ...) a logger scoped
@@ -47,6 +53,7 @@ try
         {
             builder.RegisterModule<DebugConsoleModule>();
             builder.RegisterModule<DebugUiModule>();
+            builder.RegisterInstance(debugLogEventStream).As<IDebugLogEventStream>().SingleInstance();
             builder.RegisterInstance(Log.Logger).As<ILogger>().SingleInstance();
         })
         .UseSerilog(Log.Logger)

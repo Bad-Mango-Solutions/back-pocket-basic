@@ -53,6 +53,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<DebugLogEventStream>()
+            .As<IDebugLogEventStream>()
+            .SingleInstance();
+
         // Register debug command handlers
         builder.RegisterType<RegsCommand>()
             .As<ICommandHandler>()
@@ -177,6 +181,14 @@ public class DebugConsoleModule : Module
             .SingleInstance();
 
         builder.RegisterType<SwitchesCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.Register(ctx =>
+            {
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                return new LogCommand(windowManager);
+            })
             .As<ICommandHandler>()
             .SingleInstance();
 
