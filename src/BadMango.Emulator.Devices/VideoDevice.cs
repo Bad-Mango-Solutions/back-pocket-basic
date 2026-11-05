@@ -608,9 +608,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         // Assert vertical blanking status
         verticalBlanking = true;
 
-        // Schedule the end of VBlank before notifying listeners so that a
-        // throwing VBlankOccurred handler cannot leave vertical blanking stuck
-        // on and stop the VBlank cadence (no OnVBlankEnd means no next start).
+        // Notify listeners (video window should refresh)
+        VBlankOccurred?.Invoke();
+
+        // Schedule the end of VBlank
         if (scheduler != null)
         {
             vblankEndEventHandle = scheduler.ScheduleAfter(
@@ -620,9 +621,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
                 OnVBlankEnd,
                 tag: this);
         }
-
-        // Notify listeners (video window should refresh)
-        VBlankOccurred?.Invoke();
     }
 
     /// <summary>

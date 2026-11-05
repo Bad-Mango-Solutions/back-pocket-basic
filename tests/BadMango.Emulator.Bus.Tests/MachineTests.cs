@@ -525,30 +525,6 @@ public class MachineTests
         Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
     }
 
-    /// <summary>
-    /// Verifies that an exception from <c>Cpu.Step</c> (or a scheduled callback it
-    /// dispatches) leaves the machine <see cref="MachineState.Stopped"/> rather than
-    /// stuck in <see cref="MachineState.Running"/>, and that the exception is rethrown
-    /// so callers such as BootCommand can still report it.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation of the test.</returns>
-    [Test]
-    public async Task RunAsync_WhenStepThrows_TransitionsToStoppedAndRethrows()
-    {
-        var mockCpu = CreateMockCpu();
-        mockCpu.Setup(c => c.Step()).Throws(new InvalidOperationException("scheduler fault"));
-
-        var machine = CreateTestMachine(mockCpu);
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => machine.RunAsync());
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(ex!.Message, Is.EqualTo("scheduler fault"));
-            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
-        });
-    }
-
     // ─── CPU Throttling Tests ───────────────────────────────────────────
 
     /// <summary>

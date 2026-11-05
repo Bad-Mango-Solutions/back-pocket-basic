@@ -19,8 +19,6 @@ using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Storage.Media;
 using BadMango.Emulator.TextEditor;
 
-using Serilog;
-
 /// <summary>
 /// Manages debug popup windows for the console debugger REPL.
 /// </summary>
@@ -61,43 +59,14 @@ public class DebugWindowManager : IDebugWindowManager
 
     private readonly IDebugLogEventStream? logEventStream;
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ILogger logger;
     private int textEditorCounter;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
     /// </summary>
-    public DebugWindowManager()
-        : this(null, null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
-    /// </summary>
-    /// <param name="logger">The logger used for debug-window failures.</param>
-    public DebugWindowManager(ILogger? logger)
-        : this(logger, null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
-    /// </summary>
     /// <param name="logEventStream">Optional stream for forwarding runtime log events to the log window.</param>
-    public DebugWindowManager(IDebugLogEventStream? logEventStream)
-        : this(null, logEventStream)
+    public DebugWindowManager(IDebugLogEventStream? logEventStream = null)
     {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
-    /// </summary>
-    /// <param name="logger">The logger used for debug-window failures.</param>
-    /// <param name="logEventStream">Optional stream for forwarding runtime log events to the log window.</param>
-    public DebugWindowManager(ILogger? logger, IDebugLogEventStream? logEventStream)
-    {
-        this.logger = logger ?? Serilog.Core.Logger.None;
         this.logEventStream = logEventStream;
     }
 
@@ -267,6 +236,22 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private static VideoWindow CreateVideoWindow(object? context)
+    {
+        var window = new VideoWindow();
+
+        // If context is IMachine, attach it to the window
+        if (context is IMachine machine)
+        {
+            window.AttachMachine(machine);
+        }
+
+        // Apply VideoWindowContext settings if provided
+        ApplyVideoWindowContext(window, context);
+
+        return window;
+    }
+
     /// <summary>
     /// Applies context data to an existing window.
     /// </summary>
@@ -280,6 +265,11 @@ public class DebugWindowManager : IDebugWindowManager
         }
     }
 
+    /// <summary>
+    /// Applies VideoWindowContext settings to a VideoWindow.
+    /// </summary>
+    /// <param name="window">The video window.</param>
+    /// <param name="context">The context data (may be VideoWindowContext or IMachine).</param>
     private static void ApplyVideoWindowContext(VideoWindow window, object? context)
     {
         if (context is not VideoWindowContext videoContext)
@@ -348,22 +338,6 @@ public class DebugWindowManager : IDebugWindowManager
         {
             window.SetMachine(machine);
         }
-
-        return window;
-    }
-
-    private VideoWindow CreateVideoWindow(object? context)
-    {
-        var window = new VideoWindow(this.logger);
-
-        // If context is IMachine, attach it to the window
-        if (context is IMachine machine)
-        {
-            window.AttachMachine(machine);
-        }
-
-        // Apply VideoWindowContext settings if provided
-        ApplyVideoWindowContext(window, context);
 
         return window;
     }
