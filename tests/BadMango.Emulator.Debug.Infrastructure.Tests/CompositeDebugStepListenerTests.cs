@@ -164,10 +164,6 @@ public class CompositeDebugStepListenerTests
         long bestAllocated = long.MaxValue;
         for (int sample = 0; sample < SampleCount; sample++)
         {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
             long before = GC.GetAllocatedBytesForCurrentThread();
             for (int i = 0; i < MeasureIterations; i++)
             {
