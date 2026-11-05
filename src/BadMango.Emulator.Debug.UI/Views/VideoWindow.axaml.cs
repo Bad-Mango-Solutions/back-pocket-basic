@@ -16,6 +16,8 @@ using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
 
+using Serilog;
+
 using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
 /// <summary>
@@ -55,6 +57,7 @@ public partial class VideoWindow : Window
     /// </summary>
     private const int FlashToggleFrames = 16;
 
+    private readonly ILogger logger;
     private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
     private readonly DispatcherTimer fpsTimer;
@@ -94,8 +97,11 @@ public partial class VideoWindow : Window
     /// <summary>
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
     /// </summary>
-    public VideoWindow()
+    /// <param name="logger">The logger to use for video-window errors.</param>
+    public VideoWindow(ILogger? logger = null)
     {
+        this.logger = logger ?? Serilog.Core.Logger.None;
+
         InitializeComponent();
 
         renderer = new Pocket2VideoRenderer();
@@ -278,9 +284,10 @@ public partial class VideoWindow : Window
     /// <para>
     /// When already on the UI thread (for example <c>video refresh</c>, which calls
     /// this from inside <c>Dispatcher.UIThread.InvokeAsync</c>), the capture and
-    /// render run inline. Posting another <c>InvokeAsync</c> in that case used to
-    /// discard exceptions and could skip the paint. Off the UI thread the work is
-    /// marshaled with <c>InvokeAsync</c>; exceptions are logged and rethrown.
+    /// render run inline. Off the UI thread the work is marshaled with
+    /// <c>InvokeAsync</c>; failures are surfaced through the dispatcher and logged
+    /// by the window logger. This method does not return a <c>Task</c>, so callers
+    /// cannot await or catch exceptions from the marshaled path.
     /// </para>
     /// </remarks>
     public void ForceRedraw()
@@ -291,7 +298,7 @@ public partial class VideoWindow : Window
             return;
         }
 
-        Dispatcher.UIThread.InvokeAsync(RedrawFromCurrentMemory);
+        _ = Dispatcher.UIThread.InvokeAsync(RedrawFromCurrentMemory);
     }
 
     /// <inheritdoc/>
@@ -518,7 +525,7 @@ public partial class VideoWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.TraceError($"Video window failed to capture display snapshot: {ex}");
+            logger.Error(ex, "Video window failed to capture display snapshot");
         }
 
         // Only queue a UI render if one isn't already pending.
@@ -616,7 +623,7 @@ public partial class VideoWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.TraceError($"Video window failed to render VBlank frame: {ex}");
+            logger.Error(ex, "Video window failed to render VBlank frame");
         }
 
         frameCount++;
@@ -634,7 +641,7 @@ public partial class VideoWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.TraceError($"Video window redraw failed: {ex}");
+            logger.Error(ex, "Video window redraw failed");
             throw;
         }
     }
