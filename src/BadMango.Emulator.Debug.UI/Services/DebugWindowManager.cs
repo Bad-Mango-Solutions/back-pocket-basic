@@ -49,6 +49,7 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.About),
         nameof(DebugWindowComponent.CharacterPreview),
         nameof(DebugWindowComponent.GlyphEditor),
+        nameof(DebugWindowComponent.Log),
         nameof(DebugWindowComponent.ScheduleMonitor),
         nameof(DebugWindowComponent.StatusMonitor),
         nameof(DebugWindowComponent.TextEditor),
@@ -56,8 +57,18 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.Video),
     ];
 
+    private readonly IDebugLogEventStream? logEventStream;
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
     private int textEditorCounter;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
+    /// </summary>
+    /// <param name="logEventStream">Optional stream for forwarding runtime log events to the log window.</param>
+    public DebugWindowManager(IDebugLogEventStream? logEventStream = null)
+    {
+        this.logEventStream = logEventStream;
+    }
 
     /// <inheritdoc />
     public bool IsAvaloniaRunning => AvaloniaBootstrapper.IsRunning;
@@ -331,6 +342,11 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private LogWindow CreateLogWindow()
+    {
+        return new LogWindow(this.logEventStream);
+    }
+
     /// <summary>
     /// Shows a new text editor window, allowing multiple instances.
     /// </summary>
@@ -371,6 +387,7 @@ public class DebugWindowManager : IDebugWindowManager
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             "GLYPHEDITOR" => CreateGlyphEditorWindow(context),
+            "LOG" => this.CreateLogWindow(),
             "SCHEDULEMONITOR" => CreateScheduleMonitorWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             "TEXTEDITOR" => CreateTextEditorWindow(context),
