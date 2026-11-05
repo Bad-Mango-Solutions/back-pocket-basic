@@ -51,6 +51,7 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.About),
         nameof(DebugWindowComponent.CharacterPreview),
         nameof(DebugWindowComponent.GlyphEditor),
+        nameof(DebugWindowComponent.Log),
         nameof(DebugWindowComponent.ScheduleMonitor),
         nameof(DebugWindowComponent.StatusMonitor),
         nameof(DebugWindowComponent.TextEditor),
@@ -58,6 +59,7 @@ public class DebugWindowManager : IDebugWindowManager
         nameof(DebugWindowComponent.Video),
     ];
 
+    private readonly IDebugLogEventStream? logEventStream;
     private readonly ConcurrentDictionary<string, Window> openWindows = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger logger;
     private int textEditorCounter;
@@ -65,10 +67,38 @@ public class DebugWindowManager : IDebugWindowManager
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
     /// </summary>
+    public DebugWindowManager()
+        : this(null, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
+    /// </summary>
     /// <param name="logger">The logger used for debug-window failures.</param>
-    public DebugWindowManager(ILogger? logger = null)
+    public DebugWindowManager(ILogger? logger)
+        : this(logger, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
+    /// </summary>
+    /// <param name="logEventStream">Optional stream for forwarding runtime log events to the log window.</param>
+    public DebugWindowManager(IDebugLogEventStream? logEventStream)
+        : this(null, logEventStream)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DebugWindowManager"/> class.
+    /// </summary>
+    /// <param name="logger">The logger used for debug-window failures.</param>
+    /// <param name="logEventStream">Optional stream for forwarding runtime log events to the log window.</param>
+    public DebugWindowManager(ILogger? logger, IDebugLogEventStream? logEventStream)
     {
         this.logger = logger ?? Serilog.Core.Logger.None;
+        this.logEventStream = logEventStream;
     }
 
     /// <inheritdoc />
@@ -338,6 +368,11 @@ public class DebugWindowManager : IDebugWindowManager
         return window;
     }
 
+    private LogWindow CreateLogWindow()
+    {
+        return new LogWindow(this.logEventStream);
+    }
+
     /// <summary>
     /// Shows a new text editor window, allowing multiple instances.
     /// </summary>
@@ -378,6 +413,7 @@ public class DebugWindowManager : IDebugWindowManager
             "ABOUT" => new AboutWindow(),
             "CHARACTERPREVIEW" => CreateCharacterPreviewWindow(context),
             "GLYPHEDITOR" => CreateGlyphEditorWindow(context),
+            "LOG" => this.CreateLogWindow(),
             "SCHEDULEMONITOR" => CreateScheduleMonitorWindow(context),
             "STATUSMONITOR" => CreateStatusMonitorWindow(context),
             "TEXTEDITOR" => CreateTextEditorWindow(context),

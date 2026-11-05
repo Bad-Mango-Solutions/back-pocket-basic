@@ -77,4 +77,9 @@ public enum DebugWindowComponent
     /// and logs trap invocations in real-time for diagnostic purposes.
     /// </remarks>
     TrapMonitor,
+
+    /// <summary>
+    /// A log monitor window for warning, error, and fatal diagnostics.
+    /// </summary>
+    Log,
 }
