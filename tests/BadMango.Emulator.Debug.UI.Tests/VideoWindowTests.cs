@@ -139,7 +139,8 @@ public class VideoWindowTests
         Assert.Multiple(() =>
         {
             Assert.That(fpsDisplay, Is.Not.Null);
-            Assert.That(fpsDisplay!.Text, Is.EqualTo("30.0 FPS  vb:60 ui:25"));
+            Assert.That(fpsDisplay!.Text, Does.StartWith("30.0 FPS  vb:60 ui:25"));
+            Assert.That(fpsDisplay.Text, Does.Contain("ATT "));
             Assert.That((int)frameCountField.GetValue(window)!, Is.EqualTo(0));
             Assert.That((int)vblankCountField.GetValue(window)!, Is.EqualTo(0));
             Assert.That((int)uiFrameCountField.GetValue(window)!, Is.EqualTo(0));

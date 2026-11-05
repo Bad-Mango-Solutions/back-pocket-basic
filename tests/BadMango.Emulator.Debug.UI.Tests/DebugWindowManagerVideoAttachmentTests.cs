@@ -28,10 +28,12 @@ using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDev
 [TestFixture]
 public class DebugWindowManagerVideoAttachmentTests
 {
+    private static readonly DebugWindowManager WindowManager = new();
+
     private static MethodInfo CreateVideoWindowMethod =>
         typeof(DebugWindowManager).GetMethod(
             "CreateVideoWindow",
-            BindingFlags.NonPublic | BindingFlags.Static)!;
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     private static MethodInfo ApplyContextToWindowMethod =>
         typeof(DebugWindowManager).GetMethod(
@@ -46,7 +48,23 @@ public class DebugWindowManagerVideoAttachmentTests
     {
         var mockMachine = CreateMockMachineWithPhysicalRam(out _, out var mockVideoDevice);
         var context = new VideoWindowContext { Machine = mockMachine.Object };
-        var window = (VideoWindow)CreateVideoWindowMethod.Invoke(null, [context])!;
+        var window = (VideoWindow)CreateVideoWindowMethod.Invoke(WindowManager, [context])!;
+
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(GetFrameCount(window), Is.EqualTo(1));
+    }
+
+    /// <summary>
+    /// Verifies CreateVideoWindow attaches the machine when context is a direct IMachine
+    /// (the same context form used by BootCommand auto-open).
+    /// </summary>
+    [AvaloniaTest]
+    public void CreateVideoWindow_WithDirectMachineContext_SubscribesVBlank()
+    {
+        var mockMachine = CreateMockMachineWithPhysicalRam(out _, out var mockVideoDevice);
+        var window = (VideoWindow)CreateVideoWindowMethod.Invoke(WindowManager, [mockMachine.Object])!;
 
         mockVideoDevice.Raise(v => v.VBlankOccurred += null);
         Dispatcher.UIThread.RunJobs();
@@ -63,8 +81,8 @@ public class DebugWindowManagerVideoAttachmentTests
         var machineA = CreateMockMachineWithPhysicalRam(out _, out var videoA);
         var machineB = CreateMockMachineWithPhysicalRam(out _, out var videoB);
         var window = (VideoWindow)CreateVideoWindowMethod.Invoke(
-            null,
-            [new VideoWindowContext { Machine = machineA.Object }])!;
+            WindowManager,
+            [machineA.Object])!;
 
         videoA.Raise(v => v.VBlankOccurred += null);
         Dispatcher.UIThread.RunJobs();
@@ -72,7 +90,7 @@ public class DebugWindowManagerVideoAttachmentTests
 
         ApplyContextToWindowMethod.Invoke(
             null,
-            [window, new VideoWindowContext { Machine = machineB.Object }]);
+            [window, machineB.Object]);
 
         videoA.Raise(v => v.VBlankOccurred += null);
         Dispatcher.UIThread.RunJobs();
@@ -84,7 +102,7 @@ public class DebugWindowManagerVideoAttachmentTests
 
         ApplyContextToWindowMethod.Invoke(
             null,
-            [window, new VideoWindowContext { Machine = machineB.Object }]);
+            [window, machineB.Object]);
         videoB.Raise(v => v.VBlankOccurred += null);
         Dispatcher.UIThread.RunJobs();
         Assert.That(GetFrameCount(window), Is.EqualTo(3), "Reattaching same machine must not duplicate handlers.");
@@ -99,7 +117,7 @@ public class DebugWindowManagerVideoAttachmentTests
         var machineA = CreateMockMachineWithPhysicalRam(out var mainA, out var videoA);
         var machineB = CreateMockMachineWithPhysicalRam(out var mainB, out _);
         var window = (VideoWindow)CreateVideoWindowMethod.Invoke(
-            null,
+            WindowManager,
             [new VideoWindowContext { Machine = machineA.Object }])!;
 
         mainA.AsSpan().Slice(0x2000, 0x2000).Fill(0x11);
