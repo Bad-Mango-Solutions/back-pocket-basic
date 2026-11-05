@@ -157,6 +157,18 @@ public class VideoWindowTests
     }
 
     /// <summary>
+    /// Verifies that VBlank frames are marshaled at Normal priority rather than Render.
+    /// Avalonia 12.1.5's render-priority band can drop Render-priority work while
+    /// Background timers (the FPS overlay) still run, which looks like FPS 0.0.
+    /// </summary>
+    [Test]
+    public void VBlankUiPriority_IsNormal()
+    {
+        Assert.That(VideoWindow.VBlankUiPriority, Is.EqualTo(DispatcherPriority.Normal));
+        Assert.That(VideoWindow.VBlankUiPriority, Is.Not.EqualTo(DispatcherPriority.Render));
+    }
+
+    /// <summary>
     /// Verifies DetachMachine can be called without a machine attached.
     /// </summary>
     [AvaloniaTest]
@@ -813,6 +825,40 @@ public class VideoWindowTests
 
         window.ForceRedraw();
         Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+            mockBus.Verify(b => b.Read8(It.IsAny<BusAccess>()), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that ForceRedraw paints immediately when already on the UI thread,
+    /// without requiring a later dispatcher flush. This is the <c>video refresh</c>
+    /// path, which calls ForceRedraw from inside an existing UI-thread InvokeAsync.
+    /// </summary>
+    [AvaloniaTest]
+    public void ForceRedraw_WhenOnUiThread_PaintsImmediately()
+    {
+        Assert.That(Dispatcher.UIThread.CheckAccess(), Is.True);
+
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expected = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.ForceRedraw();
 
         Assert.Multiple(() =>
         {

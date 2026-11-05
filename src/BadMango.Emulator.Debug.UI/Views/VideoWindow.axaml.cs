@@ -16,6 +16,8 @@ using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
 
+using Serilog;
+
 using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
 /// <summary>
@@ -55,6 +57,7 @@ public partial class VideoWindow : Window
     /// </summary>
     private const int FlashToggleFrames = 16;
 
+    private readonly ILogger logger;
     private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
     private readonly DispatcherTimer fpsTimer;
@@ -97,7 +100,18 @@ public partial class VideoWindow : Window
     /// Initializes a new instance of the <see cref="VideoWindow"/> class.
     /// </summary>
     public VideoWindow()
+        : this(null)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VideoWindow"/> class.
+    /// </summary>
+    /// <param name="logger">The logger to use for video-window errors.</param>
+    public VideoWindow(ILogger? logger)
+    {
+        this.logger = logger ?? Serilog.Core.Logger.None;
+
         InitializeComponent();
 
         renderer = new Pocket2VideoRenderer();
@@ -165,6 +179,20 @@ public partial class VideoWindow : Window
             ForceRedraw();
         }
     }
+
+    /// <summary>
+    /// Dispatcher priority used to marshal VBlank frames onto the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// Avalonia 12.1.5 introduced a dedicated render-priority band
+    /// (<c>UiThreadRender</c> / <c>AfterRender</c> / <c>BeforeRender</c>).
+    /// Posting at <see cref="DispatcherPriority.Render"/> was observed to leave
+    /// <c>ProcessVBlankFrame</c> unrun (FPS overlay stuck at 0.0 from the Background
+    /// timer) while the CPU, disk, and speaker kept running. <see cref="DispatcherPriority.Normal"/>
+    /// is processed on a regular dispatcher pump. The frame still presents via
+    /// <c>InvalidateVisual</c> after <see cref="PixelBuffer.Commit"/>.
+    /// </remarks>
+    internal static DispatcherPriority VBlankUiPriority { get; } = DispatcherPriority.Normal;
 
     /// <summary>
     /// Attaches the video window to a machine instance.
@@ -259,16 +287,28 @@ public partial class VideoWindow : Window
     /// Forces an immediate redraw of the video display.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A fresh display memory snapshot is captured from physical RAM before rendering,
     /// so the redraw reflects current memory even if no VBlank has occurred recently.
+    /// </para>
+    /// <para>
+    /// When already on the UI thread (for example <c>video refresh</c>, which calls
+    /// this from inside <c>Dispatcher.UIThread.InvokeAsync</c>), the capture and
+    /// render run inline. Off the UI thread the work is marshaled with
+    /// <c>InvokeAsync</c>; failures are surfaced through the dispatcher and logged
+    /// by the window logger. This method does not return a <c>Task</c>, so callers
+    /// cannot await or catch exceptions from the marshaled path.
+    /// </para>
     /// </remarks>
     public void ForceRedraw()
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
+        if (Dispatcher.UIThread.CheckAccess())
         {
-            CaptureDisplaySnapshot();
-            RenderFrame();
-        });
+            RedrawFromCurrentMemory();
+            return;
+        }
+
+        _ = Dispatcher.UIThread.InvokeAsync(RedrawFromCurrentMemory);
     }
 
     /// <inheritdoc/>
@@ -489,12 +529,22 @@ public partial class VideoWindow : Window
         // Capture display memory snapshot on the emulator thread while CPU is paused.
         // This is the key to preventing 80-column flicker: the firmware modifies
         // PAGE1/PAGE2 buffers between VBlanks, but we capture a stable copy here.
-        CaptureDisplaySnapshot();
+        // Swallow snapshot failures so they cannot unwind VideoDevice.OnVBlankStart
+        // and tear down the CPU run loop.
+        try
+        {
+            CaptureDisplaySnapshot();
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Video window failed to capture display snapshot");
+        }
 
-        // Only queue a UI render if one isn't already pending
+        // Only queue a UI render if one isn't already pending.
+        // Use Normal rather than Render: see VBlankUiPriority remarks.
         if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
         {
-            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, DispatcherPriority.Render);
+            Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, VBlankUiPriority);
         }
     }
 
@@ -576,16 +626,38 @@ public partial class VideoWindow : Window
             ReloadCharacterRom();
         }
 
+        // Render the frame, but keep the counters moving even when rendering throws.
+        // This preserves a non-zero FPS and makes a stale image look like a render
+        // issue instead of a stopped VBlank signal.
         try
         {
-            // Render frame
             RenderFrame();
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Video window failed to render VBlank frame");
         }
         finally
         {
-            // Update counters even if rendering fails.
             frameCount++;
             uiFrameCount++;
+        }
+    }
+
+    /// <summary>
+    /// Captures a fresh snapshot and renders it, logging and rethrowing on failure.
+    /// </summary>
+    private void RedrawFromCurrentMemory()
+    {
+        try
+        {
+            CaptureDisplaySnapshot();
+            RenderFrame();
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Video window redraw failed");
+            throw;
         }
     }
 
