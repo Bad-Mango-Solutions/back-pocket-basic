@@ -18,9 +18,9 @@ using BadMango.Emulator.Storage.Media;
 /// magic-byte sniffing for headered formats:
 /// </para>
 /// <list type="bullet">
-/// <item><description><c>.dsk</c> — sector image; ordering sniffed per §10 decision 5.</description></item>
-/// <item><description><c>.do</c> — DOS 3.3 sector image.</description></item>
-/// <item><description><c>.po</c> — ProDOS sector image.</description></item>
+/// <item><description><c>.dsk</c> — sector image; ordering sniffed per §10 decision 5. Accepts both the standard 35-track and the occasional 36-track (extra outer cylinder) payload.</description></item>
+/// <item><description><c>.do</c> — DOS 3.3 sector image (35- or 36-track).</description></item>
+/// <item><description><c>.po</c> — ProDOS sector image (35- or 36-track).</description></item>
 /// <item><description><c>.2mg</c>/<c>.2img</c> — 2MG-wrapped DOS / ProDOS / nibble payload.</description></item>
 /// <item><description><c>.nib</c> — raw nibble image.</description></item>
 /// <item><description><c>.hdv</c> — raw 512-byte block image (hard disk).</description></item>
@@ -30,7 +30,11 @@ using BadMango.Emulator.Storage.Media;
 /// </remarks>
 public class DiskImageFactory
 {
-    private const int FivePointTwoFiveStandardBytes = 35 * SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector; // 143360
+    private const int TrackBytes = SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector; // 4096
+    private const int StandardTrackCount = 35;
+    private const int ExtraTrackCount = 36;
+    private const int FivePointTwoFiveStandardBytes = StandardTrackCount * TrackBytes; // 143360
+    private const int FivePointTwoFiveExtraTrackBytes = ExtraTrackCount * TrackBytes;   // 147456
     private const int D13StandardBytes = 35 * 13 * GcrEncoder.BytesPerSector; // 116480
     private const int NibStandardBytes = 35 * GcrEncoder.StandardTrackLength; // 232960
 
@@ -109,7 +113,7 @@ public class DiskImageFactory
 
         // Sniff by length as a last resort.
         var length = new FileInfo(path).Length;
-        if (length == FivePointTwoFiveStandardBytes)
+        if (length == FivePointTwoFiveStandardBytes || length == FivePointTwoFiveExtraTrackBytes)
         {
             return this.OpenDsk(path, forceReadOnly);
         }
@@ -136,13 +140,20 @@ public class DiskImageFactory
     {
         var backend = this.OpenBackend(path, forceReadOnly);
         var length = backend.Length;
-        if (length != FivePointTwoFiveStandardBytes)
+        var trackCount = length switch
+        {
+            FivePointTwoFiveStandardBytes => StandardTrackCount,
+            FivePointTwoFiveExtraTrackBytes => ExtraTrackCount,
+            _ => -1,
+        };
+        if (trackCount < 0)
         {
             backend.Dispose();
-            throw new InvalidDataException($"5.25\" sector image must be {FivePointTwoFiveStandardBytes} bytes; '{path}' is {length}.");
+            throw new InvalidDataException(
+                $"5.25\" sector image must be {FivePointTwoFiveStandardBytes} or {FivePointTwoFiveExtraTrackBytes} bytes; '{path}' is {length}.");
         }
 
-        var geometry = new DiskGeometry(35, SectorSkew.SectorsPerTrack, GcrEncoder.BytesPerSector, order);
+        var geometry = new DiskGeometry(trackCount, SectorSkew.SectorsPerTrack, GcrEncoder.BytesPerSector, order);
         var media = new SectorImageMedia(backend, geometry, backingOffset: 0, writeProtected: forceReadOnly);
         var result = new Image525AndBlockResult(media.As525Media(), media.AsBlockMedia(), order, sniffed, format, path, media.IsReadOnly, media);
         result.AttachBackend(backend);
@@ -151,11 +162,26 @@ public class DiskImageFactory
 
     private DiskImageOpenResult OpenDsk(string path, bool forceReadOnly)
     {
-        // .dsk: ambiguous order; sniff first.
-        var preview = PeekFirstBytes(path, FivePointTwoFiveStandardBytes);
-        if (preview.Length != FivePointTwoFiveStandardBytes)
+        // .dsk: ambiguous order; sniff first. Accept both the standard 35-track
+        // size and the occasional 36-track payload (an extra outer cylinder, used
+        // by a handful of period images and copy-protection schemes).
+        var fileLength = new FileInfo(path).Length;
+        var previewLength = fileLength switch
         {
-            throw new InvalidDataException($"5.25\" .dsk must be {FivePointTwoFiveStandardBytes} bytes; '{path}' is {preview.Length}.");
+            FivePointTwoFiveStandardBytes => FivePointTwoFiveStandardBytes,
+            FivePointTwoFiveExtraTrackBytes => FivePointTwoFiveExtraTrackBytes,
+            _ => -1,
+        };
+        if (previewLength < 0)
+        {
+            throw new InvalidDataException(
+                $"5.25\" .dsk must be {FivePointTwoFiveStandardBytes} or {FivePointTwoFiveExtraTrackBytes} bytes; '{path}' is {fileLength}.");
+        }
+
+        var preview = PeekFirstBytes(path, previewLength);
+        if (preview.Length != previewLength)
+        {
+            throw new InvalidDataException($"5.25\" .dsk must be {previewLength} bytes; '{path}' is {preview.Length}.");
         }
 
         var order = DskOrderSniffer.Sniff(preview, out var sniffed);
@@ -271,7 +297,8 @@ public class DiskImageFactory
                         // so format code 0 at a non-5.25" size is invalid.
                         if (header.Format == 0)
                         {
-                            throw new InvalidDataException($"2MG DOS 3.3 payload must be {FivePointTwoFiveStandardBytes} bytes; got {header.DataLength}.");
+                            throw new InvalidDataException(
+                                $"2MG DOS 3.3 payload must be a whole-track 5.25\" image (e.g. {FivePointTwoFiveStandardBytes} or {FivePointTwoFiveExtraTrackBytes} bytes); got {header.DataLength}.");
                         }
 
                         if (header.DataLength % 512 != 0)

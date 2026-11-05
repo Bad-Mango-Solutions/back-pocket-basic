@@ -28,7 +28,10 @@ public static class DskOrderSniffer
     private const int VtocSector = 0;
 
     /// <summary>
-    /// Sniffs the sector order from a 35-track / 16-sector / 256-byte raw payload.
+    /// Sniffs the sector order from a 16-sector / 256-byte raw payload covering at
+    /// least the first 35 tracks (so the VTOC at track 17 / sector 0 is always
+    /// addressable). The same logic applies equally to standard 35-track
+    /// (143360-byte) and extra-track 36-track (147456-byte) images.
     /// </summary>
     /// <param name="payload">A buffer of at least 143360 bytes containing the raw sector image.</param>
     /// <param name="sniffed">Receives <see langword="true"/> if a positive identification was made; <see langword="false"/> if the fallback was used.</param>
@@ -36,10 +39,10 @@ public static class DskOrderSniffer
     /// <exception cref="ArgumentException">If <paramref name="payload"/> is too short.</exception>
     public static SectorOrder Sniff(ReadOnlySpan<byte> payload, out bool sniffed)
     {
-        const int payloadBytes = 35 * SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector;
-        if (payload.Length < payloadBytes)
+        const int minPayloadBytes = 35 * SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector;
+        if (payload.Length < minPayloadBytes)
         {
-            throw new ArgumentException($"Payload must be at least {payloadBytes} bytes.", nameof(payload));
+            throw new ArgumentException($"Payload must be at least {minPayloadBytes} bytes.", nameof(payload));
         }
 
         // Read the same physical (track 17, physical sector 0) as if the image were
