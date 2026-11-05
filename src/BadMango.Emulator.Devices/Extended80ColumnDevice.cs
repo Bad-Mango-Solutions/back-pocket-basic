@@ -913,7 +913,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         public string Name => "AUX_SPLIT_RAM_1000_BFFF";
 
-        public TargetCaps Capabilities => auxRamPages.Capabilities;
+        public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
         public byte Read8(Addr physicalAddress, in BusAccess access)
         {
