@@ -35,6 +35,7 @@ public class DebugWindowManagerTests
         {
             Assert.That(types, Does.Contain("About"));
             Assert.That(types, Does.Contain("CharacterPreview"));
+            Assert.That(types, Does.Contain("Log"));
             Assert.That(types, Does.Contain("StatusMonitor"));
         });
     }
