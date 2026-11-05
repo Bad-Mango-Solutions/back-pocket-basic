@@ -4,6 +4,7 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Rendering;
 
 /// <summary>
@@ -11,6 +12,11 @@ using BadMango.Emulator.Rendering;
 /// </summary>
 public sealed class VideoWindowContext
 {
+    /// <summary>
+    /// Gets or sets the machine to attach to the video window.
+    /// </summary>
+    public IMachine? Machine { get; set; }
+
     /// <summary>
     /// Gets or sets the display scale factor (1-4).
     /// </summary>
