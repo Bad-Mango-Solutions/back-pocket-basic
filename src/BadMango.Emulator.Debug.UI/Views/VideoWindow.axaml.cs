@@ -55,39 +55,15 @@ public partial class VideoWindow : Window
     /// </summary>
     private const int FlashToggleFrames = 16;
 
-    /// <summary>
-    /// Base address of the text page snapshot range ($0400).
-    /// </summary>
-    private const int TextPageSnapshotBase = 0x0400;
-
-    /// <summary>
-    /// Size of the text page snapshot covering both text page ranges ($0400-$0BFF).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// In 40-column mode, Page 1 uses main $0400-$07FF and Page 2 uses main $0800-$0BFF.
-    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF
-    /// (even columns from aux, odd columns from main). The 80-column firmware typically
-    /// uses PAGE1 addresses ($0400-$07FF) in both main and aux RAM — PAGE2 in 80-column
-    /// mode refers to $0400-$07FF in auxiliary RAM, not $0800.
-    /// </para>
-    /// <para>
-    /// We snapshot the full $0400-$0BFF range from both main and aux to cover all
-    /// page configurations.
-    /// </para>
-    /// </remarks>
-    private const int TextPageSnapshotSize = 0x0800;
-
     private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
     private readonly DispatcherTimer fpsTimer;
     private readonly Stopwatch fpsStopwatch;
 
-    // Snapshot buffers for display memory captured at VBlank start.
-    // This prevents the renderer from seeing half-updated memory when the
-    // firmware is actively modifying text pages between frames.
-    private readonly byte[] mainMemorySnapshot = new byte[TextPageSnapshotSize];
-    private readonly byte[] auxMemorySnapshot = new byte[TextPageSnapshotSize];
+    // Snapshot of display memory ($0400-$5FFF, main and aux) captured at VBlank start.
+    // Rendering reads only from this snapshot, so the image never depends on the
+    // CPU's MMU state (RAMRD/80STORE/PAGE2) or on half-updated memory.
+    private readonly DisplayMemorySnapshot displaySnapshot = new();
     private readonly object snapshotLock = new();
 
     private IMachine? machine;
@@ -270,14 +246,27 @@ public partial class VideoWindow : Window
         mainRam = ReadOnlyMemory<byte>.Empty;
         characterRom = Memory<byte>.Empty;
         snapshotValid = false;
+
+        lock (snapshotLock)
+        {
+            displaySnapshot.Clear();
+        }
     }
 
     /// <summary>
     /// Forces an immediate redraw of the video display.
     /// </summary>
+    /// <remarks>
+    /// A fresh display memory snapshot is captured from physical RAM before rendering,
+    /// so the redraw reflects current memory even if no VBlank has occurred recently.
+    /// </remarks>
     public void ForceRedraw()
     {
-        Dispatcher.UIThread.InvokeAsync(RenderFrame);
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            CaptureDisplaySnapshot();
+            RenderFrame();
+        });
     }
 
     /// <inheritdoc/>
@@ -482,8 +471,8 @@ public partial class VideoWindow : Window
     /// <para>
     /// This callback runs on the emulator thread during the scheduler dispatch,
     /// meaning the CPU is NOT executing instructions at this point. We capture
-    /// a snapshot of the text page memory here to prevent the renderer from seeing
-    /// half-updated data when the firmware is actively modifying text pages.
+    /// a snapshot of the display memory (text and hi-res pages) here to prevent the
+    /// renderer from seeing half-updated data or the CPU's MMU-mapped view of memory.
     /// </para>
     /// <para>
     /// The snapshot is captured synchronously before queuing the UI render, ensuring
@@ -506,58 +495,54 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
-    /// Captures a snapshot of the text page display memory from both main and auxiliary RAM.
+    /// Captures a snapshot of the display memory from both main and auxiliary RAM.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method captures the text page address range ($0400-$0BFF) from both main and
-    /// auxiliary memory. The snapshot is taken at VBlank start when the CPU is not actively
-    /// modifying video memory, ensuring the renderer sees a consistent frame.
+    /// This method captures <c>$0400-$5FFF</c> (text/lo-res pages 1 and 2 and hi-res
+    /// pages 1 and 2) from both main and auxiliary memory. The snapshot is taken at
+    /// VBlank start when the CPU is not actively modifying video memory, ensuring the
+    /// renderer sees a consistent frame.
     /// </para>
     /// <para>
-    /// Both main and auxiliary memory are read directly from their physical RAM backing
-    /// stores, bypassing all soft switch mapping (80STORE, PAGE2, RAMRD). This is critical
-    /// because when 80STORE is enabled, reads to $0400-$07FF through the memory bus may
-    /// be redirected to auxiliary RAM based on the PAGE2 state, causing the main memory
-    /// snapshot to contain auxiliary data (and vice versa). The video hardware on real
-    /// Apple IIe accesses VRAM directly without going through the MMU soft switch logic.
+    /// Both main and auxiliary memory are copied directly from their physical RAM backing
+    /// stores, bypassing all soft switch mapping (RAMRD, 80STORE, PAGE2, HIRES). Real IIe
+    /// video hardware fetches display data from physical RAM without going through the
+    /// MMU: main RAM always, plus auxiliary RAM for 80-column text and double hi-res.
+    /// Reading through the memory bus instead would, for example, show auxiliary
+    /// <c>$2000-$5FFF</c> whenever a program runs with RAMRD on.
     /// </para>
     /// <para>
-    /// In 80-column mode, the display interleaves main and auxiliary memory at $0400-$07FF:
-    /// even columns come from auxiliary RAM and odd columns from main RAM. PAGE2 in
-    /// 80-column mode refers to $0400-$07FF in auxiliary RAM, not the $0800 page.
-    /// Both main and aux sources must be captured to prevent interleaving artifacts.
+    /// Machines that do not expose physical main RAM fall back to side-effect-free bus reads.
     /// </para>
     /// </remarks>
     private void CaptureDisplaySnapshot()
     {
         lock (snapshotLock)
         {
-            // Capture main memory text pages ($0400-$0BFF) directly from physical RAM,
-            // bypassing soft switch mapping that could redirect reads to aux memory.
-            if (!mainRam.IsEmpty
-                && mainRam.Length >= TextPageSnapshotBase + TextPageSnapshotSize)
+            if (mainRam.Length >= DisplayMemorySnapshot.EndAddress)
             {
-                mainRam.Span.Slice(TextPageSnapshotBase, TextPageSnapshotSize)
-                    .CopyTo(mainMemorySnapshot);
+                displaySnapshot.CaptureMain(mainRam.Span);
             }
             else if (memoryBus is not null)
             {
-                // Fallback to bus reads if direct RAM access is unavailable
-                // or the physical memory is too small
-                for (int i = 0; i < TextPageSnapshotSize; i++)
-                {
-                    mainMemorySnapshot[i] = ReadMemoryByte((ushort)(TextPageSnapshotBase + i));
-                }
+                displaySnapshot.CaptureMain(ReadMemoryByte);
+            }
+            else
+            {
+                return;
             }
 
-            // Capture auxiliary memory text pages (same address range in aux RAM)
             if (extended80ColumnDevice is not null)
             {
-                for (int i = 0; i < TextPageSnapshotSize; i++)
+                var auxRam = extended80ColumnDevice.AuxiliaryRam;
+                if (auxRam.Length >= DisplayMemorySnapshot.EndAddress)
                 {
-                    auxMemorySnapshot[i] = extended80ColumnDevice.ReadAuxRam(
-                        (ushort)(TextPageSnapshotBase + i));
+                    displaySnapshot.CaptureAux(auxRam);
+                }
+                else
+                {
+                    displaySnapshot.CaptureAux(extended80ColumnDevice.ReadAuxRam);
                 }
             }
 
@@ -640,38 +625,21 @@ public partial class VideoWindow : Window
         bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
         bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
 
-        if (snapshotValid)
+        if (!snapshotValid)
         {
-            // Use snapshot data — guaranteed consistent from VBlank capture.
-            // Lock to prevent a concurrent VBlank from overwriting the snapshot
-            // while the renderer is reading from it.
-            lock (snapshotLock)
-            {
-                renderer.RenderFrame(
-                    pixels,
-                    mode,
-                    ReadSnapshotMainByte,
-                    characterRom.Span,
-                    useAltCharSet,
-                    videoDevice.IsPage2,
-                    flashState,
-                    noFlash1,
-                    noFlash2,
-                    colorMode,
-                    extended80ColumnDevice is not null ? ReadSnapshotAuxByte : null);
-            }
+            // No VBlank has been captured yet — take a snapshot now so that
+            // rendering never reads display memory through the MMU-mapped bus.
+            CaptureDisplaySnapshot();
         }
-        else
-        {
-            // No snapshot available (e.g., force redraw) — fall back to live memory
-            Func<ushort, byte>? readAuxMemory = extended80ColumnDevice is not null
-                ? extended80ColumnDevice.ReadAuxRam
-                : null;
 
+        // Lock to prevent a concurrent VBlank from overwriting the snapshot
+        // while the renderer is reading from it.
+        lock (snapshotLock)
+        {
             renderer.RenderFrame(
                 pixels,
                 mode,
-                ReadMemoryByte,
+                displaySnapshot.ReadMain,
                 characterRom.Span,
                 useAltCharSet,
                 videoDevice.IsPage2,
@@ -679,7 +647,7 @@ public partial class VideoWindow : Window
                 noFlash1,
                 noFlash2,
                 colorMode,
-                readAuxMemory);
+                extended80ColumnDevice is not null ? displaySnapshot.ReadAux : null);
         }
 
         // Commit pixel buffer to bitmap
@@ -707,40 +675,6 @@ public partial class VideoWindow : Window
             Flags: AccessFlags.NoSideEffects);
 
         return memoryBus.Read8(access);
-    }
-
-    /// <summary>
-    /// Reads a byte from the main memory snapshot captured at VBlank.
-    /// </summary>
-    /// <param name="address">The memory address to read.</param>
-    /// <returns>The byte value from the snapshot, or from live memory if outside the snapshot range.</returns>
-    private byte ReadSnapshotMainByte(ushort address)
-    {
-        int offset = address - TextPageSnapshotBase;
-        if (offset >= 0 && offset < TextPageSnapshotSize)
-        {
-            return mainMemorySnapshot[offset];
-        }
-
-        // Address is outside snapshot range — fall back to live memory
-        return ReadMemoryByte(address);
-    }
-
-    /// <summary>
-    /// Reads a byte from the auxiliary memory snapshot captured at VBlank.
-    /// </summary>
-    /// <param name="address">The memory address to read.</param>
-    /// <returns>The byte value from the auxiliary memory snapshot, or 0 if outside range.</returns>
-    private byte ReadSnapshotAuxByte(ushort address)
-    {
-        int offset = address - TextPageSnapshotBase;
-        if (offset >= 0 && offset < TextPageSnapshotSize)
-        {
-            return auxMemorySnapshot[offset];
-        }
-
-        // Address is outside snapshot range — fall back to live aux memory
-        return extended80ColumnDevice?.ReadAuxRam(address) ?? 0;
     }
 
     private void UpdateWindowSize()

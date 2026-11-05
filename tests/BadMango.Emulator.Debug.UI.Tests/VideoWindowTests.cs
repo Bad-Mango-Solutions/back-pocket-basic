@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.UI.Tests;
 
 using Avalonia.Headless.NUnit;
+using Avalonia.Threading;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -673,6 +674,242 @@ public class VideoWindowTests
 
         // After detach, ForceRedraw should not throw (renders blank screen)
         Assert.DoesNotThrow(() => window.ForceRedraw());
+    }
+
+    /// <summary>
+    /// Verifies that hi-res frames are rendered from the physical main RAM snapshot
+    /// and never through the memory bus, even when the bus maps $2000-$5FFF elsewhere
+    /// (as it does with RAMRD on).
+    /// </summary>
+    /// <param name="isPage2">Whether hi-res page 2 is displayed.</param>
+    [AvaloniaTest]
+    [TestCase(false)]
+    [TestCase(true)]
+    public void VBlankSnapshot_HiRes_RendersPhysicalMainRam_NotBus(bool isPage2)
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            isPage2,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus);
+
+        // Distinct patterns on page 1 and page 2; the bus returns 0xFF (e.g. aux RAM via RAMRD).
+        var ram = mainMemory.AsSpan();
+        ram.Slice(0x2000, 0x2000).Fill(0x55);
+        ram.Slice(0x4000, 0x2000).Fill(0x2A);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        mockBus.Verify(
+            b => b.Read8(It.IsAny<BusAccess>()),
+            Times.Never,
+            "Hi-res rendering must not read display memory through the MMU-mapped bus");
+
+        var expected = RenderReference(VideoMode.HiRes, isPage2, mainMemory, null);
+        var busView = RenderReference(VideoMode.HiRes, isPage2, new PhysicalMemory(65536, "Bus"), 0xFF);
+        var actual = GetWindowPixels(window);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(actual, Is.EqualTo(expected), "Window should show physical main hi-res memory");
+            Assert.That(actual, Is.Not.EqualTo(busView), "Window must not show the bus (RAMRD) view");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that the VBlank snapshot freezes hi-res content: writes after VBlank
+    /// are not shown until the next VBlank.
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_HiRes_UsesMemoryAtVBlank()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out _);
+
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expected = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+
+        // Program overwrites hi-res page 1 before the UI thread renders.
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Clear();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Verifies that ForceRedraw captures a fresh snapshot from physical RAM
+    /// rather than reading through the bus.
+    /// </summary>
+    [AvaloniaTest]
+    public void ForceRedraw_HiRes_CapturesFreshSnapshotFromPhysicalRam()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        // Memory changes with no further VBlank (e.g. the VBlank pump has stalled).
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expected = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.ForceRedraw();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+            mockBus.Verify(b => b.Read8(It.IsAny<BusAccess>()), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that auxiliary display memory is taken from physical aux RAM, so
+    /// 80-column text renders correctly without any bus reads.
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_Text80_UsesPhysicalAuxRam()
+    {
+        var window = new VideoWindow();
+        var aux = new Extended80ColumnDevice();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.Text80,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out var mockBus,
+            aux);
+
+        mainMemory.AsSpan().Slice(0x0400, 0x0400).Fill(0xC1);
+        aux.AuxiliaryRam.Slice(0x0400, 0x0400).Fill(0xC2);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(v => v.VBlankOccurred += null);
+        Dispatcher.UIThread.RunJobs();
+
+        var auxCopy = new byte[65536];
+        aux.AuxiliaryRam.CopyTo(auxCopy);
+        var expected = RenderReference(VideoMode.Text80, false, mainMemory, null, auxCopy);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+            mockBus.Verify(b => b.Read8(It.IsAny<BusAccess>()), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Renders a reference frame with a fresh renderer, mirroring the window's defaults
+    /// (default character ROM, green monochrome, flash off).
+    /// </summary>
+    /// <param name="mode">Video mode.</param>
+    /// <param name="isPage2">Whether page 2 is displayed.</param>
+    /// <param name="memory">Main memory to render from.</param>
+    /// <param name="constantValue">If set, every main read returns this value instead.</param>
+    /// <param name="auxMemory">Optional auxiliary memory.</param>
+    /// <returns>The rendered pixels.</returns>
+    private static uint[] RenderReference(
+        VideoMode mode,
+        bool isPage2,
+        PhysicalMemory memory,
+        byte? constantValue,
+        byte[]? auxMemory = null)
+    {
+        var reference = new Pocket2VideoRenderer();
+        var pixels = new uint[reference.CanonicalWidth * reference.CanonicalHeight];
+        var main = memory.Memory;
+        Func<ushort, byte> readMain = constantValue is byte value
+            ? _ => value
+            : address => main.Span[address];
+        Func<ushort, byte>? readAux = auxMemory is null ? null : address => auxMemory[address];
+
+        reference.RenderFrame(
+            pixels,
+            mode,
+            readMain,
+            DefaultCharacterRom.GetRomData(),
+            false,
+            isPage2,
+            false,
+            false,
+            true,
+            DisplayColorMode.Green,
+            readAux);
+
+        return pixels;
+    }
+
+    /// <summary>
+    /// Reads the pixels most recently rendered by a <see cref="VideoWindow"/>.
+    /// </summary>
+    /// <param name="window">The window.</param>
+    /// <returns>A copy of the window's pixel buffer.</returns>
+    private static uint[] GetWindowPixels(VideoWindow window)
+    {
+        var field = typeof(VideoWindow).GetField(
+            "pixelBuffer",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var buffer = (PixelBuffer)field!.GetValue(window)!;
+        return buffer.GetPixels().ToArray();
+    }
+
+    /// <summary>
+    /// Creates a mock machine whose main memory provider exposes a writable physical RAM.
+    /// </summary>
+    /// <param name="mode">The video mode reported by the video device.</param>
+    /// <param name="isPage2">The PAGE2 state reported by the video device.</param>
+    /// <param name="mainMemory">Output: the physical main RAM.</param>
+    /// <param name="mockVideoDevice">Output: the mock video device for raising VBlank events.</param>
+    /// <param name="mockBus">Output: the mock bus, which returns 0xFF for every read.</param>
+    /// <param name="extended80ColumnDevice">Optional 80-column device providing aux RAM.</param>
+    /// <returns>The configured mock machine.</returns>
+    private static Mock<IMachine> CreateMockMachineWithPhysicalRam(
+        VideoMode mode,
+        bool isPage2,
+        out PhysicalMemory mainMemory,
+        out Mock<IVideoDevice> mockVideoDevice,
+        out Mock<IMemoryBus> mockBus,
+        IExtended80ColumnDevice? extended80ColumnDevice = null)
+    {
+        mainMemory = new PhysicalMemory(65536, "TestMainRAM");
+        var mockMainMemoryProvider = new Mock<IMainMemoryProvider>();
+        mockMainMemoryProvider.Setup(p => p.MainRam).Returns(mainMemory.Memory);
+
+        mockBus = new Mock<IMemoryBus>();
+        mockBus.Setup(b => b.Read8(It.IsAny<BusAccess>())).Returns(0xFF);
+
+        mockVideoDevice = new Mock<IVideoDevice>();
+        mockVideoDevice.Setup(v => v.CurrentMode).Returns(mode);
+        mockVideoDevice.Setup(v => v.IsPage2).Returns(isPage2);
+
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.Setup(m => m.Bus).Returns(mockBus.Object);
+        mockMachine.Setup(m => m.GetComponent<IVideoDevice>()).Returns(mockVideoDevice.Object);
+        mockMachine.Setup(m => m.GetComponent<IMainMemoryProvider>()).Returns(mockMainMemoryProvider.Object);
+        mockMachine.Setup(m => m.GetComponent<IExtended80ColumnDevice>()).Returns(extended80ColumnDevice);
+        mockMachine.Setup(m => m.GetComponent<ICharacterDevice>()).Returns((ICharacterDevice?)null);
+        mockMachine.Setup(m => m.GetComponent<ICharacterRomProvider>()).Returns((ICharacterRomProvider?)null);
+        mockMachine.Setup(m => m.GetComponent<EmulatorKeyboardDevice>()).Returns((EmulatorKeyboardDevice?)null);
+
+        return mockMachine;
     }
 
     /// <summary>
