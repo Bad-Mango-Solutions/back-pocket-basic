@@ -574,6 +574,57 @@ public class Extended80ColumnDeviceTests
     /// from unmapped memory.
     /// </summary>
     [Test]
+    public void AuxSplitRamTarget_DoesNotAdvertiseWideAccess()
+    {
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
+
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+        var context = CreateTestContext();
+
+        dispatcher.Write(0x05, 0x00, in context);
+        dispatcher.Write(0x03, 0x00, in context);
+
+        var page = machine.Bus.GetPageEntryByIndex(1);
+        Assert.That(page.SupportsPeek, Is.True, "aux split mapping should remain readable without side-effects");
+        Assert.That(page.SupportsPoke, Is.True, "aux split mapping should remain writeable without side-effects");
+        Assert.That(page.SupportsWide, Is.False, "65C02-style aux RAM should not advertise atomic wide access");
+        Assert.That(page.Caps.HasFlag(TargetCaps.SupportsWide), Is.False, "wide access flag should not leak from the underlying RAM target");
+    }
+
+    /// <summary>
+    /// Regression test for the ProDOS auxiliary-RAM probe bug: when the
+    /// $0080-$00B5 boot helper toggles WRCARDRAM and RDCARDRAM on, then
+    /// toggles back to main RAM, the base main-RAM mapping must remain intact.
+    /// </summary>
+    [Test]
     public void RamRdRamWrt_ToggleOnThenOff_PreservesMainRamBaseMapping()
     {
         // Arrange: build a machine with main RAM at $0000-$BFFF and the
@@ -662,6 +713,136 @@ public class Extended80ColumnDeviceTests
         Assert.That(bus.Read8(readAccess), Is.EqualTo(0x11), "$1000 should read main RAM byte after aux toggle off");
         readAccess = CreateBusAccess(0xB000, AccessIntent.DataRead);
         Assert.That(bus.Read8(readAccess), Is.EqualTo(0xBB), "$B000 should read main RAM byte after aux toggle off");
+    }
+
+    /// <summary>
+    /// Verifies split routing when RAMWRT is enabled and RAMRD is disabled:
+    /// reads come from main RAM while writes go to auxiliary RAM.
+    /// </summary>
+    [Test]
+    public void RamWrtOnly_ReadsMainAndWritesAux_WithoutPermissionFaults()
+    {
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+        mainRamPhysical.AsSpan()[0x5200] = 0x2A;
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
+
+        device.WriteAuxRam(0x5200, 0xD4);
+
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+        var context = CreateTestContext();
+
+        machine.Bus.FaultRecordingEnabled = true;
+        machine.Bus.FaultRing?.Clear();
+
+        dispatcher.Write(0x05, 0x00, in context); // RAMWRT on
+        dispatcher.Write(0x02, 0x00, in context); // RAMRD off
+
+        var readAccess = CreateBusAccess(0x5200, AccessIntent.DataRead);
+        var readResult = machine.Bus.TryRead8(readAccess);
+        var writeAccess = CreateBusAccess(0x5200, AccessIntent.DataWrite);
+        var writeResult = machine.Bus.TryWrite8(writeAccess, 0x73);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(readResult.Ok, Is.True, "RAMWRT-only read should not fault");
+            Assert.That(readResult.Value, Is.EqualTo(0x2A), "RAMWRT-only read should come from main RAM");
+            Assert.That(writeResult.Ok, Is.True, "RAMWRT-only write should not fault");
+            Assert.That(mainRamPhysical.AsSpan()[0x5200], Is.EqualTo(0x2A), "RAMWRT-only write should not change main RAM");
+            Assert.That(device.ReadAuxRam(0x5200), Is.EqualTo(0x73), "RAMWRT-only write should update auxiliary RAM");
+            Assert.That(machine.Bus.FaultRing?.Count ?? 0, Is.EqualTo(0), "Split mode should not record permission faults");
+        });
+    }
+
+    /// <summary>
+    /// Verifies split routing when RAMRD is enabled and RAMWRT is disabled:
+    /// reads come from auxiliary RAM while writes go to main RAM.
+    /// </summary>
+    [Test]
+    public void RamRdOnly_ReadsAuxAndWritesMain_WithoutPermissionFaults()
+    {
+        var mainRamPhysical = new PhysicalMemory(0xC000, "main-ram-48k");
+        mainRamPhysical.AsSpan()[0x5200] = 0x19;
+
+        var builder = new MachineBuilder();
+        builder.AddPhysicalMemory("main-ram-48k", mainRamPhysical);
+        builder.ConfigureMemory((bus, registry) =>
+        {
+            var ram = builder.GetPhysicalMemory("main-ram-48k")!;
+            var target = new RamTarget(ram.Slice(0, 0xC000));
+            int deviceId = registry.GenerateId();
+            registry.Register(deviceId, "RAM", "Main RAM", "Memory/MainRAM");
+            bus.MapRegion(
+                0x0000,
+                0xC000,
+                deviceId,
+                RegionTag.Ram,
+                PagePerms.All,
+                target.Capabilities,
+                target,
+                0);
+        });
+        builder.WithExtended80ColumnDevice();
+
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.Halted).Returns(false);
+        var machine = builder.WithCpuFactory(ctx => mockCpu.Object).Build();
+
+        var device = machine.GetComponent<IExtended80ColumnDevice>() as Extended80ColumnDevice
+            ?? throw new AssertionException("Extended80ColumnDevice should be registered as a component");
+
+        device.WriteAuxRam(0x5200, 0xA6);
+
+        var dispatcher = new IOPageDispatcher();
+        device.RegisterHandlers(dispatcher);
+        var context = CreateTestContext();
+
+        machine.Bus.FaultRecordingEnabled = true;
+        machine.Bus.FaultRing?.Clear();
+
+        dispatcher.Write(0x04, 0x00, in context); // RAMWRT off
+        dispatcher.Write(0x03, 0x00, in context); // RAMRD on
+
+        var readAccess = CreateBusAccess(0x5200, AccessIntent.DataRead);
+        var readResult = machine.Bus.TryRead8(readAccess);
+        var writeAccess = CreateBusAccess(0x5200, AccessIntent.DataWrite);
+        var writeResult = machine.Bus.TryWrite8(writeAccess, 0x8F);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(readResult.Ok, Is.True, "RAMRD-only read should not fault");
+            Assert.That(readResult.Value, Is.EqualTo(0xA6), "RAMRD-only read should come from auxiliary RAM");
+            Assert.That(writeResult.Ok, Is.True, "RAMRD-only write should not fault");
+            Assert.That(mainRamPhysical.AsSpan()[0x5200], Is.EqualTo(0x8F), "RAMRD-only write should update main RAM");
+            Assert.That(device.ReadAuxRam(0x5200), Is.EqualTo(0xA6), "RAMRD-only write should not change auxiliary RAM");
+            Assert.That(machine.Bus.FaultRing?.Count ?? 0, Is.EqualTo(0), "Split mode should not record permission faults");
+        });
     }
 
     private static BusAccess CreateTestContext(bool isSideEffectFree = false)
