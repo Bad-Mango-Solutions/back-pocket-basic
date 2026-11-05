@@ -490,6 +490,14 @@ public partial class VideoWindow : Window
         };
     }
 
+    private static bool IsCriticalException(Exception ex)
+    {
+        return ex is OutOfMemoryException
+            or AccessViolationException
+            or InvalidProgramException
+            or BadImageFormatException;
+    }
+
     /// <summary>
     /// Called when the character ROM configuration changes.
     /// </summary>
@@ -547,7 +555,7 @@ public partial class VideoWindow : Window
         {
             CaptureDisplaySnapshot();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsCriticalException(ex))
         {
             logger.Error(ex, "Video window failed to capture display snapshot");
         }
@@ -645,7 +653,7 @@ public partial class VideoWindow : Window
         {
             RenderFrame();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsCriticalException(ex))
         {
             logger.Error(ex, "Video window failed to render VBlank frame");
         }
