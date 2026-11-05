@@ -5,7 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 /// <summary>
-/// Opens the warning and error log window.
+/// Opens the warning, error, and fatal log window.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,7 +26,7 @@ public sealed class LogCommand : CommandHandlerBase, ICommandHelp
     /// </summary>
     /// <param name="windowManager">Optional debug window manager for opening popup windows.</param>
     public LogCommand(IDebugWindowManager? windowManager = null)
-        : base("log", "Open the warning/error log window")
+        : base("log", "Open the warning/error/fatal log window")
     {
         this.windowManager = windowManager;
     }
@@ -70,7 +70,7 @@ public sealed class LogCommand : CommandHandlerBase, ICommandHelp
                 "No window manager is available.");
         }
 
-        if (args.Length > 0 && !args[0].Equals("window", StringComparison.OrdinalIgnoreCase))
+        if (args.Length > 1 || (args.Length > 0 && !args[0].Equals("window", StringComparison.OrdinalIgnoreCase)))
         {
             return CommandResult.Error("Usage: log [window]");
         }

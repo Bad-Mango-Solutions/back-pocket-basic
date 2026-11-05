@@ -10,7 +10,7 @@ using Serilog.Core;
 using Serilog.Events;
 
 /// <summary>
-/// Serilog sink that forwards warning and error events to the debug log window stream.
+/// Serilog sink that forwards warning, error, and fatal events to the debug log window stream.
 /// </summary>
 public sealed class DebugLogWindowSink : ILogEventSink
 {

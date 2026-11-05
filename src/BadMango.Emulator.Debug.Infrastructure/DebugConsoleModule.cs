@@ -53,10 +53,6 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
-        builder.RegisterType<DebugLogEventStream>()
-            .As<IDebugLogEventStream>()
-            .SingleInstance();
-
         // Register debug command handlers
         builder.RegisterType<RegsCommand>()
             .As<ICommandHandler>()

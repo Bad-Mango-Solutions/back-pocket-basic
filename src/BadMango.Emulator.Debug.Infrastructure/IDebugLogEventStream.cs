@@ -5,7 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure;
 
 /// <summary>
-/// Provides a thread-safe stream of warning and error log events for debug UI consumers.
+/// Provides a thread-safe stream of warning, error, and fatal log events for debug UI consumers.
 /// </summary>
 public interface IDebugLogEventStream
 {

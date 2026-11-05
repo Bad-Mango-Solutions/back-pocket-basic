@@ -105,6 +105,27 @@ public class LogCommandTests
         });
     }
 
+    /// <summary>
+    /// Verifies that an extra argument after the window subcommand is rejected.
+    /// </summary>
+    [Test]
+    public void Execute_WithExtraWindowArgument_ReturnsError()
+    {
+        var windowManager = new Mock<IDebugWindowManager>();
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
+        var command = new LogCommand(windowManager.Object);
+        var result = command.Execute(context, ["window", "extra"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("Usage"));
+            windowManager.Verify(w => w.ShowWindowAsync(It.IsAny<string>()), Times.Never);
+        });
+    }
+
     private static ICommandContext CreateTestContext(StringWriter outputWriter, StringWriter errorWriter)
     {
         var mockDispatcher = new Mock<ICommandDispatcher>();
