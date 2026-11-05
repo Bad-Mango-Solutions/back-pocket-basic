@@ -118,7 +118,7 @@ public static partial class Instructions
         return cpu =>
         {
             addressingMode(cpu);
-            cpu.Registers.SP.SetByte(cpu.Registers.X.GetByte());
+            cpu.Registers.SP.SetDWord(cpu.Registers.X.GetByte());
 
             if (cpu.IsDebuggerAttached)
             {

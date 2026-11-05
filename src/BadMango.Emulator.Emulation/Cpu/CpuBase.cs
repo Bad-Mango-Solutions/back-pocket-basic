@@ -378,19 +378,29 @@ public abstract class CpuBase : ICpu
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The 6502/65C02 stack pointer is 8 bits wide: pushing at SP=$00 writes
+    /// <c>stackBase + $00</c> and wraps SP to $FF. CPUs with a wider native
+    /// stack (e.g. 65816 native mode) must override this method.
+    /// </remarks>
     public virtual Addr PushByte(Addr stackBase = 0)
     {
-        var old = registers.SP.stack;
-        registers.SP.stack--;
-        return stackBase + old;
+        byte sp = registers.SP.GetByte();
+        registers.SP.SetDWord(unchecked((byte)(sp - 1)));
+        return stackBase + sp;
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The 6502/65C02 stack pointer is 8 bits wide: popping at SP=$FF wraps SP
+    /// to $00 and reads <c>stackBase + $00</c>. CPUs with a wider native stack
+    /// (e.g. 65816 native mode) must override this method.
+    /// </remarks>
     public virtual Addr PopByte(Addr stackBase = 0)
     {
-        var old = registers.SP.stack + 1;
-        registers.SP.stack++;
-        return stackBase + old;
+        byte sp = unchecked((byte)(registers.SP.GetByte() + 1));
+        registers.SP.SetDWord(sp);
+        return stackBase + sp;
     }
 
     // ─── Protected Helper Methods ───────────────────────────────────────
