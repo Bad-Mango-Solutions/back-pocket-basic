@@ -27,24 +27,17 @@ public class LogCommandTests
     [Test]
     public void Execute_WithoutWindowManager_ReturnsError()
     {
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
+        var command = new LogCommand();
+        var result = command.Execute(context, []);
 
-        try
+        Assert.Multiple(() =>
         {
-            var command = new LogCommand();
-            var result = command.Execute(context, []);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.False);
-                Assert.That(result.Message, Does.Contain("window manager"));
-            });
-        }
-        finally
-        {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("window manager"));
+        });
     }
 
     /// <summary>
@@ -56,25 +49,18 @@ public class LogCommandTests
         var windowManager = new Mock<IDebugWindowManager>();
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).ReturnsAsync(true);
 
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
+        var command = new LogCommand(windowManager.Object);
+        var result = command.Execute(context, []);
 
-        try
+        Assert.Multiple(() =>
         {
-            var command = new LogCommand(windowManager.Object);
-            var result = command.Execute(context, []);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.True);
-                Assert.That(result.Message, Does.Contain("Opening"));
-                windowManager.Verify(w => w.ShowWindowAsync("Log"), Times.Once);
-            });
-        }
-        finally
-        {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Message, Does.Contain("Opening"));
+            windowManager.Verify(w => w.ShowWindowAsync("Log"), Times.Once);
+        });
     }
 
     /// <summary>
@@ -86,24 +72,17 @@ public class LogCommandTests
         var windowManager = new Mock<IDebugWindowManager>();
         windowManager.Setup(w => w.ShowWindowAsync(It.IsAny<string>())).ReturnsAsync(true);
 
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
+        var command = new LogCommand(windowManager.Object);
+        var result = command.Execute(context, ["window"]);
 
-        try
+        Assert.Multiple(() =>
         {
-            var command = new LogCommand(windowManager.Object);
-            var result = command.Execute(context, ["window"]);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.True);
-                windowManager.Verify(w => w.ShowWindowAsync("Log"), Times.Once);
-            });
-        }
-        finally
-        {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.True);
+            windowManager.Verify(w => w.ShowWindowAsync("Log"), Times.Once);
+        });
     }
 
     /// <summary>
@@ -113,30 +92,21 @@ public class LogCommandTests
     public void Execute_WithUnknownArgument_ReturnsError()
     {
         var windowManager = new Mock<IDebugWindowManager>();
-        var context = CreateTestContext(out var outputWriter, out var errorWriter);
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        var context = CreateTestContext(outputWriter, errorWriter);
+        var command = new LogCommand(windowManager.Object);
+        var result = command.Execute(context, ["bogus"]);
 
-        try
+        Assert.Multiple(() =>
         {
-            var command = new LogCommand(windowManager.Object);
-            var result = command.Execute(context, ["bogus"]);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result.Success, Is.False);
-                Assert.That(result.Message, Does.Contain("Usage"));
-            });
-        }
-        finally
-        {
-            outputWriter.Dispose();
-            errorWriter.Dispose();
-        }
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Message, Does.Contain("Usage"));
+        });
     }
 
-    private static ICommandContext CreateTestContext(out StringWriter outputWriter, out StringWriter errorWriter)
+    private static ICommandContext CreateTestContext(StringWriter outputWriter, StringWriter errorWriter)
     {
-        outputWriter = new StringWriter();
-        errorWriter = new StringWriter();
         var mockDispatcher = new Mock<ICommandDispatcher>();
         var mockContext = new Mock<ICommandContext>();
         mockContext.Setup(c => c.Output).Returns(outputWriter);
