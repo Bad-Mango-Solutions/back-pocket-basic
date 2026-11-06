@@ -197,7 +197,7 @@ public class NewInstructionsTests : CpuTestBase
 
         // Assert
         Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFE));
-        Assert.That(Read(0x01FF), Is.EqualTo((byte)(FlagC | FlagZ | ProcessorStatusFlags.B))); // B flag should be set
+        Assert.That(Read(0x01FF), Is.EqualTo((byte)(FlagC | FlagZ | ProcessorStatusFlags.B | ProcessorStatusFlags.R))); // B and bit 5 should be set
     }
 
     /// <summary>
@@ -216,7 +216,7 @@ public class NewInstructionsTests : CpuTestBase
 
         // Assert
         Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagN));
+        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagN | ProcessorStatusFlags.R)); // bit 5 always reads as 1
     }
 
     #endregion
@@ -819,7 +819,7 @@ public class NewInstructionsTests : CpuTestBase
         // Assert
         Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x2000));
         Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xFF));
-        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagZ));
+        Assert.That(Cpu.Registers.P, Is.EqualTo(FlagC | FlagZ | ProcessorStatusFlags.R)); // bit 5 always reads as 1
     }
 
     #endregion

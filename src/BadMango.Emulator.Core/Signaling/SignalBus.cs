@@ -33,6 +33,12 @@ public sealed class SignalBus : ISignalBus
     private bool nmiEdgePending;
 
     /// <summary>
+    /// Cached <c>nmiEdgePending || IRQ asserted</c>, maintained on every state change
+    /// so the CPU can test a single field per instruction.
+    /// </summary>
+    private bool anyInterruptPending;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SignalBus"/> class.
     /// </summary>
     public SignalBus()
@@ -47,6 +53,28 @@ public sealed class SignalBus : ISignalBus
     /// <inheritdoc />
     public event Action<SignalLine, bool, int, Cycle>? SignalChanged;
 
+    /// <summary>
+    /// Gets a value indicating whether the CPU may have an interrupt to service:
+    /// an unconsumed NMI edge is pending, or the IRQ line is asserted.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is a cheap per-instruction pre-check. When it is <see langword="false"/>,
+    /// <see cref="ConsumeNmiEdge"/> would return <see langword="false"/> and
+    /// <see cref="IsAsserted"/> for <see cref="SignalLine.IRQ"/> would return
+    /// <see langword="false"/>, so the CPU can skip its interrupt check entirely.
+    /// </para>
+    /// <para>
+    /// It does not consider the CPU's I flag: an asserted but masked IRQ still
+    /// reports <see langword="true"/>, and the CPU performs the full check.
+    /// </para>
+    /// </remarks>
+    public bool AnyInterruptPending
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => anyInterruptPending;
+    }
+
     /// <inheritdoc />
     public void Assert(SignalLine line, int deviceId, Cycle cycle)
     {
@@ -60,6 +88,8 @@ public sealed class SignalBus : ISignalBus
             nmiEdgePending = true;
         }
 
+        UpdateAnyInterruptPending();
+
         if (wasAsserted != nowAsserted)
         {
             SignalChanged?.Invoke(line, nowAsserted, deviceId, cycle);
@@ -72,6 +102,7 @@ public sealed class SignalBus : ISignalBus
         bool wasAsserted = IsAsserted(line);
         asserters[(int)line].Remove(deviceId);
         bool nowAsserted = IsAsserted(line);
+        UpdateAnyInterruptPending();
 
         if (wasAsserted != nowAsserted)
         {
@@ -89,6 +120,7 @@ public sealed class SignalBus : ISignalBus
     {
         bool pending = nmiEdgePending;
         nmiEdgePending = false;
+        UpdateAnyInterruptPending();
         return pending;
     }
 
@@ -106,5 +138,10 @@ public sealed class SignalBus : ISignalBus
         }
 
         nmiEdgePending = false;
+        anyInterruptPending = false;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateAnyInterruptPending()
+        => anyInterruptPending = nmiEdgePending || asserters[(int)SignalLine.IRQ].Count > 0;
 }

@@ -4,9 +4,13 @@
 
 namespace BadMango.Emulator.Devices.Speaker;
 
+using System.Runtime.InteropServices;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
+
+using Serilog;
 
 /// <summary>
 /// Speaker controller handling $C030 toggle with audio output.
@@ -20,7 +24,16 @@ using BadMango.Emulator.Devices.Interfaces;
 /// <para>
 /// This controller records toggle events with cycle timestamps, allowing
 /// audio synthesis systems to generate accurate waveforms from the toggle history.
-/// It also generates audible click sounds using the host audio system.
+/// It also synthesizes PCM audio from the toggle timing for the host audio system.
+/// </para>
+/// <para>
+/// The real speaker cone cannot hold a displacement: after each toggle it relaxes
+/// back toward rest. The synthesized level is therefore the 1-bit square wave passed
+/// through a one-pole high-pass (DC-blocking) response: each toggle steps the level
+/// by twice <c>SpeakerAmplitude</c> and the level then decays exponentially toward zero
+/// with a time constant of <c>SpeakerDecayTimeConstantSeconds</c>. A silent speaker thus
+/// settles to zero instead of holding a DC offset, which avoids pops when playback
+/// starts, stops, or drops samples.
 /// </para>
 /// </remarks>
 [DeviceType("speaker")]
@@ -33,39 +46,101 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     private const int SampleRate = 44100;
     private const int BitsPerSample = 16;
     private const int Channels = 1;
+    private const ulong DefaultCyclesPerSecond = 1_020_484; // Apple IIe clock; used when the machine reports none.
+    private const int SpeakerAmplitude = 8192;
+    private const int MaxAudioBufferSamples = SampleRate * 2;
+    private const int MaxPendingToggles = 16_384;
+    private const double SpeakerDecayTimeConstantSeconds = 0.005;
 
-    // Click timing - Apple II CPU runs at ~1.023 MHz
-    // A typical click produces a brief pulse
-    private const int ClickSamples = 64; // ~1.5ms pulse
+    // Levels below one LSB truncate to zero, so the decay can stop there.
+    private const double SilenceThreshold = 1.0;
 
-    private readonly List<(ulong Cycle, bool State)> pendingToggles = [];
+    // Per-sample multiplier for the exponential relaxation toward zero.
+    private static readonly double DecayPerSample = Math.Exp(-1.0 / (SampleRate * SpeakerDecayTimeConstantSeconds));
+
+    // Sink-less logger for the parameterless constructor; never touches the global Log.Logger facade.
+    private static readonly Lazy<ILogger> SilentLogger = new(
+        () => new LoggerConfiguration().CreateLogger(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
+    private readonly Queue<(ulong Cycle, bool State)> pendingToggles = new();
     private readonly Lock syncLock = new();
-
-    // Audio buffer for accumulating clicks
     private readonly List<short> audioBuffer = [];
-    private readonly System.Timers.Timer flushTimer;
+    private readonly System.Timers.Timer? flushTimer;
+    private readonly IAudioOutput audioOutput;
 
     private bool speakerState;
-    private DateTime lastClickTime = DateTime.MinValue;
+    private double speakerLevel;
+    private bool hasLastRenderCycle;
+    private ulong lastRenderCycle;
+    private ulong cycleToSampleRemainder;
     private bool disposed;
     private IScheduler? scheduler;
+    private IMachine? machine;
 
-    // Platform audio output
-    private IAudioOutput? audioOutput;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SpeakerController"/> class
+    /// that discards audio-backend diagnostics.
+    /// </summary>
+    public SpeakerController()
+        : this(SilentLogger.Value)
+    {
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpeakerController"/> class.
     /// </summary>
-    public SpeakerController()
+    /// <param name="logger">The logger used to report audio-backend errors and fallback.</param>
+    public SpeakerController(ILogger logger)
     {
-        // Set up a timer to flush audio buffer periodically
-        flushTimer = new(50); // 50ms intervals
+        ArgumentNullException.ThrowIfNull(logger);
+
+        try
+        {
+            audioOutput = new OpenAlAudioOutput(SampleRate, BitsPerSample, Channels, logger);
+        }
+        catch (Exception ex) when (ex is PlatformNotSupportedException
+                                       or ThreadStateException
+                                       or InvalidOperationException
+                                       or OutOfMemoryException)
+        {
+            // OpenAlAudioOutput throws PlatformNotSupportedException when the OpenAL
+            // native library cannot be loaded or OpenAL reports a setup error.
+            // It also creates and starts a dedicated playback thread.
+            // Thread.Start throws PlatformNotSupportedException where threads are
+            // unavailable (e.g. single-threaded WASM), OutOfMemoryException when the
+            // runtime cannot allocate the thread, ThreadStateException if the thread
+            // is in an invalid state to start, and InvalidOperationException from the
+            // Thread.Name setter when a name is rejected.
+            // Fall back to silent output so the emulator still runs without audio.
+            logger.ForContext<SpeakerController>().Warning(ex, "Host audio output is unavailable; speaker output will be silent");
+            audioOutput = new NullAudioOutput();
+        }
+
+        flushTimer = new(50);
         flushTimer.Elapsed += (s, e) => Flush();
         flushTimer.AutoReset = true;
         flushTimer.Start();
+    }
 
-        // Initialize audio output
-        InitializeAudioOutput();
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SpeakerController"/> class with explicit dependencies.
+    /// </summary>
+    /// <param name="audioOutput">The audio output sink used to play generated PCM samples.</param>
+    /// <param name="startFlushTimer">A value indicating whether periodic flushing should start automatically.</param>
+    internal SpeakerController(IAudioOutput audioOutput, bool startFlushTimer)
+    {
+        ArgumentNullException.ThrowIfNull(audioOutput);
+        this.audioOutput = audioOutput;
+        flushTimer = null;
+
+        if (startFlushTimer)
+        {
+            flushTimer = new(50);
+            flushTimer.Elapsed += (s, e) => Flush();
+            flushTimer.AutoReset = true;
+            flushTimer.Start();
+        }
     }
 
     /// <inheritdoc />
@@ -84,7 +159,16 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     public bool State => speakerState;
 
     /// <inheritdoc />
-    public IReadOnlyList<(ulong Cycle, bool State)> PendingToggles => pendingToggles;
+    public IReadOnlyList<(ulong Cycle, bool State)> PendingToggles
+    {
+        get
+        {
+            lock (syncLock)
+            {
+                return [.. pendingToggles];
+            }
+        }
+    }
 
     /// <inheritdoc />
     public string ProviderName => "Speaker";
@@ -94,6 +178,10 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         ArgumentNullException.ThrowIfNull(context);
         scheduler = context.Scheduler;
+
+        // Devices are initialized with the machine itself as the event context,
+        // which exposes the configured CPU clock rate used to derive pitch.
+        machine = context as IMachine;
     }
 
     /// <inheritdoc />
@@ -113,6 +201,10 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
             speakerState = false;
             pendingToggles.Clear();
             audioBuffer.Clear();
+            hasLastRenderCycle = false;
+            lastRenderCycle = 0;
+            cycleToSampleRemainder = 0;
+            speakerLevel = 0;
         }
     }
 
@@ -121,7 +213,7 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         lock (syncLock)
         {
-            var result = new List<(ulong, bool)>(pendingToggles);
+            var result = pendingToggles.ToList();
             pendingToggles.Clear();
             return result;
         }
@@ -162,32 +254,21 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
 
         disposed = true;
 
-        flushTimer.Stop();
-        flushTimer.Dispose();
+        flushTimer?.Stop();
+        flushTimer?.Dispose();
 
         lock (syncLock)
         {
             FlushInternal();
         }
 
-        audioOutput?.Dispose();
-    }
-
-    private void InitializeAudioOutput()
-    {
-        try
-        {
-            audioOutput = new WaveOutAudioOutput(SampleRate, BitsPerSample, Channels);
-        }
-        catch
-        {
-            // Fall back to null output if audio initialization fails
-            audioOutput = new NullAudioOutput();
-        }
+        audioOutput.Dispose();
     }
 
     private void FlushInternal()
     {
+        AppendCurrentStateUntilNow();
+
         if (audioBuffer.Count == 0)
         {
             return;
@@ -197,11 +278,14 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
         {
             var samples = audioBuffer.ToArray();
             audioBuffer.Clear();
-            audioOutput?.Play(samples);
+            audioOutput.Play(samples);
         }
-        catch
+        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
         {
-            // Silently ignore playback errors
+            // The output can be disposed concurrently with a timer-driven flush
+            // (its wait handle then throws ObjectDisposedException), and audio
+            // backends may reject playback in an invalid device state. Drop the
+            // samples rather than crash the emulator.
             audioBuffer.Clear();
         }
     }
@@ -228,57 +312,133 @@ public sealed class SpeakerController : ISpeakerDevice, ISoftSwitchProvider, IDi
     {
         lock (syncLock)
         {
-            // Toggle speaker state
+            AppendStateSegment(cycle);
             speakerState = !speakerState;
 
-            // Record the toggle for cycle-accurate synthesis
-            pendingToggles.Add((cycle, speakerState));
-
-            // Generate click audio
-            GenerateClickAudio();
+            // The square wave steps between -A and +A; the high-passed level
+            // receives the full 2A step and then relaxes toward zero.
+            speakerLevel += speakerState ? 2.0 * SpeakerAmplitude : -2.0 * SpeakerAmplitude;
+            pendingToggles.Enqueue((cycle, speakerState));
+            while (pendingToggles.Count > MaxPendingToggles)
+            {
+                _ = pendingToggles.Dequeue();
+            }
         }
 
-        // Raise event outside the lock
         Toggled?.Invoke(cycle, speakerState);
     }
 
-    private void GenerateClickAudio()
+    private void AppendCurrentStateUntilNow()
     {
-        // Calculate time since last click to determine sample gap
-        var now = DateTime.UtcNow;
-        var timeSinceLastClick = now - lastClickTime;
-        lastClickTime = now;
-
-        // Add silence between clicks if there was a gap
-        if (timeSinceLastClick.TotalMilliseconds > 1 && timeSinceLastClick.TotalMilliseconds < 100)
+        if (scheduler is null || !hasLastRenderCycle)
         {
-            int silenceSamples = (int)(timeSinceLastClick.TotalSeconds * SampleRate);
-            silenceSamples = Math.Min(silenceSamples, SampleRate / 10); // Cap at 100ms of silence
+            return;
+        }
 
-            for (int i = 0; i < silenceSamples; i++)
+        ulong currentCycle = scheduler.Now;
+        AppendStateSegment(currentCycle);
+    }
+
+    private void AppendStateSegment(ulong cycle)
+    {
+        if (!hasLastRenderCycle)
+        {
+            hasLastRenderCycle = true;
+            lastRenderCycle = cycle;
+            return;
+        }
+
+        if (cycle <= lastRenderCycle)
+        {
+            lastRenderCycle = cycle;
+            return;
+        }
+
+        ulong deltaCycles = cycle - lastRenderCycle;
+        lastRenderCycle = cycle;
+
+        ulong cyclesPerSecond = GetCyclesPerSecond();
+        if (cycleToSampleRemainder >= cyclesPerSecond)
+        {
+            // The clock rate changed since the last segment; keep the carry in range.
+            cycleToSampleRemainder %= cyclesPerSecond;
+        }
+
+        // Use 128-bit intermediates so very large cycle deltas (long pauses,
+        // unthrottled runs) cannot overflow, then clamp to the buffer cap before
+        // narrowing to int.
+        UInt128 numerator = ((UInt128)deltaCycles * (ulong)SampleRate) + cycleToSampleRemainder;
+        UInt128 wideSampleCount = numerator / cyclesPerSecond;
+        cycleToSampleRemainder = (ulong)(numerator % cyclesPerSecond);
+        ulong sampleCountUnclamped = wideSampleCount > ulong.MaxValue ? ulong.MaxValue : (ulong)wideSampleCount;
+        if (sampleCountUnclamped == 0)
+        {
+            return;
+        }
+
+        int sampleCount = (int)Math.Min(sampleCountUnclamped, (ulong)MaxAudioBufferSamples);
+        ulong skippedSamples = sampleCountUnclamped - (ulong)sampleCount;
+        if (skippedSamples > 0)
+        {
+            // Samples beyond the cap are dropped (they are the oldest of this
+            // segment), but the cone keeps relaxing while they elapse.
+            speakerLevel *= Math.Pow(DecayPerSample, skippedSamples);
+        }
+
+        AppendDecayingSamples(sampleCount);
+    }
+
+    /// <summary>
+    /// Gets the emulated clock rate used to convert cycle deltas to samples.
+    /// </summary>
+    /// <returns>
+    /// The machine's <see cref="IMachine.ClockSpeedHz"/> when it is positive; otherwise
+    /// <see cref="DefaultCyclesPerSecond"/>. A clock speed of zero means "unthrottled",
+    /// but the emulated hardware still nominally runs at the default rate.
+    /// </returns>
+    private ulong GetCyclesPerSecond()
+    {
+        long clockSpeedHz = machine?.ClockSpeedHz ?? 0;
+        return clockSpeedHz > 0 ? (ulong)clockSpeedHz : DefaultCyclesPerSecond;
+    }
+
+    private void AppendDecayingSamples(int sampleCount)
+    {
+        if (sampleCount >= MaxAudioBufferSamples)
+        {
+            // The new segment alone fills the cap; keep only its newest samples.
+            audioBuffer.Clear();
+            sampleCount = MaxAudioBufferSamples;
+        }
+        else
+        {
+            int total = audioBuffer.Count + sampleCount;
+            if (total > MaxAudioBufferSamples)
             {
-                audioBuffer.Add(0);
+                // Drop the oldest samples to bound latency and memory.
+                audioBuffer.RemoveRange(0, total - MaxAudioBufferSamples);
             }
         }
 
-        // Generate click waveform (sharp transition)
-        short amplitude = speakerState ? short.MaxValue : short.MinValue;
+        int start = audioBuffer.Count;
+        CollectionsMarshal.SetCount(audioBuffer, start + sampleCount);
+        Span<short> span = CollectionsMarshal.AsSpan(audioBuffer).Slice(start, sampleCount);
 
-        // Create a brief pulse with attack/decay to reduce harshness
-        for (int i = 0; i < ClickSamples; i++)
+        double level = speakerLevel;
+        int i = 0;
+        while (i < span.Length && Math.Abs(level) >= SilenceThreshold)
         {
-            // Apply simple envelope to smooth the click
-            double envelope = 1.0;
-            if (i < 8)
-            {
-                envelope = i / 8.0; // Attack
-            }
-            else if (i > ClickSamples - 8)
-            {
-                envelope = (ClickSamples - i) / 8.0; // Decay
-            }
-
-            audioBuffer.Add((short)(amplitude * envelope));
+            span[i++] = (short)level;
+            level *= DecayPerSample;
         }
+
+        if (i < span.Length)
+        {
+            // Fully relaxed: the rest of the segment is silence.
+            level = 0;
+            span[i..].Clear();
+        }
+
+        speakerLevel = level;
     }
 }

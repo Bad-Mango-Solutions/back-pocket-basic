@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -19,7 +17,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ASL on the accumulator.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ASLa(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -55,7 +52,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ASL on memory.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ASL(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -95,7 +91,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes LSR on the accumulator.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler LSRa(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -131,7 +126,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes LSR on memory.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler LSR(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -171,7 +165,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROL on the accumulator.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ROLa(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -208,7 +201,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROL on memory.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ROL(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -250,7 +242,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>
     /// <returns>An opcode handler that executes ROR on the accumulator.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler RORa(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -287,7 +278,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes ROR on memory.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler ROR(AddressingModeHandler addressingMode)
     {
         return cpu =>

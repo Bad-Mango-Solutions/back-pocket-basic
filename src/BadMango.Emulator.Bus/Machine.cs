@@ -5,7 +5,6 @@
 namespace BadMango.Emulator.Bus;
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Cpu;
@@ -90,7 +89,6 @@ public sealed class Machine : IMachine
     /// <inheritdoc />
     public Cycle Now
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => Scheduler.Now;
     }
 
@@ -398,64 +396,91 @@ public sealed class Machine : IMachine
         var throttleStopwatch = Stopwatch.StartNew();
         long throttleCycleBase = 0;
 
-        while (state == MachineState.Running && !Cpu.IsStopRequested && !cancellationToken.IsCancellationRequested)
+        try
         {
-            var result = Cpu.Step();
-
-            // Handle WAI state specially - use scheduler to advance time efficiently
-            if (result.State == CpuRunState.WaitingForInterrupt)
+            while (state == MachineState.Running && !Cpu.IsStopRequested && !cancellationToken.IsCancellationRequested)
             {
-                // When CPU is waiting for interrupt, jump to next scheduled event
-                if (!Scheduler.JumpToNextEventAndDispatch())
+                var result = Cpu.Step();
+
+                // Handle WAI state specially - use scheduler to advance time efficiently
+                if (result.State == CpuRunState.WaitingForInterrupt)
                 {
-                    // No events pending - yield to allow external interrupt injection
-                    await Task.Yield();
+                    // When CPU is waiting for interrupt, jump to next scheduled event
+                    if (!Scheduler.JumpToNextEventAndDispatch())
+                    {
+                        // No events pending - yield to allow external interrupt injection
+                        await Task.Yield();
+                        continue;
+                    }
+
+                    // After dispatching event, loop will call Step() again
                     continue;
                 }
 
-                // After dispatching event, loop will call Step() again
-                continue;
-            }
-
-            // Check for halt conditions (STP instruction or true halt)
-            if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
-            {
-                break;
-            }
-
-            // Yield periodically to keep the caller responsive
-            cyclesSinceYield += (long)result.CyclesConsumed.Value;
-            if (cyclesSinceYield >= YieldIntervalCycles)
-            {
-                throttleCycleBase += cyclesSinceYield;
-                cyclesSinceYield = 0;
-
-                // Apply throttling if a clock speed is configured
-                long clockSpeed = ClockSpeedHz;
-                if (clockSpeed > 0)
+                // Check for halt conditions (STP instruction or true halt)
+                if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
                 {
-                    // Calculate how many milliseconds should have elapsed for the
-                    // cycles we've executed since the throttle window started
-                    double expectedMs = throttleCycleBase * 1000.0 / clockSpeed;
-                    double actualMs = throttleStopwatch.Elapsed.TotalMilliseconds;
-                    double aheadMs = expectedMs - actualMs;
-
-                    if (aheadMs >= 1.0)
-                    {
-                        // CPU is ahead of real time — delay to catch up
-                        await Task.Delay((int)aheadMs, cancellationToken).ConfigureAwait(false);
-                    }
-                    else if (aheadMs < -100.0)
-                    {
-                        // CPU fell significantly behind (e.g., debugger pause, GC stall).
-                        // Reset the throttle window to avoid a burst of catch-up cycles.
-                        throttleStopwatch.Restart();
-                        throttleCycleBase = 0;
-                    }
+                    break;
                 }
 
-                await Task.Yield();
+                // Yield periodically to keep the caller responsive
+                cyclesSinceYield += (long)result.CyclesConsumed.Value;
+                if (cyclesSinceYield >= YieldIntervalCycles)
+                {
+                    throttleCycleBase += cyclesSinceYield;
+                    cyclesSinceYield = 0;
+
+                    // Apply throttling if a clock speed is configured
+                    long clockSpeed = ClockSpeedHz;
+                    if (clockSpeed > 0)
+                    {
+                        // Calculate how many milliseconds should have elapsed for the
+                        // cycles we've executed since the throttle window started
+                        double expectedMs = throttleCycleBase * 1000.0 / clockSpeed;
+                        double actualMs = throttleStopwatch.Elapsed.TotalMilliseconds;
+                        double aheadMs = expectedMs - actualMs;
+
+                        if (aheadMs >= 1.0)
+                        {
+                            // CPU is ahead of real time — delay to catch up
+                            await Task.Delay((int)aheadMs, cancellationToken).ConfigureAwait(false);
+                        }
+                        else if (aheadMs < -100.0)
+                        {
+                            // CPU fell significantly behind (e.g., debugger pause, GC stall).
+                            // Reset the throttle window to avoid a burst of catch-up cycles.
+                            throttleStopwatch.Restart();
+                            throttleCycleBase = 0;
+                        }
+                    }
+
+                    await Task.Yield();
+                }
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Task.Delay honors the token; treat cancellation as a pause rather than
+            // leaving the machine stuck in Running if the exception escaped the loop.
+            if (state == MachineState.Running)
+            {
+                SetState(MachineState.Paused);
+            }
+
+            return;
+        }
+        catch (Exception)
+        {
+            // An exception from Cpu.Step or a scheduled device callback (e.g. VBlank)
+            // used to unwind the loop while state stayed Running. Leave the machine
+            // Stopped (there is no Faulted state) and rethrow so BootCommand /
+            // ResumeCommand still surface "Boot error:" / "Resume error:".
+            if (state == MachineState.Running)
+            {
+                SetState(MachineState.Stopped);
+            }
+
+            throw;
         }
 
         // If we exited the loop, transition to appropriate state

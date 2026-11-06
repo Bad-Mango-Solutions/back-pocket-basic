@@ -29,6 +29,8 @@ using Core.Interfaces.Cpu;
 /// </remarks>
 public sealed class DebugContext : IDebugContext, IDisposable
 {
+    private readonly Lock attachmentLock = new();
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DebugContext"/> class.
     /// </summary>
@@ -314,8 +316,8 @@ public sealed class DebugContext : IDebugContext, IDisposable
         {
             this.Breakpoints.Detach();
             this.Watchpoints.Detach();
+            this.UnwireStepListener();
             this.Cpu?.DetachDebugger();
-            this.StepListener = null;
         }
 
         this.Machine = machine;
@@ -403,8 +405,8 @@ public sealed class DebugContext : IDebugContext, IDisposable
         this.Breakpoints.Detach();
         this.Watchpoints.Detach();
         this.Watchpoints.SetLogOutput(null);
+        this.UnwireStepListener();
         this.Cpu?.DetachDebugger();
-        this.StepListener = null;
 
         this.Cpu = null;
         this.Bus = null;
@@ -428,7 +430,9 @@ public sealed class DebugContext : IDebugContext, IDisposable
 
     /// <summary>
     /// Wires the composite debug listener, breakpoint manager, and watchpoint
-    /// manager to the currently attached CPU and machine. Does nothing if
+    /// manager to the currently attached CPU and machine. The composite is only
+    /// attached to the CPU while it has active listeners (see
+    /// <see cref="UpdateDebuggerAttachment"/>). Does nothing if
     /// <see cref="Cpu"/> is <see langword="null"/>.
     /// Callers are responsible for tearing down any previous attachment before
     /// invoking this method (see <see cref="DetachSystem"/>).
@@ -460,14 +464,78 @@ public sealed class DebugContext : IDebugContext, IDisposable
         this.Watchpoints.SetLogOutput(this.Output);
         composite.Add(this.Watchpoints);
 
-        this.Cpu.AttachDebugger(composite);
+        // Only pay for per-instruction debug callbacks (trace building, step event
+        // arguments, listener dispatch) while something actually consumes them:
+        // tracing enabled, at least one watchpoint, or any other listener added to
+        // the composite. Replace whatever was attached before (e.g. a bare tracing
+        // listener) and then attach the composite only if it is active.
+        this.Cpu.DetachDebugger();
         this.StepListener = composite;
+        composite.ActiveListenersChanged += this.OnStepListenerActivityChanged;
+        this.UpdateDebuggerAttachment();
 
         // Wire breakpoints if the machine exposes a trap registry.
         var registry = this.Machine?.GetComponent<Bus.Interfaces.ITrapRegistry>();
         if (registry is not null)
         {
             this.Breakpoints.Attach(this.Cpu, registry);
+        }
+    }
+
+    /// <summary>
+    /// Detaches the current composite listener from its managed listeners and
+    /// events so a stale composite cannot re-attach itself later.
+    /// Does not detach the debugger from the CPU.
+    /// </summary>
+    private void UnwireStepListener()
+    {
+        var composite = this.StepListener;
+        if (composite is null)
+        {
+            return;
+        }
+
+        composite.ActiveListenersChanged -= this.OnStepListenerActivityChanged;
+        composite.Remove(this.Watchpoints);
+        if (this.TracingListener is not null)
+        {
+            composite.Remove(this.TracingListener);
+        }
+
+        this.StepListener = null;
+    }
+
+    private void OnStepListenerActivityChanged(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(sender, this.StepListener))
+        {
+            this.UpdateDebuggerAttachment();
+        }
+    }
+
+    /// <summary>
+    /// Attaches <see cref="StepListener"/> to the CPU while it has active
+    /// listeners, and detaches it otherwise.
+    /// </summary>
+    private void UpdateDebuggerAttachment()
+    {
+        lock (this.attachmentLock)
+        {
+            var composite = this.StepListener;
+            var cpu = this.Cpu;
+            if (composite is null || cpu is null)
+            {
+                return;
+            }
+
+            if (composite.HasActiveListeners)
+            {
+                cpu.AttachDebugger(composite);
+            }
+            else
+            {
+                cpu.DetachDebugger();
+            }
         }
     }
 }

@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -24,7 +22,6 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be ZeroPage).</param>
     /// <param name="bit">The bit number to reset (0-7).</param>
     /// <returns>An opcode handler that executes RMB with the given bit number.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler RMB(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
@@ -55,7 +52,6 @@ public static partial class Instructions
     /// <param name="addressingMode">The addressing mode function to use (must be ZeroPage).</param>
     /// <param name="bit">The bit number to set (0-7).</param>
     /// <returns>An opcode handler that executes SMB with the given bit number.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SMB(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
@@ -91,7 +87,6 @@ public static partial class Instructions
     /// Base 3 cycles (addressing mode handles 2); +1 if branch taken; +1 more if page cross on branch.
     /// No flag changes.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BBR(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
@@ -116,9 +111,10 @@ public static partial class Instructions
 
             if (bitIsReset)
             {
-                // Branch taken
-                Addr oldPC = cpu.Registers.PC.GetAddr();
-                Addr newPC = (Addr)(oldPC + offset);
+                // Branch taken. Use 16-bit PC math so the target wraps
+                // $FFFF -> $0000 like the 65C02 (mirrors Instructions.Branch.cs).
+                Word oldPC = cpu.Registers.PC.GetWord();
+                Word newPC = (Word)(oldPC + offset);
 
                 // Check for page crossing
                 if ((oldPC & 0xFF00) != (newPC & 0xFF00))
@@ -126,7 +122,7 @@ public static partial class Instructions
                     opCycles++; // Page cross penalty
                 }
 
-                cpu.Registers.PC.SetAddr(newPC);
+                cpu.Registers.PC.SetWord(newPC);
                 opCycles++; // Branch taken cycle
             }
 
@@ -150,7 +146,6 @@ public static partial class Instructions
     /// Base 3 cycles (addressing mode handles 2); +1 if branch taken; +1 more if page cross on branch.
     /// No flag changes.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler BBS(AddressingModeHandler addressingMode, int bit)
     {
         return cpu =>
@@ -175,9 +170,10 @@ public static partial class Instructions
 
             if (bitIsSet)
             {
-                // Branch taken
-                Addr oldPC = cpu.Registers.PC.GetAddr();
-                Addr newPC = (Addr)(oldPC + offset);
+                // Branch taken. Use 16-bit PC math so the target wraps
+                // $FFFF -> $0000 like the 65C02 (mirrors Instructions.Branch.cs).
+                Word oldPC = cpu.Registers.PC.GetWord();
+                Word newPC = (Word)(oldPC + offset);
 
                 // Check for page crossing
                 if ((oldPC & 0xFF00) != (newPC & 0xFF00))
@@ -185,7 +181,7 @@ public static partial class Instructions
                     opCycles++; // Page cross penalty
                 }
 
-                cpu.Registers.PC.SetAddr(newPC);
+                cpu.Registers.PC.SetWord(newPC);
                 opCycles++; // Branch taken cycle
             }
 

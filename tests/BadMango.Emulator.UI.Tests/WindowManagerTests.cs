@@ -199,54 +199,59 @@ public class WindowManagerTests
     /// <summary>
     /// Tests that DockWindowAsync throws when window is null.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
-    public void DockWindowAsync_NullWindow_ThrowsArgumentNullException()
+    public async System.Threading.Tasks.Task DockWindowAsync_NullWindow_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.DockWindowAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.DockWindowAsync(null!));
     }
 
     /// <summary>
     /// Tests that SaveWindowStatesAsync throws when profileId is null.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
-    public void SaveWindowStatesAsync_NullProfileId_ThrowsArgumentNullException()
+    public async System.Threading.Tasks.Task SaveWindowStatesAsync_NullProfileId_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.SaveWindowStatesAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.SaveWindowStatesAsync(null!));
     }
 
     /// <summary>
     /// Tests that SaveWindowStatesAsync throws when profileId is empty or whitespace.
     /// </summary>
     /// <param name="profileId">The profile ID to test.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [TestCase("")]
     [TestCase("   ")]
-    public void SaveWindowStatesAsync_EmptyProfileId_ThrowsArgumentException(string profileId)
+    public async System.Threading.Tasks.Task SaveWindowStatesAsync_EmptyProfileId_ThrowsArgumentException(string profileId)
     {
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentException>(() => windowManager.SaveWindowStatesAsync(profileId));
+        await Assert.ThrowsAsync<ArgumentException>(() => windowManager.SaveWindowStatesAsync(profileId));
     }
 
     /// <summary>
     /// Tests that RestoreWindowStatesAsync throws when profileId is null.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous unit test.</returns>
     [Test]
-    public void RestoreWindowStatesAsync_NullProfileId_ThrowsArgumentNullException()
+    public async System.Threading.Tasks.Task RestoreWindowStatesAsync_NullProfileId_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.RestoreWindowStatesAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => windowManager.RestoreWindowStatesAsync(null!));
     }
 
     /// <summary>
     /// Tests that RestoreWindowStatesAsync throws when profileId is empty or whitespace.
     /// </summary>
     /// <param name="profileId">The profile ID to test.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [TestCase("")]
     [TestCase("   ")]
-    public void RestoreWindowStatesAsync_EmptyProfileId_ThrowsArgumentException(string profileId)
+    public async System.Threading.Tasks.Task RestoreWindowStatesAsync_EmptyProfileId_ThrowsArgumentException(string profileId)
     {
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentException>(() => windowManager.RestoreWindowStatesAsync(profileId));
+        await Assert.ThrowsAsync<ArgumentException>(() => windowManager.RestoreWindowStatesAsync(profileId));
     }
 }

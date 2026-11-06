@@ -78,10 +78,19 @@ public interface IDebugContext : ICommandContext
     /// every registered observer (tracing, watchpoints, etc.).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// May be <see langword="null"/> when no system is attached. Commands that want
     /// to observe instruction execution should add themselves here rather than
     /// calling <see cref="Core.Interfaces.Cpu.ICpu.AttachDebugger"/> directly, so
     /// they do not displace other observers.
+    /// </para>
+    /// <para>
+    /// To keep the emulator fast when no debugging feature is in use, the composite
+    /// is attached to the CPU only while it has active listeners: tracing is enabled,
+    /// at least one watchpoint exists, or any listener that does not implement
+    /// <see cref="IActivatableDebugStepListener"/> has been added. Adding or removing
+    /// listeners (or toggling their activity) attaches or detaches it automatically.
+    /// </para>
     /// </remarks>
     CompositeDebugStepListener? StepListener { get; }
 

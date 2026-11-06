@@ -65,6 +65,7 @@ public class DebugConsoleModuleTests
         Assert.That(handlerNames, Does.Contain("version"));
         Assert.That(handlerNames, Does.Contain("clear"));
         Assert.That(handlerNames, Does.Contain("about"));
+        Assert.That(handlerNames, Does.Contain("log"));
 
         // Verify debug commands are registered
         Assert.That(handlerNames, Does.Contain("regs"));

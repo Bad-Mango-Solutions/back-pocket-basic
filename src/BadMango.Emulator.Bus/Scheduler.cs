@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
-
 using Core;
 
 using Interfaces;
@@ -95,14 +93,12 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// <inheritdoc />
     public Cycle Now
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => now;
     }
 
     /// <inheritdoc />
     public int PendingEventCount
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => eventQueue.Count;
     }
 
@@ -123,7 +119,6 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public EventHandle ScheduleAt(Cycle due, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
     {
         ArgumentNullException.ThrowIfNull(callback, nameof(callback));
@@ -139,7 +134,6 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="callback"/> is <see langword="null"/>.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public EventHandle ScheduleAfter(Cycle delta, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
     {
         return ScheduleAt(now + delta, kind, priority, callback, tag);
@@ -159,7 +153,6 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Advance(Cycle delta)
     {
         if (delta == 0)
@@ -183,7 +176,6 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Cycle? PeekNextDue()
     {
         // Skip cancelled events to find the next valid one

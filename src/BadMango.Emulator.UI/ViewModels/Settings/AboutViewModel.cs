@@ -81,7 +81,7 @@ public class AboutViewModel : ViewModelBase, ISettingsPage
     /// <summary>
     /// Gets the GitHub repository URL.
     /// </summary>
-    public string GitHubUrl => "https://github.com/Bad-Mango-Solutions/back-pocket-basic";
+    public string GitHubUrl => "https://github.com/Bad-Mango-Solutions/back-pocket-emulator";
 
     /// <inheritdoc/>
     public Task LoadAsync() => Task.CompletedTask;

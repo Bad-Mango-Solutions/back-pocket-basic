@@ -4,8 +4,6 @@
 
 namespace BadMango.Emulator.Bus;
 
-using System.Runtime.CompilerServices;
-
 using Interfaces;
 
 /// <summary>
@@ -47,7 +45,6 @@ public readonly record struct ScheduledEvent(
     /// Events are ordered first by cycle, then by priority (lower first), then by sequence number.
     /// This ensures deterministic ordering even when events share the same cycle.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(ScheduledEvent other)
     {
         int cycleCompare = Cycle.CompareTo(other.Cycle);

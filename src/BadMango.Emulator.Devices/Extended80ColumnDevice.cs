@@ -87,6 +87,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     private readonly PhysicalMemory auxiliaryRam;
     private readonly PhysicalMemory expansionRom;
     private readonly RamTarget auxRamTarget;
+    private readonly RamTarget auxGeneralRamTarget;
     private readonly RamTarget auxZpTarget;
     private readonly RamTarget auxTextTarget;
     private readonly RamTarget auxHiRes1Target;
@@ -126,6 +127,9 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // Create targets for bus mapping
         // Aux RAM target for $0200-$BFFF: offset=0x0200, size=0xBE00 (47.5KB)
         auxRamTarget = new RamTarget(auxiliaryRam.Slice(0x0200, 0xBE00), "AUX_RAM");
+
+        // Aux RAM target for layer-mapped general region $1000-$BFFF.
+        auxGeneralRamTarget = new RamTarget(auxiliaryRam.Slice(0x1000, 0xB000), "AUX_RAM_1000");
 
         // Zero page/stack target for $0000-$01FF: offset=0x0000, size=0x0200 (512 bytes)
         auxZpTarget = new RamTarget(auxiliaryRam.Slice(0x0000, 0x0200), "AUX_ZP");
@@ -403,10 +407,29 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // to this device and checks Is80StoreEnabled/IsPage2Selected for routing.
         //
         // For now, we only set up layers for regions that are page-aligned (>= $1000).
+        //
+        // RAMRD/RAMWRT for $1000-$BFFF is handled by an asymmetric split target because
+        // reads and writes route independently. A single layer cannot model asymmetric bank selection.
+        var mainRamPages = new PageEntry[11];
+        for (int page = 0; page < mainRamPages.Length; page++)
+        {
+            mainRamPages[page] = memoryBus.GetEffectiveMapping(0x1000u + ((uint)page * 0x1000u));
+        }
 
-        // RAMRD/RAMWRT for $1000-$BFFF is handled by Extended80ColumnGeneralTarget
-        // (configured in Extended80ColumnExtensions) because reads and writes route
-        // independently. A single layer cannot model asymmetric bank selection.
+        // Create the layer for auxiliary RAM ($1000-$BFFF). The split target handles
+        // RAMRD/RAMWRT read/write routing per access, so this layer can remain RWX.
+        var auxSplitTarget = new AuxiliarySplitRamTarget(this, mainRamPages, auxGeneralRamTarget);
+        var ramLayer = memoryBus.CreateLayer(LayerNameAuxRam, LayerPriority);
+        memoryBus.AddLayeredMapping(new(
+            VirtualBase: 0x1000,
+            Size: 0xB000,  // $1000-$BFFF = 44KB
+            Layer: ramLayer,
+            DeviceId: deviceId,
+            RegionTag: RegionTag.Ram,
+            Perms: PagePerms.All,
+            Caps: auxSplitTarget.Capabilities,
+            Target: auxSplitTarget,
+            PhysBase: 0));
 
         // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
         // This overlays the general composite target when 80STORE+PAGE2+HIRES are enabled
@@ -803,16 +826,16 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         applyingState = true;
         try
         {
-            // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
-            // These always work, even when layers aren't configured
+            // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget.
+            // These always work, even when layers aren't configured.
             if (internalRomHandler is not null)
             {
                 internalRomHandler.SetIntCxRom(intcxrom);
                 internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
             }
 
-            // Update page 0 routing table for sub-page regions
-            // This is efficient - just updates a few array entries, no per-access checks
+            // Update page 0 routing table for sub-page regions.
+            // This is efficient - just updates a few array entries, no per-access checks.
             page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
 
             if (bus is null)
@@ -820,15 +843,21 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
                 return;
             }
 
-            // If layers haven't been configured, skip layer-related operations
-            // This happens when the device is used without ConfigureMemory being called
+            // If layers haven't been configured, skip layer-related operations.
+            // This happens when the device is used without ConfigureMemory being called.
             if (!layersConfigured)
             {
                 return;
             }
 
-            // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
-            // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
+            // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
+            // Note: Routing is handled by AuxiliarySplitRamTarget so split modes
+            // (RAMWRT-only, RAMRD-only) work without permission faults.
+            bool auxRamActive = ramrd || ramwrt;
+            SetLayerActive(LayerNameAuxRam, auxRamActive);
+
+            // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES.
+            // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res.
             bool auxHiResActive = store80 && page2 && hires;
             SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
         }
@@ -869,26 +898,79 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         }
     }
 
-    /// <summary>
-    /// Sets permissions on a memory layer.
-    /// </summary>
-    /// <param name="layerName">The name of the layer.</param>
-    /// <param name="perms">The permissions to set.</param>
-    private void SetLayerPermissions(string layerName, PagePerms perms)
+    private sealed class AuxiliarySplitRamTarget : IBusTarget
     {
-        if (bus is null)
+        private readonly Extended80ColumnDevice owner;
+        private readonly PageEntry[] mainRamPages;
+        private readonly RamTarget auxRamPages;
+
+        public AuxiliarySplitRamTarget(Extended80ColumnDevice owner, PageEntry[] mainRamPages, RamTarget auxRamPages)
         {
-            return;
+            ArgumentNullException.ThrowIfNull(owner);
+            ArgumentNullException.ThrowIfNull(mainRamPages);
+            ArgumentNullException.ThrowIfNull(auxRamPages);
+
+            if (mainRamPages.Length != 11)
+            {
+                throw new ArgumentException("Main RAM page table must contain exactly 11 pages ($1-$B).", nameof(mainRamPages));
+            }
+
+            this.owner = owner;
+            this.mainRamPages = mainRamPages;
+            this.auxRamPages = auxRamPages;
         }
 
-        try
+        public string Name => "AUX_SPLIT_RAM_1000_BFFF";
+
+        public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
+
+        public byte Read8(Addr physicalAddress, in BusAccess access)
         {
-            bus.SetLayerPermissions(layerName, perms);
+            if (owner.ramrd)
+            {
+                return auxRamPages.Read8(physicalAddress, in access);
+            }
+
+            return ReadMain8(physicalAddress, in access);
         }
-        catch (KeyNotFoundException)
+
+        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
         {
-            // Layer not configured yet - this is expected during initialization
-            // before ConfigureMemory is called
+            if (owner.ramwrt)
+            {
+                auxRamPages.Write8(physicalAddress, value, in access);
+                return;
+            }
+
+            WriteMain8(physicalAddress, value, in access);
+        }
+
+        private byte ReadMain8(Addr physicalAddress, in BusAccess access)
+        {
+            var (entry, resolvedPhysicalAddress) = ResolveMainPage(physicalAddress);
+            return entry.Target.Read8(resolvedPhysicalAddress, in access);
+        }
+
+        private void WriteMain8(Addr physicalAddress, byte value, in BusAccess access)
+        {
+            var (entry, resolvedPhysicalAddress) = ResolveMainPage(physicalAddress);
+            entry.Target.Write8(resolvedPhysicalAddress, value, in access);
+        }
+
+        private (PageEntry Entry, Addr PhysicalAddress) ResolveMainPage(Addr physicalAddress)
+        {
+            int pageIndex = (int)(physicalAddress >> 12);
+            if ((uint)pageIndex >= mainRamPages.Length)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(physicalAddress),
+                    physicalAddress,
+                    "Physical address must be within $1000-$BFFF mapped as 0x0000-0xAFFF in AUX split target.");
+            }
+
+            ref readonly var entry = ref mainRamPages[pageIndex];
+            Addr pageOffset = physicalAddress & 0x0FFF;
+            return (entry, entry.PhysicalBase + pageOffset);
         }
     }
 }

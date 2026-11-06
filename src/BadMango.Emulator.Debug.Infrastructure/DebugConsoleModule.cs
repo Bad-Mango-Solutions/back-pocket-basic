@@ -191,6 +191,14 @@ public class DebugConsoleModule : Module
         builder.Register(ctx =>
             {
                 var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
+                return new LogCommand(windowManager);
+            })
+            .As<ICommandHandler>()
+            .SingleInstance();
+
+        builder.Register(ctx =>
+            {
+                var windowManager = ctx.ResolveOptional<IDebugWindowManager>();
                 var debugContext = ctx.ResolveOptional<IDebugContext>();
                 return new StatMonCommand(windowManager, debugContext);
             })

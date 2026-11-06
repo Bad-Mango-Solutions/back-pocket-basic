@@ -1,18 +1,15 @@
 # BadMango.Emulator.Devices
 
-Device implementations for peripheral hardware components.
+Peripheral implementations for the Pocket2e / Apple IIe-class machine.
 
-## Structure
+This project references `BadMango.Emulator.Bus` and `BadMango.Emulator.Storage`. Peripheral contracts (`IPeripheral`) live in `BadMango.Emulator.Bus`.
 
-- **/Video/** - Video subsystem (text mode, graphics modes)
-- **/Keyboard/** - Keyboard input handling
-- **/Timer/** - Timer and clock devices
-- **/MMU/** - Memory Management Unit for advanced memory mapping
+Sources are mostly flat in this directory, with `Speaker/`, `Interfaces/`, and `Resources/` beside them. The implementations include:
 
-## Purpose
-
-This project contains device implementations that integrate with the emulator through the `IPeripheral` interface defined in `BadMango.Emulator.Core`.
-
-## Status
-
-Placeholder - subdirectories created for future implementation.
+- Video, character ROM, and the extended 80-column card
+- Keyboard and game I/O
+- Speaker
+- Language card
+- Disk II controller
+- Thunderclock and PocketWatch cards
+- Character ROM and Character Device

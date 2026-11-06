@@ -49,13 +49,17 @@ public enum WatchAccess
 /// <b>not</b> observed and will not trigger watchpoints.
 /// </para>
 /// </remarks>
-public sealed class WatchpointManager : IDebugStepListener
+public sealed class WatchpointManager : IActivatableDebugStepListener
 {
     private readonly Lock syncLock = new();
     private readonly Dictionary<uint, WatchpointEntry> entries = [];
     private ICpu? cpu;
     private IMemoryBus? bus;
     private TextWriter? log;
+
+    /// <inheritdoc/>
+    /// <remarks>Raised whenever the set of watchpoints changes (add, remove, clear, load).</remarks>
+    public event EventHandler? IsActiveChanged;
 
     /// <summary>
     /// Gets the number of registered watchpoints.
@@ -70,6 +74,13 @@ public sealed class WatchpointManager : IDebugStepListener
             }
         }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The manager is active while at least one watchpoint is registered (enabled or not),
+    /// so the step listener stays attached while watchpoints are merely toggled.
+    /// </remarks>
+    public bool IsActive => Count > 0;
 
     /// <summary>
     /// Gets the address of the watchpoint that most recently fired,
@@ -160,8 +171,10 @@ public sealed class WatchpointManager : IDebugStepListener
             }
 
             entries[address] = new WatchpointEntry(address, access, stopOnHit, label, true);
-            return true;
         }
+
+        OnWatchpointsChanged();
+        return true;
     }
 
     /// <summary>
@@ -174,10 +187,18 @@ public sealed class WatchpointManager : IDebugStepListener
     /// </returns>
     public bool Remove(uint address)
     {
+        bool removed;
         lock (syncLock)
         {
-            return entries.Remove(address);
+            removed = entries.Remove(address);
         }
+
+        if (removed)
+        {
+            OnWatchpointsChanged();
+        }
+
+        return removed;
     }
 
     /// <summary>
@@ -189,6 +210,8 @@ public sealed class WatchpointManager : IDebugStepListener
         {
             entries.Clear();
         }
+
+        OnWatchpointsChanged();
     }
 
     /// <summary>
@@ -339,6 +362,8 @@ public sealed class WatchpointManager : IDebugStepListener
                 }
             }
         }
+
+        OnWatchpointsChanged();
     }
 
     /// <inheritdoc/>
@@ -468,6 +493,8 @@ public sealed class WatchpointManager : IDebugStepListener
             _ => WatchAccess.None,
         };
     }
+
+    private void OnWatchpointsChanged() => IsActiveChanged?.Invoke(this, EventArgs.Empty);
 
     /// <summary>
     /// Represents a single watchpoint entry.

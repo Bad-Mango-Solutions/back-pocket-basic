@@ -7,6 +7,9 @@ Now let me provide a detailed breakdown of each stage as GitHub issues with comp
 
 # Detailed Implementation Plan for BackPocketBASIC Evolution
 
+> **Not in this repository.** The Applesoft BASIC projects `BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests` moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). Paths and commands on this page that name those projects are locations in that repository. This emulator's project structure is documented in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+
 ## Executive Summary
 
 This plan transforms the BackPocketBASIC into a comprehensive Apple II/IIgs emulation platform through 11 logical stages. Each stage is designed to be a standalone GitHub issue that GitHub Copilot can act upon, with clear acceptance criteria and dependencies.

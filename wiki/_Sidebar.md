@@ -2,31 +2,26 @@
 
 ## Getting Started
 - [Installation](Installation)
-- [Quick Start](Quick-Start)
+- [Development Setup](Development-Setup)
+- [Contributing Guide →](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/CONTRIBUTING.md)
 
-## User Guide
+## Emulator
+- [Architecture Overview](Architecture-Overview)
+- [6502 Emulation](6502-Emulation)
+- [Memory Map](Memory-Map)
+- [Testing Guide](Testing-Guide)
+- [Code Style](Code-Style)
+
+## Applesoft BASIC
+The interpreter moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy).
+- [Quick Start](Quick-Start)
 - [Language Reference](Language-Reference)
 - [Built-in Functions](Built-in-Functions)
 - [Custom Extensions](Custom-Extensions)
 - [Sample Programs](Sample-Programs)
-
-## Technical Docs
-- [Architecture Overview](Architecture-Overview)
-- [6502 Emulation](6502-Emulation)
-- [Memory Map](Memory-Map)
 - [API Reference](API-Reference)
 
-## Emulator Framework
-- [Architecture Overview](Architecture-Overview#7-advanced-emulator-framework)
-- [6502 Emulation](6502-Emulation#multi-cpu-framework)
-
-## Contributing
-- [Development Setup](Development-Setup)
-- [Testing Guide](Testing-Guide)
-- [Code Style](Code-Style)
-- [Contributing Guide →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/CONTRIBUTING.md)
-
 ## Resources
-- [GitHub Repo →](https://github.com/Bad-Mango-Solutions/back-pocket-basic)
-- [Issues →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/issues)
-- [README →](https://github.com/Bad-Mango-Solutions/back-pocket-basic/blob/main/README.md)
+- [GitHub Repo →](https://github.com/Bad-Mango-Solutions/back-pocket-emulator)
+- [Issues →](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/issues)
+- [README →](https://github.com/Bad-Mango-Solutions/back-pocket-emulator/blob/main/README.md)

@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="350"
         x:Class="BadMango.Emulator.Debug.UI.Views.AboutWindow"
-        Title="About BackPocket BASIC"
+        Title="About BackPocket Emulator"
         Width="450"
         Height="400"
         MinWidth="400"
@@ -28,7 +28,7 @@
                    Height="64"
                    Margin="0,0,15,0" />
             <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="BackPocket BASIC"
+                <TextBlock Text="BackPocket Emulator"
                            FontSize="24"
                            FontWeight="Bold" />
                 <TextBlock x:Name="VersionText"
@@ -46,7 +46,7 @@
             <TextBlock TextWrapping="Wrap"
                        TextAlignment="Center"
                        Margin="0,0,0,15">
-                A fully-featured Applesoft BASIC interpreter with
+                An Apple II-family emulator with
                 6502/65C02/65816 CPU emulation and Apple II memory space.
             </TextBlock>
 
@@ -67,7 +67,7 @@
                        Margin="0,0,0,15" />
 
             <TextBlock x:Name="GitHubLink"
-                       Text="https://github.com/Bad-Mango-Solutions/back-pocket-basic"
+                       Text="https://github.com/Bad-Mango-Solutions/back-pocket-emulator"
                        TextAlignment="Center"
                        Foreground="DodgerBlue"
                        Cursor="Hand"

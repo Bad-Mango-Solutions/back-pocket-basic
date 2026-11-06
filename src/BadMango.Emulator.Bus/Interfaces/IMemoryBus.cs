@@ -70,6 +70,24 @@ public interface IMemoryBus
     IBusFaultRing? FaultRing { get; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the bus records (and logs)
+    /// faults into <see cref="FaultRing"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Defaults to <see langword="false"/> so normal emulation pays only a
+    /// single flag check per faulting access. Debug tooling (the <c>fault</c>
+    /// and <c>buslog</c> commands) turns recording on when it is first used.
+    /// Faults are still returned from the <c>Try*</c> APIs regardless of this
+    /// setting; only recording into the ring and diagnostic logging are gated.
+    /// </para>
+    /// <para>
+    /// Debug accesses (<see cref="BusAccess.IsDebugAccess"/>) are never recorded.
+    /// </para>
+    /// </remarks>
+    bool FaultRecordingEnabled { get; set; }
+
+    /// <summary>
     /// Reads a single byte from the specified address.
     /// </summary>
     /// <param name="access">The access context describing the operation.</param>

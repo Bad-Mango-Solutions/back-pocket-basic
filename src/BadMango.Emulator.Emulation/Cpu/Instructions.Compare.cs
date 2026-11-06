@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -19,7 +17,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CMP with the given addressing mode.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CMP(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -65,7 +62,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CPX with the given addressing mode.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CPX(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -111,7 +107,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>
     /// <returns>An opcode handler that executes CPY with the given addressing mode.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CPY(AddressingModeHandler addressingMode)
     {
         return cpu =>

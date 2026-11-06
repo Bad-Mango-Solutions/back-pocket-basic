@@ -5,8 +5,6 @@
 // ReSharper disable InconsistentNaming
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using Core.Cpu;
 
 /// <summary>
@@ -19,7 +17,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLC.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLC(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -41,7 +38,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SEC.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SEC(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -63,7 +59,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLI.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLI(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -85,7 +80,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SEI.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SEI(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -107,7 +101,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLD.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLD(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -129,7 +122,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes SED.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler SED(AddressingModeHandler addressingMode)
     {
         return cpu =>
@@ -151,7 +143,6 @@ public static partial class Instructions
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>
     /// <returns>An opcode handler that executes CLV.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OpcodeHandler CLV(AddressingModeHandler addressingMode)
     {
         return cpu =>

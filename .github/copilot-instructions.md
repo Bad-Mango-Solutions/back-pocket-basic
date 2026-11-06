@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository contains code to emulate an Applesoft BASIC interpreter, enhancing its capabilities and performance. The project is structured to facilitate contributions, maintainability, and adherence to coding standards.
+This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2e machine), structured so it can grow into the 65816 and a theoretical 32-bit 65832. The Applesoft BASIC interpreter projects (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). The current project layout is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure).
 
 ### Target Framework
 
@@ -133,6 +133,8 @@ This repository is tracked on a **GitHub Project** board under the [Bad-Mango-So
 - **Well-maintained libraries.** Use libraries that are actively maintained and have a strong community support.
 - **Compatible with the target framework.** Ensure that all dependencies are compatible with .NET 10.0 (net10.0). The project may also accept packages compatible with net6.0 or netstandard2.0 as they are compatible with net10.0, but prefer net10.0-specific packages when available.
 - **Properly licensed.** Verify that all third-party libraries comply with the project's licensing requirements. The repository in general should only use libraries that are licensed under permissive licenses (e.g., MIT, Apache 2.0). We use the MIT License for this repository, so any compatible license is acceptable.
+  - **Narrow exception for LGPL native libraries.** An LGPL-licensed *native* library may be used only when it is shipped unmodified and loaded dynamically at runtime as a separate shared library (`.dll`/`.so`/`.dylib`) that users can replace with their own build. It must never be statically linked, compiled into our assemblies, or have its source copied into this repository, and every such library must be listed in [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md). The current (and only) case is OpenAL Soft, bundled through `Silk.NET.OpenAL.Soft.Native` and loaded by OpenTK. Managed (.NET) dependencies must still use permissive licenses.
+  - **Keep the notices current.** When adding, removing, or upgrading a dependency that ships with the application, update [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 - **Necessary and not redundant.** Avoid adding unnecessary dependencies that bloat the project or duplicate existing functionality.
 - **Preferred libraries.** When introducing a new dependency in one of these areas, prefer the established choice already used in the codebase:
   - **Logging:** [Serilog](https://serilog.net/) (`Serilog.ILogger`).
@@ -142,10 +144,18 @@ This repository is tracked on a **GitHub Project** board under the [Bad-Mango-So
 ## Logging
 - **Use Serilog `ILogger`.** All new code that needs to log MUST take `Serilog.ILogger` as a constructor parameter and store it in a `private readonly` field. Call `logger.ForContext<TThis>()` once in the constructor when a per-class context is desired.
 - **Do not use `System.Diagnostics.Trace` or `System.Diagnostics.Debug` for application logging.** They are not testable, are not configurable, and bypass the configured Serilog sinks. Reserve `Debug.Assert`-style invariants for genuine programmer-error checks only.
-- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The frontend application projects (e.g. `BadMango.Emulator.UI`, `BadMango.Basic.Console`) are responsible for configuring `Log.Logger` and registering an `ILogger` instance with Autofac at startup.
+- **Do not call `Log.Logger` or any other static / ambient Serilog facade in library code.** Always inject the logger so it can be mocked, scoped, and enriched per call site. The host executables (`BadMango.Emulator.UI` and `BadMango.Emulator.Debug`) are responsible for configuring Serilog and registering an `ILogger` instance with Autofac at startup. `BadMango.Emulator.Debug` assigns `Log.Logger`.
 - **Make classes DI-friendly.** Constructors should accept their collaborators (including the `ILogger`) as parameters; avoid `new`-ing services or loggers internally so consumers can substitute test doubles.
 - **Log outside hot loops.** Logging belongs at well-defined boundaries (configuration, mount/eject, error paths, lifecycle transitions). Do not log per CPU cycle, per scan-line, per emitted nibble, or inside any other timing-sensitive inner loop. Lift logging out of the loop or guard it with `logger.IsEnabled(LogEventLevel.Verbose)` when verbose detail is genuinely needed.
 - **Use structured logging.** Prefer `logger.Warning("Foo {Bar} failed because {Reason}.", bar, reason)` over interpolated or concatenated strings so messages remain queryable.
+
+## Exception handling
+- **Never use a bare `catch` or `catch (Exception)`.** Catch only the specific exceptions the called code is documented or known to throw. When several share the same handling, use one filtered clause: `catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)`.
+- **No empty catch blocks.** Log the exception with the injected `ILogger`, or add a comment explaining why ignoring it is correct. Prefer not catching at all when there is nothing useful to do.
+- **Don't catch what can't be thrown.** Do not wrap calls in `try`/`catch` for exception types they never throw. APIs that report failure through return values or error state (e.g. native interop such as OpenAL's `AL.GetError()`, `TryXxx` methods, `bool` results) must have that result checked instead.
+- **Best-effort teardown still logs.** Cleanup in `Dispose`/`finally` may continue past failures, but must log them rather than discard them silently.
+- **Preserve the cause when translating.** When rethrowing as a different type, pass the original as the `innerException`; use `throw;` (never `throw ex;`) to rethrow unchanged.
+- **Prefer guard helpers.** Use `ArgumentNullException.ThrowIfNull`, `ArgumentException.ThrowIfNullOrEmpty`, `ArgumentOutOfRangeException.ThrowIfNegative`, `ObjectDisposedException.ThrowIf`, etc. instead of hand-written checks.
 
 ## Testing helpers
 - **Use `BadMango.Unit.Components` for shared test utilities.** All new test projects should reference `tests/BadMango.Unit.Components/BadMango.Unit.Components.csproj`.

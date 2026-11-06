@@ -1,7 +1,7 @@
 # BackPocket Emulator
 
 <p align="center">
-  <img src="back-pocket-logo.png" alt="BackPocketBASIC Logo" width="200">
+  <img src="back-pocket-logo.png" alt="BackPocket Emulator Logo" width="200">
 </p>
 
 A .NET emulator for the WDC 65C02 (Apple IIe-class "Pocket2e" machine), with an architecture built to grow into the 65816 and a theoretical 32-bit 65832.
@@ -32,17 +32,17 @@ A .NET emulator for the WDC 65C02 (Apple IIe-class "Pocket2e" machine), with an 
 
 ```bash
 # Clone the repository
-git clone https://github.com/Bad-Mango-Solutions/back-pocket-basic.git
-cd back-pocket-basic
+git clone https://github.com/Bad-Mango-Solutions/back-pocket-emulator.git
+cd back-pocket-emulator
 
 # Build the solution
-dotnet build BackPocketBasic.slnx
+dotnet build BackPocketEmulator.slnx
 
 # Run tests
-dotnet test BackPocketBasic.slnx
+dotnet test BackPocketEmulator.slnx
 
 # Run tests with statement coverage
-dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
+dotnet test BackPocketEmulator.slnx --collect "XPlat Code Coverage"
 ```
 
 ## Architecture
@@ -50,38 +50,59 @@ dotnet test BackPocketBasic.slnx --collect "XPlat Code Coverage"
 ### Project Structure
 
 ```
-back-pocket-basic/
+back-pocket-emulator/
 ├── src/
-│   ├── BadMango.Emulator.Core/        # Core emulator abstractions
-│   │   ├── Cpu/                       # CPU state, registers, instructions
-│   │   ├── Interfaces/                # Core interfaces (IMemory, ICpu)
-│   │   └── Signaling/                 # Interrupt and signal handling
-│   ├── BadMango.Emulator.Emulation/   # CPU implementations
-│   │   └── Cpu/                       # 65C02, 65816, 65832 implementations
-│   ├── BadMango.Emulator.Bus/         # System bus and memory management
-│   ├── BadMango.Emulator.Devices/     # Peripheral device implementations
-│   ├── BadMango.Emulator.Systems/     # Complete system configurations
-│   ├── BadMango.Emulator.Debug/       # emudbg debug console + infrastructure (see emudbg.md)
-│   ├── BadMango.Emulator.Infrastructure/ # Event and registration utilities
-│   ├── BadMango.Emulator.Interop/     # Interoperability layer
-│   ├── BadMango.Emulator.Configuration/ # Configuration management
-│   ├── BadMango.Emulator.UI/          # Avalonia-based GUI (optional)
-│   └── BadMango.Emulator.UI.Abstractions/ # UI abstraction interfaces
+│   ├── BadMango.Emulator.Core/                 # CPU contracts, registers, signals, machine profiles
+│   ├── BadMango.Emulator.Bus/                  # Main bus, memory map, device registry, machine builder
+│   ├── BadMango.Emulator.Emulation/            # 65C02 CPU; 65816 and 65832 placeholders
+│   │   └── Cpu/
+│   ├── BadMango.Emulator.Devices/              # Peripherals (video, keyboard, speaker, Disk II, cards)
+│   ├── BadMango.Emulator.Storage/              # Disk images, block media, GCR nibblizing
+│   ├── BadMango.Emulator.Rendering/            # Pixel buffers and character rendering
+│   ├── BadMango.Emulator.Systems/              # Pocket2e machine composition
+│   ├── BadMango.Emulator.Infrastructure/       # Event aggregator
+│   ├── BadMango.Emulator.Configuration/        # App settings and path validation
+│   ├── BadMango.Emulator.UI.Abstractions/      # UI contracts
+│   ├── BadMango.Emulator.UI/                   # Avalonia host (bpui)
+│   ├── BadMango.Emulator.TextEditor/           # Avalonia editor
+│   ├── BadMango.Emulator.Debug.Infrastructure/ # REPL, commands, breakpoints, trace
+│   ├── BadMango.Emulator.Debug.UI/             # Avalonia windows for the console debugger
+│   ├── BadMango.Emulator.Debug/                # Console host (emudbg)
+│   └── BadMango.Emulator.Interop/              # Reserved for native and Rust interop
 │
 ├── tests/
-│   ├── BadMango.Emulator.Tests/       # Emulator core tests
-│   ├── BadMango.Emulator.Bus.Tests/   # Bus and memory tests
-│   ├── BadMango.Emulator.Devices.Tests/ # Device tests
-│   └── ... (additional test projects)
+│   ├── BadMango.Unit.Components/               # Shared test helpers
+│   ├── BadMango.Emulator.Tests/                # CPU, machine, and cross-project tests
+│   ├── BadMango.Emulator.Bus.Tests/
+│   ├── BadMango.Emulator.Configuration.Tests/
+│   ├── BadMango.Emulator.Debug.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Debug.Tests/
+│   ├── BadMango.Emulator.Debug.UI.Tests/
+│   ├── BadMango.Emulator.Devices.Tests/
+│   ├── BadMango.Emulator.Infrastructure.Tests/
+│   ├── BadMango.Emulator.Rendering.Tests/
+│   ├── BadMango.Emulator.Storage.Tests/
+│   ├── BadMango.Emulator.TextEditor.Tests/
+│   └── BadMango.Emulator.UI.Tests/
 │
+├── profiles/                          # Machine profile JSON
+├── schemas/                           # machine-profile.schema.json
+├── roms/                              # Apple II ROM images
+├── disks/                             # Sample disk images
+├── samples/                           # Sample machine-code programs
+├── specs/                             # Architecture and device specifications
+├── reference/                         # Design notes
+├── references/                        # Additional reference notes
 ├── wiki/                              # GitHub Wiki documentation
-└── BackPocketBasic.slnx               # Solution file
+└── BackPocketEmulator.slnx            # Solution file
 ```
+
+How these projects reference each other is described in [CONTRIBUTING.md](CONTRIBUTING.md#project-structure).
 
 ### Technologies Used
 
 - **.NET 10.0** - Runtime and SDK
-- **Avalonia UI 11.2+** - Cross-platform GUI framework (Emulator UI)
+- **Avalonia UI 12** - Cross-platform GUI framework (Emulator UI)
 - **Microsoft.Extensions.Hosting** - Application hosting model
 - **Serilog** - Structured logging
 - **Autofac** - Dependency injection
@@ -142,6 +163,8 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Third-party components distributed with the application, and their licenses, are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Acknowledgments
 

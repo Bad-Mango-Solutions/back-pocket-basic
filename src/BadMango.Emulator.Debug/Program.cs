@@ -9,9 +9,11 @@ using System.Linq;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
+using BadMango.Emulator.Debug;
 using BadMango.Emulator.Debug.Infrastructure;
 using BadMango.Emulator.Debug.UI;
 using BadMango.Emulator.Debug.UI.Services;
+using BadMango.Emulator.Devices;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,10 +23,13 @@ using Serilog.Events;
 using Serilog.Sinks.File;
 
 // Configure Serilog
+// For verbose device-level logging, add to the chain below:
+// .MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose)
+var debugLogEventStream = new DebugLogEventStream();
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    ////.MinimumLevel.Override("BadMango.Emulator.Devices", LogEventLevel.Verbose) // Uncomment for verbose device-level logging
     .Enrich.FromLogContext()
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
@@ -33,7 +38,14 @@ Log.Logger = new LoggerConfiguration()
         "logs/emudbg-.log",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Sink(
+        new DebugLogWindowSink(debugLogEventStream),
+        restrictedToMinimumLevel: LogEventLevel.Warning)
     .CreateLogger();
+
+// Give devices built by the device factory registry (speaker, Disk II, ...) a logger scoped
+// to their type, so device diagnostics such as audio-backend failures reach the log.
+DeviceFactoryRegistry.LoggerFactory = deviceType => Log.Logger.ForContext(deviceType);
 
 static void PrintUsage()
 {
@@ -45,9 +57,9 @@ static void PrintUsage()
 
         Options:
           -p, --profile <name>   Load the specified machine profile on startup
-                                 (e.g. pocket2e-a2-enh, pocket2e-lite, simple-65c02)
+                                     (e.g. pocket2e-a2-enh, pocket2e-lite, simple-65c02)
           -e, --exec <commands>  Execute the given commands then exit (non-interactive).
-                                 Separate multiple commands with ; or \n
+                                     Separate multiple commands with ; or \n
           -f, --file <path>      Read and execute commands from a text file (one command per line)
           --no-banner            Do not display the startup banner
           --headless             Use Avalonia headless platform (for AI video diagnostics, servers, CI without display)
@@ -110,6 +122,7 @@ try
 
             builder.RegisterModule<DebugConsoleModule>();
             builder.RegisterModule<DebugUiModule>();  // Always register; headless mode is configured via AvaloniaBootstrapper.UseHeadless
+            builder.RegisterInstance(debugLogEventStream).As<IDebugLogEventStream>().SingleInstance();
             builder.RegisterInstance(Log.Logger).As<ILogger>().SingleInstance();
         })
         .UseSerilog(Log.Logger)

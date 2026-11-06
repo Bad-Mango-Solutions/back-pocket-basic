@@ -49,7 +49,7 @@ Which component(s) of the emulator are affected?
 ## Environment
 - OS: [e.g., Windows 11, Ubuntu 22.04, macOS 14]
 - .NET Version: [e.g., .NET 10.0]
-- BackPocketBASIC Version/Commit: [e.g., main branch, commit abc123]
+- BackPocket Emulator Version/Commit: [e.g., main branch, commit abc123]
 - CPU Type: [e.g., 65C02, 65816]
 
 ## Error Messages

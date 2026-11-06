@@ -4,7 +4,7 @@ Avalonia-based cross-platform user interface for the BackPocket emulator.
 
 ## Overview
 
-This project provides a graphical frontend for the BackPocket emulator family, built with Avalonia UI 11.x on .NET 10.0. The UI follows the MVVM pattern using CommunityToolkit.Mvvm and uses Autofac for dependency injection with Microsoft.Extensions.Hosting patterns.
+This project provides a graphical frontend for the BackPocket emulator family, built with Avalonia UI 12 on .NET 10.0. The UI follows the MVVM pattern using CommunityToolkit.Mvvm and uses Autofac for dependency injection with Microsoft.Extensions.Hosting patterns. The assembly name is `bpui`. It references `BadMango.Emulator.Core`, `BadMango.Emulator.Infrastructure`, and `BadMango.Emulator.UI.Abstractions`.
 
 ## Features
 
@@ -19,7 +19,7 @@ This project provides a graphical frontend for the BackPocket emulator family, b
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| UI Framework | Avalonia 11.x | Cross-platform XAML UI |
+| UI Framework | Avalonia 12 | Cross-platform XAML UI |
 | MVVM | CommunityToolkit.Mvvm | ViewModels, commands, observables |
 | DI Container | Autofac | Service resolution |
 | Hosting | Microsoft.Extensions.Hosting | Application lifecycle |
@@ -34,36 +34,17 @@ BadMango.Emulator.UI/
 ├── App.axaml.cs                  # Application code-behind
 ├── Program.cs                    # Entry point with hosting setup
 ├── appsettings.json              # Application configuration
-│
-├── Converters/                   # Value converters
-│
-├── Models/                       # UI data models
-│
-├── Services/                     # UI services
-│   ├── IThemeService.cs          # Theme management interface
-│   ├── ThemeService.cs           # Theme implementation
-│   ├── INavigationService.cs     # Navigation interface
-│   └── NavigationService.cs      # Navigation implementation
-│
-├── ViewModels/                   # MVVM ViewModels
-│   ├── ViewModelBase.cs          # Base ViewModel class
-│   ├── MainWindowViewModel.cs    # Main window logic
-│   ├── MachineManagerViewModel.cs # Machine management
-│   ├── MachineProfileViewModel.cs # Profile data
-│   ├── MachineInstanceViewModel.cs # Instance data
-│   ├── NavigationItemViewModel.cs # Navigation items
-│   └── PlaceholderViewModel.cs   # Placeholder for future views
-│
-├── Views/                        # AXAML Views
-│   ├── MainWindow.axaml          # Main application window
-│   ├── MachineManagerView.axaml  # Machine management view
-│   └── PlaceholderView.axaml     # Placeholder view
-│
-└── Resources/                    # Assets
-    └── Styles/                   # AXAML styles
-        ├── ColorPalette.axaml    # Theme colors per spec
-        └── AppStyles.axaml       # Common styles
+├── Models/                       # Window layout and pop-out models
+├── Services/                     # Navigation, theme, window manager, shutdown
+├── ViewModels/                   # Main window, machine manager, pop-out
+│   └── Settings/                 # Settings page view models
+├── Views/                        # Main window, machine manager, pop-out, placeholder
+│   └── Settings/                 # Settings and About views
+└── Resources/
+    └── Styles/                   # ColorPalette.axaml, AppStyles.axaml
 ```
+
+`IThemeService` lives in `BadMango.Emulator.UI.Abstractions`. `ThemeService` is implemented in `Services/`.
 
 ## Running the Application
 

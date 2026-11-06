@@ -100,6 +100,13 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     private readonly IBusFaultRecorder? faultRecorder;
 
     /// <summary>
+    /// Backing field for <see cref="FaultRecordingEnabled"/>. Kept as a plain
+    /// field so the hot-path check in <see cref="Read8"/> / <see cref="Write8"/>
+    /// is a single load.
+    /// </summary>
+    private bool faultRecordingEnabled;
+
+    /// <summary>
     /// Counter for generating unique swap group IDs.
     /// </summary>
     private uint nextSwapGroupId;
@@ -123,8 +130,10 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     /// </param>
     /// <param name="logger">
     /// Optional Serilog logger for diagnostic output. When <see langword="null"/>,
-    /// a sink-less logger is used so the bus never touches the global <c>Log.Logger</c>
-    /// facade. Production callers should pass an injected logger.
+    /// the shared no-op <see cref="Serilog.Core.Logger.None"/> is used so the bus never
+    /// touches the global <c>Log.Logger</c> facade. Production callers should pass an
+    /// injected logger. Faults are only logged while <see cref="FaultRecordingEnabled"/>
+    /// is <see langword="true"/>.
     /// </param>
     /// <param name="faultRecorder">
     /// Optional recorder that captures bus faults into a ring buffer for later
@@ -158,9 +167,10 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         pageTable = new PageEntry[pageCount];
         basePageTable = new PageEntry[pageCount];
 
-        // Use a sink-less Serilog logger when no logger is injected so we
-        // never reach for the global Log.Logger facade from library code.
-        this.logger = (logger ?? new LoggerConfiguration().CreateLogger()).ForContext<MainBus>();
+        // Use the shared no-op Serilog logger when no logger is injected so we
+        // never reach for the global Log.Logger facade from library code and
+        // do not allocate a disposable logger per bus.
+        this.logger = logger?.ForContext<MainBus>() ?? Serilog.Core.Logger.None;
         this.faultRecorder = faultRecorder;
         FaultRing = faultRecorder as IBusFaultRing;
     }
@@ -184,6 +194,13 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     public void LatchFloatingBus(byte value) => floatingBus = value;
 
     /// <inheritdoc />
+    public bool FaultRecordingEnabled
+    {
+        get => faultRecordingEnabled;
+        set => faultRecordingEnabled = value;
+    }
+
+    /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte Read8(in BusAccess access)
     {
@@ -203,7 +220,11 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
             // No sub-target found, return floating bus value and record a
             // synthetic Unmapped fault so debug tooling can see the silent
             // hole instead of being lied to by the floating-bus value.
-            RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+            if (faultRecordingEnabled)
+            {
+                RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+            }
+
             return DefaultFloatingBusValue;
         }
 
@@ -211,7 +232,11 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         {
             // Page entry exists but no target is mapped. Record an Unmapped
             // fault and return the floating-bus value rather than NRE'ing.
-            RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: false);
+            if (faultRecordingEnabled)
+            {
+                RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: false);
+            }
+
             return DefaultFloatingBusValue;
         }
 
@@ -221,7 +246,6 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     }
 
     /// <inheritdoc />
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write8(in BusAccess access, byte value)
     {
         ref readonly var page = ref pageTable[access.Address >> PageShift];
@@ -239,13 +263,21 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
             }
 
             // No sub-target found for this offset - record the silent drop.
-            RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+            if (faultRecordingEnabled)
+            {
+                RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+            }
+
             return;
         }
 
         if (page.Target is null)
         {
-            RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: false);
+            if (faultRecordingEnabled)
+            {
+                RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: false);
+            }
+
             return;
         }
 
@@ -258,7 +290,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         int pageIndex = (int)(access.Address >> PageShift);
         if (pageIndex >= pageTable.Length)
         {
-            return RecordAndReturnFault(BusFault.Unmapped(access));
+            return RecordAndReturnFault(access, BusFault.Unmapped(access));
         }
 
         ref readonly var page = ref pageTable[pageIndex];
@@ -266,7 +298,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         // Check for unmapped page
         if (page.Target is null)
         {
-            return RecordAndReturnFault(BusFault.Unmapped(access));
+            return RecordAndReturnFault(access, BusFault.Unmapped(access));
         }
 
         // Check read permission.
@@ -274,7 +306,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         // inspecting memory regardless of page permissions.
         if (!page.CanRead && !access.IsDebugAccess)
         {
-            return RecordAndReturnFault(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
+            return RecordAndReturnFault(access, BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }
 
         // Check NX on instruction fetch (Atomic mode only)
@@ -282,7 +314,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
             access.Mode == BusAccessMode.Atomic &&
             !page.CanExecute)
         {
-            return RecordAndReturnFault(BusFault.NoExecute(access, page.DeviceId, page.RegionTag));
+            return RecordAndReturnFault(access, BusFault.NoExecute(access, page.DeviceId, page.RegionTag));
         }
 
         // Handle composite target dispatch
@@ -293,11 +325,15 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
             if (subTarget is null)
             {
                 // No sub-target found - this is a silent floating-bus read.
-                // Record the synthetic Unmapped fault but still return success
-                // with $FF so the CPU sees the expected floating-bus value
-                // (matches the semantics of the fast-path Read8 above).
+            // Record the synthetic Unmapped fault but still return success
+            // with $FF so the CPU sees the expected floating-bus value
+            // (matches the semantics of the fast-path Read8 above).
+            if (faultRecordingEnabled)
+            {
                 RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
-                return BusResult<byte>.Success(DefaultFloatingBusValue, access, page.DeviceId, page.RegionTag, cycles: 1);
+            }
+
+            return BusResult<byte>.Success(DefaultFloatingBusValue, access, page.DeviceId, page.RegionTag, cycles: 1);
             }
 
             Addr physicalAddress = page.PhysicalBase + offset;
@@ -320,7 +356,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         int pageIndex = (int)(access.Address >> PageShift);
         if (pageIndex >= pageTable.Length)
         {
-            return RecordAndReturnFaultVoid(BusFault.Unmapped(access));
+            return RecordAndReturnFaultVoid(access, BusFault.Unmapped(access));
         }
 
         ref readonly var page = ref pageTable[pageIndex];
@@ -328,7 +364,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         // Check for unmapped page
         if (page.Target is null)
         {
-            return RecordAndReturnFaultVoid(BusFault.Unmapped(access));
+            return RecordAndReturnFaultVoid(access, BusFault.Unmapped(access));
         }
 
         // Check write permission.
@@ -340,7 +376,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
         // 3. This enables ICpu.Poke8() to work for debugging and testing scenarios
         if (!page.CanWrite && !access.IsDebugAccess)
         {
-            return RecordAndReturnFaultVoid(BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
+            return RecordAndReturnFaultVoid(access, BusFault.PermissionDenied(access, page.DeviceId, page.RegionTag));
         }
 
         // Handle composite target dispatch
@@ -356,7 +392,10 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
             else
             {
                 // Silent drop - record the synthetic Unmapped fault.
-                RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+                if (faultRecordingEnabled)
+                {
+                    RecordSilentFault(access, BusFault.Unmapped(access), page.DeviceId, page.RegionTag, isComposite: true);
+                }
             }
 
             return BusResult.Success(access, page.DeviceId, page.RegionTag, cycles: 1);
@@ -370,32 +409,50 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     }
 
     /// <summary>
-    /// Records a fault into the recorder (if configured) and emits a
-    /// structured warning log entry, then returns the fault as a
+    /// Records a fault into the recorder (if recording is enabled) and emits
+    /// a structured warning log entry, then returns the fault as a
     /// <see cref="BusResult{T}"/> for the caller to propagate.
     /// </summary>
+    /// <remarks>
+    /// Kept out of line (<see cref="MethodImplOptions.NoInlining"/>) so the
+    /// cold recording code does not bloat the <c>TryRead8</c> fast path.
+    /// </remarks>
+    /// <param name="access">The originating access.</param>
     /// <param name="fault">The fault to record.</param>
     /// <returns>The fault wrapped in a typed result.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private BusResult<byte> RecordAndReturnFault(in BusFault fault)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private BusResult<byte> RecordAndReturnFault(in BusAccess access, in BusFault fault)
     {
-        faultRecorder?.Record(in fault);
-        LogFault(in fault, isSilent: false, isComposite: false);
+        if (faultRecordingEnabled && !access.IsDebugAccess)
+        {
+            faultRecorder?.Record(in fault);
+            LogFault(in fault, isSilent: false, isComposite: false);
+        }
+
         return fault;
     }
 
     /// <summary>
-    /// Records a fault into the recorder (if configured) and emits a
-    /// structured warning log entry, then returns the fault wrapped in a
+    /// Records a fault into the recorder (if recording is enabled) and emits
+    /// a structured warning log entry, then returns the fault wrapped in a
     /// non-generic <see cref="BusResult"/> for the caller to propagate.
     /// </summary>
+    /// <remarks>
+    /// Kept out of line (<see cref="MethodImplOptions.NoInlining"/>) so the
+    /// cold recording code does not bloat the <c>TryWrite8</c> fast path.
+    /// </remarks>
+    /// <param name="access">The originating access.</param>
     /// <param name="fault">The fault to record.</param>
     /// <returns>The fault wrapped in a non-generic result.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private BusResult RecordAndReturnFaultVoid(in BusFault fault)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private BusResult RecordAndReturnFaultVoid(in BusAccess access, in BusFault fault)
     {
-        faultRecorder?.Record(in fault);
-        LogFault(in fault, isSilent: false, isComposite: false);
+        if (faultRecordingEnabled && !access.IsDebugAccess)
+        {
+            faultRecorder?.Record(in fault);
+            LogFault(in fault, isSilent: false, isComposite: false);
+        }
+
         return BusResult.FromFault(fault);
     }
 
@@ -403,6 +460,14 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     /// Records a synthetic fault for a silent floating-bus or
     /// missing-sub-target case observed by the fast-path read/write methods.
     /// </summary>
+    /// <remarks>
+    /// Callers must check <see cref="faultRecordingEnabled"/> before calling
+    /// so the disabled case costs a single field load on the hot path. The
+    /// method is kept out of line (<see cref="MethodImplOptions.NoInlining"/>)
+    /// so its struct building, lock, and logging code is not inlined into
+    /// <see cref="Read8"/> / <see cref="Write8"/>. Debug accesses (debugger
+    /// peeks/pokes) are never recorded.
+    /// </remarks>
     /// <param name="access">The originating access.</param>
     /// <param name="fault">The synthetic fault payload.</param>
     /// <param name="deviceId">The device ID from the resolved page entry.</param>
@@ -411,9 +476,14 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     /// <see langword="true"/> when the silent drop occurred because a
     /// composite target had no sub-target for the requested offset.
     /// </param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void RecordSilentFault(in BusAccess access, in BusFault fault, int deviceId, RegionTag regionTag, bool isComposite)
     {
+        if (access.IsDebugAccess)
+        {
+            return;
+        }
+
         // Rebuild the fault with the resolved device/region so downstream
         // tooling sees "Composite at $C300 / RegionTag.Slot" instead of "-1".
         var enriched = new BusFault(
@@ -444,7 +514,7 @@ public sealed partial class MainBus : IMemoryBus, IFloatingBus
     /// <see langword="true"/> when the fault came from a composite target's
     /// missing sub-target dispatch.
     /// </param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void LogFault(in BusFault fault, bool isSilent, bool isComposite)
     {
         // Guard log generation with IsEnabled so message-template assembly is
