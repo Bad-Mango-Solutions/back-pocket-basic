@@ -4,6 +4,11 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Interfaces.Cpu;
+
+using Moq;
+
 /// <summary>
 /// Unit tests for <see cref="ResetCommand"/>.
 /// </summary>
@@ -58,6 +63,33 @@ public partial class DebugCommandsTests
         {
             Assert.That(result.Success, Is.True);
             Assert.That(outputWriter.ToString(), Does.Contain("Hard reset"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that reset delegates to machine reset when a machine is attached.
+    /// </summary>
+    [Test]
+    public void ResetCommand_UsesMachineReset_WhenMachineAttached()
+    {
+        var mockCpu = new Mock<ICpu>();
+        mockCpu.Setup(c => c.GetPC()).Returns(0x1234);
+
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.SetupGet(m => m.Cpu).Returns(mockCpu.Object);
+        mockMachine.SetupGet(m => m.Bus).Returns(bus);
+
+        debugContext.AttachMachine(mockMachine.Object);
+
+        var command = new ResetCommand();
+        var result = command.Execute(debugContext, ["--hard"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            mockMachine.Verify(m => m.Reset(true), Times.Once);
+            mockCpu.Verify(c => c.Reset(), Times.Never);
+            Assert.That(outputWriter.ToString(), Does.Contain("Hard reset completed."));
         });
     }
 }

@@ -655,13 +655,16 @@ public static class Pocket2eMachineBuilderExtensions
     /// to access main RAM directly without going through soft switch routing.
     /// </remarks>
     public sealed record MainRamComponent(PhysicalMemory Memory, RamTarget Target)
-        : IMainMemoryProvider
+        : IMainMemoryProvider, IHardResetMemory
     {
         /// <inheritdoc cref="IMainMemoryProvider.MainRam"/>
         public ReadOnlyMemory<byte> MainRam => Memory.Memory;
 
         /// <inheritdoc cref="IMainMemoryProvider.ReadMainRam(ushort)"/>
         public byte ReadMainRam(ushort address) => Memory.AsReadOnlySpan()[address];
+
+        /// <inheritdoc />
+        public void ClearForHardReset() => Memory.Clear();
     }
 
     /// <summary>
@@ -669,28 +672,48 @@ public static class Pocket2eMachineBuilderExtensions
     /// </summary>
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
-    public sealed record AuxiliaryRamComponent(PhysicalMemory Memory, RamTarget Target);
+    public sealed record AuxiliaryRamComponent(PhysicalMemory Memory, RamTarget Target)
+        : IHardResetMemory
+    {
+        /// <inheritdoc />
+        public void ClearForHardReset() => Memory.Clear();
+    }
 
     /// <summary>
     /// Component wrapper for Language Card Bank 1 RAM.
     /// </summary>
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
-    public sealed record LcBank1RamComponent(PhysicalMemory Memory, RamTarget Target);
+    public sealed record LcBank1RamComponent(PhysicalMemory Memory, RamTarget Target)
+        : IHardResetMemory
+    {
+        /// <inheritdoc />
+        public void ClearForHardReset() => Memory.Clear();
+    }
 
     /// <summary>
     /// Component wrapper for Language Card Bank 2 RAM.
     /// </summary>
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
-    public sealed record LcBank2RamComponent(PhysicalMemory Memory, RamTarget Target);
+    public sealed record LcBank2RamComponent(PhysicalMemory Memory, RamTarget Target)
+        : IHardResetMemory
+    {
+        /// <inheritdoc />
+        public void ClearForHardReset() => Memory.Clear();
+    }
 
     /// <summary>
     /// Component wrapper for Language Card high RAM ($E000-$FFFF).
     /// </summary>
     /// <param name="Memory">The physical memory backing store.</param>
     /// <param name="Target">The RAM bus target for read/write operations.</param>
-    public sealed record LcHighRamComponent(PhysicalMemory Memory, RamTarget Target);
+    public sealed record LcHighRamComponent(PhysicalMemory Memory, RamTarget Target)
+        : IHardResetMemory
+    {
+        /// <inheritdoc />
+        public void ClearForHardReset() => Memory.Clear();
+    }
 
     /// <summary>
     /// Represents a slot card pending installation during machine build.
