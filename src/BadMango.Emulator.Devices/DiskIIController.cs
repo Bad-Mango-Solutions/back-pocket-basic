@@ -112,7 +112,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
     private byte writeShift;           // staged byte for write-load (Q6=1,Q7=1)
     private int lastReadSpinPosition = -1; // SpinPosition observed at the previous data-read; used to gate the byte-ready high bit
 
-    private IEventContext? context;
+    private IEventContext? evtContext;
     private EventHandle driftHandle;
     private bool driftScheduled;
 
@@ -242,10 +242,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
     public bool IsQ7High => q7High;
 
     /// <inheritdoc />
-    public void Initialize(IEventContext eventContext)
+    public void Initialize(IEventContext context)
     {
-        ArgumentNullException.ThrowIfNull(eventContext);
-        context = eventContext;
+        ArgumentNullException.ThrowIfNull(context);
+        evtContext = context;
 
         // FR-D9: if no user-supplied boot ROM was provided, peek at $Cn00 to see if
         // another card has already populated the slot ROM space. If it's still $FF
@@ -263,9 +263,9 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
                     EmulationFlag: true,
                     Intent: AccessIntent.DebugRead,
                     SourceId: 0,
-                    Cycle: eventContext.Now,
+                    Cycle: context.Now,
                     Flags: AccessFlags.NoSideEffects);
-                var first = eventContext.Bus.Read8(in probe);
+                var first = context.Bus.Read8(in probe);
                 if (first == 0xFF)
                 {
                     logger.Warning(
@@ -420,13 +420,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         // so a mount from the host never races the CPU or the scheduler.
         OnMachineThread(() =>
         {
-            if (context is null || !motorOn)
+            if (evtContext is null || !motorOn)
             {
                 ApplyMount(driveIndex, media, imagePath);
                 return;
             }
 
-            context.Scheduler.ScheduleAfter(
+            evtContext.Scheduler.ScheduleAfter(
                 Cycle.One,
                 ScheduledEventKind.DeferredWork,
                 priority: 0,
@@ -462,13 +462,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
 
         OnMachineThread(() =>
         {
-            if (context is null || !motorOn)
+            if (evtContext is null || !motorOn)
             {
                 ApplyEject(driveIndex);
                 return;
             }
 
-            context.Scheduler.ScheduleAfter(
+            evtContext.Scheduler.ScheduleAfter(
                 Cycle.One,
                 ScheduledEventKind.DeferredWork,
                 priority: 0,
@@ -684,13 +684,13 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
 
     private void ScheduleTrackStepSettle(Drive525 drive)
     {
-        if (context is null)
+        if (evtContext is null)
         {
             drive.SettleUntil = (Cycle)(ulong)trackStepSettleCycles;
             return;
         }
 
-        drive.SettleUntil = context.Now + (Cycle)(ulong)trackStepSettleCycles;
+        drive.SettleUntil = evtContext.Now + (Cycle)(ulong)trackStepSettleCycles;
     }
 
     // ─── Motor / drive select ───────────────────────────────────────────
@@ -768,10 +768,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         motorOn = true;
         motorOnCount++;
         var drive = drives[currentDrive];
-        if (context is not null)
+        if (evtContext is not null)
         {
-            drive.SettleUntil = context.Now + (Cycle)(ulong)motorSettleCycles;
-            drive.LastUpdateCycle = context.Now;
+            drive.SettleUntil = evtContext.Now + (Cycle)(ulong)motorSettleCycles;
+            drive.LastUpdateCycle = evtContext.Now;
             ScheduleDriftEvent(drive);
         }
         else
@@ -847,9 +847,9 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         // the new drive's position has no relation to the old one.
         lastReadSpinPosition = -1;
 
-        if (motorOn && context is not null)
+        if (motorOn && evtContext is not null)
         {
-            drives[currentDrive].LastUpdateCycle = context.Now;
+            drives[currentDrive].LastUpdateCycle = evtContext.Now;
         }
 
         if (logger.IsEnabled(LogEventLevel.Verbose))
@@ -997,7 +997,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         }
 
         var current = drives[currentDrive];
-        if (context is not null && current.SettleUntil > context.Now)
+        if (evtContext is not null && current.SettleUntil > evtContext.Now)
         {
             // During settling (motor warm-up or post-step head settling), real
             // Disk II hardware does not produce a stable byte-ready signal: the
@@ -1307,7 +1307,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
             return;
         }
 
-        if (context is not null && drive.SettleUntil > context.Now)
+        if (evtContext is not null && drive.SettleUntil > evtContext.Now)
         {
             // Still settling — head is not yet stable; data latch keeps the previous byte.
             return;
@@ -1319,9 +1319,9 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
             cacheLoadCount++;
         }
 
-        if (context is not null)
+        if (evtContext is not null)
         {
-            var now = context.Now;
+            var now = evtContext.Now;
             var elapsed = (ulong)(now - drive.LastUpdateCycle);
             var byteAdvance = elapsed / CyclesPerByte;
             if (byteAdvance > 0)
@@ -1346,7 +1346,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
             return;
         }
 
-        if (context is not null && drive.SettleUntil > context.Now)
+        if (evtContext is not null && drive.SettleUntil > evtContext.Now)
         {
             return;
         }
@@ -1359,9 +1359,9 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         // Advance the spin position for the staged write, then commit one byte to the
         // nibble cache and mark the track dirty (FR-D8 — sector images defer parse-
         // back to flush time; nibble images get the byte on flush as a raw write).
-        if (context is not null)
+        if (evtContext is not null)
         {
-            var elapsed = (ulong)(context.Now - drive.LastUpdateCycle);
+            var elapsed = (ulong)(evtContext.Now - drive.LastUpdateCycle);
             var byteAdvance = elapsed / CyclesPerByte;
             if (byteAdvance > 0)
             {
@@ -1378,7 +1378,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
 
     private void ScheduleDriftEvent(Drive525 drive)
     {
-        if (context is null || driftScheduled)
+        if (evtContext is null || driftScheduled)
         {
             return;
         }
@@ -1387,7 +1387,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         // Schedule one event one full track ahead so we recompute even if the CPU
         // never touches $C0nC for a long period.
         var trackBytes = drive.CachedTrack?.Length ?? GcrEncoder.StandardTrackLength;
-        driftHandle = context.Scheduler.ScheduleAfter(
+        driftHandle = evtContext.Scheduler.ScheduleAfter(
             (Cycle)(ulong)(trackBytes * CyclesPerByte),
             ScheduledEventKind.DeviceTimer,
             priority: 0,
@@ -1429,7 +1429,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
     /// <param name="action">The controller-state mutation to perform.</param>
     private void OnMachineThread(Action action)
     {
-        if (context is IMachineDispatcher dispatcher)
+        if (evtContext is IMachineDispatcher dispatcher)
         {
             dispatcher.Post(action);
         }
@@ -1456,9 +1456,9 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
 
     private void CancelDriftEvent()
     {
-        if (driftScheduled && context is not null)
+        if (driftScheduled && evtContext is not null)
         {
-            context.Scheduler.Cancel(driftHandle);
+            evtContext.Scheduler.Cancel(driftHandle);
         }
 
         driftScheduled = false;
@@ -1482,10 +1482,10 @@ public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceive
         }
 
         // FR-R4: insertion during an active motor cycle resets the settling timer.
-        if (motorOn && driveIndex == currentDrive && context is not null)
+        if (motorOn && driveIndex == currentDrive && evtContext is not null)
         {
-            drive.SettleUntil = context.Now + (Cycle)(ulong)motorSettleCycles;
-            drive.LastUpdateCycle = context.Now;
+            drive.SettleUntil = evtContext.Now + (Cycle)(ulong)motorSettleCycles;
+            drive.LastUpdateCycle = evtContext.Now;
         }
     }
 

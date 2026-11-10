@@ -7,9 +7,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Logical operations (AND, ORA, EOR, BIT).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
     /// <summary>

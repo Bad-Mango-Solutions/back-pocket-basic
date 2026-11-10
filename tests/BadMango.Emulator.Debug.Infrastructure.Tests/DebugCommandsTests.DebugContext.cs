@@ -9,9 +9,9 @@ using BadMango.Emulator.Core.Configuration;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="DebugContext"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>

@@ -6,9 +6,9 @@ namespace BadMango.Emulator.Bus;
 
 using Interfaces;
 
-/// <summary>
+/// <content>
 /// Page table management operations for the main memory bus.
-/// </summary>
+/// </content>
 public sealed partial class MainBus
 {
     /// <inheritdoc />

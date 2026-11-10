@@ -7,9 +7,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// 65C02-specific instructions (STZ, TSB, TRB, WAI, STP).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
     /// <summary>

@@ -196,16 +196,16 @@ public class CompositeTargetTests
 
         public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
-        public byte Read8(Addr physicalAddress, in BusAccess access)
+        public byte Read8(Addr offset, in BusAccess access)
         {
             var subTarget = ResolveTarget(access.Address & 0xFFF, access.Intent);
-            return subTarget?.Read8(physicalAddress, access) ?? 0xFF;
+            return subTarget?.Read8(offset, access) ?? 0xFF;
         }
 
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        public void Write8(Addr offset, byte value, in BusAccess access)
         {
             var subTarget = ResolveTarget(access.Address & 0xFFF, access.Intent);
-            subTarget?.Write8(physicalAddress, value, access);
+            subTarget?.Write8(offset, value, access);
         }
 
         public IBusTarget? ResolveTarget(Addr offset, AccessIntent intent)
@@ -252,14 +252,14 @@ public class CompositeTargetTests
 
         public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
-        public byte Read8(Addr physicalAddress, in BusAccess access)
+        public byte Read8(Addr offset, in BusAccess access)
         {
-            return subTarget.Read8(physicalAddress, access);
+            return subTarget.Read8(offset, access);
         }
 
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        public void Write8(Addr offset, byte value, in BusAccess access)
         {
-            subTarget.Write8(physicalAddress, value, access);
+            subTarget.Write8(offset, value, access);
         }
 
         public IBusTarget? ResolveTarget(Addr offset, AccessIntent intent)

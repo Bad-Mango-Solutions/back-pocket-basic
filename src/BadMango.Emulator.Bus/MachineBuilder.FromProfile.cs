@@ -11,9 +11,9 @@ using BadMango.Emulator.Core.Cpu;
 
 using Interfaces;
 
-/// <summary>
+/// <content>
 /// Profile processing methods for <see cref="MachineBuilder"/>.
-/// </summary>
+/// </content>
 public sealed partial class MachineBuilder
 {
     /// <summary>

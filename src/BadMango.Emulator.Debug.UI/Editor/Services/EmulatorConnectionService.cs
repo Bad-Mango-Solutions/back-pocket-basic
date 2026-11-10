@@ -21,11 +21,11 @@ public sealed class EmulatorConnectionService : IEmulatorConnection
     public bool IsConnected => characterDevice != null;
 
     /// <inheritdoc />
-    public bool Connect(ICharacterDevice device)
+    public bool Connect(ICharacterDevice characterDevice)
     {
-        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(characterDevice);
 
-        characterDevice = device;
+        this.characterDevice = characterDevice;
         ConnectionStateChanged?.Invoke(this, true);
         return true;
     }
