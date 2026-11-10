@@ -36,6 +36,15 @@ using Interfaces;
 /// <item><description>$C062 (PB1): Closed Apple / Button 1 - bit 7 set when pressed</description></item>
 /// <item><description>$C063 (PB2): Shift key modifier - bit 7 set when pressed</description></item>
 /// </list>
+/// <para>
+/// Threading: the keyboard is fed from host threads (UI, REPL) while the machine thread reads
+/// it. When the keyboard is initialized by a machine that implements
+/// <see cref="IMachineDispatcher"/>, the host-facing mutators (<see cref="KeyDown"/>,
+/// <see cref="KeyUp"/>, <see cref="SetModifiers"/>, <see cref="PressResetKey"/>,
+/// <see cref="ReleaseResetKey"/> and <see cref="TypeString"/>) are marshalled onto the machine
+/// thread with <see cref="IMachineDispatcher.Post"/>, so they never race the CPU, the scheduler or
+/// the RESET line. While the machine is quiescent they take effect immediately.
+/// </para>
 /// </remarks>
 [DeviceType("keyboard")]
 public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IResetReceiver
@@ -62,6 +71,9 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     private const int ResetSourceDeviceId = int.MinValue + 2;
 
     private readonly Queue<(byte Key, int DelayMs)> typeQueue = new();
+    private IMachineDispatcher? dispatcher;
+    private int typeGeneration;
+    private bool typedKeyUpPending;
     private byte lastKey;
     private bool strobe;
     private bool keyDown;
@@ -118,6 +130,7 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         ArgumentNullException.ThrowIfNull(context);
         scheduler = context.Scheduler;
         signals = context.Signals;
+        dispatcher = context as IMachineDispatcher;
     }
 
     /// <inheritdoc />
@@ -146,44 +159,55 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         modifiers = KeyboardModifiers.None;
         resetKeyPressed = false;
         SetResetLineState(asserted: false);
-        typeQueue.Clear();
+        CancelTyping();
     }
 
     /// <inheritdoc />
     public void KeyDown(byte asciiCode)
     {
-        lastKey = (byte)(asciiCode & 0x7F); // Clear high bit
-        strobe = true;
-        keyDown = true;
+        OnMachineThread(() =>
+        {
+            lastKey = (byte)(asciiCode & 0x7F); // Clear high bit
+            strobe = true;
+            keyDown = true;
+        });
     }
 
     /// <inheritdoc />
     public void KeyUp()
     {
-        keyDown = false;
-
         // Note: lastKey and strobe remain unchanged until strobe is cleared
+        OnMachineThread(() => keyDown = false);
     }
 
     /// <inheritdoc />
     public void SetModifiers(KeyboardModifiers modifiers)
     {
-        this.modifiers = modifiers;
-        UpdateResetLineState();
+        OnMachineThread(() =>
+        {
+            this.modifiers = modifiers;
+            UpdateResetLineState();
+        });
     }
 
     /// <inheritdoc />
     public void PressResetKey()
     {
-        resetKeyPressed = true;
-        UpdateResetLineState();
+        OnMachineThread(() =>
+        {
+            resetKeyPressed = true;
+            UpdateResetLineState();
+        });
     }
 
     /// <inheritdoc />
     public void ReleaseResetKey()
     {
-        resetKeyPressed = false;
-        UpdateResetLineState();
+        OnMachineThread(() =>
+        {
+            resetKeyPressed = false;
+            UpdateResetLineState();
+        });
     }
 
     /// <inheritdoc />
@@ -195,22 +219,35 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         var keysToEnqueue = text
             .Select(c => ConvertToAppleAscii(c))
             .Where(ascii => ascii != 0)
-            .Select(ascii => (ascii, delayMs));
+            .Select(ascii => (ascii, delayMs))
+            .ToArray();
 
-        foreach (var entry in keysToEnqueue)
+        OnMachineThread(() =>
         {
-            typeQueue.Enqueue(entry);
-        }
+            foreach (var entry in keysToEnqueue)
+            {
+                typeQueue.Enqueue(entry);
+            }
 
-        // Start processing the queue if not already in progress
-        ProcessTypeQueue();
+            // Start processing the queue if not already in progress
+            if (!typedKeyUpPending)
+            {
+                ProcessTypeQueue();
+            }
+        });
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// RESET clears the keyboard strobe and discards any type-ahead queued by
+    /// <see cref="TypeString"/>. The machine flushes the scheduler on RESET, which drops the
+    /// pending release of the key currently being typed, so that key is released here instead
+    /// of being left stuck down. Keys and modifiers the user is physically holding are unchanged.
+    /// </remarks>
     public void OnResetAsserted(Cycle cycle)
     {
         strobe = false;
-        typeQueue.Clear();
+        CancelTyping();
     }
 
     /// <inheritdoc />
@@ -275,6 +312,30 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         return modifiers.HasFlag(KeyboardModifiers.Shift) ? ButtonPressedBit : (byte)0x00;
     }
 
+    private void OnMachineThread(Action action)
+    {
+        if (dispatcher is null)
+        {
+            action();
+        }
+        else
+        {
+            dispatcher.Post(action);
+        }
+    }
+
+    private void CancelTyping()
+    {
+        typeQueue.Clear();
+        typeGeneration++;
+
+        if (typedKeyUpPending)
+        {
+            typedKeyUpPending = false;
+            keyDown = false;
+        }
+    }
+
     private void ProcessTypeQueue()
     {
         if (typeQueue.Count == 0 || scheduler is null)
@@ -285,10 +346,14 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         // Only inject a key if strobe is clear
         if (!strobe && typeQueue.TryDequeue(out var entry))
         {
-            KeyDown(entry.Key);
+            lastKey = (byte)(entry.Key & 0x7F);
+            strobe = true;
+            keyDown = true;
+            typedKeyUpPending = true;
 
             // Schedule key release and next key
             var delayCycles = (ulong)(entry.DelayMs * CyclesPerMillisecond);
+            int generation = typeGeneration;
 
             scheduler.ScheduleAt(
                 scheduler.Now + delayCycles,
@@ -296,7 +361,14 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
                 0,
                 _ =>
                 {
-                    KeyUp();
+                    // A RESET (or device reset) in the meantime cancelled this typing run.
+                    if (generation != typeGeneration)
+                    {
+                        return;
+                    }
+
+                    typedKeyUpPending = false;
+                    keyDown = false;
                     ProcessTypeQueue();
                 });
         }

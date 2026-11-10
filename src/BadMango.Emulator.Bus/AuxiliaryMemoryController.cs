@@ -243,12 +243,19 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
     /// <inheritdoc />
     public void OnResetAsserted(Cycle cycle)
     {
-        Reset();
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The auxiliary memory switches (Sather Table 5.4: all off after reset) live in the MMU, which is not connected to RESET'. The MMU recognizes a reset by
+    /// the 6502's reset fingerprint (three page-1 stack accesses followed by the <c>$FFFC</c>
+    /// vector fetch) and only then resets its switches (Sather, <i>Understanding the Apple IIe</i>,
+    /// pp. 4-14 to 4-15). In this model that is the release of the RESET line, just before the CPU
+    /// fetches the vector, so the switches are reset on release rather than on assertion.
+    /// </remarks>
     public void OnResetReleased(Cycle cycle)
     {
+        Reset();
     }
 
     // ─── Soft Switch Handlers ───────────────────────────────────────────

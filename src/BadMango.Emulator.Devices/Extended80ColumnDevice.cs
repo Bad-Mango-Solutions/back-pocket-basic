@@ -383,14 +383,49 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The Apple IIe splits these switches between two chips, and they respond to RESET
+    /// differently (Sather, <i>Understanding the Apple IIe</i>, pp. 4-14 to 4-15):
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// The IOU is wired to RESET' and resets 80COL while the line is low (Table 7.1, p. 7-5).
+    /// The video device resets its own copy of 80COL (and PAGE2/HIRES) at the same time.
+    /// </description></item>
+    /// <item><description>
+    /// The MMU is not wired to RESET'. It resets 80STORE, RAMRD, RAMWRT, INTCXROM, ALTZP,
+    /// SLOTC3ROM, PAGE2 and HIRES when it sees the reset fingerprint, which is modeled by
+    /// <see cref="OnResetReleased"/> (Table 5.4, p. 5-22).
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// TEXT and MIXED are not reset by RESET' (Table 7.1 lists them as "NA"), and this device
+    /// does not hold them.
+    /// </para>
+    /// </remarks>
     public void OnResetAsserted(Cycle cycle)
     {
-        Reset();
+        col80 = false;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Resets the MMU switches when the MMU would see the reset fingerprint, just before the
+    /// CPU fetches the RESET vector; see <see cref="OnResetAsserted"/>.
+    /// </remarks>
     public void OnResetReleased(Cycle cycle)
     {
+        store80 = false;
+        ramrd = false;
+        ramwrt = false;
+        intcxrom = false;
+        altzp = false;
+        slotc3rom = false;
+        page2 = false;
+        hires = false;
+
+        ApplyState();
     }
 
     /// <summary>
