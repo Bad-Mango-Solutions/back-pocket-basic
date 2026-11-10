@@ -4,12 +4,12 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="StepCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that StepCommand has correct name.
     /// </summary>
     [Test]

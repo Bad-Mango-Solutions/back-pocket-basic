@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Arithmetic instructions (ADC, SBC, INC, DEC, INX, INY, DEX, DEY).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// ADC - Add with Carry instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

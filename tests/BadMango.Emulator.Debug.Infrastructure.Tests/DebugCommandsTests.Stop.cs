@@ -4,12 +4,12 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="StopCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that StopCommand has correct name.
     /// </summary>
     [Test]

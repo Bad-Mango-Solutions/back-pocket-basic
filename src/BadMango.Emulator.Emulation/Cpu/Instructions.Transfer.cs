@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Register transfer instructions (TAX, TAY, TXA, TYA, TXS, TSX).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// TAX - Transfer Accumulator to X instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>

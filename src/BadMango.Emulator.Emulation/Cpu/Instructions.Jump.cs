@@ -8,12 +8,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 using Core;
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Jump and subroutine instructions (JMP, JSR, RTS, RTI).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// JMP - Jump instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>

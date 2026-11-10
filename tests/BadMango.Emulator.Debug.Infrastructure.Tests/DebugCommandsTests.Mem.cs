@@ -4,12 +4,12 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="MemCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that MemCommand has correct name.
     /// </summary>
     [Test]

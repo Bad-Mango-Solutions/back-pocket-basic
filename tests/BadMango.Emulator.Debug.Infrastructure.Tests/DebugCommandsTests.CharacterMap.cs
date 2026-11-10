@@ -6,12 +6,12 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="CharacterMapCommand"/> path resolution functionality.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that CharacterMapCommand has correct name.
     /// </summary>
     [Test]

@@ -11,12 +11,12 @@ using BadMango.Emulator.Rendering;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="VideoCommand"/> machine-context forwarding.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies video open passes the current machine in context.
     /// </summary>
     [Test]

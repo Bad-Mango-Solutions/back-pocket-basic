@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Comparison instructions (CMP, CPX, CPY).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// CMP - Compare Accumulator instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

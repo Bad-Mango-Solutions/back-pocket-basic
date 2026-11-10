@@ -4,13 +4,13 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for bus-related commands: <see cref="PagesCommand"/>, <see cref="PeekCommand"/>,
 /// <see cref="ReadCommand"/>, and <see cref="WriteCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that PagesCommand has correct name.
     /// </summary>
     [Test]

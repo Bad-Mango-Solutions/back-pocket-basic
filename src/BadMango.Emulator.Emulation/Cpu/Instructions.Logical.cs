@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Logical operations (AND, ORA, EOR, BIT).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// AND - Logical AND instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

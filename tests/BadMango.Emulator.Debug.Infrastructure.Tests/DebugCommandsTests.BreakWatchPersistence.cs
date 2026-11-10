@@ -4,14 +4,14 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Tests for <see cref="BreakCommand"/> and <see cref="WatchCommand"/> save/load path resolution.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     // ─── BreakCommand path resolution ────────────────────────────────────────
 
-    /// <summary>
+    /// <content>
     /// Verifies that bp save resolves library:// paths via the path resolver.
     /// </summary>
     [Test]

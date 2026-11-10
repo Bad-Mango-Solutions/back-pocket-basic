@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Flag manipulation instructions (CLC, SEC, CLI, SEI, CLD, SED, CLV).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// CLC - Clear Carry Flag instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (typically Implied).</param>

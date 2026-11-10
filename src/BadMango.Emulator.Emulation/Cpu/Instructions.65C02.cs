@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// 65C02-specific instructions (STZ, TSB, TRB, WAI, STP).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// STZ - Store Zero instruction (65C02 specific).
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

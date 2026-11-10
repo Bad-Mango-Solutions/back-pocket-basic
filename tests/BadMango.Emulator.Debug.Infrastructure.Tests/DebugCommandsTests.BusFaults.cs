@@ -7,16 +7,16 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
-/// <summary>
+/// <content>
 /// Unit tests for bus fault surfacing in debug commands.
-/// </summary>
+/// </content>
 /// <remarks>
 /// These tests verify that debug commands properly report bus faults when
 /// accessing unmapped memory or memory with permission violations.
 /// </remarks>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that MemCommand shows faults for unmapped addresses.
     /// </summary>
     [Test]

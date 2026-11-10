@@ -9,13 +9,13 @@ using BadMango.Emulator.Bus.Interfaces;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="SwitchesCommand"/>, <see cref="DeviceMapCommand"/>,
 /// <see cref="FaultCommand"/>, and <see cref="BusLogCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
-    /// <summary>
+    /// <content>
     /// Verifies that DeviceMapCommand has correct name.
     /// </summary>
     [Test]

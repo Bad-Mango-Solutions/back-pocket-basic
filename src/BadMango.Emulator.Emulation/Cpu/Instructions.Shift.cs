@@ -7,12 +7,12 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Shift and rotate instructions (ASL, LSR, ROL, ROR).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// ASLa - Arithmetic Shift Left Accumulator instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>

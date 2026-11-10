@@ -7,16 +7,16 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Rockwell/WDC bit manipulation instructions (RMB, SMB, BBR, BBS).
-/// </summary>
+/// </content>
 /// <remarks>
 /// These instructions are specific to the Rockwell R65C02 and WDC W65C02S variants.
 /// They are present on the Apple IIe Enhanced, IIc, and IIc+.
 /// </remarks>
 public static partial class Instructions
 {
-    /// <summary>
+    /// <content>
     /// RMB - Reset Memory Bit instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be ZeroPage).</param>

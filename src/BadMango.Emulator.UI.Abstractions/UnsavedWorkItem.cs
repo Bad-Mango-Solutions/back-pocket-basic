@@ -20,10 +20,7 @@ public record UnsavedWorkItem
     /// </remarks>
     public required string Name
     {
-        get
-        {
-            return name;
-        }
+        get => name;
 
         init
         {
@@ -40,10 +37,7 @@ public record UnsavedWorkItem
     /// </remarks>
     public required string Description
     {
-        get
-        {
-            return description;
-        }
+        get => description;
 
         init
         {
