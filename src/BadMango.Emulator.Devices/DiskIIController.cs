@@ -57,7 +57,7 @@ using Serilog.Events;
 /// </para>
 /// </remarks>
 [DeviceType("disk-ii-compatible")]
-public sealed class DiskIIController : ISlotCard, IDiskController
+public sealed class DiskIIController : ISlotCard, IDiskController, IResetReceiver
 {
     /// <summary>
     /// Number of CPU cycles required for one nibble byte to pass under the read head
@@ -315,17 +315,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
     public void Reset()
     {
         // Flush any pending writes for both drives so a reset never silently drops data.
-        for (var i = 0; i < drives.Length; i++)
-        {
-            try
-            {
-                drives[i].Flush(logger);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException)
-            {
-                logger.Warning(ex, "DiskII (slot {Slot}): drive {Drive} flush during reset failed.", SlotNumber, i + 1);
-            }
-        }
+        FlushAllDrives();
 
         currentDrive = 0;
         motorOn = false;
@@ -341,6 +331,45 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         {
             drives[i].ResetTransientState();
         }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Models the controller's response to the RESET' line on slot pin 31. Sather,
+    /// <i>Understanding the Apple IIe</i>, Table 9.1 note 1 (p. 9-12): "RESET' forces all
+    /// switches off" — that is, all four stepper phases off (Q0–Q3), drives off (Q4), drive 1
+    /// selected (Q5), and Q6/Q7 off (read mode). Unlike <see cref="Reset"/> (power-on), the
+    /// head position, the spinning disk position and the data register are physical state
+    /// that RESET does not touch, so they are preserved. Dirty tracks are flushed so stopping
+    /// the drive never drops written data.
+    /// </para>
+    /// <para>
+    /// The machine flushes the scheduler on RESET, which already removed the drift event, so
+    /// it is forgotten rather than cancelled. The emulator turns the motor off immediately; it
+    /// does not model the controller's one-second NE556 motor-off delay (p. 9-13) for
+    /// <c>$C088,X</c> either.
+    /// </para>
+    /// </remarks>
+    public void OnResetAsserted(Cycle cycle)
+    {
+        driftScheduled = false;
+        FlushAllDrives();
+
+        currentDrive = 0;
+        motorOn = false;
+        q6High = false;
+        q7High = false;
+
+        for (var i = 0; i < drives.Length; i++)
+        {
+            drives[i].PhaseLatch = 0;
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     /// <inheritdoc />
@@ -374,7 +403,7 @@ public sealed class DiskIIController : ISlotCard, IDiskController
 
             // Flush succeeded — physically eject the existing disk so the drive is
             // empty before the new mount is applied (immediately or deferred).
-            ApplyEject(driveIndex);
+            OnMachineThread(() => ApplyEject(driveIndex));
         }
 
         // FR-R1: defer the actual swap to the next scheduler turn so the controller
@@ -386,19 +415,24 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         // pre-boot insert would be queued behind a tick that never fires before the
         // boot path samples drive 1, and the machine would fall back to the diskless
         // Applesoft prompt instead of booting from the inserted image.
-        if (context is null || !motorOn)
+        //
+        // The motor check and the scheduling run on the machine thread (see OnMachineThread),
+        // so a mount from the host never races the CPU or the scheduler.
+        OnMachineThread(() =>
         {
-            ApplyMount(driveIndex, media, imagePath);
-            return;
-        }
+            if (context is null || !motorOn)
+            {
+                ApplyMount(driveIndex, media, imagePath);
+                return;
+            }
 
-        var ctx = context;
-        ctx.Scheduler.ScheduleAfter(
-            Cycle.One,
-            ScheduledEventKind.DeferredWork,
-            priority: 0,
-            callback: _ => ApplyMount(driveIndex, media, imagePath),
-            tag: this);
+            context.Scheduler.ScheduleAfter(
+                Cycle.One,
+                ScheduledEventKind.DeferredWork,
+                priority: 0,
+                callback: _ => ApplyMount(driveIndex, media, imagePath),
+                tag: this);
+        });
     }
 
     /// <inheritdoc />
@@ -426,19 +460,21 @@ public sealed class DiskIIController : ISlotCard, IDiskController
             return false;
         }
 
-        if (context is null || !motorOn)
+        OnMachineThread(() =>
         {
-            ApplyEject(driveIndex);
-            return true;
-        }
+            if (context is null || !motorOn)
+            {
+                ApplyEject(driveIndex);
+                return;
+            }
 
-        var ctx = context;
-        ctx.Scheduler.ScheduleAfter(
-            Cycle.One,
-            ScheduledEventKind.DeferredWork,
-            priority: 0,
-            callback: _ => ApplyEject(driveIndex),
-            tag: this);
+            context.Scheduler.ScheduleAfter(
+                Cycle.One,
+                ScheduledEventKind.DeferredWork,
+                priority: 0,
+                callback: _ => ApplyEject(driveIndex),
+                tag: this);
+        });
         return true;
     }
 
@@ -1383,6 +1419,39 @@ public sealed class DiskIIController : ISlotCard, IDiskController
         }
 
         ScheduleDriftEvent(drive);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> on the owning machine's thread: inline when the caller is
+    /// already there or the machine is quiescent, otherwise at the next instruction boundary.
+    /// Without a machine dispatcher (for example a bare test context) it runs inline.
+    /// </summary>
+    /// <param name="action">The controller-state mutation to perform.</param>
+    private void OnMachineThread(Action action)
+    {
+        if (context is IMachineDispatcher dispatcher)
+        {
+            dispatcher.Post(action);
+        }
+        else
+        {
+            action();
+        }
+    }
+
+    private void FlushAllDrives()
+    {
+        for (var i = 0; i < drives.Length; i++)
+        {
+            try
+            {
+                drives[i].Flush(logger);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException)
+            {
+                logger.Warning(ex, "DiskII (slot {Slot}): drive {Drive} flush during reset failed.", SlotNumber, i + 1);
+            }
+        }
     }
 
     private void CancelDriftEvent()

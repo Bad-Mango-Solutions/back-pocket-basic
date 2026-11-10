@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Cpu;
 
@@ -83,6 +84,13 @@ public sealed class StepCommand : CommandHandlerBase, ICommandHelp
         if (debugContext.Cpu.Halted)
         {
             return CommandResult.Error("CPU is halted. Use 'reset' to restart.");
+        }
+
+        // The run loop owns the CPU while the machine is running; stepping it from the REPL
+        // thread at the same time would execute one CPU on two threads.
+        if (debugContext.Machine?.State == MachineState.Running)
+        {
+            return CommandResult.Error("Machine is running. Use 'pause' or 'stop' first.");
         }
 
         int stepCount = DefaultStepCount;
