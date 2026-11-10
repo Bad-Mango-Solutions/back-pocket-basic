@@ -60,7 +60,7 @@ public class CSharp15LanguageFeatureTests
         public object? Value { get; }
     }
 
-    closed private class TestMachineState
+    private closed class TestMachineState
     {
     }
 
