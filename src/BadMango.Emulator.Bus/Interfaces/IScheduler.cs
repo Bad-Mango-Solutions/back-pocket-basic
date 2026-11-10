@@ -24,6 +24,13 @@ using Core;
 /// Events are one-shot, ordered by cycle and priority, and deterministic. Same inputs yield the same
 /// event order and the same behavior, making the system fully reproducible and debuggable.
 /// </para>
+/// <para>
+/// <b>Threading contract.</b> The scheduler is single-threaded and owned by the machine thread:
+/// the run loop while the machine is running, or the caller while it is quiescent. Scheduling,
+/// cancelling, advancing, flushing and resetting must all happen on that thread, and callbacks
+/// run on it. Host threads (UI, REPL) must marshal work onto the machine thread, for example with
+/// <see cref="IMachineDispatcher.Post"/>, rather than calling the scheduler directly.
+/// </para>
 /// </remarks>
 public interface IScheduler
 {
@@ -146,11 +153,19 @@ public interface IScheduler
     bool JumpToNextEventAndDispatch();
 
     /// <summary>
-    /// Clears all pending events while preserving the current cycle.
+    /// Clears pending machine events while preserving the current cycle.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This is used when a RESET line assertion flushes outstanding device work
-    /// without rewinding global time.
+    /// without rewinding global time, so absolute cycle stamps held by devices stay valid.
+    /// </para>
+    /// <para>
+    /// Events of kind <see cref="ScheduledEventKind.DeferredWork"/> are kept: they carry
+    /// host-initiated work (for example a pending disk insert or eject) rather than machine
+    /// state, and a RESET does not undo a media change. Devices whose periodic events are
+    /// flushed reschedule them from their RESET handlers (<see cref="IResetReceiver"/>).
+    /// </para>
     /// </remarks>
     void FlushPending();
 

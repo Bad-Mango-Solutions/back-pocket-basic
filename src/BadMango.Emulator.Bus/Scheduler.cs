@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Bus;
 
+using System.Diagnostics;
+
 using Core;
 
 using Interfaces;
@@ -25,6 +27,11 @@ using Interfaces;
 /// <para>
 /// Events are one-shot, ordered by cycle and priority, and deterministic. Same inputs yield the same
 /// event order and the same behavior, making the system fully reproducible and debuggable.
+/// </para>
+/// <para>
+/// The scheduler is not thread-safe. It is owned by the machine thread (see the threading
+/// contract on <see cref="IScheduler"/>); in debug builds the owning machine installs
+/// <see cref="OwnerThreadCheck"/> so cross-thread mutation trips an assertion.
 /// </para>
 /// </remarks>
 public sealed class Scheduler : IScheduler, ISchedulerObserver
@@ -96,6 +103,12 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     }
 
     /// <summary>
+    /// Gets or sets a check that returns <see langword="true"/> when the calling thread may
+    /// mutate the scheduler. Used only by debug-build assertions; <see langword="null"/> disables them.
+    /// </summary>
+    internal Func<bool>? OwnerThreadCheck { get; set; }
+
+    /// <summary>
     /// Sets the event context used when dispatching callbacks.
     /// </summary>
     /// <param name="context">The event context to use.</param>
@@ -115,6 +128,7 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     public EventHandle ScheduleAt(Cycle due, ScheduledEventKind kind, int priority, Action<IEventContext> callback, object? tag = null)
     {
         ArgumentNullException.ThrowIfNull(callback, nameof(callback));
+        AssertOwnerThread();
 
         var handle = new EventHandle(nextHandleId++);
         var scheduledEvent = new ScheduledEvent(handle, due, priority, nextSequence++, kind, callback, tag);
@@ -135,6 +149,8 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// <inheritdoc />
     public bool Cancel(EventHandle handle)
     {
+        AssertOwnerThread();
+
         // Mark the handle as cancelled - it will be skipped during dispatch
         var cancelled = cancelledHandles.Add(handle.Id);
         if (cancelled)
@@ -211,13 +227,39 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     /// <inheritdoc />
     public void FlushPending()
     {
-        eventQueue.Clear();
+        AssertOwnerThread();
+
+        List<ScheduledEvent>? preserved = null;
+        while (eventQueue.TryDequeue(out var pending, out _))
+        {
+            // Cancelled events are dropped along with their cancellation marks.
+            if (cancelledHandles.Contains(pending.Handle.Id))
+            {
+                continue;
+            }
+
+            // Host-initiated deferred work (e.g., a disk insert/eject) survives RESET.
+            if (pending.Kind == ScheduledEventKind.DeferredWork)
+            {
+                (preserved ??= []).Add(pending);
+            }
+        }
+
         cancelledHandles.Clear();
+
+        if (preserved is not null)
+        {
+            foreach (var kept in preserved)
+            {
+                eventQueue.Enqueue(kept, kept);
+            }
+        }
     }
 
     /// <inheritdoc />
     public void Reset()
     {
+        AssertOwnerThread();
         eventQueue.Clear();
         cancelledHandles.Clear();
         now = 0;
@@ -228,6 +270,14 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
         // a reset and the handle ID counter were restarted at 0, newly scheduled
         // events could receive the same ID as the cancelled handle, causing them
         // to be incorrectly skipped during dispatch.
+    }
+
+    [Conditional("DEBUG")]
+    private void AssertOwnerThread()
+    {
+        Debug.Assert(
+            OwnerThreadCheck?.Invoke() ?? true,
+            "Scheduler mutated off the machine thread while the machine is running. Marshal the call with IMachineDispatcher.Post.");
     }
 
     /// <summary>
