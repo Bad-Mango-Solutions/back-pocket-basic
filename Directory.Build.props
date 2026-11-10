@@ -9,6 +9,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>15</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NeutralLanguage>en</NeutralLanguage>
@@ -18,6 +19,7 @@
 
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)StyleCop.json" Link="StyleCop.json" />
+    <Compile Include="$(MSBuildThisFileDirectory)src/Shared/CSharp15Polyfills.cs" Link="Shared/CSharp15Polyfills.cs" />
   </ItemGroup>
 
 </Project>
