@@ -52,7 +52,11 @@ public sealed class TracingDebugListener : IActivatableDebugStepListener
     /// </remarks>
     public bool IsEnabled
     {
-        get => isEnabled;
+        get
+        {
+            return isEnabled;
+        }
+
         set
         {
             if (isEnabled == value)
@@ -78,7 +82,11 @@ public sealed class TracingDebugListener : IActivatableDebugStepListener
     /// </remarks>
     public int MaxBufferedRecords
     {
-        get => maxBufferedRecords;
+        get
+        {
+            return maxBufferedRecords;
+        }
+
         set
         {
             lock (syncLock)

@@ -229,6 +229,12 @@ csharp_style_prefer_simple_property_accessors = true:suggestion
 # SA1124: Do not use regions
 dotnet_diagnostic.SA1124.severity = none
 
+# SA1649: This project intentionally keeps related public types in a shared file for memory-context grouping.
+dotnet_diagnostic.SA1649.severity = none
+
+# SA1653: Partial declarations intentionally document each segment separately across files.
+dotnet_diagnostic.SA1653.severity = none
+
 [*.{cs,vb}]
 
 # Naming rules

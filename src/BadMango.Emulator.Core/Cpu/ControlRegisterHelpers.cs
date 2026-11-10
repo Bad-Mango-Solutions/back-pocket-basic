@@ -113,6 +113,23 @@ public static class ControlRegisterHelpers
 
     #endregion
 
+    // Privilege Level (bits 0-1)
+    private const uint PrivilegeMask = 0x0000_0003;
+
+    // Control flags (bits 2, 4)
+    private const uint PagingEnableBit = 0x0000_0004;      // Bit 2
+
+    // Bit 3 is reserved
+    private const uint NoExecuteEnableBit = 0x0000_0010;   // Bit 4
+
+    // Interrupt Priority Level (bits 5-7)
+    private const uint InterruptPriorityMask = 0x0000_00E0;
+    private const int InterruptPriorityShift = 5;
+
+    // Address Space ID (bits 8-15)
+    private const uint AsidMask = 0x0000_FF00;
+    private const int AsidShift = 8;
+
     #region Address Space ID (ASID)
 
     /// <param name="cr0">The CR0 register value.</param>
@@ -133,21 +150,4 @@ public static class ControlRegisterHelpers
     }
 
     #endregion
-
-    // Privilege Level (bits 0-1)
-    private const uint PrivilegeMask = 0x0000_0003;
-
-    // Control flags (bits 2, 4)
-    private const uint PagingEnableBit = 0x0000_0004;      // Bit 2
-
-    // Bit 3 is reserved
-    private const uint NoExecuteEnableBit = 0x0000_0010;   // Bit 4
-
-    // Interrupt Priority Level (bits 5-7)
-    private const uint InterruptPriorityMask = 0x0000_00E0;
-    private const int InterruptPriorityShift = 5;
-
-    // Address Space ID (bits 8-15)
-    private const uint AsidMask = 0x0000_FF00;
-    private const int AsidShift = 8;
 }
