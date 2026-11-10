@@ -68,7 +68,8 @@ public class Cpu65C02Tests : CpuTestBase
     }
 
     /// <summary>
-    /// Verifies reset release sequence consumes 7 cycles and decrements stack pointer by 3 without writes.
+    /// Verifies reset release sequence consumes 7 cycles, decrements stack pointer by 3 without
+    /// writes, and restores E, CP, M and X with I set and D clear, whatever state the CPU was in.
     /// </summary>
     [Test]
     public void ResetSignal_Release_PerformsSevenCycleSequenceWithoutStackWrites()
@@ -79,6 +80,13 @@ public class Cpu65C02Tests : CpuTestBase
         Write(0x01F0, 0x33);
         Cpu.Reset();
         Cpu.Registers.SP.SetByte(0xF0);
+
+        // Leave the CPU in a state no power-on reset would: E, CP, M and X clear, D set, I clear.
+        Cpu.Registers.E = false;
+        Cpu.Registers.CP = false;
+        Cpu.Registers.P &= ~(ProcessorStatusFlags.M | ProcessorStatusFlags.X);
+        Cpu.Registers.P.SetDecimalMode(true);
+        Cpu.Registers.P.SetInterruptDisable(false);
 
         Signals.Assert(SignalLine.Reset, deviceId: 1, Scheduler.Now);
         Cpu.Step(); // Held reset cycle
@@ -94,6 +102,12 @@ public class Cpu65C02Tests : CpuTestBase
             Assert.That(Read(0x01EF), Is.EqualTo(0x22));
             Assert.That(Read(0x01F0), Is.EqualTo(0x33));
             Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3456));
+            Assert.That(Cpu.Registers.E, Is.True, "E");
+            Assert.That(Cpu.Registers.CP, Is.True, "CP");
+            Assert.That(Cpu.Registers.P & ProcessorStatusFlags.M, Is.EqualTo(ProcessorStatusFlags.M), "M");
+            Assert.That(Cpu.Registers.P & ProcessorStatusFlags.X, Is.EqualTo(ProcessorStatusFlags.X), "X");
+            Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True, "I");
+            Assert.That(Cpu.Registers.P.IsDecimalModeEnabled(), Is.False, "D");
         });
     }
 
