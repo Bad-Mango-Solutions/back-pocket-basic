@@ -146,6 +146,15 @@ public interface IScheduler
     bool JumpToNextEventAndDispatch();
 
     /// <summary>
+    /// Clears all pending events while preserving the current cycle.
+    /// </summary>
+    /// <remarks>
+    /// This is used when a RESET line assertion flushes outstanding device work
+    /// without rewinding global time.
+    /// </remarks>
+    void FlushPending();
+
+    /// <summary>
     /// Resets the scheduler to cycle 0 and cancels all pending events.
     /// </summary>
     /// <remarks>

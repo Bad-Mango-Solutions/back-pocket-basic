@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 using Interfaces;
 
@@ -40,7 +41,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("extended80column")]
-public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider, IExtended80ColumnDevice
+public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider, IExtended80ColumnDevice, IResetReceiver
 {
     /// <summary>
     /// The name of the auxiliary RAM layer for $0200-$BFFF.
@@ -379,6 +380,17 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         hires = false;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        Reset();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     /// <summary>

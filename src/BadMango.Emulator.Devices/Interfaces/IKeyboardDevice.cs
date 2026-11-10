@@ -22,7 +22,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// <item><description>$C010: Any key down flag / clear strobe</description></item>
 /// </list>
 /// </remarks>
-public interface IKeyboardDevice : IMotherboardDevice
+public interface IKeyboardDevice : IMotherboardDevice, IResetSource
 {
     /// <summary>
     /// Gets a value indicating whether a key is currently held down.

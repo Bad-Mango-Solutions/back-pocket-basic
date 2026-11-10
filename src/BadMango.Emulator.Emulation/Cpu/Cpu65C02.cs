@@ -77,6 +77,7 @@ public sealed class Cpu65C02 : CpuBase
     /// which never contains traps.
     /// </summary>
     private bool trapRegistryIsNull;
+    private bool resetHeld;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -148,6 +149,20 @@ public sealed class Cpu65C02 : CpuBase
     {
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
+
+        // RESET is level-sensitive while asserted and edge-triggered on release.
+        // While held, the CPU does not execute instructions but still advances time.
+        // On release, execute the reset entry sequence.
+        bool resetAsserted = Signals.IsAsserted(SignalLine.Reset);
+        if (resetAsserted)
+        {
+            return ProcessResetHoldCycle();
+        }
+
+        if (resetHeld)
+        {
+            return ProcessResetReleaseSequence();
+        }
 
         // Determine the I value visible at this instruction boundary. Normally this is the
         // current register value; after CLI/SEI/PLP the poll uses the I value from before
@@ -379,6 +394,49 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
+    }
+
+    private CpuStepResult ProcessResetHoldCycle()
+    {
+        resetHeld = true;
+        HaltReason = HaltState.None;
+        Registers.P.SetInterruptDisable(true);
+        Registers.P.SetDecimalMode(false);
+        Registers.TCU += 1;
+
+        Cycle holdCycle = Registers.TCU;
+        AdvanceScheduler(holdCycle);
+        Registers.TCU = Cycle.Zero;
+        return new(CpuRunState.Running, holdCycle);
+    }
+
+    private CpuStepResult ProcessResetReleaseSequence()
+    {
+        resetHeld = false;
+        HaltReason = HaltState.None;
+
+        // Two internal cycles while releasing reset.
+        Registers.TCU += 2;
+
+        // Three suppressed stack pushes: no writes, SP decrements by 3.
+        byte sp = Registers.SP.GetByte();
+        Registers.SP.SetByte(unchecked((byte)(sp - 3)));
+        Registers.TCU += 3;
+
+        // Reset always enforces I=1 and D=0 before vector fetch.
+        Registers.P.SetInterruptDisable(true);
+        Registers.P.SetDecimalMode(false);
+
+        Registers.PC.SetAddr(Read16(Cpu65C02Constants.ResetVector));
+        Registers.TCU += 2;
+
+        interruptDisableSample = Registers.P.IsInterruptDisabled();
+        interruptDisableChangePending = false;
+
+        Cycle releaseCycles = Registers.TCU;
+        AdvanceScheduler(releaseCycles);
+        Registers.TCU = Cycle.Zero;
+        return new(CpuRunState.Running, releaseCycles);
     }
 
     private byte FetchByte()

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Controls auxiliary memory bank switching for Pocket2e 128KB mode.
@@ -28,7 +29,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// directly. Hi-res pages use the layered mapping API since they are page-aligned.
 /// </para>
 /// </remarks>
-public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchProvider
+public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchProvider, IResetReceiver
 {
     /// <summary>
     /// The name of the auxiliary hi-res page 1 layer ($2000-$3FFF).
@@ -237,6 +238,17 @@ public sealed class AuxiliaryMemoryController : IMotherboardDevice, ISoftSwitchP
         page2 = false;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        Reset();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     // ─── Soft Switch Handlers ───────────────────────────────────────────

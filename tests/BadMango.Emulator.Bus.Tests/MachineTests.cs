@@ -47,24 +47,24 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that Reset calls CPU reset.
+    /// Verifies that Reset runs the reset sequence via CPU stepping while stopped.
     /// </summary>
     [Test]
-    public void Reset_CallsCpuReset()
+    public void Reset_WhenStopped_ExecutesThreeCpuSteps()
     {
         var mockCpu = CreateMockCpu();
         var machine = CreateTestMachine(mockCpu);
 
         machine.Reset();
 
-        mockCpu.Verify(c => c.Reset(), Times.Once);
+        mockCpu.Verify(c => c.Step(), Times.Exactly(3));
     }
 
     /// <summary>
-    /// Verifies that Reset resets peripheral devices so they can reschedule events.
+    /// Verifies that hard reset performs peripheral power-on reset.
     /// </summary>
     [Test]
-    public void Reset_ResetsPeripheralDevices()
+    public void Reset_HardReset_ResetsPeripheralDevices()
     {
         var mockCpu = CreateMockCpu();
         var mockPeripheral = new Mock<IPeripheral>();
@@ -73,7 +73,7 @@ public class MachineTests
         var machine = CreateTestMachine(mockCpu);
         machine.AddScheduledDevice(mockPeripheral.Object);
 
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         mockPeripheral.Verify(p => p.Reset(), Times.Once);
     }
@@ -86,7 +86,7 @@ public class MachineTests
     /// all events, and then device resets must reschedule them (e.g., VBLANK).
     /// </remarks>
     [Test]
-    public void Reset_DeviceEventsArePresentAfterReset()
+    public void Reset_HardReset_DeviceEventsArePresentAfterReset()
     {
         var mockCpu = CreateMockCpu();
         var machine = CreateTestMachine(mockCpu);
@@ -103,7 +103,7 @@ public class MachineTests
 
         machine.AddScheduledDevice(mockPeripheral.Object);
 
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         Assert.Multiple(() =>
         {
@@ -132,7 +132,7 @@ public class MachineTests
         });
 
         machine.AddScheduledDevice(mockPeripheral.Object);
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         bool dispatched = machine.Scheduler.JumpToNextEventAndDispatch();
 
@@ -145,40 +145,25 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that reset performs device and slot resets before CPU reset.
+    /// Verifies that hard reset performs slot and peripheral power-on reset.
     /// </summary>
     [Test]
-    public void Reset_ResetsDevicesAndSlotsBeforeCpuReset()
+    public void Reset_HardReset_ResetsDevicesAndSlots()
     {
         var mockCpu = CreateMockCpu();
         var machine = CreateTestMachine(mockCpu);
 
-        bool peripheralReset = false;
-        bool slotReset = false;
-
         var mockPeripheral = new Mock<IPeripheral>();
         mockPeripheral.Setup(p => p.Name).Returns("OrderDevice");
-        mockPeripheral.Setup(p => p.Reset()).Callback(() => peripheralReset = true);
         machine.AddScheduledDevice(mockPeripheral.Object);
 
         var mockSlotManager = new Mock<ISlotManager>();
-        mockSlotManager.Setup(s => s.Reset()).Callback(() => slotReset = true);
         machine.AddComponent(mockSlotManager.Object);
 
-        mockCpu.Setup(c => c.Reset()).Callback(() =>
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(peripheralReset, Is.True, "Peripheral reset should run before CPU reset");
-                Assert.That(slotReset, Is.True, "Slot manager reset should run before CPU reset");
-            });
-        });
+        machine.Reset(hardReset: true);
 
-        machine.Reset();
-
-        mockSlotManager.Verify(s => s.Reset(), Times.Once);
         mockPeripheral.Verify(p => p.Reset(), Times.Once);
-        mockCpu.Verify(c => c.Reset(), Times.Once);
+        mockSlotManager.Verify(s => s.Reset(), Times.Never);
     }
 
     /// <summary>
@@ -284,6 +269,46 @@ public class MachineTests
     }
 
     /// <summary>
+    /// Verifies that stepping while running waits for the run loop to exit.
+    /// </summary>
+    [Test]
+    public void Step_WhenRunning_WaitsForRunLoopExitBeforeStepping()
+    {
+        var mockCpu = CreateMockCpu();
+        bool stopRequested = false;
+        int stepCalls = 0;
+
+        mockCpu.Setup(c => c.IsStopRequested).Returns(() => stopRequested);
+        mockCpu.Setup(c => c.RequestStop()).Callback(() => stopRequested = true);
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            Interlocked.Increment(ref stepCalls);
+            if (stopRequested)
+            {
+                return new CpuStepResult(CpuRunState.Stopped, 1);
+            }
+
+            Thread.Sleep(25);
+            return new CpuStepResult(CpuRunState.Running, 1);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+        var runTask = Task.Run(() => machine.Run());
+
+        Thread.Sleep(40);
+        var result = machine.Step();
+
+        runTask.Wait(1000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.State, Is.EqualTo(CpuRunState.Stopped));
+            Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+            Assert.That(stepCalls, Is.GreaterThanOrEqualTo(2), "Should include run-loop step(s) plus explicit step");
+        });
+    }
+
+    /// <summary>
     /// Verifies that StateChanged event is raised on state transition.
     /// </summary>
     [Test]
@@ -298,6 +323,29 @@ public class MachineTests
         machine.Step();
 
         Assert.That(states, Contains.Item(MachineState.Paused));
+    }
+
+    /// <summary>
+    /// Verifies that reset while running does not force the machine to Stopped.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task Reset_WhileRunning_RemainsRunning()
+    {
+        var mockCpu = CreateMockCpu();
+        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 1));
+
+        var machine = CreateTestMachine(mockCpu);
+        using var cts = new CancellationTokenSource();
+        var runTask = machine.RunAsync(cts.Token);
+
+        await Task.Delay(20);
+        machine.Reset();
+
+        Assert.That(machine.State, Is.EqualTo(MachineState.Running));
+
+        cts.Cancel();
+        await runTask;
     }
 
     /// <summary>
@@ -526,7 +574,7 @@ public class MachineTests
 
     /// <summary>
     /// Verifies that the <see cref="Machine.BootAsync(System.Threading.CancellationToken)"/> method
-    /// calls the <see cref="ICpu.Reset"/> method followed by executing the machine's run logic.
+    /// performs reset stepping followed by run logic.
     /// </summary>
     /// <remarks>
     /// This test ensures that the machine's boot sequence properly initializes the CPU by resetting it
@@ -534,12 +582,14 @@ public class MachineTests
     /// </remarks>
     /// <returns>A task that represents the asynchronous operation of the test.</returns>
     [Test]
-    public async Task BootAsync_CallsResetThenRun()
+    public async Task BootAsync_PerformsResetThenRun()
     {
         var mockCpu = CreateMockCpu();
-        bool resetCalled = false;
-        mockCpu.Setup(c => c.Reset()).Callback(() => resetCalled = true);
-        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Stopped, 1));
+        mockCpu.SetupSequence(c => c.Step())
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Stopped, 1));
 
         var machine = CreateTestMachine(mockCpu);
 
@@ -549,7 +599,7 @@ public class MachineTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(resetCalled, Is.True, "Reset should be called");
+            mockCpu.Verify(c => c.Step(), Times.Exactly(4));
             Assert.That(machine.State, Is.EqualTo(MachineState.Stopped), "Should be stopped after boot completes");
         });
     }

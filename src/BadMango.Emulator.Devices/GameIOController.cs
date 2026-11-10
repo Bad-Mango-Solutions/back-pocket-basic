@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 using Interfaces;
 
@@ -29,7 +30,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("gameio")]
-public sealed class GameIOController : IGamePortDevice
+public sealed class GameIOController : IGamePortDevice, IResetReceiver
 {
     private const byte PushButton0Offset = 0x61;
     private const byte PushButton1Offset = 0x62;
@@ -138,6 +139,17 @@ public sealed class GameIOController : IGamePortDevice
 
         paddleValues[0] = (byte)((x + 1f) * 127.5f);
         paddleValues[1] = (byte)((y + 1f) * 127.5f);
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        Array.Clear(paddleTimers);
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     private byte ReadButton(int index)

@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using System.Collections.ObjectModel;
 
+using BadMango.Emulator.Core;
+
 using Interfaces;
 
 /// <summary>
@@ -26,7 +28,7 @@ using Interfaces;
 /// Reading $CFFF removes the layer, revealing the default ROM again.
 /// </para>
 /// </remarks>
-public sealed class SlotManager : ISlotManager
+public sealed class SlotManager : ISlotManager, IResetReceiver
 {
     /// <summary>
     /// The minimum valid peripheral slot number.
@@ -238,6 +240,17 @@ public sealed class SlotManager : ISlotManager
         {
             slots[i]?.Reset();
         }
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        Reset();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     private static void ValidateSlotNumber(int slot)

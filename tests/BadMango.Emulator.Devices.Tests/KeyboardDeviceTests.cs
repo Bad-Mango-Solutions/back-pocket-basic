@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Devices.Tests;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
 
 using Moq;
 
@@ -470,6 +473,84 @@ public class KeyboardDeviceTests
             Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x00), "PB0 should be clear after reset");
             Assert.That(dispatcher.Read(0x62, in context), Is.EqualTo(0x00), "PB1 should be clear after reset");
             Assert.That(dispatcher.Read(0x63, in context), Is.EqualTo(0x00), "PB2 should be clear after reset");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that pressing reset without Control does not assert RESET when required.
+    /// </summary>
+    [Test]
+    public void PressResetKey_WithoutControl_DoesNotAssertWhenControlRequired()
+    {
+        var mockSignals = new Mock<ISignalBus>();
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
+        mockContext.Setup(c => c.Signals).Returns(mockSignals.Object);
+        device.Initialize(mockContext.Object);
+        device.RequireControlForReset = true;
+        device.SetModifiers(KeyboardModifiers.None);
+
+        device.PressResetKey();
+
+        mockSignals.Verify(s => s.Assert(SignalLine.Reset, It.IsAny<int>(), It.IsAny<Cycle>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Verifies that pressing reset with Control asserts and releasing deasserts RESET.
+    /// </summary>
+    [Test]
+    public void PressResetKey_WithControl_AssertsAndDeassertsReset()
+    {
+        var mockSignals = new Mock<ISignalBus>();
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
+        mockContext.Setup(c => c.Signals).Returns(mockSignals.Object);
+        device.Initialize(mockContext.Object);
+        device.RequireControlForReset = true;
+        device.SetModifiers(KeyboardModifiers.Control);
+
+        device.PressResetKey();
+        device.ReleaseResetKey();
+
+        mockSignals.Verify(s => s.Assert(SignalLine.Reset, It.IsAny<int>(), It.IsAny<Cycle>()), Times.Once);
+        mockSignals.Verify(s => s.Deassert(SignalLine.Reset, It.IsAny<int>(), It.IsAny<Cycle>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that reset can assert without Control when configured.
+    /// </summary>
+    [Test]
+    public void PressResetKey_WithoutControl_AssertsWhenControlNotRequired()
+    {
+        var mockSignals = new Mock<ISignalBus>();
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
+        mockContext.Setup(c => c.Signals).Returns(mockSignals.Object);
+        device.Initialize(mockContext.Object);
+        device.RequireControlForReset = false;
+        device.SetModifiers(KeyboardModifiers.None);
+
+        device.PressResetKey();
+
+        mockSignals.Verify(s => s.Assert(SignalLine.Reset, It.IsAny<int>(), It.IsAny<Cycle>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that reset signal assert clears strobe/type-ahead but preserves held input state.
+    /// </summary>
+    [Test]
+    public void OnResetAsserted_ClearsStrobeButPreservesHeldState()
+    {
+        device.KeyDown(0x41);
+        device.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple);
+
+        device.OnResetAsserted(0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(device.HasKeyDown, Is.True);
+            Assert.That(device.KeyData, Is.EqualTo(0x41), "Strobe should be cleared while key value is preserved");
+            Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple));
         });
     }
 

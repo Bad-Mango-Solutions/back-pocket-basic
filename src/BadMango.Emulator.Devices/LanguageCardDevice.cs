@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Language Card device providing 16KB of bank-switched RAM at $D000-$FFFF.
@@ -31,7 +32,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("languagecard")]
-public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState, IHardResetMemory
+public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState, IHardResetMemory, IResetReceiver
 {
     /// <summary>
     /// The name of the Language Card RAM layer for $E000-$FFFF.
@@ -364,6 +365,17 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         lastReadOffset = 0;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        Reset();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     /// <inheritdoc />

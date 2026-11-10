@@ -4,6 +4,11 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Devices;
+using BadMango.Emulator.Devices.Interfaces;
+
 /// <summary>
 /// Resets the machine or CPU to its initial state.
 /// </summary>
@@ -92,7 +97,14 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
 
         if (debugContext.Machine is not null)
         {
-            debugContext.Machine.Reset(hardReset);
+            if (!hardReset && debugContext.Machine.GetComponent<IKeyboardDevice>() is { } keyboard)
+            {
+                TriggerKeyboardReset(debugContext.Machine, keyboard);
+            }
+            else
+            {
+                debugContext.Machine.Reset(hardReset);
+            }
         }
         else
         {
@@ -119,5 +131,36 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
         }
 
         return CommandResult.Ok();
+    }
+
+    private static void TriggerKeyboardReset(IMachine machine, IKeyboardDevice keyboard)
+    {
+        var originalModifiers = keyboard.Modifiers;
+        keyboard.SetModifiers(originalModifiers | KeyboardModifiers.Control);
+        keyboard.PressResetKey();
+
+        if (machine.State == MachineState.Running)
+        {
+            machine.Scheduler.ScheduleAfter(
+                2,
+                ScheduledEventKind.DeviceTimer,
+                int.MinValue,
+                _ =>
+                {
+                    keyboard.ReleaseResetKey();
+                    keyboard.SetModifiers(originalModifiers);
+                },
+                "debug-reset-release");
+            return;
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            machine.Cpu.Step();
+        }
+
+        keyboard.ReleaseResetKey();
+        keyboard.SetModifiers(originalModifiers);
+        machine.Cpu.Step();
     }
 }

@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Tests;
 
 using Core.Cpu;
+using Core.Signaling;
 
 using Emulation.Cpu;
 
@@ -35,6 +36,65 @@ public class Cpu65C02Tests : CpuTestBase
         Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0));
         Assert.That(Cpu.Registers.Y.GetByte(), Is.EqualTo(0));
         Assert.That(Cpu.Halted, Is.False);
+    }
+
+    /// <summary>
+    /// Verifies that RESET hold suppresses instruction execution while advancing cycles.
+    /// </summary>
+    [Test]
+    public void ResetSignal_Held_DoesNotExecuteInstructions()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA);
+        Cpu.Reset();
+        Cpu.Registers.P.SetDecimalMode(true);
+        uint pcBefore = Cpu.Registers.PC.GetWord();
+        ulong cyclesBefore = Cpu.GetCycles();
+
+        Signals.Assert(SignalLine.Reset, deviceId: 1, Scheduler.Now);
+
+        var step1 = Cpu.Step();
+        var step2 = Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(step1.CyclesConsumed.Value, Is.EqualTo(1));
+            Assert.That(step2.CyclesConsumed.Value, Is.EqualTo(1));
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(pcBefore));
+            Assert.That(Cpu.GetCycles(), Is.EqualTo(cyclesBefore + 2));
+            Assert.That(Cpu.Registers.P.IsInterruptDisabled(), Is.True);
+            Assert.That(Cpu.Registers.P.IsDecimalModeEnabled(), Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies reset release sequence consumes 7 cycles and decrements stack pointer by 3 without writes.
+    /// </summary>
+    [Test]
+    public void ResetSignal_Release_PerformsSevenCycleSequenceWithoutStackWrites()
+    {
+        WriteWord(0xFFFC, 0x3456);
+        Write(0x01EE, 0x11);
+        Write(0x01EF, 0x22);
+        Write(0x01F0, 0x33);
+        Cpu.Reset();
+        Cpu.Registers.SP.SetByte(0xF0);
+
+        Signals.Assert(SignalLine.Reset, deviceId: 1, Scheduler.Now);
+        Cpu.Step(); // Held reset cycle
+        Signals.Deassert(SignalLine.Reset, deviceId: 1, Scheduler.Now);
+
+        var result = Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.CyclesConsumed.Value, Is.EqualTo(7));
+            Assert.That(Cpu.Registers.SP.GetByte(), Is.EqualTo(0xED));
+            Assert.That(Read(0x01EE), Is.EqualTo(0x11));
+            Assert.That(Read(0x01EF), Is.EqualTo(0x22));
+            Assert.That(Read(0x01F0), Is.EqualTo(0x33));
+            Assert.That(Cpu.Registers.PC.GetWord(), Is.EqualTo(0x3456));
+        });
     }
 
     /// <summary>

@@ -209,6 +209,13 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
     }
 
     /// <inheritdoc />
+    public void FlushPending()
+    {
+        eventQueue.Clear();
+        cancelledHandles.Clear();
+    }
+
+    /// <inheritdoc />
     public void Reset()
     {
         eventQueue.Clear();

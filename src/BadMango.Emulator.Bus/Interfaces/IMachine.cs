@@ -95,13 +95,13 @@ public interface IMachine : IEventContext
     /// </param>
     /// <remarks>
     /// <para>
-    /// Reset transitions the machine to <see cref="MachineState.Stopped"/> and
-    /// reinitializes the CPU and devices. The RESET signal is asserted through
-    /// the signal bus, allowing devices to respond to the reset appropriately.
+    /// Reset is modeled as a hardware-like RESET signal assertion and release.
+    /// If the machine is running, it continues running through the reset sequence.
+    /// If the machine is paused or stopped, the state remains unchanged.
     /// </para>
     /// <para>
-    /// After reset, the CPU will read the reset vector and be ready to execute
-    /// from the reset handler address.
+    /// After reset release, the CPU reads the reset vector and continues from the
+    /// reset handler address.
     /// </para>
     /// </remarks>
     void Reset(bool hardReset = false);

@@ -34,10 +34,15 @@ public sealed class Machine : IMachine
     /// Interval in cycles between yield points for async execution.
     /// </summary>
     private const int YieldIntervalCycles = 10000;
+    private const int ResetSourceDeviceId = int.MinValue + 1;
+    private const int ResetHoldCycles = 2;
 
     private readonly List<object> components = [];
     private readonly List<IScheduledDevice> scheduledDevices = [];
+    private readonly object runLoopSync = new();
     private MachineState state = MachineState.Stopped;
+    private bool runLoopActive;
+    private int runLoopThreadId = -1;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Machine"/> class.
@@ -66,6 +71,7 @@ public sealed class Machine : IMachine
         Scheduler = scheduler;
         Signals = signals;
         Devices = devices;
+        Signals.SignalChanged += OnSignalChanged;
     }
 
     /// <inheritdoc />
@@ -101,46 +107,38 @@ public sealed class Machine : IMachine
     /// <inheritdoc />
     public void Reset(bool hardReset = false)
     {
-        // Stop if running
-        if (state == MachineState.Running)
-        {
-            Cpu.RequestStop();
-        }
+        var stateBeforeReset = state;
 
-        // Assert RESET signal
-        Signals.Assert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
-
-        // Ensure the CPU run loop will stop immediately while reset is in progress.
-        Cpu.RequestStop();
-
-        // Reset slot manager if present (resets slot cards)
-        var slotManager = GetComponent<ISlotManager>();
+        Signals.Assert(SignalLine.Reset, ResetSourceDeviceId, Scheduler.Now);
 
         if (hardReset)
         {
             ClearHardResetMemory();
+            ResetDevices();
         }
 
-        // Reset scheduler (clears all pending events and resets cycle counter)
-        Scheduler.Reset();
+        if (stateBeforeReset == MachineState.Running)
+        {
+            Scheduler.ScheduleAfter(
+                ResetHoldCycles,
+                ScheduledEventKind.DeviceTimer,
+                priority: int.MinValue,
+                _ => Signals.Deassert(SignalLine.Reset, ResetSourceDeviceId, Scheduler.Now),
+                tag: "reset-release");
+            return;
+        }
 
-        // Reset all scheduled devices so they return to power-on state and
-        // reschedule their events (e.g., VideoDevice reschedules VBLANK).
-        // This must happen AFTER Scheduler.Reset() so that freshly scheduled
-        // events are not cleared, and AFTER the scheduler is at cycle 0 so
-        // events are scheduled relative to the start of the timeline.
-        ResetDevices();
+        for (int i = 0; i < ResetHoldCycles; i++)
+        {
+            Cpu.Step();
+        }
 
-        slotManager?.Reset();
+        Signals.Deassert(SignalLine.Reset, ResetSourceDeviceId, Scheduler.Now);
 
-        // Reset CPU after devices so the reset vector fetch sees post-reset mapping state.
-        Cpu.Reset();
+        // Advance exactly the reset release sequence and stop there.
+        Cpu.Step();
 
-        // Deassert RESET signal
-        Signals.Deassert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
-
-        // Transition to stopped state
-        SetState(MachineState.Stopped);
+        SetState(stateBeforeReset);
     }
 
     /// <inheritdoc />
@@ -154,35 +152,43 @@ public sealed class Machine : IMachine
         SetState(MachineState.Running);
         Cpu.ClearStopRequest();
 
-        // Execute in a loop until stopped
-        while (state == MachineState.Running && !Cpu.IsStopRequested)
+        BeginRunLoop();
+        try
         {
-            var result = Cpu.Step();
-
-            // Handle WAI state specially - use scheduler to advance time efficiently
-            if (result.State == CpuRunState.WaitingForInterrupt)
+            // Execute in a loop until stopped
+            while (state == MachineState.Running && !Cpu.IsStopRequested)
             {
-                // When CPU is waiting for interrupt, jump to next scheduled event
-                // This allows devices (video refresh, timers, etc.) to fire and potentially
-                // trigger interrupts that will wake the CPU from WAI state
-                if (!Scheduler.JumpToNextEventAndDispatch())
+                var result = Cpu.Step();
+
+                // Handle WAI state specially - use scheduler to advance time efficiently
+                if (result.State == CpuRunState.WaitingForInterrupt)
                 {
-                    // No events pending - need to wait for external interrupt
-                    // In a real emulator, this would yield to the OS or event loop
-                    // For now, just continue the loop (checking for stop requests)
+                    // When CPU is waiting for interrupt, jump to next scheduled event
+                    // This allows devices (video refresh, timers, etc.) to fire and potentially
+                    // trigger interrupts that will wake the CPU from WAI state
+                    if (!Scheduler.JumpToNextEventAndDispatch())
+                    {
+                        // No events pending - need to wait for external interrupt
+                        // In a real emulator, this would yield to the OS or event loop
+                        // For now, just continue the loop (checking for stop requests)
+                        continue;
+                    }
+
+                    // After dispatching event, loop will call Step() again
+                    // If an interrupt was signaled, Step() will process it and clear WAI state
                     continue;
                 }
 
-                // After dispatching event, loop will call Step() again
-                // If an interrupt was signaled, Step() will process it and clear WAI state
-                continue;
+                // Check for halt conditions (STP instruction or true halt)
+                if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
+                {
+                    break;
+                }
             }
-
-            // Check for halt conditions (STP instruction or true halt)
-            if (result.State == CpuRunState.Stopped || result.State == CpuRunState.Halted)
-            {
-                break;
-            }
+        }
+        finally
+        {
+            EndRunLoop();
         }
 
         // If we exited the loop, transition to stopped
@@ -201,6 +207,7 @@ public sealed class Machine : IMachine
         }
 
         Cpu.RequestStop();
+        WaitForRunLoopToExit();
         SetState(MachineState.Stopped);
     }
 
@@ -211,6 +218,7 @@ public sealed class Machine : IMachine
         if (state == MachineState.Running)
         {
             Cpu.RequestStop();
+            WaitForRunLoopToExit();
         }
 
         // CPU.Step() advances the scheduler internally — each code path
@@ -234,8 +242,15 @@ public sealed class Machine : IMachine
 
         SetState(MachineState.Running);
         Cpu.ClearStopRequest();
-
-        await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+        BeginRunLoop();
+        try
+        {
+            await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            EndRunLoop();
+        }
     }
 
     /// <inheritdoc />
@@ -260,8 +275,15 @@ public sealed class Machine : IMachine
 
         SetState(MachineState.Running);
         Cpu.ClearStopRequest();
-
-        await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+        BeginRunLoop();
+        try
+        {
+            await ExecuteLoopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            EndRunLoop();
+        }
     }
 
     /// <inheritdoc />
@@ -390,6 +412,24 @@ public sealed class Machine : IMachine
         }
     }
 
+    private void OnSignalChanged(SignalLine line, bool asserted, int deviceId, Cycle cycle)
+    {
+        if (line != SignalLine.Reset)
+        {
+            return;
+        }
+
+        if (asserted)
+        {
+            Scheduler.FlushPending();
+            NotifyResetReceivers(static (receiver, resetCycle) => receiver.OnResetAsserted(resetCycle), cycle);
+        }
+        else
+        {
+            NotifyResetReceivers(static (receiver, resetCycle) => receiver.OnResetReleased(resetCycle), cycle);
+        }
+    }
+
     /// <summary>
     /// Executes the main run loop asynchronously with cycle-accurate throttling.
     /// </summary>
@@ -511,6 +551,62 @@ public sealed class Machine : IMachine
             else
             {
                 SetState(MachineState.Stopped);
+            }
+        }
+    }
+
+    private void NotifyResetReceivers(Action<IResetReceiver, Cycle> callback, Cycle cycle)
+    {
+        var seen = new HashSet<IResetReceiver>();
+
+        foreach (var component in components.OfType<IResetReceiver>())
+        {
+            if (seen.Add(component))
+            {
+                callback(component, cycle);
+            }
+        }
+
+        foreach (var device in scheduledDevices.OfType<IResetReceiver>())
+        {
+            if (seen.Add(device))
+            {
+                callback(device, cycle);
+            }
+        }
+    }
+
+    private void BeginRunLoop()
+    {
+        lock (runLoopSync)
+        {
+            runLoopActive = true;
+            runLoopThreadId = Environment.CurrentManagedThreadId;
+        }
+    }
+
+    private void EndRunLoop()
+    {
+        lock (runLoopSync)
+        {
+            runLoopActive = false;
+            runLoopThreadId = -1;
+            Monitor.PulseAll(runLoopSync);
+        }
+    }
+
+    private void WaitForRunLoopToExit()
+    {
+        if (Environment.CurrentManagedThreadId == runLoopThreadId)
+        {
+            return;
+        }
+
+        lock (runLoopSync)
+        {
+            while (runLoopActive)
+            {
+                Monitor.Wait(runLoopSync);
             }
         }
     }

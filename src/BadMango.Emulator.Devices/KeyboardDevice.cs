@@ -6,6 +6,9 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
+using BadMango.Emulator.Core.Interfaces.Signaling;
+using BadMango.Emulator.Core.Signaling;
 
 using Interfaces;
 
@@ -35,7 +38,7 @@ using Interfaces;
 /// </list>
 /// </remarks>
 [DeviceType("keyboard")]
-public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
+public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IResetReceiver
 {
     private const ushort KeyboardDataAddress = 0xC000;
     private const ushort KeyboardStrobeAddress = 0xC010;
@@ -56,13 +59,17 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
     /// CPU cycles per millisecond at approximately 1.02 MHz.
     /// </summary>
     private const int CyclesPerMillisecond = 1020;
+    private const int ResetSourceDeviceId = int.MinValue + 2;
 
     private readonly Queue<(byte Key, int DelayMs)> typeQueue = new();
     private byte lastKey;
     private bool strobe;
     private bool keyDown;
+    private bool resetKeyPressed;
+    private bool resetAsserted;
     private KeyboardModifiers modifiers;
     private IScheduler? scheduler;
+    private ISignalBus? signals;
 
     /// <inheritdoc />
     public string Name => "Keyboard";
@@ -81,6 +88,9 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 
     /// <inheritdoc />
     public KeyboardModifiers Modifiers => modifiers;
+
+    /// <inheritdoc />
+    public bool RequireControlForReset { get; set; } = true;
 
     /// <inheritdoc />
     public string ProviderName => "Keyboard";
@@ -107,6 +117,7 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
     {
         ArgumentNullException.ThrowIfNull(context);
         scheduler = context.Scheduler;
+        signals = context.Signals;
     }
 
     /// <inheritdoc />
@@ -133,6 +144,8 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
         strobe = false;
         keyDown = false;
         modifiers = KeyboardModifiers.None;
+        resetKeyPressed = false;
+        SetResetLineState(asserted: false);
         typeQueue.Clear();
     }
 
@@ -156,6 +169,21 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
     public void SetModifiers(KeyboardModifiers modifiers)
     {
         this.modifiers = modifiers;
+        UpdateResetLineState();
+    }
+
+    /// <inheritdoc />
+    public void PressResetKey()
+    {
+        resetKeyPressed = true;
+        UpdateResetLineState();
+    }
+
+    /// <inheritdoc />
+    public void ReleaseResetKey()
+    {
+        resetKeyPressed = false;
+        UpdateResetLineState();
     }
 
     /// <inheritdoc />
@@ -176,6 +204,18 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
 
         // Start processing the queue if not already in progress
         ProcessTypeQueue();
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+        strobe = false;
+        typeQueue.Clear();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
     }
 
     private static byte ConvertToAppleAscii(char c)
@@ -259,6 +299,32 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider
                     KeyUp();
                     ProcessTypeQueue();
                 });
+        }
+    }
+
+    private void UpdateResetLineState()
+    {
+        bool controlHeld = modifiers.HasFlag(KeyboardModifiers.Control);
+        bool shouldAssert = resetKeyPressed && (!RequireControlForReset || controlHeld);
+        SetResetLineState(shouldAssert);
+    }
+
+    private void SetResetLineState(bool asserted)
+    {
+        if (signals is null || resetAsserted == asserted)
+        {
+            return;
+        }
+
+        resetAsserted = asserted;
+
+        if (asserted)
+        {
+            signals.Assert(SignalLine.Reset, ResetSourceDeviceId, scheduler?.Now ?? Cycle.Zero);
+        }
+        else
+        {
+            signals.Deassert(SignalLine.Reset, ResetSourceDeviceId, scheduler?.Now ?? Cycle.Zero);
         }
     }
 }
