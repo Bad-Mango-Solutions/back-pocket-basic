@@ -109,11 +109,11 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
-        int offset = (int)(physicalAddress & 0x0FFF);
-        int subPage = offset >> SubPageShift;
-        int subOffset = offset & SubPageMask;
+        int maskedOffset = (int)(offset & 0x0FFF);
+        int subPage = maskedOffset >> SubPageShift;
+        int subOffset = maskedOffset & SubPageMask;
 
         // Route to the appropriate target based on sub-page
         var target = readRouting[subPage];
@@ -122,11 +122,11 @@ public sealed class Extended80ColumnPage0Target : IBusTarget
     }
 
     /// <inheritdoc />
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
-        int offset = (int)(physicalAddress & 0x0FFF);
-        int subPage = offset >> SubPageShift;
-        int subOffset = offset & SubPageMask;
+        int maskedOffset = (int)(offset & 0x0FFF);
+        int subPage = maskedOffset >> SubPageShift;
+        int subOffset = maskedOffset & SubPageMask;
 
         // Route to the appropriate target based on sub-page
         var target = writeRouting[subPage];

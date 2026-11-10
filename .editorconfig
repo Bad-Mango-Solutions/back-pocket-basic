@@ -191,7 +191,8 @@ dotnet_diagnostic.SA1500.severity = warning
 dotnet_diagnostic.SA1501.severity = none
 dotnet_diagnostic.SA1502.severity = none
 dotnet_diagnostic.SA1503.severity = warning
-dotnet_diagnostic.SA1504.severity = warning
+# SA1504: Allow expression-bodied get alongside block-bodied set/init (repo style preference).
+dotnet_diagnostic.SA1504.severity = none
 dotnet_diagnostic.SA1505.severity = warning
 dotnet_diagnostic.SA1506.severity = warning
 dotnet_diagnostic.SA1507.severity = warning
@@ -228,6 +229,7 @@ csharp_style_prefer_simple_property_accessors = true:suggestion
 
 # SA1124: Do not use regions
 dotnet_diagnostic.SA1124.severity = none
+
 
 [*.{cs,vb}]
 

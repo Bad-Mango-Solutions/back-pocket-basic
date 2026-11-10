@@ -8,8 +8,6 @@ using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices.Interfaces;
 
-using Addr = System.UInt32;
-
 /// <summary>
 /// Extension methods for <see cref="MachineBuilder"/> providing Extended 80-Column Card support.
 /// </summary>

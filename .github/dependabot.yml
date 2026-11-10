@@ -1,0 +1,76 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    labels:
+      - "ci"
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+    ignore:
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "Microsoft.CodeAnalysis.NetAnalyzers"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "Microsoft.CodeAnalysis.*"
+        update-types:
+          - "version-update:semver-major"
+    groups:
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+        update-types:
+          - "minor"
+          - "patch"
+      avalonia:
+        patterns:
+          - "Avalonia*"
+        update-types:
+          - "minor"
+          - "patch"
+      test:
+        patterns:
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+          - "coverlet*"
+          - "Moq*"
+          - "FluentAssertions*"
+          - "AwesomeAssertions*"
+        update-types:
+          - "minor"
+          - "patch"
+      analyzers:
+        patterns:
+          - "Microsoft.CodeAnalysis.*"
+          - "StyleCop.*"
+        update-types:
+          - "minor"
+          - "patch"
+      serilog:
+        patterns:
+          - "Serilog*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    labels:
+      - "ci"
+      - "dependencies"
+    commit-message:
+      prefix: "deps"

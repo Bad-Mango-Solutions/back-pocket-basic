@@ -3,6 +3,7 @@
 // </copyright>
 
 namespace BadMango.Emulator.Core.Cpu;
+
 /// <summary>
 /// Encapsulates decoded opcode information including instruction, addressing mode, and operand length.
 /// </summary>

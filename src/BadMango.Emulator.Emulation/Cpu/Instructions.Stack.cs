@@ -7,9 +7,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Stack operations (PHA, PHP, PLA, PLP, PHX, PLX, PHY, PLY).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
     /// <summary>

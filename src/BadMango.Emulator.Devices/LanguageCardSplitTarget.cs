@@ -147,10 +147,10 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
     /// Each binding covers exactly one 4 KB page so at most one binding matches.
     /// Pages with no binding (not a typical configuration but structurally possible)
     /// return <c>0xFF</c>, the floating-bus value. The bus-supplied
-    /// <paramref name="physicalAddress"/> is ignored because it reflects only the
+    /// <paramref name="offset"/> is ignored because it reflects only the
     /// write target's physical base.
     /// </remarks>
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
         Addr addr = access.Address;
         foreach (var binding in romBindings)
@@ -167,15 +167,15 @@ internal sealed class LanguageCardSplitTarget : ICompositeTarget
 
     /// <inheritdoc />
     /// <remarks>
-    /// Forwards the write to <see cref="WriteTarget"/> at the translated RAM physical
-    /// address. The bus-supplied <paramref name="physicalAddress"/> is ignored in
+    /// Forwards the write operation to <see cref="WriteTarget"/> at the translated RAM physical
+    /// address. The bus-supplied <paramref name="offset"/> is ignored in
     /// favor of an explicit translation from <see cref="BusAccess.Address"/> so the
     /// behavior is symmetric with <see cref="Read8"/>.
     /// </remarks>
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
-        Addr offset = (Addr)(access.Address - regionVirtualBase);
-        writeTarget.Write8(writePhysBaseAtRegion + offset, value, access);
+        Addr baseOffset = (Addr)(access.Address - regionVirtualBase);
+        writeTarget.Write8(writePhysBaseAtRegion + baseOffset, value, access);
     }
 
     /// <inheritdoc />

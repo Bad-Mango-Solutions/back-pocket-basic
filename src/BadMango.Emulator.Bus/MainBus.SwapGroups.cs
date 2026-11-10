@@ -6,9 +6,9 @@ namespace BadMango.Emulator.Bus;
 
 using Interfaces;
 
-/// <summary>
+/// <content>
 /// Swap group bank switching operations for the main memory bus.
-/// </summary>
+/// </content>
 public sealed partial class MainBus
 {
     /// <inheritdoc />

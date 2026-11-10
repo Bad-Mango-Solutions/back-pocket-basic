@@ -21,6 +21,7 @@ public record UnsavedWorkItem
     public required string Name
     {
         get => name;
+
         init
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Name));
@@ -37,6 +38,7 @@ public record UnsavedWorkItem
     public required string Description
     {
         get => description;
+
         init
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Description));

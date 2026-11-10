@@ -131,16 +131,16 @@ public sealed class PhysicalMemory : IPhysicalMemory
     }
 
     /// <inheritdoc />
-    public void WritePhysical(DebugPrivilege privilege, Addr address, ReadOnlySpan<byte> dataToWrite)
+    public void WritePhysical(DebugPrivilege privilege, Addr address, ReadOnlySpan<byte> data)
     {
-        if (address + (uint)dataToWrite.Length > data.Length)
+        if (address + (uint)data.Length > this.data.Length)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(address),
-                $"Write at address {address} with length {dataToWrite.Length} exceeds memory size ({data.Length}).");
+                $"Write at address {address} with length {data.Length} exceeds memory size ({this.data.Length}).");
         }
 
-        dataToWrite.CopyTo(mem.Span.Slice((int)address));
+        data.CopyTo(mem.Span.Slice((int)address));
     }
 
     /// <inheritdoc />

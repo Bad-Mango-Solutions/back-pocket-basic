@@ -59,38 +59,38 @@ public sealed class DiskIIBootRomStub : IBusTarget
     public TargetCaps Capabilities => romTarget.Capabilities;
 
     /// <inheritdoc />
-    public byte Read8(uint offset, in BusAccess context)
+    public byte Read8(uint offset, in BusAccess access)
     {
-        return romTarget.Read8(offset & 0xFF, in context);
+        return romTarget.Read8(offset & 0xFF, in access);
     }
 
     /// <inheritdoc />
-    public void Write8(uint offset, byte value, in BusAccess context)
+    public void Write8(uint offset, byte value, in BusAccess access)
     {
-        romTarget.Write8(offset & 0xFF, value, in context);
+        romTarget.Write8(offset & 0xFF, value, in access);
     }
 
     /// <inheritdoc />
-    public ushort Read16(uint offset, in BusAccess context)
+    public ushort Read16(uint offset, in BusAccess access)
     {
-        return romTarget.Read16(offset & 0xFF, in context);
+        return romTarget.Read16(offset & 0xFF, in access);
     }
 
     /// <inheritdoc />
-    public void Write16(uint offset, ushort value, in BusAccess context)
+    public void Write16(uint offset, ushort value, in BusAccess access)
     {
-        romTarget.Write16(offset & 0xFF, value, in context);
+        romTarget.Write16(offset & 0xFF, value, in access);
     }
 
     /// <inheritdoc />
-    public uint Read32(uint offset, in BusAccess context)
+    public uint Read32(uint offset, in BusAccess access)
     {
-        return romTarget.Read32(offset & 0xFF, in context);
+        return romTarget.Read32(offset & 0xFF, in access);
     }
 
     /// <inheritdoc />
-    public void Write32(uint offset, uint value, in BusAccess context)
+    public void Write32(uint offset, uint value, in BusAccess access)
     {
-        romTarget.Write32(offset & 0xFF, value, in context);
+        romTarget.Write32(offset & 0xFF, value, in access);
     }
 }

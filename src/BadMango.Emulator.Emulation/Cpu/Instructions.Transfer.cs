@@ -7,9 +7,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Register transfer instructions (TAX, TAY, TXA, TYA, TXS, TSX).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
     /// <summary>
