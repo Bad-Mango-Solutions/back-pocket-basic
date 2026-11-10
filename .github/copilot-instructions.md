@@ -1,5 +1,19 @@
 # GitHub Repository Copilot Instructions
 
+## Before you finish
+
+Every change must pass locally with the same commands CI uses:
+
+```bash
+dotnet build BackPocketEmulator.slnx -c Release -warnaserror
+dotnet test BackPocketEmulator.slnx -c Release
+```
+
+- The build must finish with **0 warnings and 0 errors** across all projects, including tests. Do not stop at "build succeeded" from a normal build.
+- Fix warnings in code instead of silencing them. Do not add `severity = none` (or lower severities) in `.editorconfig`, and do not add `<NoWarn>` or blanket `#pragma` suppressions. A narrowly scoped, justified `#pragma` is acceptable only when the PR description explains why fixing source is not appropriate.
+- Keep `-warnaserror` / `TreatWarningsAsErrors` CI-only (`build-warnings.yml`), not part of normal local project builds.
+- If `.github/workflows/build-warnings.yml` or `.github/workflows/ci.yml` changes its commands, update this section to match.
+
 ## Project Overview
 
 This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2e machine), structured so it can grow into the 65816 and a theoretical 32-bit 65832. The Applesoft BASIC interpreter projects (`BadMango.Basic`, `BadMango.Basic.Console`, and `BadMango.Basic.Tests`) moved to [back-pocket-basic-legacy](https://github.com/Bad-Mango-Solutions/back-pocket-basic-legacy). The current project layout is in [CONTRIBUTING.md](../CONTRIBUTING.md#project-structure).
