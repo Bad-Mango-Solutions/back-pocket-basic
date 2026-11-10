@@ -202,10 +202,10 @@ public class CompositeTargetTests
             return subTarget?.Read8(offset, access) ?? 0xFF;
         }
 
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        public void Write8(Addr offset, byte value, in BusAccess access)
         {
             var subTarget = ResolveTarget(access.Address & 0xFFF, access.Intent);
-            subTarget?.Write8(physicalAddress, value, access);
+            subTarget?.Write8(offset, value, access);
         }
 
         public IBusTarget? ResolveTarget(Addr offset, AccessIntent intent)
@@ -257,9 +257,9 @@ public class CompositeTargetTests
             return subTarget.Read8(offset, access);
         }
 
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        public void Write8(Addr offset, byte value, in BusAccess access)
         {
-            subTarget.Write8(physicalAddress, value, access);
+            subTarget.Write8(offset, value, access);
         }
 
         public IBusTarget? ResolveTarget(Addr offset, AccessIntent intent)
