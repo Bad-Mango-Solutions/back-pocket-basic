@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
+using System.Runtime.CompilerServices;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Core.Signaling;
@@ -79,6 +81,12 @@ public sealed class Cpu65C02 : CpuBase
     private bool trapRegistryIsNull;
 
     /// <summary>
+    /// Set while the CPU is holding in RESET (the line was seen asserted at an instruction
+    /// boundary). The next boundary with the line released runs the reset sequence.
+    /// </summary>
+    private bool resetHeld;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
     /// </summary>
     /// <param name="context">The event context providing access to the memory bus, signal bus, and scheduler.</param>
@@ -132,6 +140,13 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// This is the immediate power-on reset: registers are initialized to their power-on
+    /// values and PC is loaded from the reset vector through the current bus mapping. It
+    /// replaces the signal-driven reset sequence, so any pending RESET hold or release edge
+    /// is discarded. The RESET signal path (hold while the line is low, sequence on release)
+    /// is handled in <see cref="Step"/>.
+    /// </remarks>
     public override void Reset()
     {
         // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
@@ -140,6 +155,8 @@ public sealed class Cpu65C02 : CpuBase
         interruptDisableSample = Registers.P.IsInterruptDisabled();
         interruptDisableChangePending = false;
         HaltReason = HaltState.None;
+        resetHeld = false;
+        concreteSignals?.ConsumeResetReleaseEdge();
         ClearStopRequest();
     }
 
@@ -149,30 +166,12 @@ public sealed class Cpu65C02 : CpuBase
         // Clear TCU at the start of each instruction
         Registers.TCU = Cycle.Zero;
 
-        // Determine the I value visible at this instruction boundary. Normally this is the
-        // current register value; after CLI/SEI/PLP the poll uses the I value from before
-        // that instruction executed, so its new I is seen one instruction later.
-        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
-
-        // Check for pending interrupts at instruction boundary using the signal bus.
-        // With the concrete SignalBus, a single cached flag tells us whether an NMI
-        // edge is pending or IRQ is asserted; if neither, CheckInterrupts would
-        // return false with no side effects, so skip it.
-        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts(irqMaskedAtBoundary);
-        if (interruptProcessed)
+        // Instruction-boundary attention: machine service requests, RESET hold/release
+        // and interrupts. With the concrete SignalBus a single cached flag covers all of
+        // them, so the common path costs one field read and one branch.
+        if ((concreteSignals is null || concreteSignals.AttentionPending) && TryServiceBoundary(out var boundaryResult))
         {
-            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
-            interruptDisableSample = Registers.P.IsInterruptDisabled();
-            interruptDisableChangePending = false;
-
-            // Interrupt was processed, TCU was updated by ProcessInterrupt
-            // Advance the scheduler by the TCU value
-            Cycle interruptCycles = Registers.TCU;
-            AdvanceScheduler(interruptCycles);
-
-            // Clear TCU after advancing scheduler
-            Registers.TCU = Cycle.Zero;
-            return new(CpuRunState.Running, interruptCycles);
+            return boundaryResult;
         }
 
         if (Halted)
@@ -379,6 +378,116 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
+    }
+
+    /// <summary>
+    /// Handles everything that can need the CPU's attention at an instruction boundary:
+    /// pending machine service requests, the RESET line and interrupts.
+    /// </summary>
+    /// <param name="result">The step result when the boundary consumed the step.</param>
+    /// <returns>
+    /// <see langword="true"/> if a RESET hold cycle, the reset sequence or an interrupt entry
+    /// consumed this step; <see langword="false"/> to continue with normal instruction execution.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private bool TryServiceBoundary(out CpuStepResult result)
+    {
+        // Run work the machine marshalled onto this thread (for example a RESET request
+        // from the REPL) before sampling the lines, so its effects are seen right away.
+        concreteSignals?.ServiceRequests();
+
+        // RESET is level-sensitive while asserted and edge-triggered on release.
+        // While held, the CPU does not execute instructions but still advances time.
+        // On release, execute the reset entry sequence.
+        if (Signals.IsAsserted(SignalLine.Reset))
+        {
+            result = ProcessResetHoldCycle();
+            return true;
+        }
+
+        // Always consume the latched release edge so the attention flag clears. The edge
+        // also covers a RESET that was asserted and released between two boundaries.
+        bool releaseEdge = concreteSignals is not null && concreteSignals.ConsumeResetReleaseEdge();
+        if (resetHeld || releaseEdge)
+        {
+            result = ProcessResetReleaseSequence();
+            return true;
+        }
+
+        // Determine the I value visible at this instruction boundary. Normally this is the
+        // current register value; after CLI/SEI/PLP the poll uses the I value from before
+        // that instruction executed, so its new I is seen one instruction later.
+        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
+
+        if (CheckInterrupts(irqMaskedAtBoundary))
+        {
+            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisableChangePending = false;
+
+            // Interrupt was processed, TCU was updated by ProcessInterrupt
+            // Advance the scheduler by the TCU value
+            Cycle interruptCycles = Registers.TCU;
+            AdvanceScheduler(interruptCycles);
+
+            // Clear TCU after advancing scheduler
+            Registers.TCU = Cycle.Zero;
+            result = new(CpuRunState.Running, interruptCycles);
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
+
+    private CpuStepResult ProcessResetHoldCycle()
+    {
+        resetHeld = true;
+        HaltReason = HaltState.None;
+        Registers.P.SetInterruptDisable(true);
+        Registers.P.SetDecimalMode(false);
+        Registers.TCU += 1;
+
+        Cycle holdCycle = Registers.TCU;
+        AdvanceScheduler(holdCycle);
+        Registers.TCU = Cycle.Zero;
+        return new(CpuRunState.Running, holdCycle);
+    }
+
+    private CpuStepResult ProcessResetReleaseSequence()
+    {
+        resetHeld = false;
+        HaltReason = HaltState.None;
+
+        // Two internal cycles while releasing reset.
+        Registers.TCU += 2;
+
+        // Three suppressed stack pushes: no writes, SP decrements by 3.
+        byte sp = Registers.SP.GetByte();
+        Registers.SP.SetByte(unchecked((byte)(sp - 3)));
+        Registers.TCU += 3;
+
+        // Reset always enforces I=1 and D=0 before vector fetch (W65C02S datasheet;
+        // Sather, Understanding the Apple IIe, p. 4-14). The 65C02 has no native mode,
+        // so RESET also returns the extended register model to the same 8-bit
+        // emulation/compatibility state that a power-on reset (new Registers(true, ...))
+        // establishes: E=1, CP=1, M=1, X=1. A, X, Y and the rest of P are unaffected.
+        Registers.E = true;
+        Registers.CP = true;
+        Registers.P |= ProcessorStatusFlags.M | ProcessorStatusFlags.X;
+        Registers.P.SetInterruptDisable(true);
+        Registers.P.SetDecimalMode(false);
+
+        Registers.PC.SetAddr(Read16(Cpu65C02Constants.ResetVector));
+        Registers.TCU += 2;
+
+        interruptDisableSample = Registers.P.IsInterruptDisabled();
+        interruptDisableChangePending = false;
+
+        Cycle releaseCycles = Registers.TCU;
+        AdvanceScheduler(releaseCycles);
+        Registers.TCU = Cycle.Zero;
+        return new(CpuRunState.Running, releaseCycles);
     }
 
     private byte FetchByte()

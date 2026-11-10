@@ -7,6 +7,8 @@ namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 using System.Diagnostics;
 using System.Globalization;
 
+using BadMango.Emulator.Bus;
+
 /// <summary>
 /// Simulates a JSR to an address and returns when the subroutine completes.
 /// </summary>
@@ -117,6 +119,13 @@ public sealed class CallCommand : ExecutionCommandBase
         if (debugContext.Cpu.Halted)
         {
             return CommandResult.Error("CPU is halted. Use 'reset' to restart.");
+        }
+
+        // The run loop owns the CPU while the machine is running; stepping it from the REPL
+        // thread at the same time would execute one CPU on two threads.
+        if (debugContext.Machine?.State == MachineState.Running)
+        {
+            return CommandResult.Error("Machine is running. Use 'pause' or 'stop' first.");
         }
 
         if (args.Length == 0)

@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using BadMango.Emulator.Bus;
+
 /// <summary>
 /// Runs the CPU until it halts or reaches a limit.
 /// </summary>
@@ -96,6 +98,13 @@ public sealed class RunCommand : ExecutionCommandBase
         if (debugContext.Cpu.Halted)
         {
             return CommandResult.Error("CPU is halted. Use 'reset' to restart.");
+        }
+
+        // The run loop owns the CPU while the machine is running; stepping it from the REPL
+        // thread at the same time would execute one CPU on two threads.
+        if (debugContext.Machine?.State == MachineState.Running)
+        {
+            return CommandResult.Error("Machine is running. Use 'pause' or 'stop' first.");
         }
 
         // Parse options

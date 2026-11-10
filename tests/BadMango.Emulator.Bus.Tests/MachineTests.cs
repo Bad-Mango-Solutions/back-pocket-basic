@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Bus.Tests;
 
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Cpu;
 using BadMango.Emulator.Core.Interfaces.Cpu;
 using BadMango.Emulator.Core.Signaling;
@@ -47,24 +48,73 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that Reset calls CPU reset.
+    /// Verifies that the first reset after construction is a power-on reset: the CPU is held
+    /// for the hold window and then initialized to its power-on state when the line releases,
+    /// instead of running the warm reset sequence.
     /// </summary>
     [Test]
-    public void Reset_CallsCpuReset()
+    public void Reset_FirstReset_HoldsThenPerformsPowerOnCpuReset()
     {
         var mockCpu = CreateMockCpu();
         var machine = CreateTestMachine(mockCpu);
 
         machine.Reset();
 
-        mockCpu.Verify(c => c.Reset(), Times.Once);
+        Assert.Multiple(() =>
+        {
+            mockCpu.Verify(c => c.Step(), Times.Exactly(2));
+            mockCpu.Verify(c => c.Reset(), Times.Once);
+            Assert.That(machine.Signals.IsAsserted(SignalLine.Reset), Is.False, "RESET must be released after the pulse");
+        });
     }
 
     /// <summary>
-    /// Verifies that Reset resets peripheral devices so they can reschedule events.
+    /// Verifies that a soft reset after power-on steps the hold window and the reset release
+    /// sequence (three CPU steps) and does not re-initialize the CPU.
     /// </summary>
     [Test]
-    public void Reset_ResetsPeripheralDevices()
+    public void Reset_SoftResetAfterPowerOn_StepsHoldWindowAndReleaseSequence()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+        machine.Reset();
+        mockCpu.Invocations.Clear();
+
+        machine.Reset();
+
+        Assert.Multiple(() =>
+        {
+            mockCpu.Verify(c => c.Step(), Times.Exactly(3));
+            mockCpu.Verify(c => c.Reset(), Times.Never);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a hard reset is a power-on reset again: the CPU is re-initialized.
+    /// </summary>
+    [Test]
+    public void Reset_HardResetAfterPowerOn_ReinitializesCpu()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+        machine.Reset();
+        machine.Reset();
+        mockCpu.Invocations.Clear();
+
+        machine.Reset(hardReset: true);
+
+        Assert.Multiple(() =>
+        {
+            mockCpu.Verify(c => c.Step(), Times.Exactly(2));
+            mockCpu.Verify(c => c.Reset(), Times.Once);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that hard reset performs peripheral power-on reset.
+    /// </summary>
+    [Test]
+    public void Reset_HardReset_ResetsPeripheralDevices()
     {
         var mockCpu = CreateMockCpu();
         var mockPeripheral = new Mock<IPeripheral>();
@@ -73,7 +123,7 @@ public class MachineTests
         var machine = CreateTestMachine(mockCpu);
         machine.AddScheduledDevice(mockPeripheral.Object);
 
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         mockPeripheral.Verify(p => p.Reset(), Times.Once);
     }
@@ -86,7 +136,7 @@ public class MachineTests
     /// all events, and then device resets must reschedule them (e.g., VBLANK).
     /// </remarks>
     [Test]
-    public void Reset_DeviceEventsArePresentAfterReset()
+    public void Reset_HardReset_DeviceEventsArePresentAfterReset()
     {
         var mockCpu = CreateMockCpu();
         var machine = CreateTestMachine(mockCpu);
@@ -103,7 +153,7 @@ public class MachineTests
 
         machine.AddScheduledDevice(mockPeripheral.Object);
 
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         Assert.Multiple(() =>
         {
@@ -132,7 +182,7 @@ public class MachineTests
         });
 
         machine.AddScheduledDevice(mockPeripheral.Object);
-        machine.Reset();
+        machine.Reset(hardReset: true);
 
         bool dispatched = machine.Scheduler.JumpToNextEventAndDispatch();
 
@@ -145,40 +195,62 @@ public class MachineTests
     }
 
     /// <summary>
-    /// Verifies that reset performs device and slot resets before CPU reset.
+    /// Verifies that a soft reset reaches slot cards through the slot manager: cards that
+    /// implement <see cref="IResetReceiver"/> get the RESET signal (assert and release) and are
+    /// not power-on reset, while other cards get their <see cref="IPeripheral.Reset"/> once.
     /// </summary>
     [Test]
-    public void Reset_ResetsDevicesAndSlotsBeforeCpuReset()
+    public void Reset_Soft_DeliversResetSignalToSlotCardsThroughSlotManager()
     {
-        var mockCpu = CreateMockCpu();
-        var machine = CreateTestMachine(mockCpu);
-
-        bool peripheralReset = false;
-        bool slotReset = false;
-
-        var mockPeripheral = new Mock<IPeripheral>();
-        mockPeripheral.Setup(p => p.Name).Returns("OrderDevice");
-        mockPeripheral.Setup(p => p.Reset()).Callback(() => peripheralReset = true);
-        machine.AddScheduledDevice(mockPeripheral.Object);
-
-        var mockSlotManager = new Mock<ISlotManager>();
-        mockSlotManager.Setup(s => s.Reset()).Callback(() => slotReset = true);
-        machine.AddComponent(mockSlotManager.Object);
-
-        mockCpu.Setup(c => c.Reset()).Callback(() =>
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(peripheralReset, Is.True, "Peripheral reset should run before CPU reset");
-                Assert.That(slotReset, Is.True, "Slot manager reset should run before CPU reset");
-            });
-        });
+        var (machine, receiverCard, plainCard) = CreateMachineWithSlotCards();
+        machine.Reset(); // Power-on reset
+        receiverCard.Invocations.Clear();
+        plainCard.Invocations.Clear();
 
         machine.Reset();
 
-        mockSlotManager.Verify(s => s.Reset(), Times.Once);
-        mockPeripheral.Verify(p => p.Reset(), Times.Once);
-        mockCpu.Verify(c => c.Reset(), Times.Once);
+        var receiver = receiverCard.As<IResetReceiver>();
+        Assert.Multiple(() =>
+        {
+            receiver.Verify(r => r.OnResetAsserted(It.IsAny<Cycle>()), Times.Once);
+            receiver.Verify(r => r.OnResetReleased(It.IsAny<Cycle>()), Times.Once);
+            receiverCard.Verify(c => c.Reset(), Times.Never);
+            plainCard.Verify(c => c.Reset(), Times.Once);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that a hard reset power-on resets every peripheral and slot card exactly once,
+    /// on top of delivering the RESET signal, even when a card is also registered as a
+    /// scheduled device.
+    /// </summary>
+    [Test]
+    public void Reset_HardReset_PowerOnResetsDevicesAndSlotCardsExactlyOnce()
+    {
+        var (machine, receiverCard, plainCard) = CreateMachineWithSlotCards();
+
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("OrderDevice");
+        machine.AddScheduledDevice(mockPeripheral.Object);
+        machine.AddScheduledDevice(plainCard.Object);
+
+        machine.Reset(); // Power-on reset
+        machine.Reset();
+        mockPeripheral.Invocations.Clear();
+        receiverCard.Invocations.Clear();
+        plainCard.Invocations.Clear();
+
+        machine.Reset(hardReset: true);
+
+        var receiver = receiverCard.As<IResetReceiver>();
+        Assert.Multiple(() =>
+        {
+            mockPeripheral.Verify(p => p.Reset(), Times.Once);
+            receiverCard.Verify(c => c.Reset(), Times.Once);
+            receiver.Verify(r => r.OnResetAsserted(It.IsAny<Cycle>()), Times.Once);
+            receiver.Verify(r => r.OnResetReleased(It.IsAny<Cycle>()), Times.Once);
+            plainCard.Verify(c => c.Reset(), Times.Once);
+        });
     }
 
     /// <summary>
@@ -284,6 +356,57 @@ public class MachineTests
     }
 
     /// <summary>
+    /// Verifies that stepping while running waits for the run loop to exit, so the CPU is
+    /// never stepped by two threads at once.
+    /// </summary>
+    [Test]
+    public void Step_WhenRunning_NeverStepsTheCpuConcurrentlyWithTheRunLoop()
+    {
+        var detector = new ConcurrencyDetector();
+        var mockCpu = CreateMockCpu();
+        int stopRequested = 0;
+        int stepCalls = 0;
+
+        mockCpu.Setup(c => c.IsStopRequested).Returns(() => Volatile.Read(ref stopRequested) != 0);
+        mockCpu.Setup(c => c.RequestStop()).Callback(() => Volatile.Write(ref stopRequested, 1));
+        mockCpu.Setup(c => c.ClearStopRequest()).Callback(() => Volatile.Write(ref stopRequested, 0));
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            Interlocked.Increment(ref stepCalls);
+            using (detector.Enter())
+            {
+                // Hold the CPU long enough that an unsynchronized step would overlap.
+                Thread.SpinWait(20_000);
+            }
+
+            return new CpuStepResult(CpuRunState.Running, 1);
+        });
+
+        var machine = CreateTestMachine(mockCpu);
+
+        for (int i = 0; i < 20; i++)
+        {
+            var runTask = Task.Run(() => machine.Run());
+            Assert.That(SpinWait.SpinUntil(() => machine.State == MachineState.Running && Volatile.Read(ref stepCalls) > 0, 5000), Is.True);
+
+            int stepsBefore = Volatile.Read(ref stepCalls);
+            machine.Step();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(runTask.Wait(5000), Is.True, "Run loop must have exited when Step returns");
+                Assert.That(runTask.IsCompleted, Is.True);
+                Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+                Assert.That(Volatile.Read(ref stepCalls), Is.GreaterThan(stepsBefore), "The explicit step must run");
+            });
+
+            machine.Stop();
+        }
+
+        Assert.That(detector.Overlaps, Is.Zero, "The explicit Step overlapped a run-loop step");
+    }
+
+    /// <summary>
     /// Verifies that StateChanged event is raised on state transition.
     /// </summary>
     [Test]
@@ -298,6 +421,295 @@ public class MachineTests
         machine.Step();
 
         Assert.That(states, Contains.Item(MachineState.Paused));
+    }
+
+    /// <summary>
+    /// Verifies that resets requested from another thread while the machine runs are applied
+    /// by the run loop: every reset is delivered (assert and release) on the machine thread,
+    /// never concurrently with a CPU step, and the machine keeps running.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task Reset_WhileRunning_IsAppliedOnTheRunLoopWithoutRacingTheCpu()
+    {
+        const int ResetCount = 25;
+        var detector = new ConcurrencyDetector();
+        Machine machine = null!;
+        var mockCpu = CreateMockCpu();
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            using (detector.Enter())
+            {
+                Thread.SpinWait(200);
+                machine.Scheduler.Advance(1);
+            }
+
+            return new CpuStepResult(CpuRunState.Running, 1);
+        });
+
+        machine = CreateTestMachine(mockCpu);
+        int testThread = Environment.CurrentManagedThreadId;
+        int asserted = 0;
+        int released = 0;
+        int onTestThread = 0;
+        var receiver = new Mock<IResetReceiver>();
+        receiver.Setup(r => r.OnResetAsserted(It.IsAny<Cycle>())).Callback(() =>
+        {
+            using (detector.Enter())
+            {
+                Interlocked.Increment(ref asserted);
+                if (Environment.CurrentManagedThreadId == testThread)
+                {
+                    Interlocked.Increment(ref onTestThread);
+                }
+            }
+        });
+        receiver.Setup(r => r.OnResetReleased(It.IsAny<Cycle>())).Callback(() =>
+        {
+            using (detector.Enter())
+            {
+                Interlocked.Increment(ref released);
+            }
+        });
+        machine.AddComponent(receiver.Object);
+        machine.Reset(); // Power-on reset while quiescent, on this thread
+        asserted = released = onTestThread = 0;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var runTask = machine.RunAsync(cts.Token);
+        Assert.That(SpinWait.SpinUntil(() => machine.State == MachineState.Running, 5000), Is.True);
+
+        for (int i = 0; i < ResetCount; i++)
+        {
+            machine.Reset();
+            Assert.That(machine.State, Is.EqualTo(MachineState.Running), "Reset must not change the run state");
+            int expected = i + 1;
+            Assert.That(SpinWait.SpinUntil(() => Volatile.Read(ref released) >= expected, 5000), Is.True, $"Reset {expected} was not released");
+        }
+
+        machine.Stop();
+        await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(asserted, Is.EqualTo(ResetCount), "Every reset must assert the line once");
+            Assert.That(released, Is.EqualTo(ResetCount), "Every reset must release the line once");
+            Assert.That(onTestThread, Is.Zero, "RESET receivers must run on the machine thread, not the caller's");
+            Assert.That(detector.Overlaps, Is.Zero, "A RESET receiver ran concurrently with a CPU step");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that Stop and Step called from a scheduled callback inside the run loop return
+    /// instead of waiting for the loop that is executing them, also after the throttled loop
+    /// has resumed on another thread.
+    /// </summary>
+    /// <param name="useStep">Whether the callback calls Step (otherwise Stop).</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task StopOrStep_FromScheduledCallback_DoesNotDeadlock(bool useStep)
+    {
+        Machine machine = null!;
+        var mockCpu = CreateMockCpu();
+        int stopRequested = 0;
+        mockCpu.Setup(c => c.IsStopRequested).Returns(() => Volatile.Read(ref stopRequested) != 0);
+        mockCpu.Setup(c => c.RequestStop()).Callback(() => Volatile.Write(ref stopRequested, 1));
+        mockCpu.Setup(c => c.ClearStopRequest()).Callback(() => Volatile.Write(ref stopRequested, 0));
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            machine.Scheduler.Advance(10);
+            return new CpuStepResult(CpuRunState.Running, 10);
+        });
+
+        machine = CreateTestMachine(mockCpu);
+
+        // Throttle so the loop awaits between slices and may resume on a different thread.
+        machine.ClockSpeedHz = 1_000_000;
+        var threads = new HashSet<int>();
+        bool calledFromLoop = false;
+        Action<IEventContext>? tick = null;
+        tick = _ =>
+        {
+            threads.Add(Environment.CurrentManagedThreadId);
+            if (machine.Now.Value < 200_000 || calledFromLoop)
+            {
+                machine.Scheduler.ScheduleAfter(5_000, ScheduledEventKind.DeviceTimer, 0, tick!, "tick");
+                return;
+            }
+
+            calledFromLoop = true;
+            if (useStep)
+            {
+                machine.Step();
+            }
+            else
+            {
+                machine.Stop();
+            }
+        };
+        machine.Scheduler.ScheduleAfter(5_000, ScheduledEventKind.DeviceTimer, 0, tick, "tick");
+
+        var runTask = machine.RunAsync();
+        var finished = await Task.WhenAny(runTask, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(finished, Is.SameAs(runTask), "Run loop deadlocked on a Stop/Step from its own callback");
+            Assert.That(calledFromLoop, Is.True);
+            Assert.That(machine.State, Is.EqualTo(useStep ? MachineState.Paused : MachineState.Stopped));
+        });
+
+        TestContext.Out.WriteLine($"Callback threads observed: {threads.Count}");
+    }
+
+    /// <summary>
+    /// Verifies that Pause does not return while the run loop is still inside a CPU step.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task Pause_WhileAStepIsInProgress_WaitsForTheRunLoopToExit()
+    {
+        using var cpu = new GatedCpu();
+        var machine = CreateTestMachine(cpu.Mock);
+        var runTask = Task.Run(() => machine.RunAsync());
+        cpu.BlockNextStep();
+
+        var pauseTask = Task.Run(machine.Pause);
+        bool returnedWhileStepping = pauseTask.Wait(200);
+        cpu.ReleaseStep();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(returnedWhileStepping, Is.False, "Pause returned while the run loop was still executing");
+            Assert.That(pauseTask.Wait(5000), Is.True);
+            Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+        });
+
+        await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// Verifies that Step does not step the CPU while the run loop is still inside a CPU step.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task Step_WhileAStepIsInProgress_WaitsForTheRunLoopToExit()
+    {
+        using var cpu = new GatedCpu();
+        var machine = CreateTestMachine(cpu.Mock);
+        var runTask = Task.Run(() => machine.RunAsync());
+        cpu.BlockNextStep();
+        int stepsBefore = cpu.Steps;
+
+        var stepTask = Task.Run(machine.Step);
+        bool returnedWhileStepping = stepTask.Wait(200);
+        int stepsWhileBlocked = cpu.Steps;
+        cpu.ReleaseStep();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(returnedWhileStepping, Is.False, "Step returned while the run loop was still executing");
+            Assert.That(stepsWhileBlocked, Is.EqualTo(stepsBefore), "Step entered the CPU while the run loop was inside it");
+            Assert.That(stepTask.Wait(5000), Is.True);
+            Assert.That(machine.State, Is.EqualTo(MachineState.Paused));
+            Assert.That(cpu.Detector.Overlaps, Is.Zero);
+        });
+
+        await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// Verifies that Resume issued while the previous run loop is still winding down waits for
+    /// it instead of starting a second loop on the same CPU.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task Resume_WhileThePreviousLoopIsWindingDown_DoesNotStartASecondLoop()
+    {
+        using var cpu = new GatedCpu();
+        var machine = CreateTestMachine(cpu.Mock);
+        var runTask = Task.Run(() => machine.RunAsync());
+        cpu.BlockNextStep();
+
+        var pauseTask = Task.Run(machine.Pause);
+        Assert.That(SpinWait.SpinUntil(() => machine.State == MachineState.Paused, 5000), Is.True);
+        var resumeTask = Task.Run(() => machine.ResumeAsync());
+        bool resumeStartedEarly = SpinWait.SpinUntil(() => cpu.Detector.Overlaps > 0, 200);
+        cpu.ReleaseStep();
+
+        await pauseTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(SpinWait.SpinUntil(() => machine.State == MachineState.Running, 5000), Is.True, "Resume must run once the old loop has exited");
+        machine.Stop();
+        await Task.WhenAll(runTask, resumeTask).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resumeStartedEarly, Is.False, "A second run loop stepped the CPU while the first was inside a step");
+            Assert.That(cpu.Detector.Overlaps, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that Pause waits for the run loop to exit and that rapid Pause/Resume cycles
+    /// never leave two run loops executing the same CPU.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    [Test]
+    public async Task PauseResume_NeverRunsTwoLoopsAtOnce()
+    {
+        var detector = new ConcurrencyDetector();
+        Machine machine = null!;
+        var mockCpu = CreateMockCpu();
+        int stopRequested = 0;
+        mockCpu.Setup(c => c.IsStopRequested).Returns(() => Volatile.Read(ref stopRequested) != 0);
+        mockCpu.Setup(c => c.RequestStop()).Callback(() => Volatile.Write(ref stopRequested, 1));
+        mockCpu.Setup(c => c.ClearStopRequest()).Callback(() => Volatile.Write(ref stopRequested, 0));
+        mockCpu.Setup(c => c.Step()).Returns(() =>
+        {
+            using (detector.Enter())
+            {
+                Thread.SpinWait(20);
+                machine.Scheduler.Advance(1);
+            }
+
+            return new CpuStepResult(CpuRunState.Running, 1);
+        });
+
+        machine = CreateTestMachine(mockCpu);
+        var tasks = new List<Task> { machine.RunAsync() };
+        int pausedButAdvanced = 0;
+
+        // Note: RunAsync/ResumeAsync run their first slice synchronously on the caller.
+        for (int i = 0; i < 100; i++)
+        {
+            machine.Pause();
+            ulong pausedAt = machine.Now.Value;
+            Thread.SpinWait(5_000);
+            if (machine.Now.Value != pausedAt)
+            {
+                pausedButAdvanced++;
+            }
+
+            tasks.Add(machine.ResumeAsync());
+
+            if (i % 3 == 0)
+            {
+                // A second resume or run while running must not start another loop.
+                tasks.Add(machine.ResumeAsync());
+                tasks.Add(machine.RunAsync());
+            }
+        }
+
+        machine.Stop();
+        await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(detector.Overlaps, Is.Zero, "Two run loops stepped the CPU at the same time");
+            Assert.That(pausedButAdvanced, Is.Zero, "The CPU kept running after Pause returned");
+            Assert.That(machine.State, Is.EqualTo(MachineState.Stopped));
+        });
     }
 
     /// <summary>
@@ -526,7 +938,7 @@ public class MachineTests
 
     /// <summary>
     /// Verifies that the <see cref="Machine.BootAsync(System.Threading.CancellationToken)"/> method
-    /// calls the <see cref="ICpu.Reset"/> method followed by executing the machine's run logic.
+    /// performs reset stepping followed by run logic.
     /// </summary>
     /// <remarks>
     /// This test ensures that the machine's boot sequence properly initializes the CPU by resetting it
@@ -534,12 +946,14 @@ public class MachineTests
     /// </remarks>
     /// <returns>A task that represents the asynchronous operation of the test.</returns>
     [Test]
-    public async Task BootAsync_CallsResetThenRun()
+    public async Task BootAsync_PerformsResetThenRun()
     {
         var mockCpu = CreateMockCpu();
-        bool resetCalled = false;
-        mockCpu.Setup(c => c.Reset()).Callback(() => resetCalled = true);
-        mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Stopped, 1));
+        mockCpu.SetupSequence(c => c.Step())
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Running, 1))
+            .Returns(new CpuStepResult(CpuRunState.Stopped, 1));
 
         var machine = CreateTestMachine(mockCpu);
 
@@ -549,7 +963,7 @@ public class MachineTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(resetCalled, Is.True, "Reset should be called");
+            mockCpu.Verify(c => c.Step(), Times.Exactly(4));
             Assert.That(machine.State, Is.EqualTo(MachineState.Stopped), "Should be stopped after boot completes");
         });
     }
@@ -756,6 +1170,23 @@ public class MachineTests
         return machine;
     }
 
+    private static (Machine Machine, Mock<ISlotCard> ReceiverCard, Mock<ISlotCard> PlainCard) CreateMachineWithSlotCards()
+    {
+        var machine = CreateTestMachine();
+        var slotManager = new SlotManager(new IOPageDispatcher());
+        machine.AddComponent<ISlotManager>(slotManager);
+
+        var receiverCard = new Mock<ISlotCard>();
+        receiverCard.As<IResetReceiver>();
+        receiverCard.Setup(c => c.Name).Returns("ReceiverCard");
+        var plainCard = new Mock<ISlotCard>();
+        plainCard.Setup(c => c.Name).Returns("PlainCard");
+
+        slotManager.Install(4, receiverCard.Object);
+        slotManager.Install(6, plainCard.Object);
+        return (machine, receiverCard, plainCard);
+    }
+
     private static Mock<ICpu> CreateMockCpu()
     {
         var mockCpu = new Mock<ICpu>();
@@ -763,5 +1194,164 @@ public class MachineTests
         mockCpu.Setup(c => c.IsStopRequested).Returns(false);
         mockCpu.Setup(c => c.Step()).Returns(new CpuStepResult(CpuRunState.Running, 1));
         return mockCpu;
+    }
+
+    /// <summary>
+    /// A mock CPU whose next step can be held inside <see cref="ICpu.Step"/> until released,
+    /// to observe what other threads do while the run loop is mid-instruction.
+    /// </summary>
+    private sealed class GatedCpu : IDisposable
+    {
+        private readonly ManualResetEventSlim entered = new(false);
+        private readonly ManualResetEventSlim release = new(true);
+        private int stopRequested;
+        private int blockNext;
+        private int steps;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GatedCpu"/> class.
+        /// </summary>
+        public GatedCpu()
+        {
+            Mock = CreateMockCpu();
+            Mock.Setup(c => c.IsStopRequested).Returns(() => Volatile.Read(ref stopRequested) != 0);
+            Mock.Setup(c => c.RequestStop()).Callback(() => Volatile.Write(ref stopRequested, 1));
+            Mock.Setup(c => c.ClearStopRequest()).Callback(() => Volatile.Write(ref stopRequested, 0));
+            Mock.Setup(c => c.Step()).Returns(() =>
+            {
+                using (Detector.Enter())
+                {
+                    Interlocked.Increment(ref steps);
+                    if (Interlocked.Exchange(ref blockNext, 0) != 0)
+                    {
+                        entered.Set();
+                        release.Wait(TimeSpan.FromSeconds(10));
+                    }
+                }
+
+                return new CpuStepResult(CpuRunState.Running, 1);
+            });
+        }
+
+        /// <summary>Gets the mock.</summary>
+        public Mock<ICpu> Mock { get; }
+
+        /// <summary>Gets the detector guarding every step.</summary>
+        public ConcurrencyDetector Detector { get; } = new();
+
+        /// <summary>Gets the number of steps entered so far.</summary>
+        public int Steps => Volatile.Read(ref steps);
+
+        /// <summary>
+        /// Holds the next step inside the CPU and waits until a step is held.
+        /// </summary>
+        public void BlockNextStep()
+        {
+            release.Reset();
+            entered.Reset();
+            Volatile.Write(ref blockNext, 1);
+            Assert.That(entered.Wait(TimeSpan.FromSeconds(5)), Is.True, "The run loop never stepped the CPU");
+        }
+
+        /// <summary>
+        /// Lets the held step finish.
+        /// </summary>
+        public void ReleaseStep() => release.Set();
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            release.Set();
+            entered.Dispose();
+            release.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Counts how often two different threads are inside guarded sections at the same time.
+    /// Re-entry on the same thread (for example a RESET release dispatched inside a CPU step)
+    /// is not an overlap.
+    /// </summary>
+    private sealed class ConcurrencyDetector
+    {
+        private readonly Dictionary<int, int> depthByThread = [];
+        private int overlaps;
+
+        /// <summary>
+        /// Gets the number of times a section was entered while another thread was inside one.
+        /// </summary>
+        public int Overlaps
+        {
+            get
+            {
+                lock (depthByThread)
+                {
+                    return overlaps;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enters a guarded section.
+        /// </summary>
+        /// <returns>A scope that leaves the section when disposed.</returns>
+        public Scope Enter()
+        {
+            int thread = Environment.CurrentManagedThreadId;
+            lock (depthByThread)
+            {
+                depthByThread.TryGetValue(thread, out int depth);
+                if (depth == 0 && depthByThread.Count > 0)
+                {
+                    overlaps++;
+                }
+
+                depthByThread[thread] = depth + 1;
+            }
+
+            return new Scope(this, thread);
+        }
+
+        private void Leave(int thread)
+        {
+            lock (depthByThread)
+            {
+                int depth = depthByThread[thread] - 1;
+                if (depth == 0)
+                {
+                    depthByThread.Remove(thread);
+                }
+                else
+                {
+                    depthByThread[thread] = depth;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Leaves the guarded section on dispose.
+        /// </summary>
+        public readonly struct Scope : IDisposable
+        {
+            private readonly ConcurrencyDetector owner;
+            private readonly int thread;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="Scope"/> struct.
+            /// </summary>
+            /// <param name="owner">The detector that owns the section.</param>
+            /// <param name="thread">The managed thread that entered the section.</param>
+            public Scope(ConcurrencyDetector owner, int thread)
+            {
+                this.owner = owner;
+                this.thread = thread;
+            }
+
+            /// <inheritdoc />
+            public void Dispose()
+            {
+                owner.Leave(thread);
+            }
+        }
     }
 }

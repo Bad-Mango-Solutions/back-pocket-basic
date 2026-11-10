@@ -21,7 +21,8 @@ namespace BadMango.Emulator.Bus;
 /// <item><description><see cref="Running"/> → <see cref="Paused"/> (via breakpoint or step-mode)</description></item>
 /// <item><description><see cref="Paused"/> → <see cref="Running"/> (via Run)</description></item>
 /// <item><description><see cref="Paused"/> → <see cref="Stopped"/> (via Stop)</description></item>
-/// <item><description>Any state → <see cref="Stopped"/> (via Reset)</description></item>
+/// <item><description><see cref="Running"/> remains <see cref="Running"/> through RESET signal handling</description></item>
+/// <item><description><see cref="Stopped"/> and <see cref="Paused"/> remain unchanged by RESET signal handling</description></item>
 /// </list>
 /// </para>
 /// </remarks>

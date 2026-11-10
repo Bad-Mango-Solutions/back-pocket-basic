@@ -711,13 +711,17 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
-    /// Verifies that soft reset preserves RAM contents while resetting device state and scheduler timeline.
+    /// Verifies that soft reset preserves RAM contents, resets device state, flushes stale
+    /// scheduler events, and leaves the VBlank cadence scheduled. The scheduler timeline is not
+    /// rewound: RESET is a signal on a running machine, not a power cycle.
     /// </summary>
     [Test]
     public void Pocket2e_SoftReset_PreservesRamAndFlushesStaleEvents()
     {
+        var video = new VideoDevice();
         var machine = new MachineBuilder()
             .AsPocket2e()
+            .AddMotherboardDevice(video)
             .WithStubRom()
             .Build();
 
@@ -737,10 +741,17 @@ public class Pocket2eIntegrationTests
 
         bool staleEventFired = false;
         machine.Scheduler.ScheduleAfter(5, ScheduledEventKind.DeviceTimer, 0, _ => staleEventFired = true, "stale");
+        var cycleBeforeReset = machine.Now.Value;
 
         machine.Reset();
         var cycleAfterReset = machine.Now.Value;
-        machine.Scheduler.JumpToNextEventAndDispatch();
+
+        // Dispatch events for up to one frame: the stale event must not fire, VBlank must.
+        int vblanks = 0;
+        video.VBlankOccurred += () => vblanks++;
+        while (vblanks == 0 && machine.Now.Value <= cycleAfterReset + VideoDevice.CyclesPerFrame && machine.Scheduler.JumpToNextEventAndDispatch())
+        {
+        }
 
         var mainAfterReset = mainRam.Memory.AsReadOnlySpan()[0x0200];
         var auxAfterReset = auxRam.Memory.AsReadOnlySpan()[0x0200];
@@ -755,8 +766,9 @@ public class Pocket2eIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(cycleAfterReset, Is.EqualTo(0), "Soft reset should restart the scheduler timeline");
+            Assert.That(cycleAfterReset, Is.GreaterThan(cycleBeforeReset), "Soft reset holds and releases RESET in time; it does not rewind the timeline");
             Assert.That(staleEventFired, Is.False, "Pre-reset scheduler events must be flushed");
+            Assert.That(vblanks, Is.EqualTo(1), "VBlank must still be scheduled after the flush");
 
             Assert.That(mainAfterReset, Is.EqualTo(0x5A), "Main RAM should be preserved by soft reset");
             Assert.That(auxAfterReset, Is.EqualTo(0xA5), "Aux RAM should be preserved by soft reset");
