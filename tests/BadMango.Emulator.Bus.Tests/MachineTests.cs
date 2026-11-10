@@ -113,6 +113,75 @@ public class MachineTests
     }
 
     /// <summary>
+    /// Verifies that reset clears stale scheduler events and only post-reset events fire.
+    /// </summary>
+    [Test]
+    public void Reset_FlushesPreResetSchedulerEvents()
+    {
+        var machine = CreateTestMachine();
+        bool staleEventFired = false;
+        bool resetEventFired = false;
+
+        machine.Scheduler.ScheduleAfter(10, ScheduledEventKind.DeviceTimer, 0, _ => staleEventFired = true, "stale");
+
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("ReschedulingDevice");
+        mockPeripheral.Setup(p => p.Reset()).Callback(() =>
+        {
+            machine.Scheduler.ScheduleAfter(5, ScheduledEventKind.DeviceTimer, 0, _ => resetEventFired = true, "fresh");
+        });
+
+        machine.AddScheduledDevice(mockPeripheral.Object);
+        machine.Reset();
+
+        bool dispatched = machine.Scheduler.JumpToNextEventAndDispatch();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dispatched, Is.True, "A fresh post-reset event should be pending");
+            Assert.That(resetEventFired, Is.True, "Post-reset event should fire");
+            Assert.That(staleEventFired, Is.False, "Pre-reset event must be flushed");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that reset performs device and slot resets before CPU reset.
+    /// </summary>
+    [Test]
+    public void Reset_ResetsDevicesAndSlotsBeforeCpuReset()
+    {
+        var mockCpu = CreateMockCpu();
+        var machine = CreateTestMachine(mockCpu);
+
+        bool peripheralReset = false;
+        bool slotReset = false;
+
+        var mockPeripheral = new Mock<IPeripheral>();
+        mockPeripheral.Setup(p => p.Name).Returns("OrderDevice");
+        mockPeripheral.Setup(p => p.Reset()).Callback(() => peripheralReset = true);
+        machine.AddScheduledDevice(mockPeripheral.Object);
+
+        var mockSlotManager = new Mock<ISlotManager>();
+        mockSlotManager.Setup(s => s.Reset()).Callback(() => slotReset = true);
+        machine.AddComponent(mockSlotManager.Object);
+
+        mockCpu.Setup(c => c.Reset()).Callback(() =>
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(peripheralReset, Is.True, "Peripheral reset should run before CPU reset");
+                Assert.That(slotReset, Is.True, "Slot manager reset should run before CPU reset");
+            });
+        });
+
+        machine.Reset();
+
+        mockSlotManager.Verify(s => s.Reset(), Times.Once);
+        mockPeripheral.Verify(p => p.Reset(), Times.Once);
+        mockCpu.Verify(c => c.Reset(), Times.Once);
+    }
+
+    /// <summary>
     /// Verifies that Stop transitions from Running to Stopped.
     /// </summary>
     [Test]

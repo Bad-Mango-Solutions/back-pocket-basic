@@ -31,7 +31,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("languagecard")]
-public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState
+public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState, IHardResetMemory
 {
     /// <summary>
     /// The name of the Language Card RAM layer for $E000-$FFFF.
@@ -364,6 +364,14 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         lastReadOffset = 0;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void ClearForHardReset()
+    {
+        bank1Memory.Clear();
+        bank2Memory.Clear();
+        highMemory.Clear();
     }
 
     // ??? Configuration Methods ??????????????????????????????????????????????????

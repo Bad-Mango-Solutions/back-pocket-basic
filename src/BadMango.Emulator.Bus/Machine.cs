@@ -99,7 +99,7 @@ public sealed class Machine : IMachine
     public long ClockSpeedHz { get; set; }
 
     /// <inheritdoc />
-    public void Reset()
+    public void Reset(bool hardReset = false)
     {
         // Stop if running
         if (state == MachineState.Running)
@@ -110,12 +110,16 @@ public sealed class Machine : IMachine
         // Assert RESET signal
         Signals.Assert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
 
-        // Reset CPU
-        Cpu.Reset();
+        // Ensure the CPU run loop will stop immediately while reset is in progress.
+        Cpu.RequestStop();
 
         // Reset slot manager if present (resets slot cards)
         var slotManager = GetComponent<ISlotManager>();
-        slotManager?.Reset();
+
+        if (hardReset)
+        {
+            ClearHardResetMemory();
+        }
 
         // Reset scheduler (clears all pending events and resets cycle counter)
         Scheduler.Reset();
@@ -126,6 +130,11 @@ public sealed class Machine : IMachine
         // events are not cleared, and AFTER the scheduler is at cycle 0 so
         // events are scheduled relative to the start of the timeline.
         ResetDevices();
+
+        slotManager?.Reset();
+
+        // Reset CPU after devices so the reset vector fetch sees post-reset mapping state.
+        Cpu.Reset();
 
         // Deassert RESET signal
         Signals.Deassert(SignalLine.Reset, deviceId: 0, Scheduler.Now);
@@ -362,6 +371,22 @@ public sealed class Machine : IMachine
             {
                 peripheral.Reset();
             }
+        }
+    }
+
+    private void ClearHardResetMemory()
+    {
+        bool anyRegistered = false;
+        foreach (var memory in components.OfType<IHardResetMemory>())
+        {
+            memory.ClearForHardReset();
+            anyRegistered = true;
+        }
+
+        // Fallback for minimal machines that do not yet expose direct RAM components.
+        if (!anyRegistered)
+        {
+            Bus.Clear();
         }
     }
 

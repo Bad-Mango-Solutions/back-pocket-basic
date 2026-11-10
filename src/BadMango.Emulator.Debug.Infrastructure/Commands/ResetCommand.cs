@@ -5,18 +5,23 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 /// <summary>
-/// Resets the CPU to its initial state.
+/// Resets the machine or CPU to its initial state.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Performs a CPU reset, which:
+/// Performs a reset, which:
 /// - Sets PC to the reset vector ($FFFC-$FFFD).
 /// - Initializes processor status flags.
 /// - Clears the halt state.
 /// </para>
 /// <para>
-/// By default, performs a soft reset (CPU only). With the --hard flag,
-/// also clears memory to zeros.
+/// When a machine is attached, reset goes through the machine lifecycle
+/// (signals, scheduler, devices, slots, CPU). By default, this is a soft reset
+/// that preserves RAM. With the --hard flag, RAM backing stores are cleared.
+/// </para>
+/// <para>
+/// If no machine is attached, reset falls back to CPU-only behavior and uses
+/// the attached bus for --hard memory clear when available.
 /// </para>
 /// </remarks>
 public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
@@ -85,14 +90,21 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
             arg.Equals("--hard", StringComparison.OrdinalIgnoreCase) ||
             arg.Equals("-h", StringComparison.OrdinalIgnoreCase));
 
-        if (hardReset && debugContext.Bus is not null)
+        if (debugContext.Machine is not null)
         {
-            debugContext.Bus.Clear();
-            debugContext.Output.WriteLine("Memory cleared.");
+            debugContext.Machine.Reset(hardReset);
         }
+        else
+        {
+            if (hardReset && debugContext.Bus is not null)
+            {
+                debugContext.Bus.Clear();
+                debugContext.Output.WriteLine("Memory cleared.");
+            }
 
-        debugContext.Cpu.Reset();
-        debugContext.Cpu.ClearStopRequest();
+            debugContext.Cpu.Reset();
+            debugContext.Cpu.ClearStopRequest();
+        }
 
         var pc = debugContext.Cpu.GetPC();
         debugContext.Output.WriteLine($"CPU reset. PC = ${pc:X4}");
