@@ -9,9 +9,9 @@ using BadMango.Emulator.Core.Interfaces.Cpu;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="ResetCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>

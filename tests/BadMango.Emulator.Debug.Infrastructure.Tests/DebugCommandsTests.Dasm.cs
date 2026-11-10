@@ -4,9 +4,9 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="DasmCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>

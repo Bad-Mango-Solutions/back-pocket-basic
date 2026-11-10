@@ -69,17 +69,17 @@ public sealed class AuxiliaryMemoryGeneralTarget : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
-        Addr targetOffset = physicalAddress - baseOffset;
+        Addr targetOffset = offset - baseOffset;
         var target = controller.IsRamRdEnabled ? auxMemory : mainMemory;
         return target.Read8(targetOffset, in access);
     }
 
     /// <inheritdoc />
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
-        Addr targetOffset = physicalAddress - baseOffset;
+        Addr targetOffset = offset - baseOffset;
         var target = controller.IsRamWrtEnabled ? auxMemory : mainMemory;
         target.Write8(targetOffset, value, in access);
     }

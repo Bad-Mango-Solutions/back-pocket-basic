@@ -962,25 +962,25 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
-        public byte Read8(Addr physicalAddress, in BusAccess access)
+        public byte Read8(Addr offset, in BusAccess access)
         {
             if (owner.ramrd)
             {
-                return auxRamPages.Read8(physicalAddress, in access);
+                return auxRamPages.Read8(offset, in access);
             }
 
-            return ReadMain8(physicalAddress, in access);
+            return ReadMain8(offset, in access);
         }
 
-        public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+        public void Write8(Addr offset, byte value, in BusAccess access)
         {
             if (owner.ramwrt)
             {
-                auxRamPages.Write8(physicalAddress, value, in access);
+                auxRamPages.Write8(offset, value, in access);
                 return;
             }
 
-            WriteMain8(physicalAddress, value, in access);
+            WriteMain8(offset, value, in access);
         }
 
         private byte ReadMain8(Addr physicalAddress, in BusAccess access)
