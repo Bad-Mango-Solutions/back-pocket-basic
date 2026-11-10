@@ -747,13 +747,13 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
             if (readRam)
             {
                 // Full-RAM mode: route both reads and writes to the LC RAM targets.
-                bus.SetLayerPermissions(HighLayerName, fullRamPerms);
-                bus.SetLayerPermissions(LowLayerName, fullRamPerms);
-
                 SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
                 SelectVariantIfChanged(
                     bankSwapGroupId,
                     bank2Selected ? Bank2VariantName : Bank1VariantName);
+
+                bus.SetLayerPermissions(HighLayerName, fullRamPerms);
+                bus.SetLayerPermissions(LowLayerName, fullRamPerms);
             }
             else
             {
@@ -769,28 +769,28 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
                 // cascade of BRK $00 monitor calls).
                 if (highSplitVariantRegistered)
                 {
-                    bus.SetLayerPermissions(HighLayerName, PagePerms.ReadWrite);
                     SelectVariantIfChanged(highSwapGroupId, HighSplitVariantName);
+                    bus.SetLayerPermissions(HighLayerName, PagePerms.ReadWrite);
                 }
                 else
                 {
-                    bus.SetLayerPermissions(HighLayerName, PagePerms.Write);
                     SelectVariantIfChanged(highSwapGroupId, HighRamVariantName);
+                    bus.SetLayerPermissions(HighLayerName, PagePerms.Write);
                 }
 
                 if (lowSplitVariantsRegistered)
                 {
-                    bus.SetLayerPermissions(LowLayerName, PagePerms.ReadWrite);
                     SelectVariantIfChanged(
                         bankSwapGroupId,
                         bank2Selected ? SplitBank2VariantName : SplitBank1VariantName);
+                    bus.SetLayerPermissions(LowLayerName, PagePerms.ReadWrite);
                 }
                 else
                 {
-                    bus.SetLayerPermissions(LowLayerName, PagePerms.Write);
                     SelectVariantIfChanged(
                         bankSwapGroupId,
                         bank2Selected ? Bank2VariantName : Bank1VariantName);
+                    bus.SetLayerPermissions(LowLayerName, PagePerms.Write);
                 }
             }
         }

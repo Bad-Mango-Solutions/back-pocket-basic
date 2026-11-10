@@ -1152,6 +1152,59 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
+    /// Verifies that selecting a different Language Card bank does not revoke RAM write
+    /// permission while write mode remains enabled.
+    /// </summary>
+    [Test]
+    public void LanguageCard_BankSelectRead_DoesNotRevokeWritePermission()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        var writeAccess = CreateTestContext() with
+        {
+            Address = 0xD000,
+            Intent = AccessIntent.DataWrite,
+        };
+
+        var readAccess = CreateTestContext() with
+        {
+            Address = 0xD000,
+            Intent = AccessIntent.DataRead,
+        };
+
+        // Enter Bank 2 full RAM read/write mode and verify checked write succeeds.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        machine.Cpu.Read8(LcBank2RamWrite);
+        var bank2Write = machine.Bus.TryWrite8(writeAccess, 0x22);
+
+        // Select Bank 1 while RAM write mode remains enabled and verify checked write still succeeds.
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var bank1Write = machine.Bus.TryWrite8(writeAccess, 0x11);
+
+        // Read both banks back through checked read path.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        var bank2Read = machine.Bus.TryRead8(readAccess);
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var bank1Read = machine.Bus.TryRead8(readAccess);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bank2Write.Ok, Is.True, "Initial Bank 2 write at $D000 should succeed in $C083 mode");
+            Assert.That(bank1Write.Ok, Is.True, "Bank 1 write at $D000 should still succeed after bank-select read");
+            Assert.That(bank2Read.Ok, Is.True, "Checked read from Bank 2 should succeed");
+            Assert.That(bank1Read.Ok, Is.True, "Checked read from Bank 1 should succeed");
+            Assert.That(bank2Read.Value, Is.EqualTo(0x22), "Bank 2 should retain its write at $D000");
+            Assert.That(bank1Read.Value, Is.EqualTo(0x11), "Bank 1 should retain its write at $D000");
+        });
+    }
+
+    /// <summary>
     /// Verifies that returning to full-ROM mode ($C082) restores plain ROM access at
     /// both $D000-$DFFF and $E000-$FFFF even after split-mode writes have populated
     /// LC RAM with arbitrary bytes.
