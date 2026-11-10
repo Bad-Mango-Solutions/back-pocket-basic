@@ -18,8 +18,8 @@ public class CSharp15LanguageFeatureTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(Evaluate(new LoginFailure("bad-password")), Is.EqualTo("bad-password"));
-            Assert.That(Evaluate(new ServerCrash("panic")), Is.EqualTo("panic"));
+            Assert.That(Evaluate(new TestStopReason("bad-password")), Is.EqualTo("bad-password"));
+            Assert.That(Evaluate(new TestStopReason(42)), Is.EqualTo("42"));
         });
     }
 
@@ -38,8 +38,8 @@ public class CSharp15LanguageFeatureTests
 
     private static string Evaluate(TestStopReason reason) => reason switch
     {
-        LoginFailure failure => (string)failure.Value,
-        ServerCrash crash => (string)crash.Value,
+        { Value: string s } => s,
+        { Value: int i } => i.ToString(),
     };
 
     private static string Describe(TestMachineState state) => state switch
@@ -48,37 +48,23 @@ public class CSharp15LanguageFeatureTests
         FaultedState faulted => faulted.Name,
     };
 
+#pragma warning disable CS0436 // The compiler-reserved union types are intentionally polyfilled in every assembly.
+
     [System.Runtime.CompilerServices.Union]
-    public abstract partial class TestStopReason : System.Runtime.CompilerServices.IUnion
+    private partial class TestStopReason : System.Runtime.CompilerServices.IUnion
     {
-        public abstract object? Value { get; }
+        public TestStopReason(string value) => this.Value = value;
+
+        public TestStopReason(int value) => this.Value = value;
+
+        public object? Value { get; }
     }
 
-    public sealed class LoginFailure : TestStopReason
-    {
-        public LoginFailure(string value)
-        {
-            this.Value = value;
-        }
-
-        public override object? Value { get; }
-    }
-
-    public sealed class ServerCrash : TestStopReason
-    {
-        public ServerCrash(string value)
-        {
-            this.Value = value;
-        }
-
-        public override object? Value { get; }
-    }
-
-    public closed class TestMachineState
+    closed private class TestMachineState
     {
     }
 
-    public sealed class RunningState : TestMachineState
+    private sealed class RunningState : TestMachineState
     {
         public RunningState(string name)
         {
@@ -88,7 +74,7 @@ public class CSharp15LanguageFeatureTests
         public string Name { get; }
     }
 
-    public sealed class FaultedState : TestMachineState
+    private sealed class FaultedState : TestMachineState
     {
         public FaultedState(string name)
         {
@@ -97,4 +83,5 @@ public class CSharp15LanguageFeatureTests
 
         public string Name { get; }
     }
+#pragma warning restore CS0436
 }

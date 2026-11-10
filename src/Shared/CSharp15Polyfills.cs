@@ -4,6 +4,7 @@
 
 #pragma warning disable SA1402 // File may only contain a single type; these compiler-required polyfills are intentionally shared in one included file.
 #pragma warning disable SA1649 // File name should match first type name; the source is intentionally shared across all assemblies.
+#pragma warning disable CS0436 // The compiler polyfill types are intentionally duplicated across assemblies to satisfy the C# 15 contract while keeping the runtime on net10.0.
 
 namespace System.Runtime.CompilerServices;
 
@@ -59,3 +60,5 @@ internal sealed class IsClosedTypeAttribute : Attribute
     /// </summary>
     public Type[]? DerivedTypes { get; set; }
 }
+
+#pragma warning restore CS0436
