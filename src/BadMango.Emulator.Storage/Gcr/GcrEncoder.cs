@@ -24,7 +24,7 @@ public static class GcrEncoder
     /// <summary>
     /// Standard nibble-stream length per track for 16-sector 5.25" media.
     /// </summary>
-    public const int StandardTrackLength = 6656;
+    public const int StandardTrackLength = SectorSkew.SectorsPerTrack * EncodedSectorStride;
 
     /// <summary>
     /// Number of decoded user-data bytes per sector.
