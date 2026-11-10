@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 /// <summary>
 /// Language Card device providing 16KB of bank-switched RAM at $D000-$FFFF.
@@ -31,7 +32,7 @@ using BadMango.Emulator.Bus.Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("languagecard")]
-public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState, IHardResetMemory
+public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider, ILanguageCardState, IHardResetMemory, IResetReceiver
 {
     /// <summary>
     /// The name of the Language Card RAM layer for $E000-$FFFF.
@@ -364,6 +365,24 @@ public sealed class LanguageCardDevice : IMotherboardDevice, ISoftSwitchProvider
         lastReadOffset = 0;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void OnResetAsserted(Cycle cycle)
+    {
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The bank switches live in the MMU, which is not connected to RESET'. The MMU recognizes a reset by
+    /// the 6502's reset fingerprint (three page-1 stack accesses followed by the <c>$FFFC</c>
+    /// vector fetch) and only then resets its switches (Sather, <i>Understanding the Apple IIe</i>,
+    /// pp. 4-14 to 4-15). In this model that is the release of the RESET line, just before the CPU
+    /// fetches the vector, so the switches are reset on release rather than on assertion.
+    /// </remarks>
+    public void OnResetReleased(Cycle cycle)
+    {
+        Reset();
     }
 
     /// <inheritdoc />

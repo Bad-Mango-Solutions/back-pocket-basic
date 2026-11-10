@@ -30,6 +30,16 @@ public abstract class CpuTestBase
     protected Cpu65C02 Cpu { get; private set; } = null!;
 
     /// <summary>
+    /// Gets the scheduler.
+    /// </summary>
+    protected Scheduler Scheduler { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the signal bus.
+    /// </summary>
+    protected SignalBus Signals { get; private set; } = null!;
+
+    /// <summary>
     /// Sets up the bus-based test infrastructure.
     /// </summary>
     [SetUp]
@@ -52,9 +62,9 @@ public abstract class CpuTestBase
         Bus = mainBus;
 
         // Create event context and CPU
-        var scheduler = new Scheduler();
-        var signalBus = new SignalBus();
-        var eventContext = new EventContext(scheduler, signalBus, mainBus);
+        Scheduler = new Scheduler();
+        Signals = new SignalBus();
+        var eventContext = new EventContext(Scheduler, Signals, mainBus);
         Cpu = new(eventContext);
     }
 

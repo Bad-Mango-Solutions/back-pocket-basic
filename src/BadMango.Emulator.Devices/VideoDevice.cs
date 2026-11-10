@@ -51,7 +51,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("video")]
-public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
+public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetReceiver
 {
     /// <summary>
     /// Cycles per video frame for NTSC timing (~60 Hz).
@@ -75,6 +75,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     private IExtended80ColumnDevice? extended80ColumnDevice;
     private EventHandle vblankEventHandle;
     private EventHandle vblankEndEventHandle;
+    private bool vblankStartScheduled;
+    private bool vblankEndScheduled;
+    private Core.Cycle vblankStartDue;
+    private Core.Cycle vblankEndDue;
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -200,11 +204,7 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     public void Reset()
     {
         // Cancel any pending VBlank events
-        if (scheduler != null)
-        {
-            scheduler.Cancel(vblankEventHandle);
-            scheduler.Cancel(vblankEndEventHandle);
-        }
+        CancelVBlankEvents();
 
         textMode = true;
         mixedMode = false;
@@ -219,6 +219,56 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         ScheduleNextVBlank();
 
         OnModeChanged();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The video soft switches live in the IOU, which is wired to RESET'. Sather,
+    /// <i>Understanding the Apple IIe</i>, Table 7.1 (p. 7-5), "condition after RESET'":
+    /// 80STORE, 80COL, ALTCHRSET, PAGE2, HIRES and AN0–AN3 are reset off; TEXT and MIXED are
+    /// "NA" (not affected — the IOU only initializes them at power-up). 80STORE and ALTCHRSET are
+    /// held by the 80-column and character devices; this device resets PAGE2, HIRES, 80COL and
+    /// the annunciators, and leaves TEXT and MIXED as they were.
+    /// </para>
+    /// <para>
+    /// The video timing is not reset by RESET'. The machine flushes the scheduler when RESET is
+    /// asserted, which removes the pending VBlank edge, so the next edge is re-armed here at its
+    /// original cycle, keeping the frame phase (and <c>RDVBL</c>) intact.
+    /// </para>
+    /// </remarks>
+    public void OnResetAsserted(Core.Cycle cycle)
+    {
+        bool wasStartScheduled = vblankStartScheduled;
+        bool wasEndScheduled = vblankEndScheduled;
+
+        // The flush already dropped these events; forget the handles rather than cancel them.
+        vblankStartScheduled = false;
+        vblankEndScheduled = false;
+
+        if (scheduler != null)
+        {
+            if (wasEndScheduled)
+            {
+                ScheduleVBlankEnd(vblankEndDue);
+            }
+            else if (wasStartScheduled)
+            {
+                ScheduleVBlankStart(vblankStartDue);
+            }
+        }
+
+        page2 = false;
+        hiresMode = false;
+        col80Mode = false;
+        Array.Clear(annunciators);
+
+        OnModeChanged();
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Core.Cycle cycle)
+    {
     }
 
     /// <summary>
@@ -591,12 +641,61 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         }
 
         // Schedule the start of VBlank
-        vblankEventHandle = scheduler.ScheduleAfter(
-            new Core.Cycle(CyclesPerFrame - VBlankDurationCycles),
+        ScheduleVBlankStart(scheduler.Now + new Core.Cycle(CyclesPerFrame - VBlankDurationCycles));
+    }
+
+    private void ScheduleVBlankStart(Core.Cycle due)
+    {
+        if (scheduler == null)
+        {
+            return;
+        }
+
+        vblankStartDue = due < scheduler.Now ? scheduler.Now : due;
+        vblankEventHandle = scheduler.ScheduleAt(
+            vblankStartDue,
             ScheduledEventKind.VideoBlank,
             priority: 0,
             OnVBlankStart,
             tag: this);
+        vblankStartScheduled = true;
+    }
+
+    private void ScheduleVBlankEnd(Core.Cycle due)
+    {
+        if (scheduler == null)
+        {
+            return;
+        }
+
+        vblankEndDue = due < scheduler.Now ? scheduler.Now : due;
+        vblankEndEventHandle = scheduler.ScheduleAt(
+            vblankEndDue,
+            ScheduledEventKind.VideoBlank,
+            priority: 0,
+            OnVBlankEnd,
+            tag: this);
+        vblankEndScheduled = true;
+    }
+
+    private void CancelVBlankEvents()
+    {
+        if (scheduler == null)
+        {
+            return;
+        }
+
+        if (vblankStartScheduled)
+        {
+            scheduler.Cancel(vblankEventHandle);
+            vblankStartScheduled = false;
+        }
+
+        if (vblankEndScheduled)
+        {
+            scheduler.Cancel(vblankEndEventHandle);
+            vblankEndScheduled = false;
+        }
     }
 
     /// <summary>
@@ -605,6 +704,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <param name="context">The event context.</param>
     private void OnVBlankStart(IEventContext context)
     {
+        vblankStartScheduled = false;
+
         // Assert vertical blanking status
         verticalBlanking = true;
 
@@ -613,12 +714,7 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         // on and stop the VBlank cadence (no OnVBlankEnd means no next start).
         if (scheduler != null)
         {
-            vblankEndEventHandle = scheduler.ScheduleAfter(
-                new Core.Cycle(VBlankDurationCycles),
-                ScheduledEventKind.VideoBlank,
-                priority: 0,
-                OnVBlankEnd,
-                tag: this);
+            ScheduleVBlankEnd(scheduler.Now + new Core.Cycle(VBlankDurationCycles));
         }
 
         // Notify listeners (video window should refresh)
@@ -631,6 +727,8 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
     /// <param name="context">The event context.</param>
     private void OnVBlankEnd(IEventContext context)
     {
+        vblankEndScheduled = false;
+
         // Clear vertical blanking status
         verticalBlanking = false;
 

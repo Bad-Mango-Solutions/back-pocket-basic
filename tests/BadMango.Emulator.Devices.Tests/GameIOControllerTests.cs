@@ -209,6 +209,24 @@ public class GameIOControllerTests
     }
 
     /// <summary>
+    /// Verifies that RESET signal assert preserves held button and paddle position state.
+    /// </summary>
+    [Test]
+    public void OnResetAsserted_PreservesButtonsAndPaddles()
+    {
+        controller.SetButton(0, true);
+        controller.SetPaddle(0, 128);
+
+        controller.OnResetAsserted(0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.Buttons[0], Is.True);
+            Assert.That(controller.Paddles[0], Is.EqualTo(128));
+        });
+    }
+
+    /// <summary>
     /// Verifies that side-effect-free reads don't trigger paddles.
     /// </summary>
     [Test]

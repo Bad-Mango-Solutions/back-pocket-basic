@@ -29,6 +29,11 @@ public enum ScheduledEventKind
     VideoBlank,
 
     /// <summary>Represents a scheduled event for deferred work.</summary>
+    /// <remarks>
+    /// Deferred work is host-initiated work queued for the next scheduler turn, such as a
+    /// disk insert or eject applied at a safe byte boundary. It is not machine state, so it
+    /// survives the RESET flush (<see cref="Interfaces.IScheduler.FlushPending"/>).
+    /// </remarks>
     DeferredWork,
 
     /// <summary>Represents a custom scheduled event.</summary>
