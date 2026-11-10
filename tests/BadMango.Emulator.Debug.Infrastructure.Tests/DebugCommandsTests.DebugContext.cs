@@ -14,7 +14,7 @@ using Moq;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that DebugContext reports system attached correctly.
     /// </summary>
     [Test]

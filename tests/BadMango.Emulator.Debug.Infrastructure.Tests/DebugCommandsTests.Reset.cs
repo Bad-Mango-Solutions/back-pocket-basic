@@ -14,7 +14,7 @@ using Moq;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that ResetCommand has correct name.
     /// </summary>
     [Test]

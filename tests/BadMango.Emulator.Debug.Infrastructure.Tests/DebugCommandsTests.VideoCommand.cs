@@ -16,7 +16,7 @@ using Moq;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies video open passes the current machine in context.
     /// </summary>
     [Test]

@@ -11,7 +11,7 @@ public partial class DebugCommandsTests
 {
     // ─── BreakCommand path resolution ────────────────────────────────────────
 
-    /// <content>
+    /// <summary>
     /// Verifies that bp save resolves library:// paths via the path resolver.
     /// </summary>
     [Test]

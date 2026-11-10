@@ -9,7 +9,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Gets a platform-appropriate test library root path for LoadSave tests.
     /// </summary>
     private static string TestLibraryRootForLoadSave => OperatingSystem.IsWindows()

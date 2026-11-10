@@ -13,7 +13,7 @@ using Core.Cpu;
 /// </content>
 public static partial class Instructions
 {
-    /// <content>
+    /// <summary>
     /// JMP - Jump instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (Absolute or Indirect).</param>

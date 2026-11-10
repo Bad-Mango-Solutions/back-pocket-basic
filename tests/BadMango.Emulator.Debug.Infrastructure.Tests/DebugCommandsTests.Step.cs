@@ -9,7 +9,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that StepCommand has correct name.
     /// </summary>
     [Test]

@@ -9,7 +9,7 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that LastHitValue is populated after a watched address is read.
     /// </summary>
     [Test]

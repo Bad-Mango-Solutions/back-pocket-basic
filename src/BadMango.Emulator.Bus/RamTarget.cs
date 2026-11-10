@@ -68,40 +68,40 @@ public sealed class RamTarget : IBusTarget
     public uint Size => (uint)memory.Length;
 
     /// <inheritdoc />
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
-        return memory.Span[(int)physicalAddress];
+        return memory.Span[(int)offset];
     }
 
     /// <inheritdoc />
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
-        memory.Span[(int)physicalAddress] = value;
+        memory.Span[(int)offset] = value;
     }
 
     /// <summary>
     /// Reads a 16-bit word from the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to read from.</param>
+    /// <param name="offset">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 16-bit value at the address (little-endian).</returns>
-    public Word Read16(Addr physicalAddress, in BusAccess access)
+    public Word Read16(Addr offset, in BusAccess access)
     {
         var span = memory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         return (Word)(span[index] | (span[index + 1] << 8));
     }
 
     /// <summary>
     /// Writes a 16-bit word to the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to write to.</param>
+    /// <param name="offset">The physical address to write to.</param>
     /// <param name="value">The 16-bit value to write (little-endian).</param>
     /// <param name="access">The access context.</param>
-    public void Write16(Addr physicalAddress, Word value, in BusAccess access)
+    public void Write16(Addr offset, Word value, in BusAccess access)
     {
         var span = memory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         span[index] = (byte)value;
         span[index + 1] = (byte)(value >> 8);
     }
@@ -109,13 +109,13 @@ public sealed class RamTarget : IBusTarget
     /// <summary>
     /// Reads a 32-bit double word from the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to read from.</param>
+    /// <param name="offset">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 32-bit value at the address (little-endian).</returns>
-    public DWord Read32(Addr physicalAddress, in BusAccess access)
+    public DWord Read32(Addr offset, in BusAccess access)
     {
         var span = memory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         return (DWord)(
             span[index] |
             (span[index + 1] << 8) |
@@ -126,13 +126,13 @@ public sealed class RamTarget : IBusTarget
     /// <summary>
     /// Writes a 32-bit double word to the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to write to.</param>
+    /// <param name="offset">The physical address to write to.</param>
     /// <param name="value">The 32-bit value to write (little-endian).</param>
     /// <param name="access">The access context.</param>
-    public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
+    public void Write32(Addr offset, DWord value, in BusAccess access)
     {
         var span = memory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         span[index] = (byte)value;
         span[index + 1] = (byte)(value >> 8);
         span[index + 2] = (byte)(value >> 16);

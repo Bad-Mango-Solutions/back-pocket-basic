@@ -16,7 +16,7 @@ using BadMango.Emulator.Debug.Infrastructure.Commands;
 /// </remarks>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that MemCommand shows faults for unmapped addresses.
     /// </summary>
     [Test]

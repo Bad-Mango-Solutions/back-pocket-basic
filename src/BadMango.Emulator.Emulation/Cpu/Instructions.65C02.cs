@@ -12,7 +12,7 @@ using Core.Cpu;
 /// </content>
 public static partial class Instructions
 {
-    /// <content>
+    /// <summary>
     /// STZ - Store Zero instruction (65C02 specific).
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

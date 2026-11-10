@@ -15,7 +15,7 @@ using Moq;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that DeviceMapCommand has correct name.
     /// </summary>
     [Test]

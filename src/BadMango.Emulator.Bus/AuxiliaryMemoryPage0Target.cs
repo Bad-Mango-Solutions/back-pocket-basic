@@ -102,18 +102,18 @@ public sealed class AuxiliaryMemoryPage0Target : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek | TargetCaps.SupportsPoke;
 
     /// <inheritdoc />
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
-        int offset = (int)(physicalAddress & 0x0FFF);
-        var (target, targetOffset) = ResolveReadTarget(offset);
+        int maskedOffset = (int)(offset & 0x0FFF);
+        var (target, targetOffset) = ResolveReadTarget(maskedOffset);
         return target.Read8((Addr)targetOffset, in access);
     }
 
     /// <inheritdoc />
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
-        int offset = (int)(physicalAddress & 0x0FFF);
-        var (target, targetOffset) = ResolveWriteTarget(offset);
+        int maskedOffset = (int)(offset & 0x0FFF);
+        var (target, targetOffset) = ResolveWriteTarget(maskedOffset);
         target.Write8((Addr)targetOffset, value, in access);
     }
 

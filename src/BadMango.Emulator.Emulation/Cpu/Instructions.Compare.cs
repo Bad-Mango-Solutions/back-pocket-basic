@@ -12,7 +12,7 @@ using Core.Cpu;
 /// </content>
 public static partial class Instructions
 {
-    /// <content>
+    /// <summary>
     /// CMP - Compare Accumulator instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use.</param>

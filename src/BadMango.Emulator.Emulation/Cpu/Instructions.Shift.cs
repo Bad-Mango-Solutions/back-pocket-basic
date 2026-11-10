@@ -12,7 +12,7 @@ using Core.Cpu;
 /// </content>
 public static partial class Instructions
 {
-    /// <content>
+    /// <summary>
     /// ASLa - Arithmetic Shift Left Accumulator instruction.
     /// </summary>
     /// <param name="addressingMode">The addressing mode function to use (must be Accumulator).</param>

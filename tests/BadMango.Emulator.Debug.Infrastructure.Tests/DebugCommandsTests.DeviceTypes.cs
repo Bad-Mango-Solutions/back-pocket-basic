@@ -11,7 +11,7 @@ using BadMango.Emulator.Devices;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that <see cref="DeviceTypesCommand"/> exposes the expected name.
     /// </summary>
     [Test]

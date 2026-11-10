@@ -11,7 +11,7 @@ using BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 /// </content>
 public partial class DebugCommandsTests
 {
-    /// <content>
+    /// <summary>
     /// Verifies that CharacterMapCommand has correct name.
     /// </summary>
     [Test]

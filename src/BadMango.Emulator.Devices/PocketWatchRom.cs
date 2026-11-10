@@ -67,11 +67,11 @@ internal sealed class PocketWatchRom : IBusTarget
     public TargetCaps Capabilities => TargetCaps.SupportsPeek;
 
     /// <inheritdoc />
-    public byte Read8(uint physicalAddress, in BusAccess access)
-        => romData[physicalAddress & 0xFF];
+    public byte Read8(uint offset, in BusAccess access)
+        => romData[offset & 0xFF];
 
     /// <inheritdoc />
-    public void Write8(uint physicalAddress, byte value, in BusAccess access)
+    public void Write8(uint offset, byte value, in BusAccess access)
     {
         // ROM is read-only
     }
