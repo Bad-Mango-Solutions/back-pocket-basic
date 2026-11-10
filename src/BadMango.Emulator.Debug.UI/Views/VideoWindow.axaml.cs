@@ -81,6 +81,7 @@ public partial class VideoWindow : Window
     private bool characterRomUpdatePending;
     private int vblankPending;
     private volatile bool snapshotValid;
+    private volatile bool isClosed;
 
     private int scale = 2;
     private bool showFps;
@@ -212,6 +213,10 @@ public partial class VideoWindow : Window
     public void AttachMachine(IMachine machine)
     {
         ArgumentNullException.ThrowIfNull(machine);
+        if (isClosed)
+        {
+            return;
+        }
 
         var previousVideoDevice = videoDevice;
 
@@ -314,6 +319,11 @@ public partial class VideoWindow : Window
     /// </remarks>
     public void ForceRedraw()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         if (Dispatcher.UIThread.CheckAccess())
         {
             RedrawFromCurrentMemory();
@@ -507,6 +517,11 @@ public partial class VideoWindow : Window
     /// </remarks>
     private void OnCharacterRomChanged()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         // Mark that we need to update the character ROM on the next render
         characterRomUpdatePending = true;
     }
@@ -520,6 +535,8 @@ public partial class VideoWindow : Window
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
+        isClosed = true;
+        DetachMachine();
         fpsTimer.Stop();
         fpsStopwatch.Stop();
         pixelBuffer.Dispose();
@@ -544,6 +561,11 @@ public partial class VideoWindow : Window
     /// </remarks>
     private void OnVBlankOccurred()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         Interlocked.Increment(ref vblankCount);
 
         // Capture display memory snapshot on the emulator thread while CPU is paused.
@@ -630,6 +652,10 @@ public partial class VideoWindow : Window
     private void ProcessVBlankFrame()
     {
         Interlocked.Exchange(ref vblankPending, 0);
+        if (isClosed)
+        {
+            return;
+        }
 
         // Update flash state
         flashFrameCounter++;
@@ -669,6 +695,11 @@ public partial class VideoWindow : Window
     /// </summary>
     private void RedrawFromCurrentMemory()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         try
         {
             CaptureDisplaySnapshot();
@@ -723,6 +754,11 @@ public partial class VideoWindow : Window
 
     private void RenderFrame()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         var pixels = pixelBuffer.GetPixels();
 
         if (memoryBus is null || videoDevice is null)
