@@ -89,6 +89,10 @@ public interface IMachine : IEventContext
     /// <summary>
     /// Resets the machine by asserting the RESET signal.
     /// </summary>
+    /// <param name="hardReset">
+    /// When <see langword="true"/>, clears all registered hard-reset RAM backing stores
+    /// before device and CPU reset. When <see langword="false"/>, preserves RAM contents.
+    /// </param>
     /// <remarks>
     /// <para>
     /// Reset transitions the machine to <see cref="MachineState.Stopped"/> and
@@ -100,7 +104,7 @@ public interface IMachine : IEventContext
     /// from the reset handler address.
     /// </para>
     /// </remarks>
-    void Reset();
+    void Reset(bool hardReset = false);
 
     /// <summary>
     /// Starts continuous execution.

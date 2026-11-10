@@ -15,6 +15,10 @@ using BadMango.Emulator.Devices;
 using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
 
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+
 using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDevice;
 
 /// <summary>
@@ -177,6 +181,65 @@ public class VideoWindowTests
     {
         var window = new VideoWindow();
         Assert.DoesNotThrow(() => window.DetachMachine());
+    }
+
+    /// <summary>
+    /// Verifies closing the window detaches VBlank handlers and prevents error logging on future VBlank events.
+    /// </summary>
+    [AvaloniaTest]
+    public void CloseWindow_DetachesVBlankHandler_AndFutureVBlankLogsNoError()
+    {
+        var sink = new TestLogEventSink();
+        using var logger = new LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
+        var window = new VideoWindow(logger);
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(out _, out var mockVideoDevice);
+
+        window.AttachMachine(mockMachine.Object);
+        InvokeWindowClosed(window);
+
+        mockVideoDevice.VerifyAdd(v => v.VBlankOccurred += It.IsAny<Action>(), Times.Once);
+        mockVideoDevice.VerifyRemove(v => v.VBlankOccurred -= It.IsAny<Action>(), Times.Once);
+        Assert.DoesNotThrow(() => mockVideoDevice.Raise(v => v.VBlankOccurred += null));
+        Assert.That(sink.GetEventCount(LogEventLevel.Error), Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies a queued VBlank frame that runs after close exits early without logging render errors.
+    /// </summary>
+    [AvaloniaTest]
+    public void ProcessVBlankFrame_AfterClose_DoesNotLogError()
+    {
+        var sink = new TestLogEventSink();
+        using var logger = new LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
+        var window = new VideoWindow(logger);
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(out _, out _);
+        var pendingField = typeof(VideoWindow).GetField(
+            "vblankPending",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var processMethod = typeof(VideoWindow).GetMethod(
+            "ProcessVBlankFrame",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        window.AttachMachine(mockMachine.Object);
+        pendingField!.SetValue(window, 1);
+        InvokeWindowClosed(window);
+
+        Assert.DoesNotThrow(() => processMethod!.Invoke(window, null));
+        Assert.That(sink.GetEventCount(LogEventLevel.Error), Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Verifies attaching a closed window is a no-op and does not subscribe to VBlank.
+    /// </summary>
+    [AvaloniaTest]
+    public void AttachMachine_AfterClose_DoesNotSubscribeToVBlank()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithMainMemoryProvider(out _, out var mockVideoDevice);
+
+        InvokeWindowClosed(window);
+        Assert.DoesNotThrow(() => window.AttachMachine(mockMachine.Object));
+        mockVideoDevice.VerifyAdd(v => v.VBlankOccurred += It.IsAny<Action>(), Times.Never);
     }
 
     /// <summary>
@@ -959,6 +1022,18 @@ public class VideoWindowTests
     }
 
     /// <summary>
+    /// Raises the window closed handler.
+    /// </summary>
+    /// <param name="window">The window.</param>
+    private static void InvokeWindowClosed(VideoWindow window)
+    {
+        var closedMethod = typeof(VideoWindow).GetMethod(
+            "OnWindowClosed",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        closedMethod!.Invoke(window, [null, EventArgs.Empty]);
+    }
+
+    /// <summary>
     /// Creates a mock machine whose main memory provider exposes a writable physical RAM.
     /// </summary>
     /// <param name="mode">The video mode reported by the video device.</param>
@@ -1060,6 +1135,27 @@ public class VideoWindowTests
         mockMachine.Setup(m => m.GetComponent<EmulatorKeyboardDevice>()).Returns((EmulatorKeyboardDevice?)null);
 
         return mockMachine;
+    }
+
+    private sealed class TestLogEventSink : ILogEventSink
+    {
+        private readonly List<LogEvent> events = [];
+
+        public void Emit(LogEvent logEvent)
+        {
+            lock (events)
+            {
+                events.Add(logEvent);
+            }
+        }
+
+        public int GetEventCount(LogEventLevel level)
+        {
+            lock (events)
+            {
+                return events.Count(e => e.Level == level);
+            }
+        }
     }
 
     #endregion

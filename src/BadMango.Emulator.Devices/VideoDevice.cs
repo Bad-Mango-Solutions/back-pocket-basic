@@ -180,7 +180,10 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
         ArgumentNullException.ThrowIfNull(context);
 
         scheduler = context.Scheduler;
-        videoFrameStartCycle = scheduler.Now;
+        if (scheduler is not null)
+        {
+            videoFrameStartCycle = scheduler.Now;
+        }
 
         // Get the Extended 80-Column Device if present, to synchronize PAGE2/HIRES state
         extended80ColumnDevice = context.GetComponent<IExtended80ColumnDevice>();

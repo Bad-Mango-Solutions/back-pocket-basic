@@ -6,36 +6,41 @@ namespace BadMango.Emulator.Storage.FileSystems;
 
 /// <summary>
 /// Represents a high-level view of an Apple II file system on a disk volume.
-/// Supports listing directories and reading files for debug/MCP use.
-/// Implementations exist for DOS 3.3, ProDOS, and Pascal.
+/// Supports listing directories and reading files for debug and MCP use.
 /// </summary>
 public interface IAppleFileSystem
 {
     /// <summary>
-    /// The name of the volume (if available).
+    /// Gets the name of the volume, if it can be determined.
     /// </summary>
     string VolumeName { get; }
 
     /// <summary>
-    /// Human-readable file system type (e.g. "DOS 3.3", "ProDOS 8", "Pascal").
+    /// Gets the human-readable file system type name.
     /// </summary>
     string FileSystemType { get; }
 
     /// <summary>
-    /// Lists entries in the root or specified directory.
-    /// Path syntax is FS-specific ("/" or "" for root, names case-insensitive for most).
+    /// Lists the contents of the root or a specified directory.
     /// </summary>
+    /// <param name="path">The directory path to query; empty or "/" indicates the root.</param>
+    /// <returns>The file entries contained in the directory.</returns>
     IReadOnlyList<FileEntry> ListDirectory(string path = "");
 
     /// <summary>
-    /// Reads the entire contents of a file as bytes.
-    /// Throws if not found or unreadable.
+    /// Reads a file from the volume as raw bytes.
     /// </summary>
+    /// <param name="path">The path of the file to read.</param>
+    /// <returns>The file contents as a byte array.</returns>
+    /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
     byte[] ReadFile(string path);
 
     /// <summary>
-    /// Tries to read a file; returns false on failure.
+    /// Attempts to read a file from the volume.
     /// </summary>
+    /// <param name="path">The path of the file to read.</param>
+    /// <param name="data">When this method returns <see langword="true"/>, contains the file contents; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the file was read; otherwise, <see langword="false"/>.</returns>
     bool TryReadFile(string path, out byte[]? data);
 }
 
@@ -44,12 +49,36 @@ public interface IAppleFileSystem
 /// </summary>
 public sealed class FileEntry
 {
-    public string Name { get; init; } = "";
-    public string Type { get; init; } = "";
+    /// <summary>
+    /// Gets the entry name.
+    /// </summary>
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets the file type tag for the entry.
+    /// </summary>
+    public string Type { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets the entry size in bytes.
+    /// </summary>
     public int Size { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the entry is locked.
+    /// </summary>
     public bool IsLocked { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the entry is a directory.
+    /// </summary>
     public bool IsDirectory { get; init; }
+
+    /// <summary>
+    /// Gets the full path of the entry, if known.
+    /// </summary>
     public string? FullPath { get; init; }
 
-    public override string ToString() => $"{Name} ({Type}, {Size} bytes{(IsLocked ? ", locked" : "")})";
+    /// <inheritdoc />
+    public override string ToString() => $"{Name} ({Type}, {Size} bytes{(IsLocked ? ", locked" : string.Empty)})";
 }

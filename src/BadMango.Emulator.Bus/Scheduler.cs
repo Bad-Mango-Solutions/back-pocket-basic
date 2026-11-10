@@ -307,6 +307,7 @@ public sealed class Scheduler : IScheduler, ISchedulerObserver
                     catch (Exception ex)
                     {
                         System.Console.Error.WriteLine($"[SCHED CALLBACK ERR] Kind={ev.Kind} method={ev.Callback?.Method?.Name} ex={ex.Message}");
+                        throw;
                     }
 
                     EventConsumed?.Invoke(ev.Handle, now, ev.Kind);

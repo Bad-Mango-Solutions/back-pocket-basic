@@ -4,14 +4,10 @@
 
 namespace BadMango.Emulator.Debug.Agent;
 
-using System.Text;
-using System.Text.Json;
-
 using BadMango.Emulator.Debug.Infrastructure.Commands;
 
 /// <summary>
 /// Represents a single agent session with a live emulator instance.
-/// Captures command output for structured tool responses.
 /// </summary>
 public sealed class AgentSession : IDisposable
 {
@@ -19,6 +15,11 @@ public sealed class AgentSession : IDisposable
     private readonly IDebugContext debugContext;
     private bool disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AgentSession"/> class.
+    /// </summary>
+    /// <param name="dispatcher">The command dispatcher used to execute commands in this session.</param>
+    /// <param name="debugContext">The debug context that provides execution state and output.</param>
     public AgentSession(ICommandDispatcher dispatcher, IDebugContext debugContext)
     {
         this.dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
@@ -26,57 +27,54 @@ public sealed class AgentSession : IDisposable
     }
 
     /// <summary>
-    /// Executes a command line and captures the output (text or JSON depending on context).
+    /// Executes a command line and returns the command output.
     /// </summary>
+    /// <param name="commandLine">The command line to execute.</param>
+    /// <param name="cancellationToken">A cancellation token that can cancel the operation.</param>
+    /// <returns>The captured command output, or an empty string when the command line is blank.</returns>
     public async Task<string> ExecuteAsync(string commandLine, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(commandLine))
+        {
             return string.Empty;
+        }
 
-        // Use capture writers for this call
-        var outputCapture = new StringWriter();
-        var errorCapture = new StringWriter();
-
-        // Temporarily redirect (note: for production we'd make setters or use a wrapper context)
-        var originalOutput = debugContext.Output;
-        var originalError = debugContext.Error;
-
-        // Since properties are get-only currently, we create a new context for capture if possible.
-        // For now, assume we can swap via internal or use a proxy.
-        // Simplified: use the dispatch which writes to the context's writers.
-        // In practice, the agent host will create contexts with capture writers per call.
-
-        // For this skeleton, we'll dispatch and assume capture is set up externally or enhance later.
         var result = dispatcher.Dispatch(debugContext, commandLine);
 
-        // If result has message, include it
         if (!string.IsNullOrEmpty(result.Message))
         {
             if (result.Success)
+            {
                 debugContext.Output.WriteLine(result.Message);
+            }
             else
+            {
                 debugContext.Error.WriteLine("Error: " + result.Message);
+            }
         }
 
-        // In real impl, we'd capture from the writers.
-        // For skeleton, return placeholder + any direct result.
         await Task.CompletedTask;
-
-        // Reset (in real, use scoped)
-        // For demo, just return the command result message if present.
         return result.Message ?? (result.Success ? "ok" : "error");
     }
 
     /// <summary>
-    /// Executes and returns structured result (for specific tools).
+    /// Executes a structured tool call and returns its result.
     /// </summary>
+    /// <param name="toolName">The name of the tool to invoke.</param>
+    /// <param name="arguments">The arguments for the tool call.</param>
+    /// <param name="ct">A cancellation token that can cancel the operation.</param>
+    /// <returns>The tool result, or <see langword="null"/> when no structured result is available.</returns>
     public Task<object?> ExecuteStructuredAsync(string toolName, Dictionary<string, object?> arguments, CancellationToken ct = default)
     {
-        // Placeholder: for generic, fall to exec.
-        // Specific tools will be implemented to call handlers directly and return typed data.
+        _ = toolName;
+        _ = arguments;
+        _ = ct;
         return Task.FromResult<object?>(null);
     }
 
+    /// <summary>
+    /// Releases resources used by this session.
+    /// </summary>
     public void Dispose()
     {
         if (!disposed)

@@ -711,6 +711,151 @@ public class Pocket2eIntegrationTests
     }
 
     /// <summary>
+    /// Verifies that soft reset preserves RAM contents while resetting device state and scheduler timeline.
+    /// </summary>
+    [Test]
+    public void Pocket2e_SoftReset_PreservesRamAndFlushesStaleEvents()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        var auxMemory = machine.GetComponent<AuxiliaryMemoryController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
+        var mainRam = machine.GetComponent<Pocket2eMachineBuilderExtensions.MainRamComponent>()!;
+        var auxRam = machine.GetComponent<Pocket2eMachineBuilderExtensions.AuxiliaryRamComponent>()!;
+
+        mainRam.Memory.AsSpan()[0x0200] = 0x5A;
+        auxRam.Memory.AsSpan()[0x0200] = 0xA5;
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Write8(0xD000, 0x11);
+
+        bool staleEventFired = false;
+        machine.Scheduler.ScheduleAfter(5, ScheduledEventKind.DeviceTimer, 0, _ => staleEventFired = true, "stale");
+
+        machine.Reset();
+        var cycleAfterReset = machine.Now.Value;
+        machine.Scheduler.JumpToNextEventAndDispatch();
+
+        var mainAfterReset = mainRam.Memory.AsReadOnlySpan()[0x0200];
+        var auxAfterReset = auxRam.Memory.AsReadOnlySpan()[0x0200];
+        var lcReadEnabledAfterReset = languageCard.IsRamReadEnabled;
+        var lcWriteEnabledAfterReset = languageCard.IsRamWriteEnabled;
+        var lcSelectedBankAfterReset = languageCard.SelectedBank;
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var lcBank1ValueAfterReset = machine.Cpu.Read8(0xD000);
+        machine.Cpu.Read8(0xC082);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cycleAfterReset, Is.EqualTo(0), "Soft reset should restart the scheduler timeline");
+            Assert.That(staleEventFired, Is.False, "Pre-reset scheduler events must be flushed");
+
+            Assert.That(mainAfterReset, Is.EqualTo(0x5A), "Main RAM should be preserved by soft reset");
+            Assert.That(auxAfterReset, Is.EqualTo(0xA5), "Aux RAM should be preserved by soft reset");
+            Assert.That(lcBank1ValueAfterReset, Is.EqualTo(0x11), "Language Card RAM should be preserved by soft reset");
+
+            Assert.That(auxMemory.Is80StoreEnabled, Is.False, "80STORE should return to reset default");
+            Assert.That(auxMemory.IsRamRdEnabled, Is.False, "RAMRD should return to reset default");
+            Assert.That(auxMemory.IsRamWrtEnabled, Is.False, "RAMWRT should return to reset default");
+            Assert.That(auxMemory.IsAltZpEnabled, Is.False, "ALTZP should return to reset default");
+            Assert.That(auxMemory.IsPage2Selected, Is.False, "PAGE2 should return to reset default");
+
+            Assert.That(lcReadEnabledAfterReset, Is.False, "Language Card should return to ROM-read default");
+            Assert.That(lcWriteEnabledAfterReset, Is.False, "Language Card writes should be disabled after reset");
+            Assert.That(lcSelectedBankAfterReset, Is.EqualTo(1), "Language Card should return to bank 1 after reset");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that hard reset clears all RAM backing stores and returns to ROM reset vector.
+    /// </summary>
+    [Test]
+    public void Pocket2e_HardReset_ClearsAllRamAndPreservesRom()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        var auxMemory = machine.GetComponent<AuxiliaryMemoryController>()!;
+        var languageCard = machine.GetComponent<LanguageCardDevice>()!;
+        var mainRam = machine.GetComponent<Pocket2eMachineBuilderExtensions.MainRamComponent>()!;
+        var auxRam = machine.GetComponent<Pocket2eMachineBuilderExtensions.AuxiliaryRamComponent>()!;
+
+        var romD000Before = machine.Cpu.Read8(0xD000);
+        var romResetVectorLowBefore = machine.Cpu.Read8(0xFFFC);
+        var romResetVectorHighBefore = machine.Cpu.Read8(0xFFFD);
+
+        mainRam.Memory.AsSpan()[0x0200] = 0x7E;
+        auxRam.Memory.AsSpan()[0x0200] = 0x81;
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Write8(0xD000, 0x44);
+        machine.Cpu.Write8(0xE000, 0x55);
+
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Read8(LcBank2RomRead);
+        machine.Cpu.Write8(0xD000, 0x66);
+
+        machine.Cpu.Read8(LcBank1RomWrite);
+
+        machine.Reset(hardReset: true);
+
+        var lcReadEnabledAfterReset = languageCard.IsRamReadEnabled;
+        var lcWriteEnabledAfterReset = languageCard.IsRamWriteEnabled;
+        var lcSelectedBankAfterReset = languageCard.SelectedBank;
+        var mainAfterHardReset = mainRam.Memory.AsReadOnlySpan()[0x0200];
+        var auxAfterHardReset = auxRam.Memory.AsReadOnlySpan()[0x0200];
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var lcBank1AfterHardReset = machine.Cpu.Read8(0xD000);
+
+        machine.Cpu.Read8(LcBank2RamWrite);
+        machine.Cpu.Read8(LcBank2RamWrite);
+        var lcBank2AfterHardReset = machine.Cpu.Read8(0xD000);
+        var lcHighAfterHardReset = machine.Cpu.Read8(0xE000);
+
+        machine.Cpu.Read8(0xC082);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.GetPC(), Is.EqualTo(0xFF00u), "Hard reset should fetch reset vector from ROM");
+
+            Assert.That(mainAfterHardReset, Is.EqualTo(0x00), "Main RAM should be cleared");
+            Assert.That(auxAfterHardReset, Is.EqualTo(0x00), "Aux RAM should be cleared");
+            Assert.That(lcBank1AfterHardReset, Is.EqualTo(0x00), "Language Card bank 1 RAM should be cleared");
+            Assert.That(lcBank2AfterHardReset, Is.EqualTo(0x00), "Language Card bank 2 RAM should be cleared");
+            Assert.That(lcHighAfterHardReset, Is.EqualTo(0x00), "Language Card high RAM should be cleared");
+
+            Assert.That(machine.Cpu.Read8(0xD000), Is.EqualTo(romD000Before), "ROM at $D000 should be unchanged");
+            Assert.That(machine.Cpu.Read8(0xFFFC), Is.EqualTo(romResetVectorLowBefore), "ROM reset-vector low byte should be unchanged");
+            Assert.That(machine.Cpu.Read8(0xFFFD), Is.EqualTo(romResetVectorHighBefore), "ROM reset-vector high byte should be unchanged");
+
+            Assert.That(auxMemory.Is80StoreEnabled, Is.False, "80STORE should return to reset default");
+            Assert.That(auxMemory.IsRamRdEnabled, Is.False, "RAMRD should return to reset default");
+            Assert.That(auxMemory.IsRamWrtEnabled, Is.False, "RAMWRT should return to reset default");
+            Assert.That(auxMemory.IsAltZpEnabled, Is.False, "ALTZP should return to reset default");
+            Assert.That(auxMemory.IsPage2Selected, Is.False, "PAGE2 should return to reset default");
+
+            Assert.That(lcReadEnabledAfterReset, Is.False, "Language Card should read ROM after reset");
+            Assert.That(lcWriteEnabledAfterReset, Is.False, "Language Card writes should be disabled after reset");
+            Assert.That(lcSelectedBankAfterReset, Is.EqualTo(1), "Language Card should return to bank 1 after reset");
+        });
+    }
+
+    /// <summary>
     /// Verifies that the scheduler advances cycles during execution.
     /// </summary>
     [Test]
@@ -1148,6 +1293,59 @@ public class Pocket2eIntegrationTests
         {
             Assert.That(bank1Value, Is.EqualTo(0x11), "Bank 1 RAM at $D000 must hold the Bank-1 split-mode write");
             Assert.That(bank2Value, Is.EqualTo(0x22), "Bank 2 RAM at $D000 must hold the Bank-2 split-mode write");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that selecting a different Language Card bank does not revoke RAM write
+    /// permission while write mode remains enabled.
+    /// </summary>
+    [Test]
+    public void LanguageCard_BankSelectRead_DoesNotRevokeWritePermission()
+    {
+        var machine = new MachineBuilder()
+            .AsPocket2e()
+            .WithStubRom()
+            .Build();
+
+        machine.Reset();
+
+        var writeAccess = CreateTestContext() with
+        {
+            Address = 0xD000,
+            Intent = AccessIntent.DataWrite,
+        };
+
+        var readAccess = CreateTestContext() with
+        {
+            Address = 0xD000,
+            Intent = AccessIntent.DataRead,
+        };
+
+        // Enter Bank 2 full RAM read/write mode and verify checked write succeeds.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        machine.Cpu.Read8(LcBank2RamWrite);
+        var bank2Write = machine.Bus.TryWrite8(writeAccess, 0x22);
+
+        // Select Bank 1 while RAM write mode remains enabled and verify checked write still succeeds.
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var bank1Write = machine.Bus.TryWrite8(writeAccess, 0x11);
+
+        // Read both banks back through checked read path.
+        machine.Cpu.Read8(LcBank2RamWrite);
+        var bank2Read = machine.Bus.TryRead8(readAccess);
+
+        machine.Cpu.Read8(LcBank1RamWrite);
+        var bank1Read = machine.Bus.TryRead8(readAccess);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bank2Write.Ok, Is.True, "Initial Bank 2 write at $D000 should succeed in $C083 mode");
+            Assert.That(bank1Write.Ok, Is.True, "Bank 1 write at $D000 should still succeed after bank-select read");
+            Assert.That(bank2Read.Ok, Is.True, "Checked read from Bank 2 should succeed");
+            Assert.That(bank1Read.Ok, Is.True, "Checked read from Bank 1 should succeed");
+            Assert.That(bank2Read.Value, Is.EqualTo(0x22), "Bank 2 should retain its write at $D000");
+            Assert.That(bank1Read.Value, Is.EqualTo(0x11), "Bank 1 should retain its write at $D000");
         });
     }
 
