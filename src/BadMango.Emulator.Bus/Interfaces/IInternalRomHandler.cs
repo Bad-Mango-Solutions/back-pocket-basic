@@ -28,6 +28,16 @@ namespace BadMango.Emulator.Bus.Interfaces;
 public interface IInternalRomHandler
 {
     /// <summary>
+    /// Gets a value indicating whether the INTCXROM (internal ROM overlay for $C100-$C7FF) is currently enabled.
+    /// </summary>
+    bool IsIntCxRomEnabled { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the INTC3ROM (internal ROM overlay for $C300-$C3FF) is currently enabled.
+    /// </summary>
+    bool IsIntC3RomEnabled { get; }
+
+    /// <summary>
     /// Sets the internal ROM target for INTCXROM/INTC3ROM switching.
     /// </summary>
     /// <param name="rom">

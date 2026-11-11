@@ -208,6 +208,18 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// <see langword="true"/> to enable internal ROM overlay for all slot ROMs;
     /// <see langword="false"/> to allow slot ROMs to be visible.
     /// </param>
+    public bool IsIntCxRomEnabled => intCxRomEnabled;
+
+    /// <inheritdoc />
+    public bool IsIntC3RomEnabled => intC3RomEnabled;
+
+    /// <summary>
+    /// Sets the INTCXROM state (internal ROM overlay for $x100-$xFFF).
+    /// </summary>
+    /// <param name="enabled">
+    /// <see langword="true"/> to enable internal ROM overlay for all slot ROMs;
+    /// <see langword="false"/> to allow slot ROMs to be visible.
+    /// </param>
     public void SetIntCxRom(bool enabled)
     {
         intCxRomEnabled = enabled;
