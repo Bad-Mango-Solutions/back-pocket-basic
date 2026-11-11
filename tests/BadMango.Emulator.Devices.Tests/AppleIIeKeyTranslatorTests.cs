@@ -119,40 +119,30 @@ public sealed class AppleIIeKeyTranslatorTests
     }
 
     /// <summary>
-    /// Verifies the control codes above <c>$1A</c> and Ctrl+@.
+    /// Verifies the control codes above <c>$1A</c> and Ctrl+@, with and without Shift and Caps Lock
+    /// (Apple IIe Technical Reference Manual, Table 2-3, Control and Both columns).
     /// </summary>
     /// <param name="key">The punctuation or digit key.</param>
-    /// <param name="modifiers">The active modifiers.</param>
+    /// <param name="modifiers">The active modifiers, always including Control.</param>
     /// <param name="expected">The expected control code.</param>
-    [TestCase(HostKey.OpenBracket, KeyboardModifiers.Control, 0x1B, TestName = "Ctrl+[ is $1B")]
-    [TestCase(HostKey.Backslash, KeyboardModifiers.Control, 0x1C, TestName = "Ctrl+\\ is $1C")]
-    [TestCase(HostKey.CloseBracket, KeyboardModifiers.Control, 0x1D, TestName = "Ctrl+] is $1D")]
-    [TestCase(HostKey.D2, KeyboardModifiers.Control | KeyboardModifiers.Shift, 0x00, TestName = "Ctrl+@ (Shift+2) is $00")]
-    [TestCase(HostKey.D6, KeyboardModifiers.Control | KeyboardModifiers.Shift, 0x1E, TestName = "Ctrl+^ (Shift+6) is $1E")]
-    [TestCase(HostKey.Minus, KeyboardModifiers.Control | KeyboardModifiers.Shift, 0x1F, TestName = "Ctrl+_ (Shift+Minus) is $1F")]
-    [TestCase(HostKey.OpenBracket, KeyboardModifiers.Control | KeyboardModifiers.Shift, 0x1B, TestName = "Ctrl+Shift+[ is still $1B")]
-    [TestCase(HostKey.D2, KeyboardModifiers.Control | KeyboardModifiers.Shift | KeyboardModifiers.CapsLock, 0x00, TestName = "Ctrl+@ ignores Caps Lock")]
+    [TestCaseSource(nameof(ControlPunctuationCases))]
     public void Translate_ControlPunctuation_GivesControlCode(HostKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies that Ctrl with a printable key that has no Apple IIe control code produces nothing.
-    /// In particular there are no invented codes for Ctrl+arrow keys.
+    /// Verifies that Control leaves every other digit and punctuation key unchanged, shifted or
+    /// not (for example Ctrl+1 is <c>1</c> and Ctrl+Shift+1 is <c>!</c>). There are no codes for
+    /// Ctrl+arrow keys either; special keys ignore Control.
     /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="modifiers">The active modifiers.</param>
-    [TestCase(HostKey.D1, KeyboardModifiers.Control)]
-    [TestCase(HostKey.D2, KeyboardModifiers.Control)]
-    [TestCase(HostKey.D6, KeyboardModifiers.Control)]
-    [TestCase(HostKey.Minus, KeyboardModifiers.Control)]
-    [TestCase(HostKey.Equals, KeyboardModifiers.Control)]
-    [TestCase(HostKey.Semicolon, KeyboardModifiers.Control)]
-    [TestCase(HostKey.Slash, KeyboardModifiers.Control | KeyboardModifiers.Shift)]
-    public void Translate_ControlWithUnmappedPrintable_ReturnsNull(HostKey key, KeyboardModifiers modifiers)
+    /// <param name="key">The digit or punctuation key.</param>
+    /// <param name="modifiers">The active modifiers, always including Control.</param>
+    /// <param name="expected">The expected character.</param>
+    [TestCaseSource(nameof(ControlUnchangedCases))]
+    public void Translate_ControlWithOtherPrintable_LeavesCodeUnchanged(HostKey key, KeyboardModifiers modifiers, char expected)
     {
-        Assert.That(translator.Translate(key, modifiers), Is.Null);
+        Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
@@ -258,6 +248,39 @@ public sealed class AppleIIeKeyTranslatorTests
             {
                 yield return new TestCaseData(key, modifiers, i + 1);
             }
+        }
+    }
+
+    private static IEnumerable<TestCaseData> ControlPunctuationCases()
+    {
+        (HostKey Key, int Code)[] controlKeys =
+        [
+            (HostKey.OpenBracket, 0x1B),
+            (HostKey.Backslash, 0x1C),
+            (HostKey.CloseBracket, 0x1D),
+            (HostKey.D2, 0x00),
+            (HostKey.D6, 0x1E),
+            (HostKey.Minus, 0x1F),
+        ];
+
+        foreach (var (key, code) in controlKeys)
+        {
+            foreach (var modifiers in AllShiftCapsControlCombinations().Where(m => m.HasFlag(KeyboardModifiers.Control)))
+            {
+                yield return new TestCaseData(key, modifiers, code);
+            }
+        }
+    }
+
+    private static IEnumerable<TestCaseData> ControlUnchangedCases()
+    {
+        var controlKeys = new HashSet<HostKey> { HostKey.OpenBracket, HostKey.Backslash, HostKey.CloseBracket, HostKey.D2, HostKey.D6, HostKey.Minus };
+        foreach (var (key, unshifted, shifted) in PrintableKeys.Where(p => !controlKeys.Contains(p.Key)))
+        {
+            yield return new TestCaseData(key, KeyboardModifiers.Control, unshifted);
+            yield return new TestCaseData(key, KeyboardModifiers.Control | KeyboardModifiers.CapsLock, unshifted);
+            yield return new TestCaseData(key, KeyboardModifiers.Control | KeyboardModifiers.Shift, shifted);
+            yield return new TestCaseData(key, KeyboardModifiers.Control | KeyboardModifiers.Shift | KeyboardModifiers.CapsLock, shifted);
         }
     }
 

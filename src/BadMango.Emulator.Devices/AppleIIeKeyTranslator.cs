@@ -15,9 +15,10 @@ namespace BadMango.Emulator.Devices;
 /// <item><description>Letters: uppercase when exactly one of Shift and Caps Lock is active, lowercase otherwise.</description></item>
 /// <item><description>Digits and punctuation: the US-layout shifted or unshifted legend. Caps Lock has no effect.</description></item>
 /// <item><description>
-/// Control: Ctrl+A..Z give <c>$01</c>-<c>$1A</c> regardless of Shift and Caps Lock; Ctrl+[ <c>$1B</c>,
-/// Ctrl+\ <c>$1C</c>, Ctrl+] <c>$1D</c>, Ctrl+@ (Shift+2) <c>$00</c>, Ctrl+^ (Shift+6) <c>$1E</c>,
-/// Ctrl+_ (Shift+Minus) <c>$1F</c>. Other printable keys produce nothing while Ctrl is held.
+/// Control: Ctrl+A..Z give <c>$01</c>-<c>$1A</c>; Ctrl+[ <c>$1B</c>, Ctrl+\ <c>$1C</c>, Ctrl+] <c>$1D</c>,
+/// Ctrl+2 (@) <c>$00</c>, Ctrl+6 (^) <c>$1E</c> and Ctrl+Minus (_) <c>$1F</c>, all regardless of Shift
+/// and Caps Lock. Control does not change any other key, so for example Ctrl+1 is <c>1</c> and
+/// Ctrl+Shift+1 is <c>!</c>. This follows the Apple IIe Technical Reference Manual, Table 2-3.
 /// </description></item>
 /// <item><description>
 /// Special keys ignore Shift, Caps Lock and Ctrl: Left <c>$08</c>, Right <c>$15</c>, Up <c>$0B</c>,
@@ -47,7 +48,11 @@ public sealed class AppleIIeKeyTranslator : IKeyTranslator
 
         if (modifiers.HasFlag(KeyboardModifiers.Control))
         {
-            return TranslateControl(key, shift);
+            byte? control = TranslateControl(key);
+            if (control.HasValue)
+            {
+                return control;
+            }
         }
 
         if (key is >= HostKey.A and <= HostKey.Z)
@@ -78,7 +83,7 @@ public sealed class AppleIIeKeyTranslator : IKeyTranslator
         };
     }
 
-    private static byte? TranslateControl(HostKey key, bool shift)
+    private static byte? TranslateControl(HostKey key)
     {
         if (key is >= HostKey.A and <= HostKey.Z)
         {
@@ -90,9 +95,9 @@ public sealed class AppleIIeKeyTranslator : IKeyTranslator
             HostKey.OpenBracket => 0x1B,
             HostKey.Backslash => 0x1C,
             HostKey.CloseBracket => 0x1D,
-            HostKey.D2 when shift => 0x00,
-            HostKey.D6 when shift => 0x1E,
-            HostKey.Minus when shift => 0x1F,
+            HostKey.D2 => 0x00,
+            HostKey.D6 => 0x1E,
+            HostKey.Minus => 0x1F,
             _ => null,
         };
     }
