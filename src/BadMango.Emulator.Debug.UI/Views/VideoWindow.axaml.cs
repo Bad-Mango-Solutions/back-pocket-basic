@@ -11,10 +11,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 
-using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 using BadMango.Emulator.Devices;
-using BadMango.Emulator.Devices.Interfaces;
 using BadMango.Emulator.Rendering;
 
 using Serilog;
@@ -26,8 +24,7 @@ using EmulatorKeyboardDevice = BadMango.Emulator.Devices.Interfaces.IKeyboardDev
 /// </summary>
 /// <remarks>
 /// <para>
-/// This window displays the emulated Pocket2e video output using the
-/// <see cref="IVideoRenderer"/> to convert emulated video memory to pixels.
+/// This window displays the latest produced emulator frame from an <see cref="IVideoFrameSource"/>.
 /// </para>
 /// <para>
 /// The window captures keyboard input and forwards it to the emulated
@@ -53,34 +50,14 @@ public partial class VideoWindow : Window
     /// </summary>
     private const int CanonicalHeight = 384;
 
-    /// <summary>
-    /// Number of frames between flash state toggles (~1.9 Hz at 60 fps).
-    /// </summary>
-    private const int FlashToggleFrames = 16;
-
     private readonly ILogger logger;
-    private readonly IVideoRenderer renderer;
     private readonly PixelBuffer pixelBuffer;
     private readonly DispatcherTimer fpsTimer;
     private readonly Stopwatch fpsStopwatch;
 
-    // Snapshot of display memory ($0400-$5FFF, main and aux) captured at VBlank start.
-    // Rendering reads only from this snapshot, so the image never depends on the
-    // CPU's MMU state (RAMRD/80STORE/PAGE2) or on half-updated memory.
-    private readonly DisplayMemorySnapshot displaySnapshot = new();
-    private readonly object snapshotLock = new();
-
-    private IMachine? machine;
-    private IVideoDevice? videoDevice;
-    private ICharacterDevice? characterDevice;
-    private IExtended80ColumnDevice? extended80ColumnDevice;
+    private IVideoFrameSource? frameSource;
     private EmulatorKeyboardDevice? keyboardDevice;
-    private IMemoryBus? memoryBus;
-    private ReadOnlyMemory<byte> mainRam;
-    private Memory<byte> characterRom;
-    private bool characterRomUpdatePending;
     private int vblankPending;
-    private volatile bool snapshotValid;
     private volatile bool isClosed;
 
     private int scale = 2;
@@ -89,8 +66,6 @@ public partial class VideoWindow : Window
     private int frameCount;
     private int vblankCount;
     private int uiFrameCount;
-    private int flashFrameCounter;
-    private bool flashState;
     private double lastFps;
     private string attachmentDiagnostic = "ATT detached";
 
@@ -117,7 +92,6 @@ public partial class VideoWindow : Window
 
         InitializeComponent();
 
-        renderer = new Pocket2VideoRenderer();
         pixelBuffer = new PixelBuffer(CanonicalWidth, CanonicalHeight);
         fpsStopwatch = new Stopwatch();
 
@@ -179,6 +153,11 @@ public partial class VideoWindow : Window
         set
         {
             colorMode = value;
+            if (frameSource is not null)
+            {
+                frameSource.ColorMode = value;
+            }
+
             ForceRedraw();
         }
     }
@@ -203,11 +182,11 @@ public partial class VideoWindow : Window
     /// <param name="machine">The machine to attach to.</param>
     /// <remarks>
     /// <para>
-    /// Extracts the video device, character device, keyboard device, extended 80-column
-    /// device, and memory bus from the machine for rendering and input handling.
+    /// Resolves a machine-scoped frame source so frame production continues independently
+    /// of this window's lifetime.
     /// </para>
     /// <para>
-    /// If no <see cref="ICharacterRomProvider"/> is found, falls back to the default ROM.
+    /// Also attaches keyboard input handling for this window instance.
     /// </para>
     /// </remarks>
     public void AttachMachine(IMachine machine)
@@ -218,51 +197,12 @@ public partial class VideoWindow : Window
             return;
         }
 
-        var previousVideoDevice = videoDevice;
-
         // Always detach first so reattachment is idempotent and cannot duplicate handlers.
         DetachMachine();
 
-        this.machine = machine;
-        this.memoryBus = machine.Bus;
-        this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
-        this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
-
-        // Get direct physical main RAM reference for snapshot capture.
-        // This bypasses all soft switch mapping (80STORE, PAGE2, RAMRD) to ensure
-        // the video snapshot always reads from the correct physical memory.
-        var mainMemoryProvider = machine.GetComponent<IMainMemoryProvider>();
-        this.mainRam = mainMemoryProvider?.MainRam ?? ReadOnlyMemory<byte>.Empty;
-
-        // Look for CharacterDevice (preferred) or any ICharacterRomProvider
-        this.characterDevice = machine.GetComponent<ICharacterDevice>();
-        ICharacterRomProvider? charProvider = characterDevice ?? machine.GetComponent<ICharacterRomProvider>();
-
-        // Get character ROM data from character provider, or use default ROM
-        if (charProvider != null && charProvider.IsCharacterRomLoaded)
-        {
-            characterRom = charProvider.GetCharacterRomData();
-        }
-        else
-        {
-            // Fall back to default ROM
-            characterRom = DefaultCharacterRom.GetRomData();
-        }
-
-        // Subscribe to CharacterRomChanged event if available
-        if (characterDevice != null)
-        {
-            characterDevice.CharacterRomChanged += OnCharacterRomChanged;
-        }
-
-        // Subscribe to VBlank event for frame-accurate rendering
-        if (videoDevice != null)
-        {
-            videoDevice.VBlankOccurred += OnVBlankOccurred;
-        }
-
-        attachmentDiagnostic = CreateAttachmentDiagnostic(previousVideoDevice, videoDevice);
+        AttachFrameSource(MachineVideoFrameSourceRegistry.GetOrCreate(machine));
+        attachmentDiagnostic = CreateAttachmentDiagnostic(frameSource);
     }
 
     /// <summary>
@@ -270,34 +210,15 @@ public partial class VideoWindow : Window
     /// </summary>
     public void DetachMachine()
     {
-        // Unsubscribe from events
-        if (characterDevice != null)
+        if (frameSource is not null)
         {
-            characterDevice.CharacterRomChanged -= OnCharacterRomChanged;
+            frameSource.FrameReady -= OnFrameReady;
         }
 
-        if (videoDevice != null)
-        {
-            videoDevice.VBlankOccurred -= OnVBlankOccurred;
-        }
-
-        machine = null;
-        memoryBus = null;
-        videoDevice = null;
-        characterDevice = null;
-        extended80ColumnDevice = null;
+        frameSource = null;
         keyboardDevice = null;
-        mainRam = ReadOnlyMemory<byte>.Empty;
-        characterRom = Memory<byte>.Empty;
-        snapshotValid = false;
         Interlocked.Exchange(ref vblankPending, 0);
-        characterRomUpdatePending = false;
         attachmentDiagnostic = "ATT detached";
-
-        lock (snapshotLock)
-        {
-            displaySnapshot.Clear();
-        }
     }
 
     /// <summary>
@@ -305,13 +226,12 @@ public partial class VideoWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A fresh display memory snapshot is captured from physical RAM before rendering,
-    /// so the redraw reflects current memory even if no VBlank has occurred recently.
+    /// Requests a fresh frame from the attached frame source and presents it.
     /// </para>
     /// <para>
     /// When already on the UI thread (for example <c>video refresh</c>, which calls
-    /// this from inside <c>Dispatcher.UIThread.InvokeAsync</c>), the capture and
-    /// render run inline. Off the UI thread the work is marshaled with
+    /// this from inside <c>Dispatcher.UIThread.InvokeAsync</c>), presentation runs
+    /// inline. Off the UI thread the work is marshaled with
     /// <c>InvokeAsync</c>; failures are surfaced through the dispatcher and logged
     /// by the window logger. This method does not return a <c>Task</c>, so callers
     /// cannot await or catch exceptions from the marshaled path.
@@ -324,13 +244,41 @@ public partial class VideoWindow : Window
             return;
         }
 
+        frameSource?.ForceRender();
         if (Dispatcher.UIThread.CheckAccess())
         {
-            RedrawFromCurrentMemory();
+            PresentLatestFrame();
             return;
         }
 
-        _ = Dispatcher.UIThread.InvokeAsync(RedrawFromCurrentMemory);
+        _ = Dispatcher.UIThread.InvokeAsync(PresentLatestFrame);
+    }
+
+    /// <summary>
+    /// Attaches a read-only frame source to this window.
+    /// </summary>
+    /// <param name="source">The frame source to present.</param>
+    internal void AttachFrameSource(IVideoFrameSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (isClosed)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(frameSource, source))
+        {
+            return;
+        }
+
+        if (frameSource is not null)
+        {
+            frameSource.FrameReady -= OnFrameReady;
+        }
+
+        frameSource = source;
+        frameSource.ColorMode = colorMode;
+        frameSource.FrameReady += OnFrameReady;
     }
 
     /// <inheritdoc/>
@@ -496,24 +444,6 @@ public partial class VideoWindow : Window
         return keyboardDevice.Translator.Translate(hostKey, keyboardModifiers);
     }
 
-    /// <summary>
-    /// Called when the character ROM configuration changes.
-    /// </summary>
-    /// <remarks>
-    /// This is called from the CharacterDevice at VBLANK to signal that the
-    /// character table has changed and should be reloaded.
-    /// </remarks>
-    private void OnCharacterRomChanged()
-    {
-        if (isClosed)
-        {
-            return;
-        }
-
-        // Mark that we need to update the character ROM on the next render
-        characterRomUpdatePending = true;
-    }
-
     private void OnWindowOpened(object? sender, EventArgs e)
     {
         UpdateWindowSize();
@@ -530,24 +460,7 @@ public partial class VideoWindow : Window
         pixelBuffer.Dispose();
     }
 
-    /// <summary>
-    /// Called when the video device fires a VBlank event.
-    /// Captures a display memory snapshot and marshals the rendering call to the UI thread.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This callback runs on the emulator thread during the scheduler dispatch,
-    /// meaning the CPU is NOT executing instructions at this point. We capture
-    /// a snapshot of the display memory (text and hi-res pages) here to prevent the
-    /// renderer from seeing half-updated data or the CPU's MMU-mapped view of memory.
-    /// </para>
-    /// <para>
-    /// The snapshot is captured synchronously before queuing the UI render, ensuring
-    /// the renderer always sees a consistent view of the display memory from the
-    /// exact moment of VBlank start.
-    /// </para>
-    /// </remarks>
-    private void OnVBlankOccurred()
+    private void OnFrameReady()
     {
         if (isClosed)
         {
@@ -556,81 +469,9 @@ public partial class VideoWindow : Window
 
         Interlocked.Increment(ref vblankCount);
 
-        // Capture display memory snapshot on the emulator thread while CPU is paused.
-        // This is the key to preventing 80-column flicker: the firmware modifies
-        // PAGE1/PAGE2 buffers between VBlanks, but we capture a stable copy here.
-        // Swallow snapshot failures so they cannot unwind VideoDevice.OnVBlankStart
-        // and tear down the CPU run loop.
-        try
-        {
-            CaptureDisplaySnapshot();
-        }
-        catch (Exception ex) when (!IsCriticalException(ex))
-        {
-            logger.Error(ex, "Video window failed to capture display snapshot");
-        }
-
-        // Only queue a UI render if one isn't already pending.
-        // Use Normal rather than Render: see VBlankUiPriority remarks.
         if (Interlocked.CompareExchange(ref vblankPending, 1, 0) == 0)
         {
             Dispatcher.UIThread.InvokeAsync(ProcessVBlankFrame, VBlankUiPriority);
-        }
-    }
-
-    /// <summary>
-    /// Captures a snapshot of the display memory from both main and auxiliary RAM.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This method captures <c>$0400-$5FFF</c> (text/lo-res pages 1 and 2 and hi-res
-    /// pages 1 and 2) from both main and auxiliary memory. The snapshot is taken at
-    /// VBlank start when the CPU is not actively modifying video memory, ensuring the
-    /// renderer sees a consistent frame.
-    /// </para>
-    /// <para>
-    /// Both main and auxiliary memory are copied directly from their physical RAM backing
-    /// stores, bypassing all soft switch mapping (RAMRD, 80STORE, PAGE2, HIRES). Real IIe
-    /// video hardware fetches display data from physical RAM without going through the
-    /// MMU: main RAM always, plus auxiliary RAM for 80-column text and double hi-res.
-    /// Reading through the memory bus instead would, for example, show auxiliary
-    /// <c>$2000-$5FFF</c> whenever a program runs with RAMRD on.
-    /// </para>
-    /// <para>
-    /// Machines that do not expose physical main RAM fall back to side-effect-free bus reads.
-    /// </para>
-    /// </remarks>
-    private void CaptureDisplaySnapshot()
-    {
-        lock (snapshotLock)
-        {
-            if (mainRam.Length >= DisplayMemorySnapshot.EndAddress)
-            {
-                displaySnapshot.CaptureMain(mainRam.Span);
-            }
-            else if (memoryBus is not null)
-            {
-                displaySnapshot.CaptureMain(ReadMemoryByte);
-            }
-            else
-            {
-                return;
-            }
-
-            if (extended80ColumnDevice is not null)
-            {
-                var auxRam = extended80ColumnDevice.AuxiliaryRam;
-                if (auxRam.Length >= DisplayMemorySnapshot.EndAddress)
-                {
-                    displaySnapshot.CaptureAux(auxRam);
-                }
-                else
-                {
-                    displaySnapshot.CaptureAux(extended80ColumnDevice.ReadAuxRam);
-                }
-            }
-
-            snapshotValid = true;
         }
     }
 
@@ -645,27 +486,9 @@ public partial class VideoWindow : Window
             return;
         }
 
-        // Update flash state
-        flashFrameCounter++;
-        if (flashFrameCounter >= FlashToggleFrames)
-        {
-            flashFrameCounter = 0;
-            flashState = !flashState;
-        }
-
-        // Process pending character ROM update (happens at VBLANK)
-        if (characterRomUpdatePending)
-        {
-            characterRomUpdatePending = false;
-            ReloadCharacterRom();
-        }
-
-        // Render the frame, but keep the counters moving even when rendering throws.
-        // This preserves a non-zero FPS and makes a stale image look like a render
-        // issue instead of a stopped VBlank signal.
         try
         {
-            RenderFrame();
+            PresentLatestFrame();
         }
         catch (Exception ex) when (!IsCriticalException(ex))
         {
@@ -678,26 +501,21 @@ public partial class VideoWindow : Window
         }
     }
 
-    /// <summary>
-    /// Captures a fresh snapshot and renders it, logging and rethrowing on failure.
-    /// </summary>
-    private void RedrawFromCurrentMemory()
+    private void PresentLatestFrame()
     {
         if (isClosed)
         {
             return;
         }
 
-        try
+        var pixels = pixelBuffer.GetPixels();
+        if (frameSource is null || !frameSource.TryCopyLatestFrame(pixels, out _))
         {
-            CaptureDisplaySnapshot();
-            RenderFrame();
+            pixels.Clear();
         }
-        catch (Exception ex)
-        {
-            logger.Error(ex, "Video window redraw failed");
-            throw;
-        }
+
+        pixelBuffer.Commit();
+        VideoImage.InvalidateVisual();
     }
 
     private void OnFpsTimer(object? sender, EventArgs e)
@@ -727,98 +545,6 @@ public partial class VideoWindow : Window
         FpsDisplay.Text = $"{lastFps:F1} FPS  vb:{vblankRate} ui:{uiFrameRate} {attachmentDiagnostic}";
         frameCount = 0;
         uiFrameCount = 0;
-    }
-
-    /// <summary>
-    /// Reloads the character ROM data from the character device.
-    /// </summary>
-    private void ReloadCharacterRom()
-    {
-        if (characterDevice != null && characterDevice.IsCharacterRomLoaded)
-        {
-            characterRom = characterDevice.GetCharacterRomData();
-        }
-    }
-
-    private void RenderFrame()
-    {
-        if (isClosed)
-        {
-            return;
-        }
-
-        var pixels = pixelBuffer.GetPixels();
-
-        if (memoryBus is null || videoDevice is null)
-        {
-            // No machine attached - render blank screen
-            renderer.Clear(pixels);
-            pixelBuffer.Commit();
-            VideoImage.InvalidateVisual();
-            return;
-        }
-
-        // Determine current video mode
-        VideoMode mode = videoDevice.CurrentMode;
-
-        // Get ALTCHAR state from CharacterDevice if available, otherwise assume false
-        bool useAltCharSet = characterDevice?.IsAltCharSet ?? false;
-
-        // Get NOFLASH states from CharacterDevice if available
-        // Default: Bank 1 = flashing enabled (noFlash = false), Bank 2 = flashing disabled (noFlash = true)
-        bool noFlash1 = characterDevice?.IsNoFlash1Enabled ?? false;
-        bool noFlash2 = characterDevice?.IsNoFlash2Enabled ?? true;
-
-        if (!snapshotValid)
-        {
-            // No VBlank has been captured yet — take a snapshot now so that
-            // rendering never reads display memory through the MMU-mapped bus.
-            CaptureDisplaySnapshot();
-        }
-
-        // Lock to prevent a concurrent VBlank from overwriting the snapshot
-        // while the renderer is reading from it.
-        lock (snapshotLock)
-        {
-            renderer.RenderFrame(
-                pixels,
-                mode,
-                displaySnapshot.ReadMain,
-                characterRom.Span,
-                useAltCharSet,
-                videoDevice.IsPage2,
-                flashState,
-                noFlash1,
-                noFlash2,
-                colorMode,
-                extended80ColumnDevice is not null ? displaySnapshot.ReadAux : null);
-        }
-
-        // Commit pixel buffer to bitmap
-        pixelBuffer.Commit();
-        VideoImage.InvalidateVisual();
-    }
-
-    private byte ReadMemoryByte(ushort address)
-    {
-        if (memoryBus is null)
-        {
-            return 0;
-        }
-
-        // Use side-effect-free DMA-style read
-        var access = new BusAccess(
-            Address: address,
-            Value: 0,
-            WidthBits: 8,
-            Mode: BusAccessMode.Atomic,
-            EmulationFlag: true,
-            Intent: AccessIntent.DmaRead,
-            SourceId: 0,
-            Cycle: 0,
-            Flags: AccessFlags.NoSideEffects);
-
-        return memoryBus.Read8(access);
     }
 
     private void UpdateWindowSize()
@@ -875,12 +601,10 @@ public partial class VideoWindow : Window
         keyboardDevice.SetModifiers(modifiers);
     }
 
-    private string CreateAttachmentDiagnostic(IVideoDevice? previousDevice, IVideoDevice? currentDevice)
+    private string CreateAttachmentDiagnostic(IVideoFrameSource? source)
     {
         int windowId = RuntimeHelpers.GetHashCode(this);
-        int deviceId = currentDevice is null ? 0 : RuntimeHelpers.GetHashCode(currentDevice);
-        bool hasVideoDevice = currentDevice is not null;
-        bool replacedDevice = previousDevice is not null && !ReferenceEquals(previousDevice, currentDevice);
-        return $"ATT vw:{windowId} vd:{deviceId} hasvd:{hasVideoDevice} replaced:{replacedDevice}";
+        int sourceId = source is null ? 0 : RuntimeHelpers.GetHashCode(source);
+        return $"ATT vw:{windowId} fs:{sourceId} attached:{source is not null}";
     }
 }

@@ -184,7 +184,7 @@ public class VideoWindowTests
     }
 
     /// <summary>
-    /// Verifies closing the window detaches VBlank handlers and prevents error logging on future VBlank events.
+    /// Verifies closing the window detaches the view subscriber and prevents error logging on future VBlank events.
     /// </summary>
     [AvaloniaTest]
     public void CloseWindow_DetachesVBlankHandler_AndFutureVBlankLogsNoError()
@@ -198,7 +198,7 @@ public class VideoWindowTests
         InvokeWindowClosed(window);
 
         mockVideoDevice.VerifyAdd(v => v.VBlankOccurred += It.IsAny<Action>(), Times.Once);
-        mockVideoDevice.VerifyRemove(v => v.VBlankOccurred -= It.IsAny<Action>(), Times.Once);
+        mockVideoDevice.VerifyRemove(v => v.VBlankOccurred -= It.IsAny<Action>(), Times.Never);
         Assert.DoesNotThrow(() => mockVideoDevice.Raise(v => v.VBlankOccurred += null));
         Assert.That(sink.GetEventCount(LogEventLevel.Error), Is.EqualTo(0));
     }
@@ -862,6 +862,33 @@ public class VideoWindowTests
         Dispatcher.UIThread.RunJobs();
 
         Assert.That(GetWindowPixels(window), Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Verifies the produced frame uses mode state captured at VBlank time, not presentation time.
+    /// </summary>
+    [AvaloniaTest]
+    public void VBlankSnapshot_UsesModeCapturedAtVBlank()
+    {
+        var window = new VideoWindow();
+        var mockMachine = CreateMockMachineWithPhysicalRam(
+            VideoMode.HiRes,
+            false,
+            out var mainMemory,
+            out var mockVideoDevice,
+            out _);
+        var mode = VideoMode.HiRes;
+        mockVideoDevice.Setup(video => video.CurrentMode).Returns(() => mode);
+
+        mainMemory.AsSpan().Slice(0x2000, 0x2000).Fill(0x7F);
+        var expectedHiRes = RenderReference(VideoMode.HiRes, false, mainMemory, null);
+
+        window.AttachMachine(mockMachine.Object);
+        mockVideoDevice.Raise(video => video.VBlankOccurred += null);
+        mode = VideoMode.Text40;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(GetWindowPixels(window), Is.EqualTo(expectedHiRes));
     }
 
     /// <summary>
