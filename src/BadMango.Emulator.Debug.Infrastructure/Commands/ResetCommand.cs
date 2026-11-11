@@ -59,15 +59,16 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
         "and clearing D. RAM is preserved, and a running machine keeps running into the ROM reset " +
         "handler; a stopped or paused machine stops at the reset vector. With --hard, also performs " +
         "a power-on reset of the CPU and devices and clears memory to zeros. With --open-apple / " +
-        "--reboot / --cold, or --closed-apple / --diag, the corresponding Apple key is held while " +
-        "the RESET line is asserted, matching the ROM's reset sampling behavior.";
+        "--reboot / --cold, or --closed-apple / --diag, the corresponding Apple key is held through " +
+        "the ROM reset sampling window for a short time after RESET releases, matching the hardware " +
+        "behavior of the Apple IIe reset handler.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
         new("--hard", "-h", "flag", "Also clear memory to zeros", "off"),
-        new("--open-apple", "-o", "flag", "Hold Open Apple (PB0) through the reset handler; aliases: --command --reboot --cold", "off"),
-        new("--closed-apple", "-a", "flag", "Hold Closed Apple (PB1) through the reset handler; aliases: --option --diag", "off"),
+        new("--open-apple", "-o", "flag", "Hold Open Apple (PB0) through the ROM reset sampling window; aliases: --command --reboot --cold", "off"),
+        new("--closed-apple", "-a", "flag", "Hold Closed Apple (PB1) through the ROM reset sampling window; aliases: --option --diag", "off"),
     ];
 
     /// <inheritdoc/>
@@ -169,16 +170,20 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
     /// </summary>
     /// <param name="machine">The machine to reset.</param>
     /// <param name="keyboard">The keyboard whose Reset key drives the line.</param>
-    /// <param name="holdOpenApple"><see langword="true"/> to hold Open Apple during the reset sampling window.</param>
-    /// <param name="holdClosedApple"><see langword="true"/> to hold Closed Apple during the reset sampling window.</param>
+    /// <param name="holdOpenApple"><see langword="true"/> to hold Open Apple through the ROM reset sampling window.</param>
+    /// <param name="holdClosedApple"><see langword="true"/> to hold Closed Apple through the ROM reset sampling window.</param>
     /// <param name="hardReset"><see langword="true"/> to treat the pulse as a power-on reset while the line is held.</param>
     /// <remarks>
-    /// Both callbacks run on the machine thread (see <see cref="IMachine.PulseReset"/>), so the
-    /// modifiers sampled here are the ones the machine sees when the key goes down.
+    /// The Apple-key bits are intentionally left active after RESET deasserts so the ROM's reset
+    /// handler can sample them before the temporary reset-only flags are cleared. The release callback
+    /// restores Control and releases the Reset key, but only the reset-added Apple keys are released
+    /// later on a short scheduler-based delay that preserves any user-held modifiers present in the
+    /// meantime.
     /// </remarks>
     private static void TriggerKeyboardReset(IMachine machine, IKeyboardDevice keyboard, bool holdOpenApple, bool holdClosedApple, bool hardReset)
     {
-        var originalModifiers = KeyboardModifiers.None;
+        KeyboardModifiers originalModifiers = KeyboardModifiers.None;
+        KeyboardModifiers resetOnlyModifiers = KeyboardModifiers.None;
         machine.PulseReset(
             () =>
             {
@@ -187,11 +192,13 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
                 if (holdOpenApple)
                 {
                     resetModifiers |= KeyboardModifiers.OpenApple;
+                    resetOnlyModifiers |= KeyboardModifiers.OpenApple;
                 }
 
                 if (holdClosedApple)
                 {
                     resetModifiers |= KeyboardModifiers.ClosedApple;
+                    resetOnlyModifiers |= KeyboardModifiers.ClosedApple;
                 }
 
                 keyboard.SetModifiers(resetModifiers);
@@ -200,8 +207,33 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
             () =>
             {
                 keyboard.ReleaseResetKey();
-                keyboard.SetModifiers(originalModifiers);
+                keyboard.SetModifiers(originalModifiers | KeyboardModifiers.Control);
+
+                if (resetOnlyModifiers == KeyboardModifiers.None)
+                {
+                    return;
+                }
+
+                var releaseCycleDelay = GetResetAppleReleaseDelayCycles(machine);
+                machine.Scheduler.ScheduleAt(
+                    machine.Scheduler.Now + releaseCycleDelay,
+                    ScheduledEventKind.DeferredWork,
+                    priority: 0,
+                    _ =>
+                    {
+                        var pendingModifiers = keyboard.Modifiers;
+                        pendingModifiers &= ~resetOnlyModifiers;
+                        keyboard.SetModifiers(pendingModifiers);
+                    },
+                    tag: "reset-apple-release");
             },
             hardReset);
+    }
+
+    private static ulong GetResetAppleReleaseDelayCycles(IMachine machine)
+    {
+        const double AppleResetSamplingWindowMs = 500.0;
+        long clockSpeedHz = machine.ClockSpeedHz > 0 ? machine.ClockSpeedHz : 1_000_000;
+        return (ulong)Math.Max(1, (AppleResetSamplingWindowMs * clockSpeedHz) / 1000.0);
     }
 }
