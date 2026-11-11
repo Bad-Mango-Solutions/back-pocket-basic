@@ -223,7 +223,7 @@ public interface IDisplaySwitchLog
 ```csharp
 public sealed class CapturedFrame<TState> where TState : class
 {
-    public long Sequence { get; }
+    public ulong Sequence { get; }            // 0 means none yet; published frames start at 1
     public ulong Cycle { get; }               // VBlank start (or RequestFrame)
     public ulong FrameStartCycle { get; }
     public TState State { get; }              // machine-specific: memory snapshot, glyphs, start switches
@@ -233,6 +233,8 @@ public sealed class CapturedFrame<TState> where TState : class
     public bool WriteLogOverflowed { get; }
 }
 ```
+
+- **Sequence is a `ulong`, like `Cycle`.** A sequence is never negative. `LatestSequence` is 0 until the first frame is published; published frames start at 1. `Interlocked.Exchange`, `CompareExchange`, and `Read` have `ulong` overloads since .NET 5, so the published sequence and `LatestSequence` need no signed packing. Acquire tickets stay `long` (0 is a free holder-table slot, §7.6).
 
 - **Backing and validity.** `SwitchLog` and `WriteLog` are computed on each call from preallocated per-slot arrays plus a count (`events.AsSpan(0, count)`). No span is ever stored. Slots, and the `CapturedFrame` objects in them, are reused by the triple buffer, so a `CapturedFrame` and anything read from it are valid only while the caller holds the slot: inside `IVideoScanner.Scan`, or while holding a `CapturedFrameLease` (§11.6). Keeping a reference after that means reading a later frame.
 
@@ -283,7 +285,7 @@ public interface IVideoScanner<TState> where TState : class
 // Signals: marker interfaces carry the compatibility rules.
 public interface IVideoSignal
 {
-    long Sequence { get; }
+    ulong Sequence { get; }
     ulong Cycle { get; }
 }
 
@@ -316,9 +318,9 @@ public interface IVideoOutput : IDisposable
     /// Raised on the emulator thread right after a frame is published. The argument
     /// is the sequence number. Handlers must not block and must not call back into
     /// the machine; marshal to your own thread.
-    event Action<long>? FrameReady;
+    event Action<ulong>? FrameReady;
 
-    long LatestSequence { get; }
+    ulong LatestSequence { get; }
 
     /// If the machine is running, a no-op (the next VBlank is at most one frame away).
     /// Otherwise captures through IMachineDispatcher.Post (inline when quiescent).
@@ -446,7 +448,7 @@ public readonly struct SignalLease<TSignal> : IDisposable where TSignal : class,
     public void Dispose();
 }
 
-public readonly record struct VideoFrameInfo(long Sequence, ulong Cycle, int Width, int Height, int Stride);
+public readonly record struct VideoFrameInfo(ulong Sequence, ulong Cycle, int Width, int Height, int Stride);
 ```
 
 - **Why a `readonly struct`.** Acquiring allocates nothing. A class lease would allocate per acquire, or, if pooled, a stale reference would point at a recycled lease. A `ref struct` can't cross an `await` or a dispatcher callback. Being `readonly` means no defensive copies under `using var`, `in`, or readonly fields.
@@ -480,6 +482,10 @@ public readonly record struct VideoFrameInfo(long Sequence, ulong Cycle, int Wid
 - **The machine disposes them.** `IMachine` gains `IDisposable`. `Machine.Dispose()` stops the run loop, then disposes every `IDisposable` component in reverse registration order. Disposing the hub unsubscribes from VBlank, releases `FrameReady` handlers, and returns pooled buffers once outstanding leases are disposed.
 - **Profile reload means a new machine and new outputs.** Consumers reattach to the new machine's outputs. The old ones are disposed with the old machine, which removes the #319/#320 stale-attachment failure mode by construction.
 - **No static mutable state.** `MachineVideoFrameSourceRegistry` is not adopted. Static, immutable tables (dot-expansion tables, palettes, the `FrameProviders` catalog, the `ScannerAddress` tables) are fine. `DefaultCharacterRom` exposes `public static ReadOnlySpan<byte> RomData { get; }` over a private static readonly array, replacing `GetRomData()`. `CharacterDevice` copies it into its own array (`RomData.CopyTo(rom)`), so two machines never share a mutable array. A span is used rather than `ReadOnlyMemory<byte>` because `MemoryMarshal.TryGetArray` on a `ReadOnlyMemory<byte>` would hand back the shared writable array, and a span returned from a static property can't be stored.
+
+### 7.9 Type shapes
+
+- **Type shapes (rule).** Types that own pooled memory or leases (`CapturedFrame<TState>`, the `VideoFrame` and `SignalLease<TSignal>` slot holders, and the pools) are `sealed class`es, not records: a `with` expression would copy buffer ownership, and value equality would compare those array references, which looks meaningful but isn't. Immutable values with no ownership (`VideoFrameGeometry`, `ScanFetch`, the provider `Options` records, profile and config shapes) are records or `readonly record struct`s. C# 15 `closed` is only for hierarchies that will never grow. Signal formats stay open through the marker interfaces so IIgs and HDMI outputs can be added later.
 
 ## 8. Per-machine video
 
@@ -646,7 +652,7 @@ Text modes through `GreyscaleFrameProvider`, `GreenscaleFrameProvider`, and `Amb
   - **Subscriber failure:** each `FrameReady` handler runs in its own `try`/`catch`. A throwing handler is logged and counted (`SubscriberErrors`) and does not stop later handlers.
   - Critical exceptions (`OutOfMemoryException`, `AccessViolationException`, `InvalidProgramException`, `BadImageFormatException`) are never caught.
 - **Rate limiting.** The first occurrence of each error kind is logged with its stack trace. Repeats are summarized at most once every 5 seconds with a count.
-- **Counters.** `VideoPipelineStats` is a `readonly record struct` with `FramesCaptured`, `SwitchEvents`, `SwitchLogOverflows`, `Scans`, `SignalsGenerated`, `FramesProvided`, `CacheHits`, `CaptureErrors`, `ScanErrors`, `SignalErrors`, `ProvideErrors`, `SubscriberErrors`, `LeasesOutstanding`, `PoolExhausted`, `RecorderDroppedFrames` (only when the recorder is on, §11.6), and `LatestSequence`. Counters use `Interlocked`. The status monitor and a new REPL `video stats` show them. FPS in the window is computed from presented sequences, not VBlank callbacks.
+- **Counters.** `VideoPipelineStats` is a `readonly record struct` with `FramesCaptured`, `SwitchEvents`, `SwitchLogOverflows`, `Scans`, `SignalsGenerated`, `FramesProvided`, `CacheHits`, `CaptureErrors`, `ScanErrors`, `SignalErrors`, `ProvideErrors`, `SubscriberErrors`, `LeasesOutstanding`, `PoolExhausted`, `RecorderDroppedFrames` (only when the recorder is on, §11.6), and `LatestSequence`. `LatestSequence` is a `ulong`, matching `CapturedFrame.Sequence`. The other counters stay `long`. Counters use `Interlocked` (`Exchange`/`CompareExchange`/`Read` have `ulong` overloads since .NET 5). The status monitor and a new REPL `video stats` show them. FPS in the window is computed from presented sequences, not VBlank callbacks.
 - **Lease pools.** Each signal pool and each frame pool starts at 3 buffers and grows to at most 8. If all 8 are held, or one buffer already has 16 holders (§7.6), the acquire returns false and `PoolExhausted` is incremented and logged (it indicates a consumer leaking leases).
 
 ## 11. Integration
@@ -694,7 +700,7 @@ The redo may implement GPU frame providers (decided Q5), for example decoding `C
 
 Video recording and frame-exact agent traces need every frame. The main API stays latest-frame only (decided Q4). A separate `VideoRecorder` component subscribes to `FrameReady` and acquires synchronously inside the handler, so no frame can be overwritten before it is taken:
 
-- The synchronous acquire is `internal bool VideoPipelineHub.TryPinLatestCapture(long expectedSequence, out CapturedFrameLease lease)`, called with the sequence `FrameReady` delivered. It takes the just-published captured slot out of the triple-buffer rotation by swapping in a spare slot from a small bounded pool. That is an index swap, no copy and no allocation, so the emulator thread still does no scanning or rendering.
+- The synchronous acquire is `internal bool VideoPipelineHub.TryPinLatestCapture(ulong expectedSequence, out CapturedFrameLease lease)`, called with the sequence `FrameReady` delivered. It takes the just-published captured slot out of the triple-buffer rotation by swapping in a spare slot from a small bounded pool. That is an index swap, no copy and no allocation, so the emulator thread still does no scanning or rendering.
 - **Race with consumers.** Consumer threads also swap the ready-slot index, so the pin swaps it with `Interlocked.Exchange` and then checks `slot.Sequence == expectedSequence`. On a mismatch (a consumer took that slot first), it swaps the slot back with `Interlocked.Exchange` and counts the frame in `RecorderDroppedFrames`, so the recorder never records a stale or duplicate frame.
 - `CapturedFrameLease` is an `internal readonly struct : IDisposable` holding the slot and its generation. It has a single owner, so a generation token is enough. Dispose is idempotent, and the `CapturedFrame` is valid only while it is held (§7.2).
 - The recorder's own thread scans, generates signals, and provides frames from the pinned captures (through the same scanner, outputs, and providers), encodes, writes, and disposes the leases, which returns the slots to the pool.
@@ -800,7 +806,7 @@ All tests run without Avalonia except the `VideoWindow` ones. Each test runs on 
     - `default(VideoFrame).Dispose()` does nothing; `Pixels` on a disposed or default lease throws `ObjectDisposedException`; the same for `SignalLease<TSignal>.Signal`.
     - A 17th holder on one buffer, or a pool with all 8 buffers held, makes the acquire return false and increments `PoolExhausted`.
     - In Debug, a `ReadOnlyMemory<uint>` kept past dispose reads `0xDEADBEEF` once the buffer is freed.
-32. **Recorder pin race.** A consumer thread hammers `TryAcquireLatestFrame` while the recorder pins on every `FrameReady`. Every pinned lease's `Sequence` equals the `FrameReady` sequence; mismatches are swapped back and counted, never recorded.
+32. **Recorder pin race.** A consumer thread hammers `TryAcquireLatestFrame` while the recorder pins on every `FrameReady`. Every pinned lease's `Sequence` equals the `FrameReady` sequence (both `ulong`); mismatches are swapped back and counted, never recorded.
 33. **Length rules.** `Provide` with a destination shorter than `Stride × Height` and `CopyEffectiveGlyphs` with fewer than 4,096 bytes throw `ArgumentException`. `DefaultCharacterRom.RomData` copies into two machines' character devices independently (writing one doesn't change the other).
 
 ## 15. Migration plan
