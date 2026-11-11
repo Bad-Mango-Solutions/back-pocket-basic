@@ -103,7 +103,6 @@ public sealed class GameIOController : IGamePortDevice, IResetReceiver
     /// <inheritdoc />
     public void Reset()
     {
-        Array.Clear(buttons);
         Array.Clear(paddleValues);
         Array.Clear(paddleTimers);
     }

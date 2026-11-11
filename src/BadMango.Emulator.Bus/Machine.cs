@@ -253,11 +253,11 @@ public sealed class Machine : IMachine
     }
 
     /// <inheritdoc />
-    public void PulseReset(Action assertLine, Action releaseLine)
+    public void PulseReset(Action assertLine, Action releaseLine, bool hardReset = false)
     {
         ArgumentNullException.ThrowIfNull(assertLine, nameof(assertLine));
         ArgumentNullException.ThrowIfNull(releaseLine, nameof(releaseLine));
-        PulseResetCore(assertLine, releaseLine, hardReset: false);
+        PulseResetCore(assertLine, releaseLine, hardReset);
     }
 
     /// <inheritdoc />

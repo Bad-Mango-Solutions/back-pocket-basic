@@ -191,19 +191,21 @@ public class GameIOControllerTests
     }
 
     /// <summary>
-    /// Verifies that Reset clears all state.
+    /// Verifies that Reset preserves held button state while clearing transient paddle timing.
     /// </summary>
     [Test]
-    public void Reset_ClearsAllState()
+    public void Reset_PreservesHeldButtonsButClearsTransientPaddleState()
     {
         controller.SetButton(0, true);
+        controller.SetButton(1, true);
         controller.SetPaddle(0, 128);
 
         controller.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.Buttons[0], Is.False);
+            Assert.That(controller.Buttons[0], Is.True);
+            Assert.That(controller.Buttons[1], Is.True);
             Assert.That(controller.Paddles[0], Is.EqualTo(0));
         });
     }

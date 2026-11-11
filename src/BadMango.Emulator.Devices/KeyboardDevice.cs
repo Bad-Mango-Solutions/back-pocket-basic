@@ -156,7 +156,6 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         lastKey = 0;
         strobe = false;
         keyDown = false;
-        modifiers = KeyboardModifiers.None;
         resetKeyPressed = false;
         SetResetLineState(asserted: false);
         CancelTyping();
