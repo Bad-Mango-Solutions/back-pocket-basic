@@ -28,8 +28,7 @@ using Interfaces;
 /// with the high bit (strobe) set. The strobe remains set until cleared by accessing $C010.
 /// </para>
 /// <para>
-/// The keyboard device also manages the pushbutton inputs that correspond to the
-/// Apple II's Open Apple and Closed Apple keys:
+/// The keyboard tracks the modifier inputs that map to the Apple II pushbuttons:
 /// </para>
 /// <list type="bullet">
 /// <item><description>$C061 (PB0): Open Apple / Button 0 - bit 7 set when pressed</description></item>
@@ -144,10 +143,12 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
         // $C010: Clear strobe (read and write)
         dispatcher.Register(KeyboardStrobeOffset, ClearStrobeRead, ClearStrobeWrite);
 
-        // $C061-$C063: Pushbutton inputs (read-only)
-        dispatcher.RegisterRead(PushButton0Offset, ReadPushButton0);
-        dispatcher.RegisterRead(PushButton1Offset, ReadPushButton1);
-        dispatcher.RegisterRead(PushButton2Offset, ReadPushButton2);
+        // $C061-$C063: Pushbutton inputs (read-only).
+        // Register only when unclaimed so GameIOController can remain the single owner
+        // when both devices are present, independent of registration order.
+        _ = dispatcher.RegisterReadIfUnregistered(PushButton0Offset, ReadPushButton0);
+        _ = dispatcher.RegisterReadIfUnregistered(PushButton1Offset, ReadPushButton1);
+        _ = dispatcher.RegisterReadIfUnregistered(PushButton2Offset, ReadPushButton2);
     }
 
     /// <inheritdoc />

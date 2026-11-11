@@ -48,6 +48,7 @@ public sealed class GameIOController : IGamePortDevice, IResetReceiver
     private readonly bool[] buttons = new bool[4];
     private readonly byte[] paddleValues = new byte[4];
     private readonly ulong[] paddleTimers = new ulong[4];
+    private IKeyboardDevice? keyboardDevice;
     private IScheduler? scheduler;
 
     /// <inheritdoc />
@@ -70,6 +71,7 @@ public sealed class GameIOController : IGamePortDevice, IResetReceiver
     {
         ArgumentNullException.ThrowIfNull(context);
         scheduler = context.Scheduler;
+        keyboardDevice = context.GetComponent<IKeyboardDevice>();
     }
 
     /// <inheritdoc />
@@ -153,7 +155,26 @@ public sealed class GameIOController : IGamePortDevice, IResetReceiver
 
     private byte ReadButton(int index)
     {
-        return buttons[index] ? ButtonPressedBit : (byte)0x00;
+        bool pressed = buttons[index] || IsKeyboardMappedButtonPressed(index);
+        return pressed ? ButtonPressedBit : (byte)0x00;
+    }
+
+    private bool IsKeyboardMappedButtonPressed(int index)
+    {
+        if (keyboardDevice is null)
+        {
+            return false;
+        }
+
+        KeyboardModifiers modifiers = keyboardDevice.Modifiers;
+
+        return index switch
+        {
+            0 => modifiers.HasFlag(KeyboardModifiers.OpenApple),
+            1 => modifiers.HasFlag(KeyboardModifiers.ClosedApple),
+            2 => modifiers.HasFlag(KeyboardModifiers.Shift),
+            _ => false,
+        };
     }
 
     private byte ReadPaddle(int index, ulong currentCycle)
