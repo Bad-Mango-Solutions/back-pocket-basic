@@ -32,6 +32,7 @@ public sealed class ResetSignalMachineTests
     private const string ProfileName = "pocket2e-a2-enh";
     private const ushort LoopAddress = 0x6000;
     private const ushort LcBank1ReadWrite = 0xC08B;
+    private const ushort LcBank2ReadWrite = 0xC083;
 
     private static string RepositoryRoot { get; } = LocateRepositoryRoot();
 
@@ -230,6 +231,88 @@ public sealed class ResetSignalMachineTests
         {
             Assert.That(machine.Cpu.GetPC(), Is.EqualTo(romVector), "The vector must come from ROM after the MMU resets");
             Assert.That(machine.GetComponent<LanguageCardDevice>()!.IsRamReadEnabled, Is.False);
+        });
+    }
+
+    /// <summary>
+    /// Verifies that profile-built machines clear main RAM, auxiliary RAM and both Language Card
+    /// banks on hard reset while preserving ROM bytes, and that soft reset preserves RAM contents.
+    /// </summary>
+    [Test]
+    public void HardReset_ProfileMachine_ClearsAllRamButPreservesRom()
+    {
+        var machine = CreateMachine();
+
+        byte romD000Before = machine.Cpu.Read8(0xD000);
+        byte romF800Before = machine.Cpu.Read8(0xF800);
+        byte romResetVectorLowBefore = machine.Cpu.Read8(0xFFFC);
+        byte romResetVectorHighBefore = machine.Cpu.Read8(0xFFFD);
+
+        machine.Cpu.Write8(0x0300, 0xAA);
+        machine.Cpu.Read8(0xC005); // RAMWRT on
+        machine.Cpu.Write8(0x2000, 0x55);
+        machine.Cpu.Read8(0xC004); // RAMWRT off
+
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        machine.Cpu.Write8(0xD000, 0x11);
+
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        machine.Cpu.Write8(0xD000, 0x22);
+        machine.Cpu.Write8(0xE000, 0x33);
+        machine.Cpu.Read8(0xC082); // Full ROM mode
+
+        machine.Reset();
+
+        byte mainAfterSoftReset = machine.Cpu.Read8(0x0300);
+        machine.Cpu.Read8(0xC003); // RAMRD on
+        byte auxAfterSoftReset = machine.Cpu.Read8(0x2000);
+        machine.Cpu.Read8(0xC002); // RAMRD off
+
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        byte lcBank1AfterSoftReset = machine.Cpu.Read8(0xD000);
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        byte lcBank2AfterSoftReset = machine.Cpu.Read8(0xD000);
+        byte lcHighAfterSoftReset = machine.Cpu.Read8(0xE000);
+        machine.Cpu.Read8(0xC082); // Full ROM mode
+
+        machine.Reset(hardReset: true);
+
+        byte mainAfterHardReset = machine.Cpu.Read8(0x0300);
+        machine.Cpu.Read8(0xC003); // RAMRD on
+        byte auxAfterHardReset = machine.Cpu.Read8(0x2000);
+        machine.Cpu.Read8(0xC002); // RAMRD off
+
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        machine.Cpu.Read8(LcBank1ReadWrite);
+        byte lcBank1AfterHardReset = machine.Cpu.Read8(0xD000);
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        machine.Cpu.Read8(LcBank2ReadWrite);
+        byte lcBank2AfterHardReset = machine.Cpu.Read8(0xD000);
+        byte lcHighAfterHardReset = machine.Cpu.Read8(0xE000);
+        machine.Cpu.Read8(0xC082); // Full ROM mode
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mainAfterSoftReset, Is.EqualTo(0xAA), "Soft reset should preserve main RAM");
+            Assert.That(auxAfterSoftReset, Is.EqualTo(0x55), "Soft reset should preserve auxiliary RAM");
+            Assert.That(lcBank1AfterSoftReset, Is.EqualTo(0x11), "Soft reset should preserve Language Card bank 1 RAM");
+            Assert.That(lcBank2AfterSoftReset, Is.EqualTo(0x22), "Soft reset should preserve Language Card bank 2 RAM");
+            Assert.That(lcHighAfterSoftReset, Is.EqualTo(0x33), "Soft reset should preserve Language Card high RAM");
+
+            Assert.That(mainAfterHardReset, Is.EqualTo(0x00), "Hard reset should clear main RAM");
+            Assert.That(auxAfterHardReset, Is.EqualTo(0x00), "Hard reset should clear auxiliary RAM");
+            Assert.That(lcBank1AfterHardReset, Is.EqualTo(0x00), "Hard reset should clear Language Card bank 1 RAM");
+            Assert.That(lcBank2AfterHardReset, Is.EqualTo(0x00), "Hard reset should clear Language Card bank 2 RAM");
+            Assert.That(lcHighAfterHardReset, Is.EqualTo(0x00), "Hard reset should clear Language Card high RAM");
+
+            Assert.That(machine.Cpu.Read8(0xD000), Is.EqualTo(romD000Before), "ROM at $D000 should be unchanged");
+            Assert.That(machine.Cpu.Read8(0xF800), Is.EqualTo(romF800Before), "ROM at $F800 should be unchanged");
+            Assert.That(machine.Cpu.Read8(0xFFFC), Is.EqualTo(romResetVectorLowBefore), "ROM reset-vector low byte should be unchanged");
+            Assert.That(machine.Cpu.Read8(0xFFFD), Is.EqualTo(romResetVectorHighBefore), "ROM reset-vector high byte should be unchanged");
         });
     }
 
