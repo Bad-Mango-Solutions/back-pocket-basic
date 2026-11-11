@@ -30,7 +30,7 @@ The current design is one Apple IIe-shaped `KeyboardDevice` that every caller dr
 - **Host code chooses machine codes.** `VideoWindow` translates keys itself and calls `KeyDown(byte)`. The REPL `keyboard press $8D` and `ResetCommand` call the device directly. Each new input source (MCP, scripts) would need its own copy of the IIe rules.
 - **There is only one keyboard model.** A IIc, IIgs, or 65832 keyboard cannot be swapped in, because callers assume `$C000` ASCII semantics.
 - **Threading is per-method.** `KeyboardDevice` marshals each mutator through `IMachineDispatcher.Post`. Text typing used to schedule events from the REPL thread and advance on strobe clear; #375 fixed that inside the device, but it belongs in a shared layer.
-- **Fidelity gaps.** There is no auto-repeat. The `$C010` read returns no ASCII bits. Caps Lock follows PC rules. The profile's `preset` and `autoRepeat` keyboard settings are ignored. See §8.1.
+- **Fidelity gaps.** There is no auto-repeat. The `$C010` read returns no ASCII bits. Caps Lock follows PC rules (`pc-toggle`); this spec defaults IIe profiles to real-IIe `hardware` mode instead (§8.1.7, Q1). The profile's `preset` and `autoRepeat` keyboard settings are ignored. See §8.1.
 - **Determinism is not testable.** There is no record of when host input landed, so a run with keyboard input cannot be replayed.
 
 ## 3. Goals
@@ -120,8 +120,8 @@ All new types live in `BadMango.Emulator.Devices`. Interfaces go in `BadMango.Em
 
 - `HostKey` describes the **physical position**, not the character. Layout (Dvorak, international) is applied by the machine keyboard, never by the input source.
 - New members are added only with a decision about every translator's output for them. The `AppleIIeKeyTranslatorTests` coverage test fails otherwise.
-- Keypad, function keys other than the Reset binding, `Home`/`End`/`PageUp`/`PageDown`, `Insert`, and left/right GUI keys come later, with the IIgs keypad work and remaining host bindings (§12).
-- There is no Reset key on modern keyboards, so Reset is a separate input (§7.2). The default host binding is F12, mapped by `VideoWindow` to `ResetKeyDown` / `ResetKeyUp` (§10.1, §12). F12 itself is not a `HostKey` member.
+- Keypad keys, `Home`/`End`/`PageUp`/`PageDown`, `Insert`, and left/right GUI keys come later, with the IIgs keypad work. Function keys `F1`–`F15` are added to `HostKey` with the IIgs work so they can pass through as ADB keys (§8.3, §12).
+- There is no Reset key on modern keyboards, so Reset is a separate input (§7.2). The host chord that invokes it is a **per-profile binding**, not a fixed `HostKey`. `VideoWindow` consumes that chord and maps it to `ResetKeyDown` / `ResetKeyUp` (§10.1, §12). A bound chord is not also delivered as a `HostKey` event. Defaults are machine-specific and provisional (§12).
 
 ### 7.2 `IKeyboardInput`
 
@@ -213,7 +213,7 @@ Hardware facts are cited to: **[TRM-e]** *Apple IIe Technical Reference Manual*,
 #### 8.1.1 Encoder and translation
 
 - The keyboard is a switch matrix scanned by an AY-3600-PRO encoder. Its key code, together with Shift and Control, addresses a 2K keyboard ROM that produces the ASCII code [TRM-e ch. 2; Sather ch. 7]. The ROM holds four sets: caps-locked or unlocked, standard or alternate. The alternate set is Dvorak on US machines and the local layout on export machines [Sather ch. 7].
-- **Caps Lock** selects the caps-locked set. That set differs from the unlocked set only in that the unmodified ("ALONE") code for the 26 letters is uppercase. On a real IIe, Caps Lock with Shift still gives uppercase, and Caps Lock never affects digits or punctuation [Sather ch. 7]. Today's translator uses the PC rule instead (Shift XOR Caps Lock), so see §8.1.7 and open question Q1.
+- **Caps Lock** selects the caps-locked set. That set differs from the unlocked set only in that the unmodified ("ALONE") code for the 26 letters is uppercase. On a real IIe, Caps Lock with Shift still gives uppercase, and Caps Lock never affects digits or punctuation [Sather ch. 7]. IIe profiles default to that `hardware` behavior (§8.1.7, Q1). PR #375's translator still uses the PC rule (Shift XOR Caps Lock, `pc-toggle`); the default flips when the implementation of this spec lands.
 - **Control** behavior follows the Control and Both columns of TRM-e Table 2-3:
   - Ctrl+A…Z gives `$01`–`$1A`.
   - Ctrl+`[`, Ctrl+`\` and Ctrl+`]` give `$1B`, `$1C` and `$1D`.
@@ -266,10 +266,10 @@ On the IIe, PB2 reflects Shift only when the X6 jumper is soldered (the "single-
 
 - **Layout:** `us-qwerty` (default) or `us-dvorak`, the IIe's alternate keyboard ROM set [Sather ch. 7]. The IIe Dvorak switch is a hardware mod [Sather application note], so the profile treats it as a fixed layout plus an optional runtime toggle.
 - **Caps Lock mode:**
-  - `hardware`: Caps Lock forces letters to uppercase, and Shift has no further effect on letters. This matches Sather.
-  - `pc-toggle`: Shift XOR Caps Lock, which is today's behavior.
+  - `hardware` (the IIe default): Caps Lock forces letters to uppercase, and Shift has no further effect on letters. This matches a real IIe [Sather ch. 7].
+  - `pc-toggle`: Shift XOR Caps Lock, which is today's behavior in PR #375 and remains available as a per-profile option.
 
-  `pc-toggle` stays the default until Q1 is decided.
+  IIe profiles default to `hardware`. This is a behavior change from today's Shift-XOR-Caps translator. Any profile can set `capsLockMode` to `pc-toggle`.
 
 ### 8.2 Apple IIc: `AppleIIcKeyboard`
 
@@ -301,7 +301,15 @@ Hardware facts are cited to **[HWR-gs]** *Apple IIgs Hardware Reference*, ch. 6 
 - **Auto-repeat:** the rate and delay are set in the Control Panel [HWR-gs ch. 6].
 - **Rollover:** modifier keys have n-key rollover. Alphanumeric keys have 2-key lockout, so a third simultaneous key is not recognized [HWR-gs ch. 6].
 - **Command key** does the same job as Open Apple on the IIe [HWR-gs glossary]. Whether Option reads as Closed Apple at `$C062`, and how `$C061`/`$C062` are wired on the IIgs, is Q7.
-- **Reset:** the ADB microcontroller detects the reset key combination and asserts RESET [HWR-gs ch. 6]. `IKeyboardInput.ResetKeyDown` maps onto that.
+- **Reset combinations** (official sources only; see also §12 for host bindings):
+  - The ADB microcontroller detects the reset key combination and asserts RESET [HWR-gs ch. 6]. `IKeyboardInput.ResetKeyDown` maps onto that.
+  - **Control-Command-Reset** is special: it generates a special key code, the microcontroller asserts the RESET line, and the system restarts (the reset routine) [HWR-gs ch. 6]. Bit 5 of the ADB Command/Data register at `$C026` is set when Control, Command, and Reset are pressed together; "this condition is usually used to initiate a cold start up" [HWR-gs Table 6-3]. Apple's Tech Info Library article on resetting calls this a cold reset: hold Control and Apple, then press and release Reset, "which makes the machine reboot as if it were just turned on" [TIL-2061]. The IIgs Quick Start Guide gives the same chord (Command-Control-Reset) to start up a disk when the power is already on [QSG-gs].
+  - **Control-Reset** is a warm reset: hold Control and press and release Reset [TIL-2061]. The HWR-gs glossary defines Control-Reset as the combination that usually stops an Applesoft program immediately.
+  - **Self-test:** "The self-test is activated by pressing Open-Apple and Option on power up, or Open-Apple, Option, and Reset" [TN-95]. That wording does **not** mention Control. This spec does not add Control to the official combination. Many secondary sources write Control-Open-Apple-Option-Reset; that has not been confirmed from an official Apple manual here.
+  - **Control Panel:** the documented keyboard path that uses Reset is Option-Control-Reset [QSG-gs; TIL-522]. Holding Option while turning the power on is also documented, though Apple noted that it "doesn't always work" [TIL-522, citing the *Apple IIGS Owner's Guide*, p. 13]. Control-Open-Apple-Escape is widely cited as the running-machine Classic Desk Accessory / Control Panel shortcut; it was **not** independently verified from an official Apple manual for this spec.
+- **Extended ADB keyboards and function keys.** The Apple Extended Keyboard (M0115) and Apple Extended Keyboard II (M3501) are ADB keyboards with fifteen function keys, F1–F15 [MacHW ch. 8 and Figure 8-10; TIL-112]. The Extended Keyboard II's stated requirement is "Any Apple personal computer with an Apple Desktop bus interface" [TIL-112], which includes the IIgs [HWR-gs ch. 6]. The M0115 is the same ADB device class [MacHW ch. 8]. The compact keyboard that shipped with the IIgs has no function keys; these extended keyboards are the ADB devices that add them. Contemporary IIgs programmers used an Extended ADB keyboard on the IIgs and read F1–F15 from software [Empson-94].
+  - ADB key-down codes for F13, F14 and F15 are `$69`, `$6B` and `$71` [MacHW Figure 8-10]. Those three keys sit immediately to the right of F12 in the function-key row. A PC 101-key keyboard labels that same cluster Print Screen, Scroll Lock and Pause, so the host maps Print Screen → F13, Scroll Lock → F14 and Pause → F15. That is a layout correspondence, not an Apple document that literally names those PC legends on the M0115/M3501.
+  - Software can see the function keys. Through the Event Manager, the extended keys arrive as key-down events whose character codes look like lowercase letters from the numeric keypad, distinguished by the keypad modifier bit (`keyPad`, `$2000`) [Empson-94]. Through `$C000`/`$C010`, the same keys are identified by reading the Modifier Key register at `$C025` and testing the keypad bit (bit 4) [Empson-94; HWR-gs Table 6-5]. A few programs use them; they are ordinary ADB keys, not reserved host shortcuts.
 - **Known hardware anomaly:** while an arrow key (or Space or Delete with Fast Space/Delete on) auto-repeats, pressing Control sets the Shift bit in `$C025` instead of Control [TN-58]. The fidelity profile may reproduce this.
 
 ### 8.4 65832 machine (placeholder)
@@ -344,7 +352,7 @@ While `TypeText` is active, live `KeyDown` events still apply, but `TypeText` ke
 
 The window maps Avalonia `Key` to `HostKey`, keeps its Alt-to-Apple-key binding and Caps Lock toggle, and calls `IKeyboardInput.KeyDown` and `KeyUp` with the snapshot. That is all it does for ordinary keys. It never touches a translator or `KeyDown(byte)`. (The #375 interim reads `IKeyboardDevice.Translator`; that property goes away in migration step 4.)
 
-**Reset binding.** `VideoWindow` maps F12 to the Reset input (`ResetKeyDown` / `ResetKeyUp`). This is the binding already decided in [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md) (Special Key Mappings, and the profile JSON `reset` / `coldReset` keys). Plain F12 asserts Reset with Control implied, so the `requireControlForReset` jumper does not block the host shortcut. Alt combinations still hold Open-Apple and Closed-Apple, so Left Alt+F12 is a reboot (Ctrl+Open Apple+Reset) and Right Alt+F12 runs the self-test (Ctrl+Closed Apple+Reset). Ctrl+F12 maps to the cold-reset machine action and does not also assert the Reset key. The bindings are configurable in the profile's keyboard section; these are the defaults.
+**Reset binding.** `VideoWindow` reads `bindings.reset` and `bindings.coldReset` from the machine profile (§11.1, §12) and maps those host chords to `ResetKeyDown` / `ResetKeyUp` or the cold-reset machine action. It does not hard-code F12. The bound chord is consumed and is not also delivered as a `HostKey` event. Defaults are machine-specific and **provisional** (§12). The menu command and the REPL `reset` command always work, independently of the host binding.
 
 ### 10.2 Debugger REPL
 
@@ -387,14 +395,14 @@ This extends the existing `motherboard[].config` for the keyboard. Existing keys
     "layout": "us-qwerty",             // primary layout
     "alternateLayout": "us-dvorak",    // IIc keyboard switch "down" / IIe Dvorak mod; optional
     "layoutSwitch": "primary",         // initial switch position: primary | alternate
-    "capsLockMode": "pc-toggle",       // pc-toggle | hardware   (Q1)
+    "capsLockMode": "hardware",        // hardware | pc-toggle. IIe default is hardware (Q1).
     "requireControlForReset": true,    // IIe keyboard jumper
     "autoRepeat": true,                // existing key; enables §8.1.4
     "shiftKeyMod": false,              // IIe X6 jumper: Shift on PB2. Default off (stock IIe).
     "strobeDebounceMs": 0,             // 0 = immediate; 10 ≈ AY-3600 bounce mask (Q4)
-    "bindings": {                      // host bindings used by VideoWindow; overridable
-      "reset": "F12",                  // warm reset (Control implied); see §12
-      "coldReset": "Ctrl+F12"          // machine cold-reset action
+    "bindings": {                      // host bindings used by VideoWindow; overridable data
+      "reset": "F12",                  // IIe/IIc default shown; IIgs default is Ctrl+Alt+F12. See §12.
+      "coldReset": "Ctrl+F12"          // IIe/IIc default shown; IIgs default is Ctrl+Alt+Shift+F12.
     },
     "typeText": {                      // defaults for TypeText on this machine
       "holdMs": 50,
@@ -407,18 +415,40 @@ This extends the existing `motherboard[].config` for the keyboard. Existing keys
 }
 ```
 
-For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position. On the unenhanced `pocket2e-a2` profile, `typeText.forceUppercase` defaults to true; every other profile leaves it false.
+For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position. On the unenhanced `pocket2e-a2` profile, `typeText.forceUppercase` defaults to true; every other profile leaves it false. IIe profiles default `capsLockMode` to `hardware`. The `bindings` values in the sketch are the IIe/IIc defaults; IIgs profiles use the IIgs defaults in §12. All of those binding defaults are provisional and can be overridden in this block without a code change.
 
 ## 12. Host key bindings
+
+Reset and cold-reset host chords are **per-profile settings** (`config.bindings.reset` and `config.bindings.coldReset`). Each machine family has its own defaults, in the tables below. **These defaults are provisional and subject to change.** A profile overrides them by setting the `bindings` block. A binding is just data: changing a default later does not require a code change. Tests must read the bindings from the profile rather than hard-coding F12 or any other chord.
+
+`VideoWindow` consumes the bound chord and maps it to `ResetKeyDown` / `ResetKeyUp`, or to the cold-reset machine action. The chord is not also delivered as a `HostKey` event. The menu command and the REPL `reset` command always work, including `reset --open-apple` and `reset --closed-apple` (#369), regardless of the host binding.
 
 | Host input | Default binding | Notes |
 |---|---|---|
 | Left Alt / Right Alt | Open Apple / Closed Apple | On the IIgs, Command and Option. |
 | Backspace | `HostKey.Backspace` (IIe `$08`) | |
 | Delete | `HostKey.Delete` (IIe `$7F`) | |
-| Reset | F12 | Maps to `ResetKeyDown` / `ResetKeyUp`. Plain F12 asserts Reset with Control implied, so `requireControlForReset` does not block the shortcut. Left Alt+F12 reboots; Right Alt+F12 runs the self-test. Source: `specs/Keyboard Mapping Specification.md`. |
-| Cold reset | Ctrl+F12 | The cold-reset machine action. It does not also assert the Reset key. Source: the same spec. |
-| Home/End/PgUp/PgDn/other F-keys | None | Added with the IIgs keypad and function keys. F12 is reserved for Reset. |
+
+### 12.1 IIe and IIc defaults
+
+These continue the earlier decision in [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). They apply only to IIe and IIc profiles. The IIe and IIc have no function keys, so using F12 does not hide a machine key.
+
+| Host input | Default binding | Notes |
+|---|---|---|
+| Reset | F12 | Maps to `ResetKeyDown` / `ResetKeyUp`. Plain F12 asserts Reset with Control implied, so `requireControlForReset` does not block the shortcut. Left Alt+F12 holds Open Apple (IIe reboot / forced cold start). Right Alt+F12 holds Closed Apple (IIe self-test). |
+| Cold reset | Ctrl+F12 | The cold-reset machine action. It does not also assert the Reset key. |
+
+### 12.2 IIgs defaults
+
+On the IIgs, every host function key must reach the emulated machine as an ADB key (§8.3). F12 is a real key on the Extended Keyboard and Extended Keyboard II [MacHW Figure 8-10], and software can read it [Empson-94], so F12 is **not** the Reset default on this profile. Host Print Screen, Scroll Lock and Pause are mapped to F13, F14 and F15 and also pass through.
+
+| Host input | Default binding | Notes |
+|---|---|---|
+| F1–F15 | The matching ADB function key | Pass through. `HostKey` gains `F1`–`F15` with the IIgs work. |
+| Print Screen, Scroll Lock, Pause | F13, F14, F15 | Same cluster as F13–F15 on the Extended Keyboard (§8.3). |
+| Reset | Ctrl+Alt+F12 | The whole chord is consumed and maps to `ResetKeyDown` / `ResetKeyUp` with Control implied (a warm Control-Reset [TIL-2061]). This is not a single ADB key, so it does not collide with F12 or any other function key. |
+| Cold reset | Ctrl+Alt+Shift+F12 | The cold-reset machine action. It does not also assert the Reset key, and it does not collide with a single ADB key. |
+| IIgs Control-Command-Reset / self-test / Control Panel | Menu or REPL | Use `reset --open-apple` (Control-Command-Reset cold start [HWR-gs Table 6-3; TIL-2061]), `reset --open-apple --closed-apple` (self-test, following [TN-95]), or the documented Option-Control-Reset Control Panel path when that action exists. Additional host chords may be added later as more `bindings` entries; they are data. |
 
 ## 13. Testing strategy
 
@@ -434,7 +464,7 @@ For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "dow
 3. **End-to-end polling-loop tests** (exist for the IIe since #375). A 6502 loop in RAM waits for `$C000` bit 7, clears the strobe through `$C010`, and stores to a buffer on the real `pocket2e-a2-enh` profile. Input goes only through `IKeyboardInput`, and nothing pokes `$C000`. Cases:
    - `TypeText("Hello, World!")` with a key-up between characters
    - Shift+H, `i`, Shift+1 giving `Hi!`
-   - Caps Lock
+   - Caps Lock in both modes: with Caps Lock down, Shift+A gives `A` in `hardware` mode and `a` in `pc-toggle`
    - Control
    - Apple keys held
    - type-ahead kept while the program isn't reading
@@ -450,12 +480,12 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 1. **Done in #375.** Added `HostKey`, `IKeyTranslator`, `AppleIIeKeyTranslator`, and `IKeyboardDevice.Translator` (interim). `VideoWindow` maps to `HostKey`. `TypeString` runs on scheduler events, the strobe clear never starts a key, and the test suite was added.
 2. **Add the input layer.** Add `IKeyboardInput`, `TypeTextOptions`, `TypeTextReceipt`, `IHostKeyboardSink`, `HostKeystroke`, the `InputEvent` journal types, and a `KeyboardInput` implementation. `KeyboardDevice` implements `IHostKeyboardSink`. `MachineFactory` (or the builder) registers one `KeyboardInput` per machine whenever a keyboard sink exists.
 3. **Move text typing.** Move `TypeString` logic into `KeyboardInput.TypeText`, using the profile clock rate instead of 1,020 cycles/ms. Delete `IKeyboardDevice.TypeString`, and update `KeyboardCommand type` and the tests in the same change.
-4. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`. Wire the F12 Reset and Ctrl+F12 cold-reset bindings from §12, including the Alt+F12 Open-Apple and Closed-Apple combinations.
+4. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`. Wire the Reset and cold-reset bindings from the profile (§12), including the IIe/IIc Alt+F12 Open-Apple and Closed-Apple combinations when those defaults are in effect. Do not hard-code F12.
 5. **Move the REPL.** Switch `KeyboardCommand` (`press` chords, `type`) and `ResetCommand` to `IKeyboardInput`.
 6. **Narrow `IKeyboardDevice`.** Remove `KeyDown(byte)`, `KeyUp()`, `SetModifiers`, `Translator`, `PressResetKey` and `ReleaseResetKey` from the public interface. They become sink methods. Rename `KeyboardDevice` to `AppleIIeKeyboard`, keeping `[DeviceType("keyboard")]`.
-7. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode`, `requireControlForReset`, `autoRepeat`, `shiftKeyMod` (default **false**), the `typeText` defaults (including `forceUppercase`, true on `pocket2e-a2` only), and the `bindings` for Reset and cold reset. Update the profile JSON schema.
+7. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode` (default **`hardware`** on IIe profiles), `requireControlForReset`, `autoRepeat`, `shiftKeyMod` (default **false**), the `typeText` defaults (including `forceUppercase`, true on `pocket2e-a2` only), and the `bindings` for Reset and cold reset (machine-specific defaults from §12; provisional). Update the profile JSON schema.
 8. **Add the journal and replay.** Add the input journal and `Replay`, the golden-trace test, the determinism test, and the multi-machine test.
-9. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode. **Behavior change:** `shiftKeyMod` defaults to off, so Shift is no longer shown on PB2 unless a profile turns the option on.
+9. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode as the IIe default, with `pc-toggle` still selectable. **Behavior changes:** `shiftKeyMod` defaults to off, so Shift is no longer shown on PB2 unless a profile turns the option on; `capsLockMode` defaults to `hardware`, which changes today's Shift-XOR-Caps behavior in PR #375's `AppleIIeKeyTranslator`.
 10. **MCP tools** (with #337). Add `keyboard.type`, `keyboard.press` and `keyboard.key`.
 11. **Later epics:** `AppleIIcKeyboard` (§8.2), `AdbKeyboard` and `AdbController` (§8.3), the 65832 keyboard (§8.4), and later layouts such as Dvorak as C# tables (§11).
 
@@ -470,19 +500,19 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 
 | # | Question | Notes |
 |---|---|---|
-| Q1 | **Caps Lock with Shift.** Should the a2 profiles default to `hardware` (letters uppercase whenever Caps Lock is down, which is the real IIe per Sather ch. 7) or keep `pc-toggle` (Shift undoes Caps Lock, today's behavior)? | The hardware fact is verified. The default is a product decision. |
 | Q2 | Should the `$C011`–`$C01F` reads expose keyboard ASCII in bits 0–6? | Sather says yes. Today the IOU/MMU status handlers own those reads, so we need to confirm their low bits come from the keyboard latch. |
 | Q3 | **IIe rollover.** TRM-e says both "N-key rollover" and "two-key rollover". When the newest of two held keys is released, does the older key re-strobe, and which key auto-repeats? | Needs a hardware check or the AY-3600 datasheet. Sather quotes the datasheet: "If the match occurs for an already encoded key, the match is not recognized." |
 | Q4 | Should we model the roughly 10 ms debounce (AKD high before the strobe and ASCII update)? | Some software may read AKD and `$C000` together. The default is off. |
 | Q6 | **IIc details:** auto-repeat delay and rate, rollover, the Caps Lock+Shift rule, and the encoder part. | TRM-c ch. 11 still needs reading. |
-| Q7 | **IIgs:** do `$C061`/`$C062` reflect Command/Option (and the joystick buttons) the way the IIe Apple keys do, and is Option the IIe Closed Apple? | HWR-gs only confirms that Command does Open Apple's job (glossary). |
+| Q7 | **IIgs:** do `$C061`/`$C062` reflect Command/Option (and the joystick buttons) the way the IIe Apple keys do, and is Option the IIe Closed Apple? | HWR-gs only confirms that Command does Open Apple's job (glossary). Function-key pass-through is a separate, verified fact (§8.3, [Empson-94]) and is not part of this question. |
 
 ### Decided (Josh, 2026-11-10)
 
 | # | Decision | Notes |
 |---|---|---|
+| Q1 | **IIe profiles default to `hardware` Caps Lock, configurable.** With Caps Lock down, letters are uppercase whether or not Shift is held, matching a real IIe [Sather ch. 7]. `pc-toggle` (Shift XOR Caps Lock, today's PR #375 behavior) remains a per-profile option. | This is a behavior change from the current translator. The default flips when the implementation of this spec lands; #375 is left as `pc-toggle`. |
 | Q5 | **Shift-key mod defaults to off.** PB2 does not show Shift unless the profile sets `shiftKeyMod` to true. | Matches a stock IIe with no X6 jumper [TRM-e ch. 2]. This is a behavior change: today's device always reports Shift on PB2. |
-| Q8 | **F12 is RESET; Ctrl+F12 is a cold reset.** `VideoWindow` maps F12 to `ResetKeyDown` / `ResetKeyUp`. Plain F12 asserts Reset with Control implied, so `requireControlForReset` does not block the host shortcut. Left Alt+F12 holds Open Apple (reboot). Right Alt+F12 holds Closed Apple (self-test). Ctrl+F12 is the cold-reset machine action and does not also assert the Reset key. Bindings are configurable in the profile's keyboard section; these are the defaults. | Source: [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md), Special Key Mappings and the profile JSON. |
+| Q8 | **Reset and cold-reset bindings are per-profile settings with machine-specific defaults, and those defaults are provisional (subject to change).** IIe and IIc profiles keep F12 as Reset (Control implied) and Ctrl+F12 as cold reset, with Alt modifiers as Open Apple / Closed Apple. IIgs profiles pass every host function key (F1–F15, plus Print Screen / Scroll Lock / Pause as F13–F15) through as an ADB key, and default Reset to Ctrl+Alt+F12 and cold reset to Ctrl+Alt+Shift+F12, chords that do not collide with any single ADB key. The menu command and the REPL `reset` command always work. A profile overrides the bindings in its `bindings` block; a binding is just data, so changing a default later does not require a code change. | IIe/IIc F12 defaults come from [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). IIgs F-key pass-through is required because the Extended Keyboard and Extended Keyboard II have F1–F15 as ordinary ADB keys [MacHW Figure 8-10; TIL-112; Empson-94]. |
 | Q9 | **We will not ship keyboard ROM images.** The keyboard ROM is emulated in C# code tables. A ROM-image-driven translator is out of scope unless a real need appears later. | Sather Table 7.2 remains the reference for building the C# tables. |
 | Q10 | **Yes.** `TypeText` forces uppercase on the unenhanced `pocket2e-a2` profile by default (`typeText.forceUppercase: true`). Other profiles default to false. Any profile can set the option. | Applesoft on an unenhanced IIe needs uppercase keywords. |
 
@@ -491,7 +521,14 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 - **[TRM-e]** Apple Computer, *Apple IIe Technical Reference Manual*: ch. 2 "The Keyboard" (Table 2-2, Table 2-3, Switch Inputs and Shift-Key Mod) and ch. 4 (Forced Cold Start, Automatic Self-Test). Full text: <https://archive.org/stream/Apple_IIe_Technical_Reference_Manual/Apple_IIe_Technical_Reference_Manual_djvu.txt>
 - **[Sather]** Jim Sather, *Understanding the Apple IIe* (Quality Software, 1985): ch. 7 "Input/Output" (keyboard ROM, Caps Lock sets, Table 7.2, Keyboard Operational Summary, keyboard section and Keyboard Operational Summary) and ch. 3, Figure 3.8 (auto-repeat timing). Scan: <https://dmcmillan.co.uk/blog/apple-iie-without-a-keyboard/Understanding_the_Apple_IIe.pdf>
 - **[TRM-c]** Apple Computer, *Apple IIc Technical Reference Manual*: ch. 1 (80/40 and keyboard switches), ch. 4 Table 4-1, Table B-7. <https://archive.org/stream/apple-iic-tech-ref/Image081317124723.duplex.merged_djvu.txt>
-- **[HWR-gs]** Apple Computer, *Apple IIgs Hardware Reference*: ch. 6 "The Apple Desktop Bus" (Tables 6-2 to 6-7 and 6-10; glossary). <https://archive.org/stream/Apple_IIgs_Hardware_Reference/Apple_IIgs_Hardware_Reference_djvu.txt>
+- **[HWR-gs]** Apple Computer, *Apple IIgs Hardware Reference*: ch. 6 "The Apple Desktop Bus" (Control-Command-Reset and the reset routine; Tables 6-2 to 6-7 and 6-10, including Table 6-3 bit 5 for the Control-Command-Reset cold start-up; glossary entry for Control-Reset). A clean PDF is at <https://retrotechwiki.com/images/b/bf/Apple_IIGS_Hardware_Reference_1989.pdf>. OCR text: <https://archive.org/stream/Apple_IIgs_Hardware_Reference/Apple_IIgs_Hardware_Reference_djvu.txt>
 - **[RC-SE]** Retrocomputing Stack Exchange, "What do the 80/40 and keyboard buttons on my Apple IIc do?" (cites TRM-c). <https://retrocomputing.stackexchange.com/questions/13977>
 - **[TN-58]** Apple IIgs Technical Note #58, "Keyboard Modifiers Register Anomaly" (Dave Lyons, 1989). <https://apple2.gs/technotes/tn-iigs-058/>
+- **[TN-95]** Apple IIgs Technical Note #95, "ROM Diagnostic Errors" (Dan Strnad, September 1990): self-test is activated by Open-Apple and Option on power up, or Open-Apple, Option, and Reset. <https://apple2.gs/technotes/tn-iigs-095/>
+- **[TIL-112]** Apple Tech Info Library #112, "Apple Extended Keyboard: Specifications" (created 4 December 1989; reviewed 25 June 1992): the Extended Keyboard II (replacement for M0115) has 15 function keys (F1–F15); system requirement is any Apple personal computer with an Apple Desktop Bus interface. <https://www.savagetaylor.com/TIL/TIL00112.pdf>
+- **[TIL-522]** Apple Tech Info Library #522, "Apple IIGS: Entering the Control Panel" (reviewed 21 September 1987): Option while powering on (Owner's Guide p. 13; "doesn't always work"); Option-Control-Reset. <https://www.savagetaylor.com/TIL/TIL00522.pdf>
+- **[TIL-2061]** Apple Tech Info Library #2061, "Apple IIGS: Resetting And Buffer Clearing": warm reset is Control-Reset; cold reset is Control-Apple-Reset, "reboot as if it were just turned on." <http://absurdengineering.org/library/MASTER%20Tech%20Info%20Library/Apple%20II%20Hardware/Apple%20IIGS%20Hardware%20Issues/TIL02061%20-%20Apple%20IIGS%20-%20Resetting%20And%20Buffer%20Clearing.pdf>
+- **[QSG-gs]** Apple Computer, *Apple IIGS Quick Start Guide* (1988, part no. 031-0107-A): Control Panel via Option-Control-Reset; start a disk when the power is on via Command-Control-Reset. <https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/machines/Apple%20IIGS%20Quick%20Start%20Guide.pdf>
+- **[MacHW]** Apple Computer, *Guide to the Macintosh Family Hardware*, 2nd edition (Addison-Wesley, 1990), ch. 8 "Apple Desktop Bus": the Apple Extended Keyboard is an ADB keyboard; F1–F15 and their key-down transition codes (F13 `$69`, F14 `$6B`, F15 `$71`) are in Figure 8-10, immediately to the right of F12. <https://vintageapple.org/inside_o/pdf/Guide_to_Macintosh_Family_Hardware_2nd_Edition_1990.pdf>
+- **[Empson-94]** David Empson, "Re: Extended ADB keyboard help," *comp.sys.apple2.programmer*, 2 August 1994: on a IIgs with an Extended ADB keyboard, F1–F15 are visible to the Event Manager (keypad modifier bit) and via `$C000`/`$C010` plus `$C025` bit 4. <https://groups.google.com/g/comp.sys.apple2.programmer/c/oZBTT54qOTc>
 - Gary Little, *Inside the Apple IIe* (Brady, 1985), ch. 6, "Keyboard auto-repeat" (about 900 ms, 15 per second). <https://apple2online.com/wp-content/uploads/Inside-the-Apple-IIe.pdf>
