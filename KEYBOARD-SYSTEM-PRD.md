@@ -54,6 +54,7 @@ The current design is one Apple IIe-shaped `KeyboardDevice` that every caller dr
 - Mouse and joystick input. These use separate input paths, which may follow the same `IKeyboardInput`-style pattern later.
 - International character sets in the video ROM.
 - Emulating the ADB microcontroller at the instruction level (M50740 firmware). The IIgs path is high-level emulation (HLE) first.
+- Shipping keyboard ROM images. Layouts are C# code tables (see §11 and Q9).
 - A key-binding editor UI.
 
 ## 5. Users and scenarios
@@ -119,8 +120,8 @@ All new types live in `BadMango.Emulator.Devices`. Interfaces go in `BadMango.Em
 
 - `HostKey` describes the **physical position**, not the character. Layout (Dvorak, international) is applied by the machine keyboard, never by the input source.
 - New members are added only with a decision about every translator's output for them. The `AppleIIeKeyTranslatorTests` coverage test fails otherwise.
-- Keypad, function keys, `Home`/`End`/`PageUp`/`PageDown`, `Insert`, and left/right GUI keys come later, with the IIgs keypad work and host bindings (§12).
-- There is no Reset key on modern keyboards, so Reset is a separate input (§7.2).
+- Keypad, function keys other than the Reset binding, `Home`/`End`/`PageUp`/`PageDown`, `Insert`, and left/right GUI keys come later, with the IIgs keypad work and remaining host bindings (§12).
+- There is no Reset key on modern keyboards, so Reset is a separate input (§7.2). The default host binding is F12, mapped by `VideoWindow` to `ResetKeyDown` / `ResetKeyUp` (§10.1, §12). F12 itself is not a `HostKey` member.
 
 ### 7.2 `IKeyboardInput`
 
@@ -252,7 +253,7 @@ The emulation counts VBlank events from the video device. On the 4th VBlank boun
 
 #### 8.1.5 Shift-key mod (PB2)
 
-On the IIe, PB2 reflects Shift only when the X6 jumper is soldered (the "single-wire shift-key mod"). Without it, PB2 is the game-port switch 2 input [TRM-e ch. 2]. Today's device always reports Shift on PB2. A profile option, `shiftKeyMod`, gates it (Q5 covers the default).
+On the IIe, PB2 reflects Shift only when the X6 jumper is soldered (the "single-wire shift-key mod"). Without it, PB2 is the game-port switch 2 input [TRM-e ch. 2]. A per-device profile option, `shiftKeyMod`, gates this. It defaults to off, matching a stock IIe with no X6 jumper. This is a behavior change: today's device always reports Shift on PB2.
 
 #### 8.1.6 Reset combinations
 
@@ -318,7 +319,7 @@ This machine defines its own keyboard and does not have to imitate the Apple II.
 
 - Each character goes to `sink.TryGetKeystroke(c, out keystroke)`. For IIe and IIc keyboards, this is a reverse table built once per translator and layout by enumerating every `HostKey` × {none, Shift, Control, Control+Shift}. Among the keystrokes that produce a code, the one with the fewest modifiers wins.
 - Newlines: `\r`, `\n`, and `\r\n` each become **one** Return. `\t` becomes Tab, and `\b` becomes Backspace (`$08`).
-- **Case** is typed exactly: `A` is typed as Shift+A. The host's live Caps Lock state is ignored, because `TypeText` uses its own modifier snapshot. `TypeTextOptions.ForceUppercase` upper-cases letters first, for software that needs uppercase, such as an unenhanced IIe or II+ software.
+- **Case** is typed exactly: `A` is typed as Shift+A. The host's live Caps Lock state is ignored, because `TypeText` uses its own modifier snapshot. `TypeTextOptions.ForceUppercase` upper-cases letters first, for software that needs uppercase. The keyboard-device option is `typeText.forceUppercase` in the machine profile's device configuration. The unenhanced `pocket2e-a2` profile defaults it to true, because Applesoft on an unenhanced IIe needs uppercase keywords. Every other profile defaults it to false. Any profile can set the option.
 - **Unmappable characters** are anything with no keystroke, such as non-ASCII or emoji. `TypeTextOptions.Unmappable` decides what happens: `Skip` (the default), `Replace` (with `ReplacementChar`, default `?`), or `Reject` (nothing is queued and the receipt lists the offending characters). The receipt always reports accepted and skipped counts, so the REPL and MCP can surface them.
 
 ### 9.2 Timing (defaults)
@@ -341,7 +342,9 @@ While `TypeText` is active, live `KeyDown` events still apply, but `TypeText` ke
 
 ### 10.1 `VideoWindow`
 
-The window maps Avalonia `Key` to `HostKey`, keeps its Alt-to-Apple-key binding and Caps Lock toggle, and calls `IKeyboardInput.KeyDown` and `KeyUp` with the snapshot. That is all it does. It never touches a translator or `KeyDown(byte)`. (The #375 interim reads `IKeyboardDevice.Translator`; that property goes away in migration step 4.) The host binding for Reset is Q8.
+The window maps Avalonia `Key` to `HostKey`, keeps its Alt-to-Apple-key binding and Caps Lock toggle, and calls `IKeyboardInput.KeyDown` and `KeyUp` with the snapshot. That is all it does for ordinary keys. It never touches a translator or `KeyDown(byte)`. (The #375 interim reads `IKeyboardDevice.Translator`; that property goes away in migration step 4.)
+
+**Reset binding.** `VideoWindow` maps F12 to the Reset input (`ResetKeyDown` / `ResetKeyUp`). This is the binding already decided in [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md) (Special Key Mappings, and the profile JSON `reset` / `coldReset` keys). Plain F12 asserts Reset with Control implied, so the `requireControlForReset` jumper does not block the host shortcut. Alt combinations still hold Open-Apple and Closed-Apple, so Left Alt+F12 is a reboot (Ctrl+Open Apple+Reset) and Right Alt+F12 runs the self-test (Ctrl+Closed Apple+Reset). Ctrl+F12 maps to the cold-reset machine action and does not also assert the Reset key. The bindings are configurable in the profile's keyboard section; these are the defaults.
 
 ### 10.2 Debugger REPL
 
@@ -367,8 +370,7 @@ When RESET asserts, the device clears the strobe and cancels typing. The input l
 
 - `IKeyTranslator.Translate(HostKey, KeyboardModifiers) -> byte?` is a building block for keyboards that output **one code per keystroke** (the IIe and IIc). It is not a cross-machine contract. ADB and the 65832 machine do not use it.
 - Implementations are stateless and shareable.
-- **Layouts** are separate translators or data tables, selected in the profile: `AppleIIeKeyTranslator` (US QWERTY) and, later, `AppleIIeDvorakTranslator` or a data-driven `KeyboardRomTranslator`.
-- **Option (later):** a data-driven `KeyboardRomTranslator` would read a 2K IIe or IIc keyboard ROM image (Sather Table 7.2 layout). It maps `HostKey` to the matrix position XY to the ROM address (`XY × 4` plus the mode and set bits) to ASCII [Sather ch. 7]. That gives exact per-ROM behavior, including export ROMs. Whether we can ship ROM images is Q9.
+- **Layouts** are C# code tables (or separate translator classes), selected in the profile: `AppleIIeKeyTranslator` (US QWERTY) and, later, `AppleIIeDvorakTranslator`. The keyboard ROM is emulated in those tables. We will not ship keyboard ROM images. A ROM-image-driven translator is out of scope unless a real need appears later. Sather Table 7.2 documents the 2K IIe keyboard ROM layout (matrix position XY maps to ROM address `XY × 4` plus the mode and set bits) and is the reference for building the C# tables [Sather ch. 7].
 
 ### 11.1 Profile schema sketch
 
@@ -388,19 +390,24 @@ This extends the existing `motherboard[].config` for the keyboard. Existing keys
     "capsLockMode": "pc-toggle",       // pc-toggle | hardware   (Q1)
     "requireControlForReset": true,    // IIe keyboard jumper
     "autoRepeat": true,                // existing key; enables §8.1.4
-    "shiftKeyMod": true,               // IIe X6 jumper: Shift on PB2   (Q5)
+    "shiftKeyMod": false,              // IIe X6 jumper: Shift on PB2. Default off (stock IIe).
     "strobeDebounceMs": 0,             // 0 = immediate; 10 ≈ AY-3600 bounce mask (Q4)
+    "bindings": {                      // host bindings used by VideoWindow; overridable
+      "reset": "F12",                  // warm reset (Control implied); see §12
+      "coldReset": "Ctrl+F12"          // machine cold-reset action
+    },
     "typeText": {                      // defaults for TypeText on this machine
       "holdMs": 50,
       "gapMs": 10,
       "waitForConsumption": true,
+      "forceUppercase": false,         // true by default on pocket2e-a2 only
       "unmappable": "skip"             // skip | replace | reject
     }
   }
 }
 ```
 
-For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position.
+For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position. On the unenhanced `pocket2e-a2` profile, `typeText.forceUppercase` defaults to true; every other profile leaves it false.
 
 ## 12. Host key bindings
 
@@ -409,8 +416,9 @@ For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "dow
 | Left Alt / Right Alt | Open Apple / Closed Apple | On the IIgs, Command and Option. |
 | Backspace | `HostKey.Backspace` (IIe `$08`) | |
 | Delete | `HostKey.Delete` (IIe `$7F`) | |
-| Reset | Undecided (Q8) | Today it's the REPL only. `Keyboard Mapping Specification.md` proposed F12. |
-| Home/End/PgUp/PgDn/F-keys | None | Added with the IIgs keypad and function keys. |
+| Reset | F12 | Maps to `ResetKeyDown` / `ResetKeyUp`. Plain F12 asserts Reset with Control implied, so `requireControlForReset` does not block the shortcut. Left Alt+F12 reboots; Right Alt+F12 runs the self-test. Source: `specs/Keyboard Mapping Specification.md`. |
+| Cold reset | Ctrl+F12 | The cold-reset machine action. It does not also assert the Reset key. Source: the same spec. |
+| Home/End/PgUp/PgDn/other F-keys | None | Added with the IIgs keypad and function keys. F12 is reserved for Reset. |
 
 ## 13. Testing strategy
 
@@ -442,14 +450,14 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 1. **Done in #375.** Added `HostKey`, `IKeyTranslator`, `AppleIIeKeyTranslator`, and `IKeyboardDevice.Translator` (interim). `VideoWindow` maps to `HostKey`. `TypeString` runs on scheduler events, the strobe clear never starts a key, and the test suite was added.
 2. **Add the input layer.** Add `IKeyboardInput`, `TypeTextOptions`, `TypeTextReceipt`, `IHostKeyboardSink`, `HostKeystroke`, the `InputEvent` journal types, and a `KeyboardInput` implementation. `KeyboardDevice` implements `IHostKeyboardSink`. `MachineFactory` (or the builder) registers one `KeyboardInput` per machine whenever a keyboard sink exists.
 3. **Move text typing.** Move `TypeString` logic into `KeyboardInput.TypeText`, using the profile clock rate instead of 1,020 cycles/ms. Delete `IKeyboardDevice.TypeString`, and update `KeyboardCommand type` and the tests in the same change.
-4. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`.
+4. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`. Wire the F12 Reset and Ctrl+F12 cold-reset bindings from §12, including the Alt+F12 Open-Apple and Closed-Apple combinations.
 5. **Move the REPL.** Switch `KeyboardCommand` (`press` chords, `type`) and `ResetCommand` to `IKeyboardInput`.
 6. **Narrow `IKeyboardDevice`.** Remove `KeyDown(byte)`, `KeyUp()`, `SetModifiers`, `Translator`, `PressResetKey` and `ReleaseResetKey` from the public interface. They become sink methods. Rename `KeyboardDevice` to `AppleIIeKeyboard`, keeping `[DeviceType("keyboard")]`.
-7. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode`, `requireControlForReset`, `autoRepeat`, `shiftKeyMod` and the `typeText` defaults. Update the profile JSON schema.
+7. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode`, `requireControlForReset`, `autoRepeat`, `shiftKeyMod` (default **false**), the `typeText` defaults (including `forceUppercase`, true on `pocket2e-a2` only), and the `bindings` for Reset and cold reset. Update the profile JSON schema.
 8. **Add the journal and replay.** Add the input journal and `Replay`, the golden-trace test, the determinism test, and the multi-machine test.
-9. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode.
+9. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode. **Behavior change:** `shiftKeyMod` defaults to off, so Shift is no longer shown on PB2 unless a profile turns the option on.
 10. **MCP tools** (with #337). Add `keyboard.type`, `keyboard.press` and `keyboard.key`.
-11. **Later epics:** `AppleIIcKeyboard` (§8.2), `AdbKeyboard` and `AdbController` (§8.3), the 65832 keyboard (§8.4), and Dvorak and ROM-driven translators (§11).
+11. **Later epics:** `AppleIIcKeyboard` (§8.2), `AdbKeyboard` and `AdbController` (§8.3), the 65832 keyboard (§8.4), and later layouts such as Dvorak as C# tables (§11).
 
 ## 15. Corrections to `specs/Keyboard Mapping Specification.md`
 
@@ -466,12 +474,17 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 | Q2 | Should the `$C011`–`$C01F` reads expose keyboard ASCII in bits 0–6? | Sather says yes. Today the IOU/MMU status handlers own those reads, so we need to confirm their low bits come from the keyboard latch. |
 | Q3 | **IIe rollover.** TRM-e says both "N-key rollover" and "two-key rollover". When the newest of two held keys is released, does the older key re-strobe, and which key auto-repeats? | Needs a hardware check or the AY-3600 datasheet. Sather quotes the datasheet: "If the match occurs for an already encoded key, the match is not recognized." |
 | Q4 | Should we model the roughly 10 ms debounce (AKD high before the strobe and ASCII update)? | Some software may read AKD and `$C000` together. The default is off. |
-| Q5 | **Shift-key mod default.** A stock IIe has no X6 jumper, so PB2 doesn't show Shift. Today we always show it. | Pick a default per profile. |
 | Q6 | **IIc details:** auto-repeat delay and rate, rollover, the Caps Lock+Shift rule, and the encoder part. | TRM-c ch. 11 still needs reading. |
 | Q7 | **IIgs:** do `$C061`/`$C062` reflect Command/Option (and the joystick buttons) the way the IIe Apple keys do, and is Option the IIe Closed Apple? | HWR-gs only confirms that Command does Open Apple's job (glossary). |
-| Q8 | What is the host binding for the Reset key in `VideoWindow`: F12, Ctrl+F12, Pause, or menu-only? | It has to avoid stealing common host shortcuts. |
-| Q9 | Can we ship keyboard ROM images for a ROM-driven translator, or must layouts stay code tables? | This is a licensing question. |
-| Q10 | Should `TypeText` default to `ForceUppercase` on the unenhanced (`pocket2e-a2`) profile? | Applesoft on an unenhanced IIe needs uppercase keywords. |
+
+### Decided (Josh, 2026-11-10)
+
+| # | Decision | Notes |
+|---|---|---|
+| Q5 | **Shift-key mod defaults to off.** PB2 does not show Shift unless the profile sets `shiftKeyMod` to true. | Matches a stock IIe with no X6 jumper [TRM-e ch. 2]. This is a behavior change: today's device always reports Shift on PB2. |
+| Q8 | **F12 is RESET; Ctrl+F12 is a cold reset.** `VideoWindow` maps F12 to `ResetKeyDown` / `ResetKeyUp`. Plain F12 asserts Reset with Control implied, so `requireControlForReset` does not block the host shortcut. Left Alt+F12 holds Open Apple (reboot). Right Alt+F12 holds Closed Apple (self-test). Ctrl+F12 is the cold-reset machine action and does not also assert the Reset key. Bindings are configurable in the profile's keyboard section; these are the defaults. | Source: [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md), Special Key Mappings and the profile JSON. |
+| Q9 | **We will not ship keyboard ROM images.** The keyboard ROM is emulated in C# code tables. A ROM-image-driven translator is out of scope unless a real need appears later. | Sather Table 7.2 remains the reference for building the C# tables. |
+| Q10 | **Yes.** `TypeText` forces uppercase on the unenhanced `pocket2e-a2` profile by default (`typeText.forceUppercase: true`). Other profiles default to false. Any profile can set the option. | Applesoft on an unenhanced IIe needs uppercase keywords. |
 
 ## 17. Sources
 
