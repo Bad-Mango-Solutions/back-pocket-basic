@@ -102,16 +102,11 @@ public static partial class Instructions
                 cpu.Registers.A.SetByte(result8);
             }
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ADC };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -209,16 +204,11 @@ public static partial class Instructions
                 cpu.Registers.A.SetByte(result8);
             }
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SBC };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -246,11 +236,6 @@ public static partial class Instructions
             cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++; // Internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INC };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -276,11 +261,6 @@ public static partial class Instructions
             cpu.Registers.P.SetZeroAndNegative(value);
             opCycles++; // Internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEC };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -298,11 +278,6 @@ public static partial class Instructions
             byte value = (byte)(cpu.Registers.X.GetByte() + 1);
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INX };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -322,11 +297,6 @@ public static partial class Instructions
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INY };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -345,11 +315,6 @@ public static partial class Instructions
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEX };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -367,11 +332,6 @@ public static partial class Instructions
             byte value = (byte)(cpu.Registers.Y.GetByte() - 1);
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEY };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -394,11 +354,6 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.INA };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -419,11 +374,6 @@ public static partial class Instructions
             byte value = (byte)(cpu.Registers.A.GetByte() - 1);
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.DEA };
-            }
 
             cpu.Registers.TCU += 1;
         };

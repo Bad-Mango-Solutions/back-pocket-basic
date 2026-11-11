@@ -37,11 +37,6 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RMB };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -66,11 +61,6 @@ public static partial class Instructions
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SMB };
-            }
 
             cpu.Registers.TCU += opCycles;
         };
@@ -126,11 +116,6 @@ public static partial class Instructions
                 opCycles++; // Branch taken cycle
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BBR };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -183,11 +168,6 @@ public static partial class Instructions
 
                 cpu.Registers.PC.SetWord(newPC);
                 opCycles++; // Branch taken cycle
-            }
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BBS };
             }
 
             cpu.Registers.TCU += opCycles;

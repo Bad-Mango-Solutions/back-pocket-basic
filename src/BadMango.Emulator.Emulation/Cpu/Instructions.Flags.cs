@@ -24,11 +24,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Registers.P &= ~ProcessorStatusFlags.C;
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLC };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -44,11 +39,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Registers.P |= ProcessorStatusFlags.C;
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEC };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -66,11 +56,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Registers.P &= ~ProcessorStatusFlags.I;
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLI };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -86,11 +71,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Registers.P |= ProcessorStatusFlags.I;
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SEI };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -108,11 +88,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Registers.P &= ~ProcessorStatusFlags.D;
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLD };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -129,11 +104,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Registers.P |= ProcessorStatusFlags.D;
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.SED };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -149,11 +119,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Registers.P &= ~ProcessorStatusFlags.V;
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CLV };
-            }
 
             cpu.Registers.TCU += 1;
         };

@@ -24,11 +24,6 @@ public static partial class Instructions
         {
             Addr targetAddr = addressingMode(cpu);
             cpu.Registers.PC.SetWord((Word)targetAddr);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JMP };
-            }
         };
     }
 
@@ -55,11 +50,6 @@ public static partial class Instructions
             cpu.Registers.PC.SetAddr(targetAddr);
             opCycles++; // Internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.JSR };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -82,11 +72,6 @@ public static partial class Instructions
             opCycles++; // Pull high byte
             cpu.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
             opCycles += 3; // Internal operations
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTS };
-            }
 
             cpu.Registers.TCU += opCycles;
         };
@@ -112,11 +97,6 @@ public static partial class Instructions
             cpu.Registers.PC.SetWord((Word)((hi << 8) | lo));
             cpu.HaltReason = HaltState.None;
             opCycles += 2; // Internal operations
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.RTI };
-            }
 
             cpu.Registers.TCU += opCycles;
         };

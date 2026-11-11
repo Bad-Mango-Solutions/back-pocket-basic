@@ -38,11 +38,6 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -77,11 +72,6 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ASL };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -111,11 +101,6 @@ public static partial class Instructions
             value >>= 1;
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -151,11 +136,6 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LSR };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -186,11 +166,6 @@ public static partial class Instructions
             value = (byte)((value << 1) | oldCarry);
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -228,11 +203,6 @@ public static partial class Instructions
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROL };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -263,11 +233,6 @@ public static partial class Instructions
             value = (byte)((value >> 1) | oldCarry);
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -304,11 +269,6 @@ public static partial class Instructions
 
             cpu.Write8(address, value);
             opCycles += 2; // Memory write + internal operation
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ROR };
-            }
 
             cpu.Registers.TCU += opCycles;
         };

@@ -30,16 +30,11 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(result);
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.AND };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -64,16 +59,11 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(result);
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.ORA };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -98,16 +88,11 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(result);
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.EOR };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -160,11 +145,6 @@ public static partial class Instructions
                 cpu.Registers.P &= ~ProcessorStatusFlags.V;
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BIT };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -199,16 +179,11 @@ public static partial class Instructions
                 cpu.Registers.P &= ~ProcessorStatusFlags.Z;
             }
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BIT };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;

@@ -13,6 +13,7 @@ using BadMango.Emulator.Core.Signaling;
 using Core;
 using Core.Cpu;
 using Core.Debugger;
+using Debugging;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
@@ -35,6 +36,7 @@ using Core.Debugger;
 public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
+    private readonly OpcodeInfo[] opcodeInfoTable;
 
     /// <summary>
     /// The concrete scheduler, when the event context supplies one, so the
@@ -95,6 +97,7 @@ public sealed class Cpu65C02 : CpuBase
         : base(context)
     {
         opcodeTable = Cpu65C02OpcodeTableBuilder.Build();
+        opcodeInfoTable = OpcodeTableAnalyzer.BuildOpcodeInfoArray(opcodeTable);
         concreteScheduler = context.Scheduler as Scheduler;
         concreteSignals = context.Signals as SignalBus;
         trapRegistry = NullTrapRegistry.Instance;
@@ -273,14 +276,16 @@ public sealed class Cpu65C02 : CpuBase
         // Notify debug listener before execution
         if (DebugListener is not null)
         {
+            OpcodeInfo opcodeInfo = opcodeInfoTable[opcode];
+
             // Initialize trace for this instruction
             var opcodeBuffer = default(OpcodeBuffer);
             opcodeBuffer[0] = opcode;
             Trace = new(
                 StartPC: pcBefore,
                 OpCode: opcodeBuffer,
-                Instruction: CpuInstructions.None,
-                AddressingMode: CpuAddressingModes.None,
+                Instruction: opcodeInfo.Instruction,
+                AddressingMode: opcodeInfo.AddressingMode,
                 OperandSize: 0,
                 Operands: default,
                 EffectiveAddress: 0,

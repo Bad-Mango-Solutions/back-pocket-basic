@@ -27,11 +27,6 @@ public static partial class Instructions
             cpu.Registers.X.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAX };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -50,11 +45,6 @@ public static partial class Instructions
             var value = cpu.Registers.A.GetValue(size);
             cpu.Registers.Y.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TAY };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -75,11 +65,6 @@ public static partial class Instructions
             cpu.Registers.A.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXA };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -99,11 +84,6 @@ public static partial class Instructions
             cpu.Registers.A.SetValue(value, size);
             cpu.Registers.P.SetZeroAndNegative(value, size);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TYA };
-            }
-
             cpu.Registers.TCU += 1;
         };
     }
@@ -119,11 +99,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Registers.SP.SetDWord(cpu.Registers.X.GetByte());
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TXS };
-            }
 
             cpu.Registers.TCU += 1;
         };
@@ -143,11 +118,6 @@ public static partial class Instructions
             byte value = cpu.Registers.SP.GetByte();
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value, size);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.TSX };
-            }
 
             cpu.Registers.TCU += 1;
         };
