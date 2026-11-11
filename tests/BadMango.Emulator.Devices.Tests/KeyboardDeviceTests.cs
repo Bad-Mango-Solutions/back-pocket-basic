@@ -148,13 +148,13 @@ public class KeyboardDeviceTests
     }
 
     /// <summary>
-    /// Verifies that Reset clears all state.
+    /// Verifies that Reset clears transient key strobe state while preserving held modifiers.
     /// </summary>
     [Test]
-    public void Reset_ClearsAllState()
+    public void Reset_ClearsStrobeStateButPreservesHeldModifiers()
     {
         device.KeyDown(0x41);
-        device.SetModifiers(KeyboardModifiers.Shift);
+        device.SetModifiers(KeyboardModifiers.Shift | KeyboardModifiers.OpenApple);
 
         device.Reset();
 
@@ -162,7 +162,7 @@ public class KeyboardDeviceTests
         {
             Assert.That(device.HasKeyDown, Is.False);
             Assert.That(device.KeyData, Is.EqualTo(0x00));
-            Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.None));
+            Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.Shift | KeyboardModifiers.OpenApple));
         });
     }
 
@@ -455,24 +455,24 @@ public class KeyboardDeviceTests
     }
 
     /// <summary>
-    /// Verifies that Reset clears the modifier state which affects pushbuttons.
+    /// Verifies that Reset preserves held modifiers so the ROM can still sample them.
     /// </summary>
     [Test]
-    public void Reset_ClearsModifiers_PushButtonsReturnZero()
+    public void Reset_PreservesHeldModifiers_PushButtonsStayPressed()
     {
         device.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift);
         var context = CreateTestContext();
 
-        // Verify buttons are pressed before reset
         Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "PB0 should be pressed before reset");
 
         device.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x00), "PB0 should be clear after reset");
-            Assert.That(dispatcher.Read(0x62, in context), Is.EqualTo(0x00), "PB1 should be clear after reset");
-            Assert.That(dispatcher.Read(0x63, in context), Is.EqualTo(0x00), "PB2 should be clear after reset");
+            Assert.That(device.Modifiers, Is.EqualTo(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift));
+            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "PB0 should stay pressed during reset sampling");
+            Assert.That(dispatcher.Read(0x62, in context), Is.EqualTo(0x80), "PB1 should stay pressed during reset sampling");
+            Assert.That(dispatcher.Read(0x63, in context), Is.EqualTo(0x80), "PB2 should stay pressed during reset sampling");
         });
     }
 

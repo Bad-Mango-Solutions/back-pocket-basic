@@ -47,31 +47,38 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
     public override IReadOnlyList<string> Aliases { get; } = ["rst"];
 
     /// <inheritdoc/>
-    public override string Usage => "reset [--hard]";
+    public override string Usage => "reset [--hard] [--open-apple|-o] [--closed-apple|-a]";
 
     /// <inheritdoc/>
-    public string Synopsis => "reset [--hard]";
+    public string Synopsis => "reset [--hard] [--open-apple|--closed-apple]";
 
     /// <inheritdoc/>
     public string DetailedDescription =>
-        "Pulses the RESET line like Ctrl-Reset: devices respond to RESET and the CPU runs " +
-        "its reset sequence through the reset vector ($FFFC-$FFFD), setting I and clearing D. " +
-        "RAM is preserved, and a running machine keeps running into the ROM reset handler; " +
-        "a stopped or paused machine stops at the reset vector. With --hard, also performs a " +
-        "power-on reset of the CPU and devices and clears memory to zeros.";
+        "Pulses the RESET line like Ctrl-Reset: Control is implied and devices respond to RESET " +
+        "while the CPU runs its reset sequence through the reset vector ($FFFC-$FFFD), setting I " +
+        "and clearing D. RAM is preserved, and a running machine keeps running into the ROM reset " +
+        "handler; a stopped or paused machine stops at the reset vector. With --hard, also performs " +
+        "a power-on reset of the CPU and devices and clears memory to zeros. With --open-apple / " +
+        "--reboot / --cold, or --closed-apple / --diag, the corresponding Apple key is held while " +
+        "the RESET line is asserted, matching the ROM's reset sampling behavior.";
 
     /// <inheritdoc/>
     public IReadOnlyList<CommandOption> Options { get; } =
     [
         new("--hard", "-h", "flag", "Also clear memory to zeros", "off"),
+        new("--open-apple", "-o", "flag", "Hold Open Apple (PB0) through the reset handler; aliases: --command --reboot --cold", "off"),
+        new("--closed-apple", "-a", "flag", "Hold Closed Apple (PB1) through the reset handler; aliases: --option --diag", "off"),
     ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
-        "reset                   Soft reset (like Ctrl-Reset; RAM preserved)",
-        "reset --hard            Hard reset (CPU + memory clear)",
-        "rst                     Alias for reset",
+        "reset                        Soft reset (like Ctrl-Reset; RAM preserved)",
+        "reset --hard                 Hard reset (CPU + memory clear)",
+        "reset --open-apple           Soft reset while holding Open Apple (cold reboot)",
+        "reset --closed-apple         Soft reset while holding Closed Apple (self-test)",
+        "reset --cold                 Alias for holding Open Apple through reset",
+        "rst                          Alias for reset",
     ];
 
     /// <inheritdoc/>
@@ -100,12 +107,23 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
         bool hardReset = args.Any(arg =>
             arg.Equals("--hard", StringComparison.OrdinalIgnoreCase) ||
             arg.Equals("-h", StringComparison.OrdinalIgnoreCase));
+        bool holdOpenApple = args.Any(arg =>
+            arg.Equals("--open-apple", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--command", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--reboot", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--cold", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("-o", StringComparison.OrdinalIgnoreCase));
+        bool holdClosedApple = args.Any(arg =>
+            arg.Equals("--closed-apple", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--option", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--diag", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("-a", StringComparison.OrdinalIgnoreCase));
 
         if (debugContext.Machine is { } machine)
         {
-            if (!hardReset && machine.GetComponent<IKeyboardDevice>() is { } keyboard)
+            if (machine.GetComponent<IKeyboardDevice>() is { } keyboard)
             {
-                TriggerKeyboardReset(machine, keyboard);
+                TriggerKeyboardReset(machine, keyboard, holdOpenApple, holdClosedApple, hardReset);
             }
             else
             {
@@ -151,24 +169,39 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
     /// </summary>
     /// <param name="machine">The machine to reset.</param>
     /// <param name="keyboard">The keyboard whose Reset key drives the line.</param>
+    /// <param name="holdOpenApple"><see langword="true"/> to hold Open Apple during the reset sampling window.</param>
+    /// <param name="holdClosedApple"><see langword="true"/> to hold Closed Apple during the reset sampling window.</param>
+    /// <param name="hardReset"><see langword="true"/> to treat the pulse as a power-on reset while the line is held.</param>
     /// <remarks>
     /// Both callbacks run on the machine thread (see <see cref="IMachine.PulseReset"/>), so the
     /// modifiers sampled here are the ones the machine sees when the key goes down.
     /// </remarks>
-    private static void TriggerKeyboardReset(IMachine machine, IKeyboardDevice keyboard)
+    private static void TriggerKeyboardReset(IMachine machine, IKeyboardDevice keyboard, bool holdOpenApple, bool holdClosedApple, bool hardReset)
     {
         var originalModifiers = KeyboardModifiers.None;
         machine.PulseReset(
             () =>
             {
                 originalModifiers = keyboard.Modifiers;
-                keyboard.SetModifiers(originalModifiers | KeyboardModifiers.Control);
+                var resetModifiers = originalModifiers | KeyboardModifiers.Control;
+                if (holdOpenApple)
+                {
+                    resetModifiers |= KeyboardModifiers.OpenApple;
+                }
+
+                if (holdClosedApple)
+                {
+                    resetModifiers |= KeyboardModifiers.ClosedApple;
+                }
+
+                keyboard.SetModifiers(resetModifiers);
                 keyboard.PressResetKey();
             },
             () =>
             {
                 keyboard.ReleaseResetKey();
                 keyboard.SetModifiers(originalModifiers);
-            });
+            },
+            hardReset);
     }
 }

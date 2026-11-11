@@ -125,6 +125,7 @@ public interface IMachine : IEventContext, IMachineDispatcher
     /// </summary>
     /// <param name="assertLine">Drives the RESET line low through the source.</param>
     /// <param name="releaseLine">Releases the source.</param>
+    /// <param name="hardReset">When <see langword="true"/>, performs a power-on reset while the line is held.</param>
     /// <remarks>
     /// <para>
     /// Both callbacks run on the machine thread. The line is held for the minimum hold window
@@ -133,7 +134,7 @@ public interface IMachine : IEventContext, IMachineDispatcher
     /// keyboard requires Control), no reset occurs and the CPU keeps executing.
     /// </para>
     /// </remarks>
-    void PulseReset(Action assertLine, Action releaseLine);
+    void PulseReset(Action assertLine, Action releaseLine, bool hardReset = false);
 
     /// <summary>
     /// Starts continuous execution.
