@@ -361,8 +361,8 @@ public partial class VideoWindow : Window
         // Handle modifier keys
         UpdateModifiers(e);
 
-        // Map key to Pocket2e byte code
-        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers, capsLockActive);
+        // Map the Avalonia key to a physical host key, then let the machine's keyboard translate it.
+        byte? keyCode = TranslateKey(e.Key, e.KeyModifiers, capsLockActive);
         if (keyCode.HasValue)
         {
             keyboardDevice.KeyDown(keyCode.Value);
@@ -398,114 +398,102 @@ public partial class VideoWindow : Window
         e.Handled = true;
     }
 
-    /// <summary>
-    /// Maps Avalonia key codes to Pocket2e ASCII codes.
-    /// </summary>
-    /// <param name="key">The Avalonia key code.</param>
-    /// <param name="modifiers">The active key modifiers.</param>
-    /// <param name="capsLock">Whether Caps Lock is active.</param>
-    /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
-    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
-    {
-        bool ctrl = modifiers.HasFlag(KeyModifiers.Control);
-        bool shift = modifiers.HasFlag(KeyModifiers.Shift);
-
-        // Control key combinations
-        if (ctrl)
-        {
-            return key switch
-            {
-                >= Key.A and <= Key.Z => (byte)(key - Key.A + 1), // Ctrl+A = 0x01, etc.
-                Key.OemOpenBrackets => 0x1B, // Ctrl+[ = ESC
-                _ => null,
-            };
-        }
-
-        // Arrow keys
-        switch (key)
-        {
-            case Key.Left:
-                return 0x08; // Backspace / Left arrow
-            case Key.Right:
-                return 0x15; // Ctrl+U / Right arrow
-            case Key.Up:
-                return 0x0B; // Ctrl+K / Up arrow
-            case Key.Down:
-                return 0x0A; // Ctrl+J / Down arrow
-            case Key.Return:
-                return 0x0D; // Carriage return
-            case Key.Back:
-                return 0x08; // Backspace
-            case Key.Tab:
-                return 0x09; // Tab
-            case Key.Escape:
-                return 0x1B; // Escape
-            case Key.Space:
-                return 0x20; // Space
-        }
-
-        // Alphanumeric keys
-        if (key >= Key.A && key <= Key.Z)
-        {
-            byte baseCode = (byte)(key - Key.A + 0x41); // A = 0x41
-
-            // Caps Lock affects only letters: XOR with shift for toggle behavior
-            // - Caps Lock off, Shift off → lowercase
-            // - Caps Lock off, Shift on → uppercase
-            // - Caps Lock on, Shift off → uppercase
-            // - Caps Lock on, Shift on → lowercase (shift "undoes" caps lock)
-            bool uppercase = shift ^ capsLock;
-            return uppercase ? baseCode : (byte)(baseCode + 0x20);
-        }
-
-        if (key >= Key.D0 && key <= Key.D9)
-        {
-            if (shift)
-            {
-                // Shifted number keys produce symbols (Caps Lock does NOT affect these)
-                return key switch
-                {
-                    Key.D1 => (byte)'!',
-                    Key.D2 => (byte)'@',
-                    Key.D3 => (byte)'#',
-                    Key.D4 => (byte)'$',
-                    Key.D5 => (byte)'%',
-                    Key.D6 => (byte)'^',
-                    Key.D7 => (byte)'&',
-                    Key.D8 => (byte)'*',
-                    Key.D9 => (byte)'(',
-                    Key.D0 => (byte)')',
-                    _ => null,
-                };
-            }
-
-            return (byte)(key - Key.D0 + 0x30); // 0 = 0x30
-        }
-
-        // Punctuation (Caps Lock does NOT affect these)
-        return key switch
-        {
-            Key.OemMinus => shift ? (byte)'_' : (byte)'-',
-            Key.OemPlus => shift ? (byte)'+' : (byte)'=',
-            Key.OemOpenBrackets => shift ? (byte)'{' : (byte)'[',
-            Key.OemCloseBrackets => shift ? (byte)'}' : (byte)']',
-            Key.OemBackslash or Key.OemPipe => shift ? (byte)'|' : (byte)'\\',
-            Key.OemSemicolon => shift ? (byte)':' : (byte)';',
-            Key.OemQuotes => shift ? (byte)'"' : (byte)'\'',
-            Key.OemComma => shift ? (byte)'<' : (byte)',',
-            Key.OemPeriod => shift ? (byte)'>' : (byte)'.',
-            Key.OemQuestion => shift ? (byte)'?' : (byte)'/',
-            Key.OemTilde => shift ? (byte)'~' : (byte)'`',
-            _ => null,
-        };
-    }
-
     private static bool IsCriticalException(Exception ex)
     {
         return ex is OutOfMemoryException
             or AccessViolationException
             or InvalidProgramException
             or BadImageFormatException;
+    }
+
+    /// <summary>
+    /// Maps an Avalonia key to the physical <see cref="HostKey"/> it represents.
+    /// </summary>
+    /// <param name="key">The Avalonia key code.</param>
+    /// <returns>The host key, or <see cref="HostKey.None"/> if the key has no host-key equivalent.</returns>
+    private static HostKey MapToHostKey(Key key)
+    {
+        if (key is >= Key.A and <= Key.Z)
+        {
+            return HostKey.A + (key - Key.A);
+        }
+
+        if (key is >= Key.D0 and <= Key.D9)
+        {
+            return HostKey.D0 + (key - Key.D0);
+        }
+
+        return key switch
+        {
+            Key.OemMinus => HostKey.Minus,
+            Key.OemPlus => HostKey.Equals,
+            Key.OemOpenBrackets => HostKey.OpenBracket,
+            Key.OemCloseBrackets => HostKey.CloseBracket,
+            Key.OemBackslash or Key.OemPipe => HostKey.Backslash,
+            Key.OemSemicolon => HostKey.Semicolon,
+            Key.OemQuotes => HostKey.Quote,
+            Key.OemComma => HostKey.Comma,
+            Key.OemPeriod => HostKey.Period,
+            Key.OemQuestion => HostKey.Slash,
+            Key.OemTilde => HostKey.Backtick,
+            Key.Space => HostKey.Space,
+            Key.Return => HostKey.Return,
+            Key.Tab => HostKey.Tab,
+            Key.Escape => HostKey.Escape,
+            Key.Back => HostKey.Backspace,
+            Key.Delete => HostKey.Delete,
+            Key.Left => HostKey.Left,
+            Key.Right => HostKey.Right,
+            Key.Up => HostKey.Up,
+            Key.Down => HostKey.Down,
+            Key.LeftShift => HostKey.LeftShift,
+            Key.RightShift => HostKey.RightShift,
+            Key.LeftCtrl => HostKey.LeftControl,
+            Key.RightCtrl => HostKey.RightControl,
+            Key.LeftAlt => HostKey.LeftAlt,
+            Key.RightAlt => HostKey.RightAlt,
+            Key.CapsLock => HostKey.CapsLock,
+            _ => HostKey.None,
+        };
+    }
+
+    /// <summary>
+    /// Translates an Avalonia key press into the attached keyboard's key code.
+    /// </summary>
+    /// <param name="key">The Avalonia key code.</param>
+    /// <param name="modifiers">The active Avalonia key modifiers.</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
+    /// <returns>The key code, or <see langword="null"/> if the key produces no code.</returns>
+    private byte? TranslateKey(Key key, KeyModifiers modifiers, bool capsLock)
+    {
+        if (keyboardDevice is null)
+        {
+            return null;
+        }
+
+        HostKey hostKey = MapToHostKey(key);
+        if (hostKey == HostKey.None)
+        {
+            return null;
+        }
+
+        var keyboardModifiers = KeyboardModifiers.None;
+        if (modifiers.HasFlag(KeyModifiers.Shift))
+        {
+            keyboardModifiers |= KeyboardModifiers.Shift;
+        }
+
+        if (modifiers.HasFlag(KeyModifiers.Control))
+        {
+            keyboardModifiers |= KeyboardModifiers.Control;
+        }
+
+        if (capsLock)
+        {
+            keyboardModifiers |= KeyboardModifiers.CapsLock;
+        }
+
+        return keyboardDevice.Translator.Translate(hostKey, keyboardModifiers);
     }
 
     /// <summary>

@@ -33,6 +33,10 @@ public sealed class ResetSignalMachineTests
     private const ushort LoopAddress = 0x6000;
     private const ushort LcBank1ReadWrite = 0xC08B;
     private const ushort LcBank2ReadWrite = 0xC083;
+    private const ushort KeyboardDataAddress = 0xC000;
+    private const ushort KeyboardStrobeAddress = 0xC010;
+    private const ushort PushButton0Address = 0xC061;
+    private const ushort PushButton2Address = 0xC063;
 
     private static string RepositoryRoot { get; } = LocateRepositoryRoot();
 
@@ -413,6 +417,40 @@ public sealed class ResetSignalMachineTests
             Assert.That(dataAfterTypeAhead & 0x80, Is.Zero, "RESET discards the type-ahead");
             Assert.That(dataAfterNewTyping, Is.EqualTo((byte)('C' | 0x80)), "The keyboard types again after RESET");
             Assert.That(keyboard.HasKeyDown, Is.False, "The new key is released on schedule");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RESET clears strobe/type-ahead but keeps physically held key/modifier state.
+    /// Releasing the held key after RESET must clear <c>$C010</c>.
+    /// </summary>
+    [Test]
+    public void SoftReset_KeepsHeldKeyAndModifiers_KeyUpAfterResetClearsC010()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        WriteLoop(machine);
+
+        keyboard.KeyDown((byte)'Z');
+        keyboard.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.Shift);
+        machine.Reset();
+        WriteLoop(machine);
+
+        byte keyDataAfterReset = machine.Cpu.Read8(KeyboardDataAddress);
+        byte keyDownAfterReset = machine.Cpu.Read8(KeyboardStrobeAddress);
+        byte pb0AfterReset = machine.Cpu.Read8(PushButton0Address);
+        byte pb2AfterReset = machine.Cpu.Read8(PushButton2Address);
+
+        keyboard.KeyUp();
+        byte keyDownAfterRelease = machine.Cpu.Read8(KeyboardStrobeAddress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(keyDataAfterReset, Is.EqualTo((byte)'Z'), "RESET should clear strobe but keep the held key value");
+            Assert.That(keyDownAfterReset, Is.EqualTo(0x80), "Held key should remain physically down through RESET");
+            Assert.That(pb0AfterReset, Is.EqualTo(0x80), "Open Apple should remain held through RESET");
+            Assert.That(pb2AfterReset, Is.EqualTo(0x80), "Shift should remain held through RESET");
+            Assert.That(keyDownAfterRelease, Is.EqualTo(0x00), "KeyUp after RESET should clear KBDSTRB");
         });
     }
 
