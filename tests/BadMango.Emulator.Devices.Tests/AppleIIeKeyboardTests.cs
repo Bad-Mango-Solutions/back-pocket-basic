@@ -1,4 +1,4 @@
-// <copyright file="KeyboardDeviceTests.cs" company="Bad Mango Solutions">
+// <copyright file="AppleIIeKeyboardTests.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -13,12 +13,12 @@ using BadMango.Emulator.Core.Signaling;
 using Moq;
 
 /// <summary>
-/// Unit tests for the <see cref="KeyboardDevice"/> class.
+/// Unit tests for the <see cref="AppleIIeKeyboard"/> class.
 /// </summary>
 [TestFixture]
-public class KeyboardDeviceTests
+public class AppleIIeKeyboardTests
 {
-    private KeyboardDevice device = null!;
+    private AppleIIeKeyboard device = null!;
     private IOPageDispatcher dispatcher = null!;
 
     /// <summary>
@@ -177,10 +177,10 @@ public class KeyboardDeviceTests
     }
 
     /// <summary>
-    /// Verifies that KeyboardDevice implements ISoftSwitchProvider.
+    /// Verifies that AppleIIeKeyboard implements ISoftSwitchProvider.
     /// </summary>
     [Test]
-    public void KeyboardDevice_ImplementsISoftSwitchProvider()
+    public void AppleIIeKeyboard_ImplementsISoftSwitchProvider()
     {
         Assert.That(device, Is.InstanceOf<ISoftSwitchProvider>());
     }

@@ -328,7 +328,7 @@ public sealed class ResetSignalMachineTests
     public void WiredOr_KeyboardHoldsLineAfterMachinePulse()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         WriteLoop(machine);
 
         keyboard.SetModifiers(KeyboardModifiers.Control);
@@ -366,7 +366,7 @@ public sealed class ResetSignalMachineTests
     public void WiredOr_ResetKeyWithoutControl_DoesNotAssertTheLine()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         WriteLoop(machine);
 
         keyboard.PressResetKey();
@@ -390,7 +390,7 @@ public sealed class ResetSignalMachineTests
     public void SoftReset_DuringTypeString_ReleasesTypedKeyAndKeepsKeyboardUsable()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         WriteLoop(machine);
 
         keyboard.TypeString("AB", delayMs: 50);
@@ -428,7 +428,7 @@ public sealed class ResetSignalMachineTests
     public void SoftReset_KeepsHeldKeyAndModifiers_KeyUpAfterResetClearsC010()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         WriteLoop(machine);
 
         keyboard.KeyDown((byte)'Z');
@@ -498,7 +498,7 @@ public sealed class ResetSignalMachineTests
     public void ResetCommand_WhenStopped_PulsesKeyboardResetAndStopsAtVector()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         var video = machine.GetComponent<VideoDevice>()!;
         var probe = new ResetProbe(machine.Signals);
         WriteLoop(machine);
@@ -529,7 +529,7 @@ public sealed class ResetSignalMachineTests
     public void PushButtons_OnProfileMachine_OrKeyboardAndJoystickSources()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         var gameIo = machine.GetComponent<GameIOController>()!;
 
         keyboard.SetModifiers(KeyboardModifiers.OpenApple);
@@ -572,7 +572,7 @@ public sealed class ResetSignalMachineTests
     public void ResetCommand_WithAppleHoldFlags_AssertsThenReleasesPushButton(string flag, int address)
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<IKeyboardDevice>()!;
         var (context, _) = CreateDebugContext(machine);
         keyboard.SetModifiers(KeyboardModifiers.None);
 

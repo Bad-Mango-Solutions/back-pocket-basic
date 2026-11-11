@@ -5,70 +5,80 @@
 namespace BadMango.Emulator.Devices.Tests;
 
 /// <summary>
-/// Table-driven tests for <see cref="AppleIIeKeyTranslator"/>: every host key the US-layout Apple IIe
-/// keyboard produces, under every relevant modifier combination.
+/// Table-driven tests for <see cref="AppleIIeKeyTranslator"/>: every <see cref="KeyboardKey"/> has an explicit
+/// code or deliberate <see langword="null"/> result.
 /// </summary>
 [TestFixture]
 public sealed class AppleIIeKeyTranslatorTests
 {
-    /// <summary>
-    /// Digit and punctuation keys with their unshifted and shifted US-layout legends.
-    /// </summary>
-    private static readonly (HostKey Key, char Unshifted, char Shifted)[] PrintableKeys =
+    private static readonly (KeyboardKey Key, char Unshifted, char Shifted)[] PrintableKeys =
     [
-        (HostKey.D1, '1', '!'),
-        (HostKey.D2, '2', '@'),
-        (HostKey.D3, '3', '#'),
-        (HostKey.D4, '4', '$'),
-        (HostKey.D5, '5', '%'),
-        (HostKey.D6, '6', '^'),
-        (HostKey.D7, '7', '&'),
-        (HostKey.D8, '8', '*'),
-        (HostKey.D9, '9', '('),
-        (HostKey.D0, '0', ')'),
-        (HostKey.Minus, '-', '_'),
-        (HostKey.Equals, '=', '+'),
-        (HostKey.OpenBracket, '[', '{'),
-        (HostKey.CloseBracket, ']', '}'),
-        (HostKey.Backslash, '\\', '|'),
-        (HostKey.Semicolon, ';', ':'),
-        (HostKey.Quote, '\'', '"'),
-        (HostKey.Comma, ',', '<'),
-        (HostKey.Period, '.', '>'),
-        (HostKey.Slash, '/', '?'),
-        (HostKey.Backtick, '`', '~'),
+        (KeyboardKey.D1, '1', '!'),
+        (KeyboardKey.D2, '2', '@'),
+        (KeyboardKey.D3, '3', '#'),
+        (KeyboardKey.D4, '4', '$'),
+        (KeyboardKey.D5, '5', '%'),
+        (KeyboardKey.D6, '6', '^'),
+        (KeyboardKey.D7, '7', '&'),
+        (KeyboardKey.D8, '8', '*'),
+        (KeyboardKey.D9, '9', '('),
+        (KeyboardKey.D0, '0', ')'),
+        (KeyboardKey.Minus, '-', '_'),
+        (KeyboardKey.Equals, '=', '+'),
+        (KeyboardKey.OpenBracket, '[', '{'),
+        (KeyboardKey.CloseBracket, ']', '}'),
+        (KeyboardKey.Backslash, '\\', '|'),
+        (KeyboardKey.Semicolon, ';', ':'),
+        (KeyboardKey.Quote, '\'', '"'),
+        (KeyboardKey.Comma, ',', '<'),
+        (KeyboardKey.Period, '.', '>'),
+        (KeyboardKey.Slash, '/', '?'),
+        (KeyboardKey.Backtick, '`', '~'),
     ];
 
-    /// <summary>
-    /// Special keys and the code each produces regardless of Shift, Caps Lock and Control.
-    /// </summary>
-    private static readonly (HostKey Key, byte Code)[] SpecialKeys =
+    private static readonly (KeyboardKey Key, byte Code)[] SpecialKeys =
     [
-        (HostKey.Left, 0x08),
-        (HostKey.Right, 0x15),
-        (HostKey.Up, 0x0B),
-        (HostKey.Down, 0x0A),
-        (HostKey.Return, 0x0D),
-        (HostKey.Tab, 0x09),
-        (HostKey.Escape, 0x1B),
-        (HostKey.Space, 0x20),
-        (HostKey.Backspace, 0x08),
-        (HostKey.Delete, 0x7F),
+        (KeyboardKey.Left, 0x08),
+        (KeyboardKey.Right, 0x15),
+        (KeyboardKey.Up, 0x0B),
+        (KeyboardKey.Down, 0x0A),
+        (KeyboardKey.Return, 0x0D),
+        (KeyboardKey.Tab, 0x09),
+        (KeyboardKey.Escape, 0x1B),
+        (KeyboardKey.Space, 0x20),
+        (KeyboardKey.Backspace, 0x08),
+        (KeyboardKey.ForwardDelete, 0x7F),
     ];
 
-    /// <summary>
-    /// Modifier keys, which never produce a code themselves.
-    /// </summary>
-    private static readonly HostKey[] ModifierKeys =
+    private static readonly KeyboardKey[] ModifierKeys =
     [
-        HostKey.None,
-        HostKey.LeftShift,
-        HostKey.RightShift,
-        HostKey.LeftControl,
-        HostKey.RightControl,
-        HostKey.LeftAlt,
-        HostKey.RightAlt,
-        HostKey.CapsLock,
+        KeyboardKey.None,
+        KeyboardKey.LeftShift,
+        KeyboardKey.RightShift,
+        KeyboardKey.LeftControl,
+        KeyboardKey.RightControl,
+        KeyboardKey.LeftOption,
+        KeyboardKey.RightOption,
+        KeyboardKey.LeftCommand,
+        KeyboardKey.RightCommand,
+        KeyboardKey.CapsLock,
+        KeyboardKey.F1, KeyboardKey.F2, KeyboardKey.F3, KeyboardKey.F4, KeyboardKey.F5, KeyboardKey.F6, KeyboardKey.F7, KeyboardKey.F8, KeyboardKey.F9, KeyboardKey.F10, KeyboardKey.F11, KeyboardKey.F12, KeyboardKey.F13, KeyboardKey.F14, KeyboardKey.F15,
+        KeyboardKey.Home,
+        KeyboardKey.End,
+        KeyboardKey.PageUp,
+        KeyboardKey.PageDown,
+        KeyboardKey.Help,
+        KeyboardKey.Keypad0, KeyboardKey.Keypad1, KeyboardKey.Keypad2, KeyboardKey.Keypad3, KeyboardKey.Keypad4, KeyboardKey.Keypad5, KeyboardKey.Keypad6, KeyboardKey.Keypad7, KeyboardKey.Keypad8, KeyboardKey.Keypad9,
+        KeyboardKey.KeypadDecimal,
+        KeyboardKey.KeypadEnter,
+        KeyboardKey.KeypadPlus,
+        KeyboardKey.KeypadMinus,
+        KeyboardKey.KeypadMultiply,
+        KeyboardKey.KeypadDivide,
+        KeyboardKey.KeypadEquals,
+        KeyboardKey.KeypadClear,
+        KeyboardKey.Reset,
+        KeyboardKey.Power,
     ];
 
     private static readonly KeyboardModifiers[] AppleKeyCombinations =
@@ -81,100 +91,95 @@ public sealed class AppleIIeKeyTranslatorTests
     private readonly IKeyTranslator translator = new AppleIIeKeyTranslator();
 
     /// <summary>
-    /// Verifies every letter under all four Shift and Caps Lock combinations. Exactly one of Shift
-    /// and Caps Lock gives uppercase; neither or both give lowercase (current PC-style behavior).
+    /// Verifies that letter keys follow the Shift/XOR Caps Lock rule.
     /// </summary>
-    /// <param name="key">The letter key.</param>
-    /// <param name="modifiers">The active modifiers.</param>
-    /// <param name="expected">The expected character.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected lowercase or uppercase character.</param>
     [TestCaseSource(nameof(LetterCases))]
-    public void Translate_Letter_FollowsShiftXorCapsLock(HostKey key, KeyboardModifiers modifiers, char expected)
+    public void Translate_Letter_FollowsShiftXorCapsLock(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies every digit and punctuation key, unshifted and shifted, with and without Caps Lock.
-    /// Caps Lock must not change any of them (for example Shift+1 is always <c>!</c>).
+    /// Verifies that digits and punctuation use the US key legend and ignore Caps Lock.
     /// </summary>
-    /// <param name="key">The digit or punctuation key.</param>
-    /// <param name="modifiers">The active modifiers.</param>
-    /// <param name="expected">The expected character.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected character code.</param>
     [TestCaseSource(nameof(PrintableCases))]
-    public void Translate_DigitOrPunctuation_UsesUsLegendAndIgnoresCapsLock(HostKey key, KeyboardModifiers modifiers, char expected)
+    public void Translate_DigitOrPunctuation_UsesUsLegendAndIgnoresCapsLock(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies that Ctrl+A..Z give <c>$01</c>-<c>$1A</c> no matter what Shift and Caps Lock do.
+    /// Verifies that Control combinations on letter keys produce the Apple II control codes.
     /// </summary>
-    /// <param name="key">The letter key.</param>
-    /// <param name="modifiers">The active modifiers, always including Control.</param>
-    /// <param name="expected">The expected control code.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected control-code value.</param>
     [TestCaseSource(nameof(ControlLetterCases))]
-    public void Translate_ControlLetter_GivesControlCodeIgnoringShiftAndCapsLock(HostKey key, KeyboardModifiers modifiers, int expected)
+    public void Translate_ControlLetter_GivesControlCodeIgnoringShiftAndCapsLock(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies the control codes above <c>$1A</c> and Ctrl+@, with and without Shift and Caps Lock
-    /// (Apple IIe Technical Reference Manual, Table 2-3, Control and Both columns).
+    /// Verifies that Control combinations on punctuation keys produce the expected Apple II control codes.
     /// </summary>
-    /// <param name="key">The punctuation or digit key.</param>
-    /// <param name="modifiers">The active modifiers, always including Control.</param>
-    /// <param name="expected">The expected control code.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected control-code value.</param>
     [TestCaseSource(nameof(ControlPunctuationCases))]
-    public void Translate_ControlPunctuation_GivesControlCode(HostKey key, KeyboardModifiers modifiers, int expected)
+    public void Translate_ControlPunctuation_GivesControlCode(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies that Control leaves every other digit and punctuation key unchanged, shifted or
-    /// not (for example Ctrl+1 is <c>1</c> and Ctrl+Shift+1 is <c>!</c>). There are no codes for
-    /// Ctrl+arrow keys either; special keys ignore Control.
+    /// Verifies that non-control printable keys are left alone when Control is pressed.
     /// </summary>
-    /// <param name="key">The digit or punctuation key.</param>
-    /// <param name="modifiers">The active modifiers, always including Control.</param>
-    /// <param name="expected">The expected character.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected character code.</param>
     [TestCaseSource(nameof(ControlUnchangedCases))]
-    public void Translate_ControlWithOtherPrintable_LeavesCodeUnchanged(HostKey key, KeyboardModifiers modifiers, char expected)
+    public void Translate_ControlWithOtherPrintable_LeavesCodeUnchanged(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies special keys produce their code under every Shift, Caps Lock and Control combination.
+    /// Verifies that special keys translate to the IIe keyboard codes regardless of modifier state.
     /// </summary>
-    /// <param name="key">The special key.</param>
-    /// <param name="modifiers">The active modifiers.</param>
-    /// <param name="expected">The expected code.</param>
+    /// <param name="key">The special keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected Apple IIe keyboard code.</param>
     [TestCaseSource(nameof(SpecialCases))]
-    public void Translate_SpecialKey_IgnoresModifiers(HostKey key, KeyboardModifiers modifiers, int expected)
+    public void Translate_SpecialKey_IgnoresModifiers(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
     /// <summary>
-    /// Verifies that Open Apple and Closed Apple, alone or together, never change the code of any key.
+    /// Verifies that Apple modifier keys do not change the translated code.
     /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="baseModifiers">The modifiers without the Apple keys.</param>
-    /// <param name="appleKeys">The Apple keys added.</param>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="baseModifiers">The original modifier state.</param>
+    /// <param name="appleKeys">The Apple-key modifiers being added.</param>
     [TestCaseSource(nameof(AppleKeyCases))]
-    public void Translate_AppleKeys_NeverChangeTheCode(HostKey key, KeyboardModifiers baseModifiers, KeyboardModifiers appleKeys)
+    public void Translate_AppleKeys_NeverChangeTheCode(KeyboardKey key, KeyboardModifiers baseModifiers, KeyboardModifiers appleKeys)
     {
         Assert.That(translator.Translate(key, baseModifiers | appleKeys), Is.EqualTo(translator.Translate(key, baseModifiers)));
     }
 
     /// <summary>
-    /// Verifies that modifier keys and <see cref="HostKey.None"/> produce no code under any modifiers.
+    /// Verifies that modifier-only keys produce no translator code.
     /// </summary>
-    /// <param name="key">The modifier key.</param>
+    /// <param name="key">The modifier key under test.</param>
     [TestCaseSource(nameof(ModifierKeys))]
-    public void Translate_ModifierKey_ReturnsNull(HostKey key)
+    public void Translate_ModifierKey_ReturnsNull(KeyboardKey key)
     {
         Assert.Multiple(() =>
         {
@@ -186,18 +191,16 @@ public sealed class AppleIIeKeyTranslatorTests
     }
 
     /// <summary>
-    /// Verifies that every host key is either translated or deliberately unmapped, so adding a
-    /// <see cref="HostKey"/> member without deciding its Apple IIe code fails this test.
+    /// Verifies that every <see cref="KeyboardKey"/> is explicitly accounted for by the translator tables.
     /// </summary>
     [Test]
-    public void Translate_EveryHostKey_IsCoveredByTheTables()
+    public void Translate_EveryKeyboardKey_IsCoveredByTheTables()
     {
-        var covered = new HashSet<HostKey>(ModifierKeys);
+        var covered = new HashSet<KeyboardKey>(ModifierKeys);
         covered.UnionWith(PrintableKeys.Select(p => p.Key));
         covered.UnionWith(SpecialKeys.Select(s => s.Key));
-        covered.UnionWith(Enumerable.Range(0, 26).Select(i => HostKey.A + i));
-
-        Assert.That(covered, Is.EquivalentTo(Enum.GetValues<HostKey>()));
+        covered.UnionWith(Enumerable.Range(0, 26).Select(i => KeyboardKey.A + i));
+        Assert.That(covered, Is.EquivalentTo(Enum.GetValues<KeyboardKey>()));
     }
 
     private static IEnumerable<KeyboardModifiers> AllShiftCapsControlCombinations()
@@ -218,7 +221,7 @@ public sealed class AppleIIeKeyTranslatorTests
     {
         for (int i = 0; i < 26; i++)
         {
-            var key = HostKey.A + i;
+            var key = KeyboardKey.A + i;
             char upper = (char)('A' + i);
             char lower = char.ToLowerInvariant(upper);
             yield return new TestCaseData(key, KeyboardModifiers.None, lower);
@@ -243,7 +246,7 @@ public sealed class AppleIIeKeyTranslatorTests
     {
         for (int i = 0; i < 26; i++)
         {
-            var key = HostKey.A + i;
+            var key = KeyboardKey.A + i;
             foreach (var modifiers in AllShiftCapsControlCombinations().Where(m => m.HasFlag(KeyboardModifiers.Control)))
             {
                 yield return new TestCaseData(key, modifiers, i + 1);
@@ -253,14 +256,14 @@ public sealed class AppleIIeKeyTranslatorTests
 
     private static IEnumerable<TestCaseData> ControlPunctuationCases()
     {
-        (HostKey Key, int Code)[] controlKeys =
+        (KeyboardKey Key, int Code)[] controlKeys =
         [
-            (HostKey.OpenBracket, 0x1B),
-            (HostKey.Backslash, 0x1C),
-            (HostKey.CloseBracket, 0x1D),
-            (HostKey.D2, 0x00),
-            (HostKey.D6, 0x1E),
-            (HostKey.Minus, 0x1F),
+            (KeyboardKey.OpenBracket, 0x1B),
+            (KeyboardKey.Backslash, 0x1C),
+            (KeyboardKey.CloseBracket, 0x1D),
+            (KeyboardKey.D2, 0x00),
+            (KeyboardKey.D6, 0x1E),
+            (KeyboardKey.Minus, 0x1F),
         ];
 
         foreach (var (key, code) in controlKeys)
@@ -274,7 +277,7 @@ public sealed class AppleIIeKeyTranslatorTests
 
     private static IEnumerable<TestCaseData> ControlUnchangedCases()
     {
-        var controlKeys = new HashSet<HostKey> { HostKey.OpenBracket, HostKey.Backslash, HostKey.CloseBracket, HostKey.D2, HostKey.D6, HostKey.Minus };
+        var controlKeys = new HashSet<KeyboardKey> { KeyboardKey.OpenBracket, KeyboardKey.Backslash, KeyboardKey.CloseBracket, KeyboardKey.D2, KeyboardKey.D6, KeyboardKey.Minus };
         foreach (var (key, unshifted, shifted) in PrintableKeys.Where(p => !controlKeys.Contains(p.Key)))
         {
             yield return new TestCaseData(key, KeyboardModifiers.Control, unshifted);
@@ -297,7 +300,7 @@ public sealed class AppleIIeKeyTranslatorTests
 
     private static IEnumerable<TestCaseData> AppleKeyCases()
     {
-        var keys = Enum.GetValues<HostKey>();
+        var keys = Enum.GetValues<KeyboardKey>();
         foreach (var key in keys)
         {
             foreach (var baseModifiers in AllShiftCapsControlCombinations())

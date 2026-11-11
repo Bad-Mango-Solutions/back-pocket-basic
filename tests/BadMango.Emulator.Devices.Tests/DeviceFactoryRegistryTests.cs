@@ -29,7 +29,7 @@ public class DeviceFactoryRegistryTests
     /// Verifies that EnsureInitialized discovers keyboard device factory.
     /// </summary>
     [Test]
-    public void EnsureInitialized_DiscoversKeyboardDeviceFactory()
+    public void EnsureInitialized_DiscoversAppleIIeKeyboardFactory()
     {
         DeviceFactoryRegistry.EnsureInitialized();
 
@@ -74,10 +74,10 @@ public class DeviceFactoryRegistryTests
     }
 
     /// <summary>
-    /// Verifies that keyboard factory creates a valid KeyboardDevice.
+    /// Verifies that keyboard factory creates a valid AppleIIeKeyboard.
     /// </summary>
     [Test]
-    public void KeyboardFactory_CreatesKeyboardDevice()
+    public void KeyboardFactory_CreatesAppleIIeKeyboard()
     {
         DeviceFactoryRegistry.EnsureInitialized();
 

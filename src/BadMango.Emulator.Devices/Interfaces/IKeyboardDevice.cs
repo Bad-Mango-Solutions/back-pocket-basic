@@ -47,7 +47,7 @@ public interface IKeyboardDevice : IMotherboardDevice, IResetSource
     /// </summary>
     /// <value>The key translator owned by this keyboard.</value>
     /// <remarks>
-    /// Input sources such as the video window use this to translate a <see cref="HostKey"/> and the
+    /// Input sources such as the video window use this to translate a <see cref="KeyboardKey"/> and the
     /// active modifiers before calling <see cref="KeyDown"/>, so they never construct or choose a
     /// translator themselves. This is interim: the planned per-machine keyboard input layer will
     /// accept host keys directly and keep the translator private to the keyboard.
