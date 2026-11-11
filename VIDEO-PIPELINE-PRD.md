@@ -75,10 +75,10 @@ Today `VideoWindow` owns the whole pipeline: the VBlank subscription, the snapsh
 ## 4. Non-goals (for v1)
 
 - Implementing the IIgs, IIc, or 65832 video, or a specific RGB card. This spec fixes their shape (§8) so the Pocket2 work doesn't block them.
-- Intra-frame memory changes (racing the beam, writing a line after it was drawn). v1 snapshots memory at VBlank; the cycle-stamped write log for video pages is the documented upgrade path (§7.2, Q1).
-- Analog monitor effects: color-killer lag, phosphor persistence, bloom, scanline gaps, a filtered YIQ decoder (Q8).
-- GPU or shader presentation. The UI redo may upload `VideoFrame` pixels to a texture (Q5).
-- Recording every frame. v1 always hands out the latest frame (Q4).
+- Intra-frame memory changes (racing the beam, writing a line after it was drawn). v1 snapshots memory at VBlank. The extension point is reserved in the contracts now: a cycle-stamped write log for the video pages, carried by `CapturedFrame` and replayed by the scanner (§7.2, decided Q1). Beam-racing games are a wanted, not urgent, follow-up.
+- Analog monitor effects: color-killer lag, phosphor persistence, bloom, scanline gaps, a filtered YIQ decoder. v1 providers are exact. The extension point is reserved: a `FrameProviderOptions` record on every provider, defaulting to exact, or additional providers (§7.5, decided Q8).
+- GPU frame providers. Allowed in the UI redo as `IFrameProvider<ICompositeSignal>` implementations, with the CPU providers and their goldens as the reference (decided Q5).
+- An every-frame queue in the main API. The main API stays latest-frame only; recording uses a separate recorder (§11.6, decided Q4).
 - Redesigning the debug `VideoWindow`. It is migrated to be a thin consumer with output and monitor selectors (§11.1), then left alone until the UI redo.
 
 ## 5. Users and scenarios
@@ -176,7 +176,7 @@ Machine-side types (layers 1 and 2, the signal marker interfaces, and the frame 
 | 1b | `IVideoScanner<TState>`, `ScanFrame` | `Pocket2VideoScanner` | `AppleIIgsVideoScanner` |
 | 2 | `IVideoOutput`, `IVideoSignalSource<TSignal>` | `Composite560Out`; `RgbOut` (from the RGB card) | `AppleIIgsCompositeOut`, `AppleIIgsRgbOut`, conceivably `HdmiOut` / `DisplayPortOut` |
 | Signals | `IVideoSignal`, `ICompositeSignal`, `IRgbSignal` | `Composite560Signal`, `RgbSignal` | New markers only if a signal has new semantics |
-| 3 | `IFrameProvider<TSignal>` | `GreyscaleFrameProvider`, `GreenscaleFrameProvider`, `AmberscaleFrameProvider`, `NtscFrameProvider`, `RgbFrameProvider` | Fidelity variants (Q8) |
+| 3 | `IFrameProvider<TSignal>` | `GreyscaleFrameProvider`, `GreenscaleFrameProvider`, `AmberscaleFrameProvider`, `NtscFrameProvider`, `RgbFrameProvider` | Fidelity via `FrameProviderOptions` or extra providers (§7.5) |
 | 4 | `VideoFrame` lease | `VideoWindow`, PNG writer, headless host | UI redo, thumbnails, recorder |
 
 Naming rules:
@@ -229,10 +229,34 @@ public sealed class CapturedFrame<TState> where TState : class
     public TState State { get; }              // machine-specific: memory snapshot, glyphs, start switches
     public ReadOnlySpan<DisplaySwitchEvent> SwitchLog { get; }
     public bool LogOverflowed { get; }
+    public ReadOnlySpan<VideoWriteEvent> WriteLog { get; }   // reserved (§7.2.1); always empty in v1
+    public bool WriteLogOverflowed { get; }
 }
 ```
 
-- **Memory is snapshotted once per frame.** The off-thread layers never read live RAM: doing so would tear, because the CPU keeps writing while they work. A program that rewrites a line after it has been drawn (racing the beam) shows the end-of-frame contents in v1. The documented upgrade path is a cycle-stamped write log for the video pages: `(cycleInFrame, address, value)` for writes to `$0400`–`$5FFF` (main and aux), applied during replay. It would be recorded by the same mechanism and replayed by the same scanner, with no contract change (Q1).
+- **Memory is snapshotted once per frame.** The off-thread layers never read live RAM: doing so would tear, because the CPU keeps writing while they work. A program that rewrites a line after it has been drawn (racing the beam) shows the end-of-frame contents in v1.
+
+#### 7.2.1 Reserved extension point: the video-page write log (beam racing)
+
+Josh wants beam-racing games supported eventually; it isn't a v1 priority. The contracts reserve the hook now so adding it later changes no public signature:
+
+```csharp
+public readonly record struct VideoWriteEvent(uint CycleInFrame, uint Address, byte Value, VideoMemoryBank Bank);
+
+public enum VideoMemoryBank : byte { Main, Aux /* IIgs: E0, E1 appended by that spec */ }
+
+public interface IVideoWriteLog
+{
+    /// Emulator thread only. Appends a write that landed in a captured video region.
+    /// No allocation, no lock. Not installed in v1.
+    void Record(uint address, byte value, VideoMemoryBank bank);
+}
+```
+
+- `CapturedFrame<TState>` already carries `WriteLog` and `WriteLogOverflowed` (below). In v1 no `IVideoWriteLog` is installed, so `WriteLog` is always empty and capture cost is unchanged.
+- **Snapshot semantics with the write log on.** The scanner needs memory as it was at the *start* of the frame window, so the capture keeps the previous VBlank's snapshot as this frame's base (the slots already hold it) and the log records every video-region write since then. The scanner starts from the start-of-window memory and applies each write whose `CycleInFrame` is at or before the fetch, exactly as it applies switch events. The scanner still never reads live RAM.
+- **Hot-thread cost when enabled.** One range check on video-region writes plus one 12-byte append into the back slot (budget ≤ 5 ns, like the switch log). A bus write hook in the physical RAM write path calls `Record` only when the address is in a captured region. The capacity and overflow rules mirror the switch log (overflow falls back to end-of-frame contents for the rest of the frame).
+- The scanner contract (§7.3) already takes the whole `CapturedFrame`, so turning this on is an implementation change in the capture and scanner, plus a profile or debugger toggle.
 
 ### 7.3 Layer 1b: the scanner
 
@@ -248,6 +272,7 @@ public interface IVideoScanner<TState> where TState : class
 - For each fetch it records the bits that leave the character generator or the graphics shifter: 7 video bits (glyph row after inverse, flash, ALTCHAR, and ALTGLYPH for text; memory bits for graphics), bit 7 (for the hi-res delay), the aux bits when 80-column or double-width modes are active, and the mode in effect. For each line it records whether the color burst gate was open, which comes from TEXT at the burst point in horizontal blanking (§8.1.5).
 - It uses `ScannerAddress` (§8.1.6), the same pure address function the floating bus uses, so the scan and the floating bus always agree.
 - It never touches the machine. Its only input is the captured frame, and that is enforced by its signature.
+- It merges `SwitchLog` and `WriteLog` by `CycleInFrame` during replay. In v1 the write log is empty, so this is a no-op branch, but the merge is implemented and tested from the start (§14.27) so the beam-racing upgrade (§7.2.1) needs no scanner rework.
 
 ### 7.4 Layer 2: output connectors and signals
 
@@ -273,7 +298,7 @@ public interface IRgbSignal : IVideoSignal
     int Width { get; }
     int Height { get; }
     int Stride { get; }                       // pixels per row
-    ReadOnlyMemory<uint> Pixels { get; }      // Bgra8888, premultiplied, alpha 0xFF
+    ReadOnlyMemory<uint> Pixels { get; }      // finished Bgra8888, alpha 0xFF; palette already applied by the output
 }
 
 [Flags]
@@ -307,8 +332,8 @@ public interface IVideoSignalSource<TSignal> : IVideoOutput
 {
     bool TryAcquireLatestSignal(out SignalLease<TSignal> signal);
 
-    /// Shared per (sequence, this output, provider). The constraint makes an
-    /// incompatible provider a compile error.
+    /// Shared per (sequence, this output, provider Id, provider Options). The
+    /// constraint makes an incompatible provider a compile error.
     bool TryAcquireLatestFrame(IFrameProvider<TSignal> provider, out VideoFrame frame);
 }
 
@@ -320,6 +345,7 @@ public interface IVideoOutputVisitor<TResult>
 ```
 
 - **Concrete outputs:** `Composite560Out : IVideoSignalSource<ICompositeSignal>`, producing pooled `Composite560Signal` objects, and `RgbOut : IVideoSignalSource<IRgbSignal>`, producing pooled `RgbSignal` objects.
+- **Who maps colors (rule, Josh 2026-11-11).** RGB and newer outputs (`RgbOut`, `AppleIIgsRgbOut`, a future `HdmiOut`/`DisplayPortOut`) emit *finished* BGRA8888. Mapping hardware color numbers to RGB is the output's job, because on real hardware the card or chip did it: the Video-7 drives a fixed 16-color RGBI table (it physically output digital RGBI, and the RGBI-to-BGRA mapping is that table), and the IIgs VGC looks colors up in its 12-bit palette. Composite outputs, by contrast, emit dots, and the monitor (frame provider) decodes color. `RgbFrameProvider` is therefore a pass-through plus optional cosmetic options (§7.5, §9.1).
 - **Multiple outputs are normal.** Each output is a machine component (`machine.GetComponents<IVideoOutput>()`). All outputs on a machine share one captured frame and one scan per sequence. Each generates its own signal at most once per sequence.
 - **The composite dot layout (`Composite560Signal`).** 192 lines × 560 dots, one dot per 14.318 MHz dot-clock period of the active line. Each line is 9 64-bit words (576 bits). Dot *x* is bit `x & 63` of word `x >> 6`, LSB-first, matching the order the Apple II shifts video bytes out. Bits 560–575 are zero. A frame is 13,824 bytes of dots plus 192 bytes of line flags.
 - **Why packed bits rather than a byte per dot (107,520 bytes, 7.8× more):**
@@ -334,11 +360,37 @@ public interface IFrameProvider<in TSignal> where TSignal : IVideoSignal
 {
     string Id { get; }                        // "greyscale", "greenscale", "amberscale", "ntsc", "rgb"
     string DisplayName { get; }
+
+    /// Immutable. Every provider's default is its exact options; goldens are pinned to them.
+    FrameProviderOptions Options { get; }
+
     VideoFrameGeometry GetOutputGeometry(TSignal signal);
 
     /// Consumer side. Allocates nothing.
     void Provide(TSignal signal, Span<uint> bgraOutput);
 }
+
+/// Reserved extension point for monitor fidelity (decided Q8). Value equality (records)
+/// lets the hub share frames between consumers with equal options.
+public abstract record FrameProviderOptions
+{
+    public bool ScanlineGaps { get; init; }   // cosmetic; false = exact
+}
+
+public sealed record MonochromeOptions : FrameProviderOptions { /* v1: no extra members */ }
+
+public sealed record NtscOptions : FrameProviderOptions
+{
+    public NtscDecoder Decoder { get; init; } = NtscDecoder.FourDotWindow;   // exact
+    public int ColorKillerLagLines { get; init; }                             // 0 = exact
+}
+
+public sealed record RgbOptions : FrameProviderOptions
+{
+    public float Brightness { get; init; } = 1.0f;                            // 1.0 = exact pass-through
+}
+
+public enum NtscDecoder : byte { FourDotWindow /* , FilteredYiq: reserved */ }
 
 public sealed class GreyscaleFrameProvider : IFrameProvider<ICompositeSignal> { /* ... */ }
 public sealed class GreenscaleFrameProvider : IFrameProvider<ICompositeSignal> { /* ... */ }
@@ -359,6 +411,7 @@ public static class FrameProviders
 - **Providers are physical.** The greyscale family and NTSC accept composite only; RGB accepts RGB only. A future HDMI or DisplayPort output implements `IRgbSignal` if it is a plain digital RGB frame, or a new marker if its semantics differ.
 - `IFrameProvider<in TSignal>` is contravariant, so a hypothetical provider written against `IVideoSignal` would accept any signal. None is planned.
 - Providers are stateless, immutable, and shared by every output and machine in the process.
+- **Options (reserved for fidelity work, decided Q8).** Each provider takes its options record in its constructor (`new NtscFrameProvider(new NtscOptions { ColorKillerLagLines = 3 })`), defaulting to the exact options, and exposes `With(options)` returning a new instance. `FrameProviders.For<TSignal>()` returns the exact instances. The hub's frame cache key is (sequence, output, provider `Id`, `Options`), so two windows with equal options share one frame. v1 implements only the exact values; non-exact values are accepted by the type system but rejected with `NotSupportedException` at construction until implemented. Fidelity work then either adds option values (when the effect is a variant of the same monitor) or adds a provider (when it is a different monitor). Temporal effects that need earlier frames (phosphor persistence) don't fit a stateless shared provider; they are a consumer-side post-pass or a later stateful-provider contract, not part of v1.
 
 ### 7.6 `VideoFrame` and `SignalLease<TSignal>` (the leases)
 
@@ -486,16 +539,21 @@ On a real IIe, the color burst is a 14-cycle sample of the color reference. The 
 ### 8.2 IIe RGB card (optional motherboard device)
 
 - **Modeled as an optional motherboard device**, not a slot card: `[DeviceType("rgb-card")]`, added and configured by the profile. This is an approved simplification. Real cards sat in the auxiliary slot or tapped the video signal, and nothing software-visible depends on the slot.
-- It owns its mode soft switches and records changes through `IDisplaySwitchLog`.
-- It contributes `RgbOut : IVideoSignalSource<IRgbSignal>`, which colors the shared scan the way the card does. `Composite560Out` stays live alongside it.
-- The first card model and its mode set are chosen with that epic (Q10). This spec fixes only the shape.
+- It contributes `RgbOut : IVideoSignalSource<IRgbSignal>`, which colors the shared scan the way the card does and emits finished BGRA (§7.4). `Composite560Out` stays live alongside it.
+- **First model: Video-7 RGB (decided Q10).**
+  - **Physical output:** digital RGBI. `RgbOut` maps the card's 4-bit RGBI color numbers to BGRA through the card's fixed 16-color table. The palette lives in the output, not the monitor.
+  - **Double hi-res modes (4):** 16-color 140×192; 160×192 color; 560×192 monochrome; and mixed (per-byte color/mono).
+  - **Other modes:** clean, fringe-free color for hi-res, lo-res, and text.
+  - **Mode selection:** the 80COL/AN3 toggle protocol that the Video-7 shares with Le Chat Mauve and similar cards: with DHIRES set, toggling AN3 clocks the current 80COL state into the card's 2-bit mode register. The card watches those switches on the hot thread, updates its register, and records register changes through `IDisplaySwitchLog` as new `DisplaySwitch` values (`RgbMode0`, `RgbMode1`, appended by the card), so `RgbOut` replays mode changes per fetch like any other switch.
+  - **Built to extend:** the protocol decoder and mode register are shared code; later cards (Le Chat Mauve Eve/Féline, etc.) add their modes and color tables incrementally on the same `RgbOut` shape.
+  - **To verify during the epic:** the exact protocol sequence and bit order, the mode-number-to-mode mapping, the 160×192 mode's semantics, the mixed mode's per-byte rule, and the RGBI color table, against the Video-7 documentation and AppleWin's Video-7 implementation. The list above is the intended scope, not a verified hardware description.
 
 ### 8.3 Apple IIgs (placeholder)
 
-- A IIgs scanner captures and replays the IIe-compatible state plus Super Hi-Res: `$E1/2000`–`$E1/9FFF` (pixels, SCBs, palettes), `NEWVIDEO` (`$C029`), `MONOCOLOR` (`$C021`), and the border and text colors (`$C034`, `$C022`). The SCB and palette contents need the video-page write log to change mid-frame (Q1).
-- `AppleIIgsCompositeOut` (`ICompositeSignal`) and `AppleIIgsRgbOut` (`IRgbSignal`) are both live at once, as on the real machine.
-- In Classic (IIe-compatible) modes, the composite output owns the border. How it reads the Classic Control Panel settings (border and text colors from battery RAM) is future work. Border geometry on each output is Q3.
-- IIgs floating-bus and VGC timing is Q9.
+- A IIgs scanner captures and replays the IIe-compatible state plus Super Hi-Res: `$E1/2000`–`$E1/9FFF` (pixels, SCBs, palettes), `NEWVIDEO` (`$C029`), `MONOCOLOR` (`$C021`), and the border and text colors (`$C034`, `$C022`). The SCB and palette contents need the video-page write log to change mid-frame (§7.2.1).
+- `AppleIIgsCompositeOut` (`ICompositeSignal`) and `AppleIIgsRgbOut` (`IRgbSignal`) are both live at once, as on the real machine. `AppleIIgsRgbOut` applies the VGC's 12-bit palette (and the fixed IIe-mode colors) and emits finished BGRA (§7.4).
+- In Classic (IIe-compatible) modes, the composite output owns the border. How it reads the Classic Control Panel settings (border and text colors from battery RAM) is future work. Border geometry on each output is deferred (Q3, §17).
+- IIgs floating-bus and VGC timing is deferred (Q9, §17).
 
 ### 8.4 65832 machine (placeholder)
 
@@ -509,7 +567,7 @@ The 65832's video hardware isn't defined yet. It plugs in with its own captured 
 |---|---|---|
 | `GreyscaleFrameProvider` (white phosphor), `GreenscaleFrameProvider`, `AmberscaleFrameProvider` | `ICompositeSignal` | Each dot on → phosphor color, off → black. Burst is ignored, as on a real monochrome monitor. Lo-res and hi-res show as their dot patterns ("greenscale"), not as flat shades. |
 | `NtscFrameProvider` | `ICompositeSignal` | Lines with `ColorBurst`: artifact color decoded from the dot pattern (below). Lines without burst: white monochrome, because the monitor's color killer disables chroma. So all-text screens are clean white, and mixed-mode text is fringed. |
-| `RgbFrameProvider` | `IRgbSignal` | Pass-through copy. |
+| `RgbFrameProvider` | `IRgbSignal` | Pass-through copy of the output's finished BGRA. Optional cosmetic options (`RgbOptions`: brightness, scanline gaps) default to exact pass-through. It never maps palettes. |
 
 **`NtscFrameProvider` v1 algorithm:**
 
@@ -517,7 +575,7 @@ The 65832's video hardware isn't defined yet. It plugs in with its own captured 
 - This reproduces lo-res, double lo-res, and DHR colors exactly; hi-res yields its 6 colors, with white where adjacent dots are on.
 - Edges get the natural one- to three-dot color fringes of a composite display.
 - Palette and phosphor values move from `DisplayColors` into the providers.
-- A filtered YIQ decoder and color-killer lag are later fidelity work (Q8).
+- A filtered YIQ decoder and color-killer lag are later fidelity work, reserved as `NtscOptions` values (§7.5). The exact options are the v1 behavior and the golden reference.
 
 **Output geometry:** composite input becomes 560×384, with each scanline doubled, the same frame size the window shows today. RGB input is passed through at its own size.
 
@@ -542,7 +600,7 @@ Text modes through `GreyscaleFrameProvider`, `GreenscaleFrameProvider`, and `Amb
   - **Subscriber failure:** each `FrameReady` handler runs in its own `try`/`catch`. A throwing handler is logged and counted (`SubscriberErrors`) and does not stop later handlers.
   - Critical exceptions (`OutOfMemoryException`, `AccessViolationException`, `InvalidProgramException`, `BadImageFormatException`) are never caught.
 - **Rate limiting.** The first occurrence of each error kind is logged with its stack trace. Repeats are summarized at most once every 5 seconds with a count.
-- **Counters.** `VideoPipelineStats` is a `readonly record struct` with `FramesCaptured`, `SwitchEvents`, `SwitchLogOverflows`, `Scans`, `SignalsGenerated`, `FramesProvided`, `CacheHits`, `CaptureErrors`, `ScanErrors`, `SignalErrors`, `ProvideErrors`, `SubscriberErrors`, `LeasesOutstanding`, `PoolExhausted`, and `LatestSequence`. Counters use `Interlocked`. The status monitor and a new REPL `video stats` show them. FPS in the window is computed from presented sequences, not VBlank callbacks.
+- **Counters.** `VideoPipelineStats` is a `readonly record struct` with `FramesCaptured`, `SwitchEvents`, `SwitchLogOverflows`, `Scans`, `SignalsGenerated`, `FramesProvided`, `CacheHits`, `CaptureErrors`, `ScanErrors`, `SignalErrors`, `ProvideErrors`, `SubscriberErrors`, `LeasesOutstanding`, `PoolExhausted`, `RecorderDroppedFrames` (only when the recorder is on, §11.6), and `LatestSequence`. Counters use `Interlocked`. The status monitor and a new REPL `video stats` show them. FPS in the window is computed from presented sequences, not VBlank callbacks.
 - **Lease pools.** Each signal pool and each frame pool starts at 3 buffers and grows to at most 8. If all 8 are leased, the acquire returns false and `PoolExhausted` is incremented and logged (it indicates a consumer leaking leases).
 
 ## 11. Integration
@@ -584,11 +642,22 @@ The headless host uses the same outputs, providers, and PNG writer as `video scr
 
 The new UI is just another consumer. It enumerates outputs, picks an output and a provider (starting from the profile defaults), and uploads `VideoFrame.Pixels`. Nothing in the core changes for the redo. The debug `VideoWindow` migration in §11.1 is deliberately minimal and serves as the reference consumer.
 
+The redo may implement GPU frame providers (decided Q5), for example decoding `Composite560Signal` in a shader. They are still `IFrameProvider<ICompositeSignal>` implementations, so pairing rules apply unchanged, and the CPU providers and their goldens remain the reference a GPU provider must match (within a stated tolerance) in its tests.
+
+### 11.6 Every-frame consumers: the recorder
+
+Video recording and frame-exact agent traces need every frame. The main API stays latest-frame only (decided Q4). A separate `VideoRecorder` component subscribes to `FrameReady` and acquires synchronously inside the handler, so no frame can be overwritten before it is taken:
+
+- The synchronous acquire is `VideoPipelineHub.TryPinLatestCapture(out CapturedFrameLease lease)`: it takes the just-published captured slot out of the triple-buffer rotation by swapping in a spare slot from a small bounded pool. That is an index swap, no copy and no allocation, so the emulator thread still does no scanning or rendering.
+- The recorder's own thread scans, generates signals, and provides frames from the pinned captures (through the same scanner, outputs, and providers), encodes, writes, and disposes the leases, which returns the slots to the pool.
+- If the spare pool is empty (the recorder fell behind), the pin fails, the frame is dropped and counted (`RecorderDroppedFrames`), and the emulator never waits.
+- The recorder is opt-in and off by default. Pinning is internal to the hub and the recorder; the public consumer API stays latest-frame only.
+
 ## 12. Layering and assemblies
 
 | Assembly | Contains after this spec | References |
 |---|---|---|
-| `BadMango.Emulator.Devices` | Layer 1 and 2: refactored `VideoDevice`, `IDisplaySwitchLog` and its implementation, `CapturedFrame<TState>`, `Pocket2CapturedState`, `IVideoScanner<TState>`, `Pocket2VideoScanner`, `ScanFrame`, `ScannerAddress`, `IVideoOutput`, `IVideoSignalSource<TSignal>`, the signal markers and `Composite560Signal`/`RgbSignal`, `Composite560Out`, the RGB card and `RgbOut`, `VideoPipelineHub`, `VideoFrame`, `SignalLease<TSignal>`, `VideoPipelineStats`, the `IFrameProvider<TSignal>` contract; `ICharacterDevice.GlyphVersion`/`CopyEffectiveGlyphs` | Bus (unchanged) |
+| `BadMango.Emulator.Devices` | Layer 1 and 2: refactored `VideoDevice`, `IDisplaySwitchLog` and its implementation, `CapturedFrame<TState>`, `Pocket2CapturedState`, `IVideoScanner<TState>`, `Pocket2VideoScanner`, `ScanFrame`, `ScannerAddress`, `IVideoOutput`, `IVideoSignalSource<TSignal>`, the signal markers and `Composite560Signal`/`RgbSignal`, `Composite560Out`, the RGB card and `RgbOut`, `VideoPipelineHub`, `VideoFrame`, `SignalLease<TSignal>`, `VideoPipelineStats`, the `IFrameProvider<TSignal>` contract and `FrameProviderOptions` records, `VideoWriteEvent`/`IVideoWriteLog` (reserved), `VideoRecorder` (opt-in); `ICharacterDevice.GlyphVersion`/`CopyEffectiveGlyphs` | Bus (unchanged) |
 | `BadMango.Emulator.Rendering` | Layer 3: `FrameProviders`, the five providers, `WithVideoPipeline` builder extension, PNG writer | Devices, Bus. **No Avalonia.** |
 | `BadMango.Emulator.Debug.UI` | Layer 4: `VideoWindow` (output and monitor menus), `PixelBuffer` (moved), `CharacterPreviewWindow` | Rendering, Avalonia |
 
@@ -603,6 +672,7 @@ Measured 2026-11-11 on the box (Release, `Pocket2VideoRenderer` as on `main`, ra
 | Operation | Measured today | Budget | Thread |
 |---|---|---|---|
 | Switch-log append | — (new) | ≤ 5 ns per change, 0 B | Emulator |
+| Video-write-log append (reserved, §7.2.1; not installed in v1) | — | ≤ 5 ns per video-region write when enabled, 0 B; 0 when disabled | Emulator |
 | Snapshot capture, main + aux | 1.0 µs | ≤ 2 µs total capture, including glyph check, start state, and publish | Emulator |
 | Glyph table copy (4 KB) | — | Only on `GlyphVersion` change | Emulator |
 | `FrameReady` dispatch | — | 0 B | Emulator |
@@ -673,21 +743,25 @@ All tests run without Avalonia except the `VideoWindow` ones. Each test runs on 
 24. **Window.** Closing the `VideoWindow` removes exactly its `FrameReady` handler. The Output menu lists the machine's outputs, the Monitor menu lists only compatible providers, a new window starts on the profile defaults, and two windows on different outputs or monitors present different pixels from one sequence. (This replaces #377's renamed-but-inverted `CloseWindow_DetachesVBlankHandler…` assertion.)
 25. **Profile.** `defaultMonitor` and `defaultOutput` parse, default, and validate compatibility. The four updated profiles load with `ntsc`. An `rgb-card` entry adds `RgbOut`.
 26. **Layering.** An architecture test asserts that `BadMango.Emulator.Rendering` and `BadMango.Emulator.Devices` don't reference any `Avalonia*` assembly.
+27. **Write-log hook (reserved).** In v1, `CapturedFrame.WriteLog` is always empty and capture cost is unchanged. A test hands the scanner a captured frame with a synthetic write log (a line rewritten mid-frame) and asserts the lines above the write show the old bytes and the lines below show the new ones, so the merge in §7.3 works before any capture records writes.
+28. **Provider options.** Each provider's default `Options` equals its exact options, and every frame golden is pinned to them. Two consumers with equal options share one provided frame; different options get separate cache entries. Constructing a provider with a not-yet-implemented non-exact option throws `NotSupportedException`.
+29. **RGB outputs emit finished BGRA.** `RgbOut` maps each Video-7 RGBI color number through the card's fixed table (golden per mode once the table is verified, §8.2), and `RgbFrameProvider` with exact `RgbOptions` returns those pixels bit-for-bit.
+30. **Recorder.** With the recorder on and a deliberately slow drain, every published sequence is either recorded or counted in `RecorderDroppedFrames`, none twice, and the emulator thread never blocks or allocates. With it off, no slot is ever pinned.
 
 ## 15. Migration plan
 
 Each step builds and tests green on its own (`dotnet build BackPocketEmulator.slnx -c Release -warnaserror` and `dotnet test`).
 
 1. **Reference goldens.** Add the `main` reference frames (§14.1). No production change.
-2. **Contracts and lifecycle.** Add the layer contracts (§7): the signal markers, `IVideoOutput`, `IVideoSignalSource<TSignal>`, `IFrameProvider<TSignal>`, the leases, `CapturedFrame<TState>`, and `IVideoScanner<TState>`. Make `IMachine : IDisposable` with component disposal in `Machine`. Add `MachineBuilder.AddComponentFactory<T>` and the `DefaultCharacterRom` defensive copy. Add the compile-time pairing test (§14.3) with stub providers.
+2. **Contracts and lifecycle.** Add the layer contracts (§7): the signal markers, `IVideoOutput`, `IVideoSignalSource<TSignal>`, `IFrameProvider<TSignal>`, `FrameProviderOptions` and the per-provider options records (exact defaults only), the leases, `CapturedFrame<TState>` (including the reserved, always-empty `WriteLog`), `VideoWriteEvent`/`IVideoWriteLog` (declared, not installed), and `IVideoScanner<TState>`. Make `IMachine : IDisposable` with component disposal in `Machine`. Add `MachineBuilder.AddComponentFactory<T>` and the `DefaultCharacterRom` defensive copy. Add the compile-time pairing test (§14.3) with stub providers.
 3. **Glyph API.** Add `GlyphVersion` and `CopyEffectiveGlyphs` to `ICharacterDevice` and `CharacterDevice`, with tests for every version bump trigger.
 4. **Hot side of the video device.** Refactor `VideoDevice`:
    - Add `IDisplaySwitchLog` and record changes from `VideoDevice` and `CharacterDevice`.
    - Capture at VBlank into the triple buffer with the start state and log.
    - Add `ScannerAddress` and route floating-bus reads through it.
    - Tests §14.4, §14.8, and the hot-side parts of §14.23. Rendering still goes through the old path; the window is unchanged.
-5. **Scanner and composite output.** Add `Pocket2VideoScanner`, `ScanFrame`, `Composite560Out`, and `Composite560Signal`. Add the scan and signal goldens and tests §14.5–§14.7, §14.10, and §14.17.
-6. **Frame providers.** Add the five providers and `FrameProviders`, moving palette and phosphor values out of `DisplayColors`. Add the frame goldens, the text-mode parity check against `main`, and §14.9.
+5. **Scanner and composite output.** Add `Pocket2VideoScanner`, `ScanFrame`, `Composite560Out`, and `Composite560Signal`. Add the scan and signal goldens and tests §14.5–§14.7, §14.10, §14.17, and §14.27.
+6. **Frame providers.** Add the five providers and `FrameProviders`, moving palette and phosphor values out of `DisplayColors`. Add the frame goldens, the text-mode parity check against `main`, §14.9, and §14.28.
 7. **Hub and registration.**
    - Add `VideoPipelineHub`: the consumer side of the triple buffer, caches under one `System.Threading.Lock`, lease pools, the immutable subscriber array, `RequestFrame`, stats, and logging.
    - Add `WithVideoPipeline(profile)` and register it in `MachineFactory` and the headless host.
@@ -699,7 +773,9 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
    - Add `video stats`, `video screenshot`, `video signal`, and `video switches`.
    - Delete `Pocket2VideoRenderer`, `IVideoRenderer`, `IVideoSession`, `DisplayColorMode`, and `DisplayMemorySnapshot`.
    - Tests §14.24 and §14.26. **This step completes #325.**
-9. **RGB card (separate epic).** Add the `rgb-card` motherboard device, its switch logging, and `RgbOut`. Tests §14.11 and the rest of §14.25. `RgbFrameProvider` already exists from step 6.
+9. **RGB card (separate epic): Video-7 RGB first.** Add the `rgb-card` motherboard device with the shared 80COL/AN3 mode-protocol decoder, its mode-register switch logging, and `RgbOut` with the Video-7 RGBI color table, covering the four DHGR modes plus clean hi-res, lo-res, and text color (§8.2). Verify the protocol, modes, and table against the Video-7 documentation and AppleWin first. Tests §14.11, §14.29, and the rest of §14.25. `RgbFrameProvider` already exists from step 6.
+
+Later, independent of the steps above: the beam-racing write log (§7.2.1) and the every-frame recorder (§11.6), each as its own issue when wanted.
 
 **Reuse from PR #377's branch (`copilot/decouple-frame-production`):**
 
@@ -716,18 +792,18 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 - #323 remains the stopgap for the closed-window bug until step 8 lands.
 - The UI redo consumes outputs and frame providers as specified in §11.5 and needs no core changes.
 
-## 17. Open questions
+## 17. Open, deferred, and decided questions
+
+### Open
+
+None. Every question raised by this PRD so far is decided or deferred.
+
+### Deferred to the IIgs milestone
 
 | # | Question | Notes |
 |---|---|---|
-| Q1 | **Intra-frame changes.** *Partly resolved (Josh, 2026-11-11):* display switch changes are cycle-stamped in the per-frame log and replayed per fetch, so mid-frame and mid-line mode, page, TEXT (and therefore burst), ALTCHAR, and ALTGLYPH changes appear where they happen. **Still open:** intra-frame *memory* changes (racing the beam by writing video RAM, IIgs SCB and palette changes mid-frame). | The documented upgrade path is a cycle-stamped write log for the video pages, filled on the hot thread (address range check plus append) and replayed by the scanner, the same way as the switch log. The scanner keeps reading the snapshot, never live RAM. Decide when the first program that needs it shows up, or with the IIgs milestone. |
-| Q3 | **IIgs border.** Border geometry on each IIgs output (composite owns it in Classic mode, §8.3), and how the composite output reads the Classic Control Panel border and text colors from battery RAM. | Affects only the IIgs outputs' geometry and state, not the contracts. |
-| Q4 | **Every-frame consumers.** Video recording or frame-exact agent traces need every frame, not just the latest. Add a bounded queue subscription mode, or leave that to a separate recorder that subscribes to `FrameReady` and acquires synchronously? | v1 is latest-frame only. |
-| Q5 | **GPU frame providers.** May the UI redo provide frames in a shader from `Composite560Signal` instead of using the CPU providers? If so, the CPU providers and their goldens remain the reference the shader must match. | The 13.8 KB packed dot frame is a cheap texture upload. A GPU provider would still be an `IFrameProvider<ICompositeSignal>` from the pairing point of view. |
-| Q7 | **Idealized color for composite machines.** Some emulators offer an idealized, fringe-free color display for the IIe (AppleWin's "Color (RGB monitor)"). No real monitor does that from composite; the real equivalent is an RGB card (§8.2). Add an idealized `ICompositeSignal` provider anyway as a convenience? | Not in v1. Providers stay physical-only. |
-| Q8 | **Monitor fidelity beyond v1.** Color-killer lag (real monitors keep decoding color for a few lines after burst disappears), a filtered YIQ decoder instead of the 4-dot window, phosphor persistence, scanline gaps. Which, if any, are worth doing, and should they be separate providers or provider options? | v1 providers are exact and deterministic, which keeps goldens stable. |
-| Q9 | **IIgs floating bus and VGC timing.** The IIgs VGC is more independent of the CPU than the IIe's video circuit (but still clock-locked). What does a floating-bus read return on a IIgs, and does `ScannerAddress` need a IIgs variant? | Not needed until the IIgs milestone. |
-| Q10 | **First RGB card model.** Which IIe RGB card (for example Video-7 RGB or Le Chat Mauve Féline) is modeled first, and which of its modes? | Decided with the step-9 epic. The device shape is fixed in §8.2. |
+| Q3 | **IIgs border.** Border geometry on each IIgs output (composite owns it in Classic mode, §8.3), and how the composite output reads the Classic Control Panel border and text colors from battery RAM. | Affects only the IIgs outputs' geometry and state, not the contracts. Deferred by Josh, 2026-11-11. |
+| Q9 | **IIgs floating bus and VGC timing.** The IIgs VGC is more independent of the CPU than the IIe's video circuit (but still clock-locked). What does a floating-bus read return on a IIgs, and does `ScannerAddress` need a IIgs variant? | Deferred by Josh, 2026-11-11. |
 
 ### Decided (Josh, 2026-11-11)
 
@@ -740,6 +816,13 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 | RGB card | **The IIe RGB card is an optional motherboard device** (`"type": "rgb-card"`) added by the profile, not a slot card. | An approved simplification. See §8.2, §11.4. |
 | Hot thread | **None of the four layers runs on the emulator (hot) thread.** The hot thread only logs cycle-stamped display switch changes into a per-frame log (no allocation) and, at VBlank, snapshots video memory (~1 µs) into the triple buffer with that log. Scanning, signal generation, and frame providing replay lazily off-thread. The floating bus computes the scanner address arithmetically from the cycle count and reads RAM directly. The off-thread scanner never reads live RAM. | Rationale (correction): the IIe video circuit shared RAM and the bus with the CPU, reading on the alternate clock phase, and the IIgs VGC is more independent but still clock-locked. That lock-step is about *when* memory is read, which the cycle-stamped log and the floating-bus arithmetic reproduce exactly; nothing needs the scan itself to run on the CPU's thread. See §6, §7.2, §7.7, §8.1.6. |
 | Locks | **Locks use `System.Threading.Lock`, never `object`.** | Applies to the hub and every new type in this spec (§7.7). |
+| Q1 | **Intra-frame changes: switches now, memory reserved.** Display switch changes are replayed per fetch in v1. Intra-frame *memory* changes (beam racing) are not in v1, but the extension point is reserved in the contracts: `CapturedFrame.WriteLog`/`IVideoWriteLog` and the scanner's log merge exist from step 2 and 5, empty and tested. | Josh would like to support beam-racing games; not a priority. See §7.2.1, §7.3, §14.27. |
+| Q4 | **Every-frame consumers use a separate recorder** that subscribes to `FrameReady` and acquires synchronously (pinning the captured slot). The main API stays latest-frame only. | See §11.6, §14.30. |
+| Q5 | **GPU frame providers are allowed in the UI redo.** They are still `IFrameProvider<ICompositeSignal>`; the CPU providers and their goldens remain the reference. | See §11.5. |
+| Q7 | **No idealized, fringe-free composite provider.** Providers stay physical; the RGB card is the real path to clean color. | See §7.5, §8.2. |
+| Q8 | **Monitor fidelity: v1 stays exact and deterministic, with room reserved.** Every provider carries an immutable `FrameProviderOptions` record defaulting to exact; goldens are pinned to exact. Later fidelity work adds option values or additional providers. | See §7.5, §9.1, §14.28. |
+| Q10 | **Video-7 RGB is modeled first**: its four DHGR modes (16-color 140×192, 160×192 color, 560×192 mono, mixed) plus clean hi-res, lo-res, and text color, selected through the 80COL/AN3 toggle protocol shared with Le Chat Mauve and similar cards, so later cards add modes incrementally. | Details are to be verified against Video-7 documentation and AppleWin during the step-9 epic. See §8.2, §15 step 9. |
+| RGB pixels | **RGB and newer outputs emit finished BGRA8888; palette mapping is the output's job.** `RgbOut` applies the Video-7's fixed 16-color RGBI table (the card physically output digital RGBI); `AppleIIgsRgbOut` applies the VGC's 12-bit palette; future HDMI/DisplayPort outputs likewise. `RgbFrameProvider` is a pass-through plus optional cosmetic options. Composite outputs emit dots and the monitor decodes color. | Mirrors the hardware: the card or chip did the color lookup, and an RGB monitor just displays it. See §7.4, §8.2, §8.3, §9.1. |
 
 ## 18. Sources
 
