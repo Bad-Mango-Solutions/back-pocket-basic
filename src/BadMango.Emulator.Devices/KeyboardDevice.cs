@@ -300,6 +300,13 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     private void ClearStrobeAndPumpTypeQueue()
     {
         strobe = false;
+
+        // Do not resume queued typing inline here: the strobe clear is observable and the
+        // next key must be scheduled as deferred work after the state transition has settled.
+        if (!typedKeyUpPending)
+        {
+            ScheduleQueueContinuation();
+        }
     }
 
     private byte ReadPushButton0(byte offset, in BusAccess context)
