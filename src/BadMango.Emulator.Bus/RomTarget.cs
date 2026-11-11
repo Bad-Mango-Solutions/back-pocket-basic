@@ -96,9 +96,9 @@ public sealed class RomTarget : IBusTarget
     public uint Size => (uint)readOnlyMemory.Length;
 
     /// <inheritdoc />
-    public byte Read8(Addr physicalAddress, in BusAccess access)
+    public byte Read8(Addr offset, in BusAccess access)
     {
-        return readOnlyMemory.Span[(int)physicalAddress];
+        return readOnlyMemory.Span[(int)offset];
     }
 
     /// <inheritdoc />
@@ -106,12 +106,12 @@ public sealed class RomTarget : IBusTarget
     /// Normal writes to ROM are silently ignored, matching real ROM behavior.
     /// Debug writes (Poke) are allowed for debugging and patching purposes.
     /// </remarks>
-    public void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public void Write8(Addr offset, byte value, in BusAccess access)
     {
         // Only allow debug writes (Poke)
         if (isWritable && access.IsDebugAccess)
         {
-            memory.Span[(int)physicalAddress] = value;
+            memory.Span[(int)offset] = value;
         }
 
         // Normal writes are silently ignored
@@ -120,32 +120,32 @@ public sealed class RomTarget : IBusTarget
     /// <summary>
     /// Reads a 16-bit word from the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to read from.</param>
+    /// <param name="offset">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 16-bit value at the address (little-endian).</returns>
-    public Word Read16(Addr physicalAddress, in BusAccess access)
+    public Word Read16(Addr offset, in BusAccess access)
     {
         var span = readOnlyMemory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         return (Word)(span[index] | (span[index + 1] << 8));
     }
 
     /// <summary>
     /// Writes a 16-bit word to ROM.
     /// </summary>
-    /// <param name="physicalAddress">The physical address.</param>
+    /// <param name="offset">The physical address.</param>
     /// <param name="value">The value.</param>
     /// <param name="access">The access context.</param>
     /// <remarks>
     /// Normal writes are silently ignored. Debug writes are allowed.
     /// </remarks>
-    public void Write16(Addr physicalAddress, Word value, in BusAccess access)
+    public void Write16(Addr offset, Word value, in BusAccess access)
     {
         // Only allow debug writes (Poke)
         if (isWritable && access.IsDebugAccess)
         {
             var span = memory.Span;
-            int index = (int)physicalAddress;
+            int index = (int)offset;
             span[index] = (byte)value;
             span[index + 1] = (byte)(value >> 8);
         }
@@ -156,13 +156,13 @@ public sealed class RomTarget : IBusTarget
     /// <summary>
     /// Reads a 32-bit double word from the specified physical address atomically.
     /// </summary>
-    /// <param name="physicalAddress">The physical address to read from.</param>
+    /// <param name="offset">The physical address to read from.</param>
     /// <param name="access">The access context.</param>
     /// <returns>The 32-bit value at the address (little-endian).</returns>
-    public DWord Read32(Addr physicalAddress, in BusAccess access)
+    public DWord Read32(Addr offset, in BusAccess access)
     {
         var span = readOnlyMemory.Span;
-        int index = (int)physicalAddress;
+        int index = (int)offset;
         return (DWord)(
             span[index] |
             (span[index + 1] << 8) |
@@ -173,19 +173,19 @@ public sealed class RomTarget : IBusTarget
     /// <summary>
     /// Writes a 32-bit double word to ROM.
     /// </summary>
-    /// <param name="physicalAddress">The physical address.</param>
+    /// <param name="offset">The physical address.</param>
     /// <param name="value">The value.</param>
     /// <param name="access">The access context.</param>
     /// <remarks>
     /// Normal writes are silently ignored. Debug writes are allowed.
     /// </remarks>
-    public void Write32(Addr physicalAddress, DWord value, in BusAccess access)
+    public void Write32(Addr offset, DWord value, in BusAccess access)
     {
         // Only allow debug writes (Poke)
         if (isWritable && access.IsDebugAccess)
         {
             var span = memory.Span;
-            int index = (int)physicalAddress;
+            int index = (int)offset;
             span[index] = (byte)value;
             span[index + 1] = (byte)(value >> 8);
             span[index + 2] = (byte)(value >> 16);

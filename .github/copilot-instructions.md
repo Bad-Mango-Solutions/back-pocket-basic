@@ -22,6 +22,14 @@ This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2
 
 **This project uses .NET 10.0** as its target framework. All new code and projects must target `net10.0`. Do not question or suggest changes to the framework version - .NET 10.0 is the established standard for this repository as documented in the README and all project files.
 
+### C# 15 on net10.0
+
+- The repo pins the .NET SDK to `11.0.100` in `global.json` and sets `<LangVersion>15</LangVersion>` on every project while keeping `TargetFramework` at `net10.0`.
+- The application still runs on the .NET 10 LTS runtime; the .NET 11 SDK is used only as the compiler toolchain for the newer language features.
+- Use `union`/`closed` only for internal result and state models such as debugger stop reasons, bus-fault kinds, or halt reasons. Do not use them for JSON DTOs because `System.Text.Json` on net10 is not union-aware and silently treats `Value` as a regular property.
+- Do not use `closed` on extensibility points such as CPU, bus-target, or device hierarchies that are expected to be extended by future 65816/65832 work or plugin cards; `closed` intentionally forbids derivation outside the declaring assembly.
+- Developers need the .NET 11 SDK and a current Visual Studio 2026 / C# Dev Kit build when working locally.
+
 ### 65xxx Emulation
 
 - The core of the project is a cycle-accurate emulator for the 65C02 and 65816 microprocessors, which are central to the Apple II architecture.

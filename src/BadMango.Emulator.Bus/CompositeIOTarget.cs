@@ -98,45 +98,45 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         base.Capabilities | TargetCaps.HasSideEffects | TargetCaps.TimingSensitive;
 
     /// <inheritdoc />
-    public override byte Read8(Addr physicalAddress, in BusAccess access)
+    public override byte Read8(Addr offset, in BusAccess access)
     {
-        ushort offset = (ushort)(physicalAddress & 0x0FFF);
+        Word maskedOffset = (Word)(offset & 0x0FFF);
 
-        return offset switch
+        return maskedOffset switch
         {
-            < SoftSwitchRegionEnd => softSwitches.Read((byte)offset, in access),
-            < SlotRomRegionEnd => ReadSlotRom(offset, in access),
-            _ => ReadExpansionRom(offset, in access),
+            < SoftSwitchRegionEnd => softSwitches.Read((byte)maskedOffset, in access),
+            < SlotRomRegionEnd => ReadSlotRom(maskedOffset, in access),
+            _ => ReadExpansionRom(maskedOffset, in access),
         };
     }
 
     /// <inheritdoc />
-    public override void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public override void Write8(Addr offset, byte value, in BusAccess access)
     {
-        ushort offset = (ushort)(physicalAddress & 0x0FFF);
+        Word maskedOffset = (Word)(offset & 0x0FFF);
 
-        switch (offset)
+        switch (maskedOffset)
         {
             case < SoftSwitchRegionEnd:
-                softSwitches.Write((byte)offset, value, in access);
+                softSwitches.Write((byte)maskedOffset, value, in access);
                 break;
             case < SlotRomRegionEnd:
                 // When INTCXROM is enabled and this is a debug write, write to internal ROM
                 if (intCxRomEnabled && internalRom is not null && access.IsDebugAccess)
                 {
-                    internalRom.Write8(offset, value, in access);
+                    internalRom.Write8(maskedOffset, value, in access);
                 }
                 else
                 {
                     // Slot ROM: Ignore write, but still trigger expansion ROM selection!
-                    WriteSlotRom(offset);
+                    WriteSlotRom(maskedOffset);
                 }
 
                 break;
             default:
                 // Expansion ROM: Ignore write, but check for $xFFF deselection
                 // Note: INTCXROM does NOT affect the expansion ROM region
-                WriteExpansionRom(offset);
+                WriteExpansionRom(maskedOffset);
                 break;
         }
     }
@@ -155,8 +155,8 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         {
             // Soft switches are handled directly by this target's Read8/Write8
             < SoftSwitchRegionEnd => this,
-            < SlotRomRegionEnd => ResolveSlotRomTarget((ushort)offset),
-            _ => ResolveExpansionRomTarget((ushort)offset),
+            < SlotRomRegionEnd => ResolveSlotRomTarget((Word)offset),
+            _ => ResolveExpansionRomTarget((Word)offset),
         };
     }
 
@@ -250,7 +250,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// <param name="offset">Offset within the 4KB I/O page.</param>
     /// <param name="access">The bus access context.</param>
     /// <returns>The byte value at the specified offset.</returns>
-    private byte ReadSlotRom(ushort offset, in BusAccess access)
+    private byte ReadSlotRom(Word offset, in BusAccess access)
     {
         // Extract slot number from address: $xn00 ? slot n
         int slot = (offset >> 8) & 0x07;
@@ -283,7 +283,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         var rom = slotManager.GetSlotRomRegion(slot);
         if (rom is not null)
         {
-            ushort romOffset = (ushort)(offset & 0x00FF);
+            Word romOffset = (Word)(offset & 0x00FF);
             return rom.Read8(romOffset, in access);
         }
 
@@ -311,7 +311,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// Writes to ROM are ignored, but the access still triggers expansion ROM selection
     /// (except when INTCXROM is enabled, which disables all slot ROM access).
     /// </remarks>
-    private void WriteSlotRom(ushort offset)
+    private void WriteSlotRom(Word offset)
     {
         // Check for INTCXROM override - when enabled, no slot selection occurs
         if (intCxRomEnabled)
@@ -357,7 +357,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// <item><description>Accessing $CFFF deselects the layered ROM, revealing the default</description></item>
     /// </list>
     /// </remarks>
-    private byte ReadExpansionRom(ushort offset, in BusAccess access)
+    private byte ReadExpansionRom(Word offset, in BusAccess access)
     {
         // Special case: $xFFF deselects expansion ROM (removes layer, reveals default)
         if (offset == ExpansionRomDeselectOffset)
@@ -368,7 +368,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
             var defaultRom = slotManager.GetVisibleExpansionRom();
             if (defaultRom is not null)
             {
-                ushort expOffset = (ushort)(offset - ExpansionRomBaseOffset);
+                Word expOffset = (Word)(offset - ExpansionRomBaseOffset);
                 return defaultRom.Read8(expOffset, in access);
             }
 
@@ -379,7 +379,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         var expRom = slotManager.GetVisibleExpansionRom();
         if (expRom is not null)
         {
-            ushort expOffset = (ushort)(offset - ExpansionRomBaseOffset);
+            Word expOffset = (Word)(offset - ExpansionRomBaseOffset);
             return expRom.Read8(expOffset, in access);
         }
 
@@ -395,7 +395,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// Writes to ROM are ignored, but $xFFF still triggers deselection.
     /// Note: INTCXROM does NOT affect this region.
     /// </remarks>
-    private void WriteExpansionRom(ushort offset)
+    private void WriteExpansionRom(Word offset)
     {
         // Special case: $xFFF deselects expansion ROM even on writes
         if (offset == ExpansionRomDeselectOffset)
@@ -409,7 +409,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// </summary>
     /// <param name="offset">Offset within the 4KB I/O page.</param>
     /// <returns>The bus target for the slot ROM, or <see langword="null"/> for floating bus.</returns>
-    private IBusTarget? ResolveSlotRomTarget(ushort offset)
+    private IBusTarget? ResolveSlotRomTarget(Word offset)
     {
         // Check for INTCXROM override
         if (intCxRomEnabled && internalRom is not null)
@@ -448,7 +448,7 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
     /// The expansion ROM is always controlled by slot selection.
     /// </para>
     /// </remarks>
-    private IBusTarget? ResolveExpansionRomTarget(ushort offset)
+    private IBusTarget? ResolveExpansionRomTarget(Word offset)
     {
         // Return 'this' so CompositeIOTarget.Read8/Write8 handles the offset translation.
         // The expansion ROM targets expect offsets 0-0x7FF, but MainBus would pass

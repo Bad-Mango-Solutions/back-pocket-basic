@@ -24,12 +24,17 @@ public static class GcrEncoder
     /// <summary>
     /// Standard nibble-stream length per track for 16-sector 5.25" media.
     /// </summary>
-    public const int StandardTrackLength = 6656;
+    public const int StandardTrackLength = SectorSkew.SectorsPerTrack * EncodedSectorStride;
 
     /// <summary>
     /// Number of decoded user-data bytes per sector.
     /// </summary>
     public const int BytesPerSector = 256;
+
+    /// <summary>
+    /// Number of bytes in each encoded sector slot (gap + address field + gap + data field).
+    /// </summary>
+    public const int EncodedSectorStride = 416;
 
     /// <summary>Address-field prologue byte 1.</summary>
     public const byte AddressPrologue1 = 0xD5;
@@ -116,13 +121,12 @@ public static class GcrEncoder
 
         // Layout per sector: 48 gap bytes, then address field (14 bytes), 5 gap bytes,
         // then data field (349 bytes). 16 * (48 + 14 + 5 + 349) = 16 * 416 = 6656.
-        const int sectorStride = 416;
         const int gap1Length = 48;
         const int gap2Length = 5;
 
         for (var physical = 0; physical < SectorSkew.SectorsPerTrack; physical++)
         {
-            var sectorStart = physical * sectorStride;
+            var sectorStart = physical * EncodedSectorStride;
             var addressFieldStart = sectorStart + gap1Length;
             WriteAddressField(volume, track, physical, destination[addressFieldStart..(addressFieldStart + 14)]);
 

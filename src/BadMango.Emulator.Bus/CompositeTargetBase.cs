@@ -175,17 +175,17 @@ public abstract class CompositeTargetBase : ICompositeTarget
     }
 
     /// <inheritdoc />
-    public virtual byte Read8(Addr physicalAddress, in BusAccess access)
+    public virtual byte Read8(Addr offset, in BusAccess access)
     {
         // Try to resolve to a subregion target
-        var target = ResolveTarget(physicalAddress, access.Intent);
+        var target = ResolveTarget(offset, access.Intent);
         if (target is not null)
         {
             // Calculate offset within the subregion
-            var subRegion = FindSubRegion(physicalAddress);
+            var subRegion = FindSubRegion(offset);
             if (subRegion.HasValue)
             {
-                Addr subOffset = physicalAddress - subRegion.Value.StartOffset;
+                Addr subOffset = offset - subRegion.Value.StartOffset;
                 return target.Read8(subOffset, in access);
             }
         }
@@ -195,17 +195,17 @@ public abstract class CompositeTargetBase : ICompositeTarget
     }
 
     /// <inheritdoc />
-    public virtual void Write8(Addr physicalAddress, byte value, in BusAccess access)
+    public virtual void Write8(Addr offset, byte value, in BusAccess access)
     {
         // Try to resolve to a subregion target
-        var target = ResolveTarget(physicalAddress, access.Intent);
+        var target = ResolveTarget(offset, access.Intent);
         if (target is not null)
         {
             // Calculate offset within the subregion
-            var subRegion = FindSubRegion(physicalAddress);
+            var subRegion = FindSubRegion(offset);
             if (subRegion.HasValue)
             {
-                Addr subOffset = physicalAddress - subRegion.Value.StartOffset;
+                Addr subOffset = offset - subRegion.Value.StartOffset;
                 target.Write8(subOffset, value, in access);
                 return;
             }

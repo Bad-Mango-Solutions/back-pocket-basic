@@ -4,7 +4,7 @@
 
   <!-- Shared settings for test projects (and the BadMango.Unit.Components test helper library). -->
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>15</LangVersion>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

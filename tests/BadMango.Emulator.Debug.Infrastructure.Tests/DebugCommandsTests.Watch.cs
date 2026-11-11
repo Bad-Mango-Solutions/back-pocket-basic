@@ -4,9 +4,9 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
-/// <summary>
+/// <content>
 /// Unit tests for watchpoint hit value tracking.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>
