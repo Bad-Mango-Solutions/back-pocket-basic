@@ -28,5 +28,5 @@ public interface IKeyTranslator
     /// <param name="key">The physical host key that went down.</param>
     /// <param name="modifiers">The active modifiers, including the Caps Lock state.</param>
     /// <returns>The machine key code, or <see langword="null"/> if the key produces no code.</returns>
-    byte? Translate(HostKey key, KeyboardModifiers modifiers);
+    byte? Translate(KeyboardKey key, KeyboardModifiers modifiers);
 }

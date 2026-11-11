@@ -58,7 +58,7 @@ public sealed class KeyboardMachineTests
     public void KeyboardSoftSwitches_KeyDownAndStrobeClear_BehaveOnMachineBus()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
 
         keyboard.KeyDown((byte)'A');
         byte keyData = machine.Cpu.Read8(KeyboardDataAddress);
@@ -89,7 +89,7 @@ public sealed class KeyboardMachineTests
     public void KeyboardSoftSwitches_DebugReadC010_DoesNotClearStrobe()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
 
         keyboard.KeyDown((byte)'A');
         byte keyDataBeforeDebugRead = machine.Cpu.Read8(KeyboardDataAddress);
@@ -109,16 +109,16 @@ public sealed class KeyboardMachineTests
     }
 
     /// <summary>
-    /// Verifies that <see cref="IKeyboardDevice.TypeString"/> delivers <c>Hello, World!</c> to a
+    /// Verifies that <see cref="IAppleIIeKeyboard.TypeString"/> delivers <c>Hello, World!</c> to a
     /// polling loop in order, with nothing dropped or doubled, and that every key is released
-    /// (<see cref="IKeyboardDevice.HasKeyDown"/> observably false) before the next one goes down.
+    /// (<see cref="IAppleIIeKeyboard.HasKeyDown"/> observably false) before the next one goes down.
     /// </summary>
     [Test]
     public void TypeString_HelloWorld_PollingLoopReceivesEveryCharacterWithKeyUpBetween()
     {
         const string Text = "Hello, World!";
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
 
         keyboard.TypeString(Text);
@@ -163,7 +163,7 @@ public sealed class KeyboardMachineTests
     public void TypeString_ProgramNotReadingYet_KeepsTypeAheadUntilItReads()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
         InstallIdleLoop(machine);
 
@@ -187,15 +187,15 @@ public sealed class KeyboardMachineTests
     /// <c>Hi!</c> in the polling loop's buffer.
     /// </summary>
     [Test]
-    public void HostKeys_ShiftH_I_Shift1_TypesHiBang()
+    public void KeyboardKeys_ShiftH_I_Shift1_TypesHiBang()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
 
-        PressHostKey(machine, keyboard, HostKey.H, KeyboardModifiers.Shift);
-        PressHostKey(machine, keyboard, HostKey.I, KeyboardModifiers.None);
-        PressHostKey(machine, keyboard, HostKey.D1, KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.H, KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.I, KeyboardModifiers.None);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.D1, KeyboardModifiers.Shift);
 
         Assert.That(ReadBuffer(machine), Is.EqualTo("Hi!"));
     }
@@ -205,17 +205,17 @@ public sealed class KeyboardMachineTests
     /// gives lowercase (current PC-style rule), and digits ignore Caps Lock.
     /// </summary>
     [Test]
-    public void HostKeys_CapsLock_UppercasesLettersOnly()
+    public void KeyboardKeys_CapsLock_UppercasesLettersOnly()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
 
-        PressHostKey(machine, keyboard, HostKey.H, KeyboardModifiers.CapsLock);
-        PressHostKey(machine, keyboard, HostKey.I, KeyboardModifiers.CapsLock);
-        PressHostKey(machine, keyboard, HostKey.D1, KeyboardModifiers.CapsLock);
-        PressHostKey(machine, keyboard, HostKey.D1, KeyboardModifiers.CapsLock | KeyboardModifiers.Shift);
-        PressHostKey(machine, keyboard, HostKey.X, KeyboardModifiers.CapsLock | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.H, KeyboardModifiers.CapsLock);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.I, KeyboardModifiers.CapsLock);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.D1, KeyboardModifiers.CapsLock);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.D1, KeyboardModifiers.CapsLock | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.X, KeyboardModifiers.CapsLock | KeyboardModifiers.Shift);
 
         Assert.That(ReadBuffer(machine), Is.EqualTo("HI1!x"));
     }
@@ -224,16 +224,16 @@ public sealed class KeyboardMachineTests
     /// Verifies control codes through the host-key path: Ctrl+G, Ctrl+Shift+G, Ctrl+@ and Ctrl+[.
     /// </summary>
     [Test]
-    public void HostKeys_Control_DeliversControlCodes()
+    public void KeyboardKeys_Control_DeliversControlCodes()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
 
-        PressHostKey(machine, keyboard, HostKey.G, KeyboardModifiers.Control);
-        PressHostKey(machine, keyboard, HostKey.G, KeyboardModifiers.Control | KeyboardModifiers.Shift);
-        PressHostKey(machine, keyboard, HostKey.D2, KeyboardModifiers.Control | KeyboardModifiers.Shift);
-        PressHostKey(machine, keyboard, HostKey.OpenBracket, KeyboardModifiers.Control);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.G, KeyboardModifiers.Control);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.G, KeyboardModifiers.Control | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.D2, KeyboardModifiers.Control | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.OpenBracket, KeyboardModifiers.Control);
 
         Assert.That(ReadBufferBytes(machine), Is.EqualTo(new byte[] { 0x07, 0x07, 0x00, 0x1B }));
     }
@@ -243,16 +243,16 @@ public sealed class KeyboardMachineTests
     /// receives, while both still show up on the pushbutton soft switches.
     /// </summary>
     [Test]
-    public void HostKeys_AppleKeysHeld_DoNotChangeCodes()
+    public void KeyboardKeys_AppleKeysHeld_DoNotChangeCodes()
     {
         var machine = CreateMachine();
-        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var keyboard = machine.GetComponent<AppleIIeKeyboard>()!;
         InstallPollingLoop(machine);
         var apples = KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple;
 
-        PressHostKey(machine, keyboard, HostKey.A, KeyboardModifiers.OpenApple);
-        PressHostKey(machine, keyboard, HostKey.A, KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift);
-        PressHostKey(machine, keyboard, HostKey.D1, apples | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.A, KeyboardModifiers.OpenApple);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.A, KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift);
+        PressKeyboardKey(machine, keyboard, KeyboardKey.D1, apples | KeyboardModifiers.Shift);
         keyboard.SetModifiers(apples);
         byte pb0 = machine.Cpu.Read8(0xC061);
         byte pb1 = machine.Cpu.Read8(0xC062);
@@ -265,7 +265,7 @@ public sealed class KeyboardMachineTests
         });
     }
 
-    private static void PressHostKey(IMachine machine, IKeyboardDevice keyboard, HostKey key, KeyboardModifiers modifiers)
+    private static void PressKeyboardKey(IMachine machine, IAppleIIeKeyboard keyboard, KeyboardKey key, KeyboardModifiers modifiers)
     {
         byte? code = keyboard.Translator.Translate(key, modifiers);
         Assert.That(code, Is.Not.Null, $"{key} with {modifiers} must produce a code");

@@ -1,4 +1,4 @@
-// <copyright file="KeyboardDevice.cs" company="Bad Mango Solutions">
+// <copyright file="AppleIIeKeyboard.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -46,7 +46,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("keyboard")]
-public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IResetReceiver
+public sealed class AppleIIeKeyboard : IAppleIIeKeyboard, ISoftSwitchProvider, IResetReceiver
 {
     private const ushort KeyboardDataAddress = 0xC000;
     private const ushort KeyboardStrobeAddress = 0xC010;
@@ -101,21 +101,21 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     private ISignalBus? signals;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeyboardDevice"/> class with the US-layout
+    /// Initializes a new instance of the <see cref="AppleIIeKeyboard"/> class with the US-layout
     /// Apple IIe key translator.
     /// </summary>
-    public KeyboardDevice()
+    public AppleIIeKeyboard()
         : this(new AppleIIeKeyTranslator())
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeyboardDevice"/> class with the specified
+    /// Initializes a new instance of the <see cref="AppleIIeKeyboard"/> class with the specified
     /// key translator.
     /// </summary>
     /// <param name="translator">The translator that turns host keys into this keyboard's codes.</param>
     /// <exception cref="ArgumentNullException"><paramref name="translator"/> is <see langword="null"/>.</exception>
-    public KeyboardDevice(IKeyTranslator translator)
+    public AppleIIeKeyboard(IKeyTranslator translator)
     {
         ArgumentNullException.ThrowIfNull(translator);
         this.translator = translator;

@@ -344,11 +344,11 @@ public partial class VideoWindow : Window
         }
 
         // Track Left/Right Alt separately for Open/Closed Apple
-        if (e.Key == Key.LeftAlt)
+        if (e.Key == Key.LeftOption)
         {
             leftAltPressed = true;
         }
-        else if (e.Key == Key.RightAlt)
+        else if (e.Key == Key.RightOption)
         {
             rightAltPressed = true;
         }
@@ -381,11 +381,11 @@ public partial class VideoWindow : Window
         }
 
         // Track Left/Right Alt separately for Open/Closed Apple
-        if (e.Key == Key.LeftAlt)
+        if (e.Key == Key.LeftOption)
         {
             leftAltPressed = false;
         }
-        else if (e.Key == Key.RightAlt)
+        else if (e.Key == Key.RightOption)
         {
             rightAltPressed = false;
         }
@@ -407,53 +407,53 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
-    /// Maps an Avalonia key to the physical <see cref="HostKey"/> it represents.
+    /// Maps an Avalonia key to the physical <see cref="KeyboardKey"/> it represents.
     /// </summary>
     /// <param name="key">The Avalonia key code.</param>
-    /// <returns>The host key, or <see cref="HostKey.None"/> if the key has no host-key equivalent.</returns>
-    private static HostKey MapToHostKey(Key key)
+    /// <returns>The host key, or <see cref="KeyboardKey.None"/> if the key has no host-key equivalent.</returns>
+    private static KeyboardKey MapToKeyboardKey(Key key)
     {
         if (key is >= Key.A and <= Key.Z)
         {
-            return HostKey.A + (key - Key.A);
+            return KeyboardKey.A + (key - Key.A);
         }
 
         if (key is >= Key.D0 and <= Key.D9)
         {
-            return HostKey.D0 + (key - Key.D0);
+            return KeyboardKey.D0 + (key - Key.D0);
         }
 
         return key switch
         {
-            Key.OemMinus => HostKey.Minus,
-            Key.OemPlus => HostKey.Equals,
-            Key.OemOpenBrackets => HostKey.OpenBracket,
-            Key.OemCloseBrackets => HostKey.CloseBracket,
-            Key.OemBackslash or Key.OemPipe => HostKey.Backslash,
-            Key.OemSemicolon => HostKey.Semicolon,
-            Key.OemQuotes => HostKey.Quote,
-            Key.OemComma => HostKey.Comma,
-            Key.OemPeriod => HostKey.Period,
-            Key.OemQuestion => HostKey.Slash,
-            Key.OemTilde => HostKey.Backtick,
-            Key.Space => HostKey.Space,
-            Key.Return => HostKey.Return,
-            Key.Tab => HostKey.Tab,
-            Key.Escape => HostKey.Escape,
-            Key.Back => HostKey.Backspace,
-            Key.Delete => HostKey.Delete,
-            Key.Left => HostKey.Left,
-            Key.Right => HostKey.Right,
-            Key.Up => HostKey.Up,
-            Key.Down => HostKey.Down,
-            Key.LeftShift => HostKey.LeftShift,
-            Key.RightShift => HostKey.RightShift,
-            Key.LeftCtrl => HostKey.LeftControl,
-            Key.RightCtrl => HostKey.RightControl,
-            Key.LeftAlt => HostKey.LeftAlt,
-            Key.RightAlt => HostKey.RightAlt,
-            Key.CapsLock => HostKey.CapsLock,
-            _ => HostKey.None,
+            Key.OemMinus => KeyboardKey.Minus,
+            Key.OemPlus => KeyboardKey.Equals,
+            Key.OemOpenBrackets => KeyboardKey.OpenBracket,
+            Key.OemCloseBrackets => KeyboardKey.CloseBracket,
+            Key.OemBackslash or Key.OemPipe => KeyboardKey.Backslash,
+            Key.OemSemicolon => KeyboardKey.Semicolon,
+            Key.OemQuotes => KeyboardKey.Quote,
+            Key.OemComma => KeyboardKey.Comma,
+            Key.OemPeriod => KeyboardKey.Period,
+            Key.OemQuestion => KeyboardKey.Slash,
+            Key.OemTilde => KeyboardKey.Backtick,
+            Key.Space => KeyboardKey.Space,
+            Key.Return => KeyboardKey.Return,
+            Key.Tab => KeyboardKey.Tab,
+            Key.Escape => KeyboardKey.Escape,
+            Key.Back => KeyboardKey.Backspace,
+            Key.ForwardDelete => KeyboardKey.ForwardDelete,
+            Key.Left => KeyboardKey.Left,
+            Key.Right => KeyboardKey.Right,
+            Key.Up => KeyboardKey.Up,
+            Key.Down => KeyboardKey.Down,
+            Key.LeftShift => KeyboardKey.LeftShift,
+            Key.RightShift => KeyboardKey.RightShift,
+            Key.LeftCtrl => KeyboardKey.LeftControl,
+            Key.RightCtrl => KeyboardKey.RightControl,
+            Key.LeftOption => KeyboardKey.LeftOption,
+            Key.RightOption => KeyboardKey.RightOption,
+            Key.CapsLock => KeyboardKey.CapsLock,
+            _ => KeyboardKey.None,
         };
     }
 
@@ -471,8 +471,8 @@ public partial class VideoWindow : Window
             return null;
         }
 
-        HostKey hostKey = MapToHostKey(key);
-        if (hostKey == HostKey.None)
+        KeyboardKey hostKey = MapToKeyboardKey(key);
+        if (hostKey == KeyboardKey.None)
         {
             return null;
         }
