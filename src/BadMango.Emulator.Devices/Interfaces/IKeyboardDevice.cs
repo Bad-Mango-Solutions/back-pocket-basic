@@ -43,6 +43,18 @@ public interface IKeyboardDevice : IMotherboardDevice, IResetSource
     KeyboardModifiers Modifiers { get; }
 
     /// <summary>
+    /// Gets the translator that turns physical host keys into this keyboard's key codes.
+    /// </summary>
+    /// <value>The key translator owned by this keyboard.</value>
+    /// <remarks>
+    /// Input sources such as the video window use this to translate a <see cref="HostKey"/> and the
+    /// active modifiers before calling <see cref="KeyDown"/>, so they never construct or choose a
+    /// translator themselves. This is interim: the planned per-machine keyboard input layer will
+    /// accept host keys directly and keep the translator private to the keyboard.
+    /// </remarks>
+    IKeyTranslator Translator { get; }
+
+    /// <summary>
     /// Injects a key press from the host.
     /// </summary>
     /// <param name="asciiCode">The ASCII code of the key (high bit cleared).</param>
@@ -71,15 +83,25 @@ public interface IKeyboardDevice : IMotherboardDevice, IResetSource
     /// Injects a string of characters as sequential key presses.
     /// </summary>
     /// <param name="text">The text to inject.</param>
-    /// <param name="delayMs">Delay between keys in milliseconds.</param>
+    /// <param name="delayMs">How long each key is held down, in milliseconds of emulated time.</param>
     /// <remarks>
     /// <para>
-    /// This method queues characters for injection with the specified inter-key delay.
-    /// Characters are converted to their Apple II ASCII equivalents.
+    /// Characters are converted to their Apple II ASCII equivalents and queued. Unsupported
+    /// characters are skipped. Typing runs entirely on scheduler events in emulated time, so it
+    /// is deterministic and safe to call from any thread:
     /// </para>
+    /// <list type="number">
+    /// <item><description>Key down: the code is latched with the strobe set and the any-key-down flag set.</description></item>
+    /// <item><description>Key up, <paramref name="delayMs"/> later: the any-key-down flag clears.</description></item>
+    /// <item><description>
+    /// An inter-key gap follows, so the key-up is observable before the next key goes down. If
+    /// software has not yet cleared the strobe for the previous key, the next key waits, so
+    /// type-ahead is never overwritten. Clearing the strobe never starts the next key by itself.
+    /// </description></item>
+    /// </list>
     /// <para>
-    /// The default delay of 50ms simulates typical typing speed and allows software
-    /// to process each key before the next arrives.
+    /// The default of 50 ms simulates typical typing speed and allows software to process each key
+    /// before the next arrives.
     /// </para>
     /// </remarks>
     void TypeString(string text, int delayMs = 50);
