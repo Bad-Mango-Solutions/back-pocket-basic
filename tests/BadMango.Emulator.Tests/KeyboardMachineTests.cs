@@ -109,9 +109,9 @@ public sealed class KeyboardMachineTests
     }
 
     /// <summary>
-    /// Verifies that <see cref="IAppleIIeKeyboard.TypeString"/> delivers <c>Hello, World!</c> to a
+    /// Verifies that <see cref="IKeyboardDevice.TypeString"/> delivers <c>Hello, World!</c> to a
     /// polling loop in order, with nothing dropped or doubled, and that every key is released
-    /// (<see cref="IAppleIIeKeyboard.HasKeyDown"/> observably false) before the next one goes down.
+    /// (<see cref="IKeyboardDevice.HasKeyDown"/> observably false) before the next one goes down.
     /// </summary>
     [Test]
     public void TypeString_HelloWorld_PollingLoopReceivesEveryCharacterWithKeyUpBetween()
@@ -265,7 +265,7 @@ public sealed class KeyboardMachineTests
         });
     }
 
-    private static void PressKeyboardKey(IMachine machine, IAppleIIeKeyboard keyboard, KeyboardKey key, KeyboardModifiers modifiers)
+    private static void PressKeyboardKey(IMachine machine, IKeyboardDevice keyboard, KeyboardKey key, KeyboardModifiers modifiers)
     {
         byte? code = keyboard.Translator.Translate(key, modifiers);
         Assert.That(code, Is.Not.Null, $"{key} with {modifiers} must produce a code");

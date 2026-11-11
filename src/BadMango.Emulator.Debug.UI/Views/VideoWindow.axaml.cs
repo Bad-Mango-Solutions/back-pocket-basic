@@ -344,11 +344,11 @@ public partial class VideoWindow : Window
         }
 
         // Track Left/Right Alt separately for Open/Closed Apple
-        if (e.Key == Key.LeftOption)
+        if (e.Key == Key.LeftAlt)
         {
             leftAltPressed = true;
         }
-        else if (e.Key == Key.RightOption)
+        else if (e.Key == Key.RightAlt)
         {
             rightAltPressed = true;
         }
@@ -381,11 +381,11 @@ public partial class VideoWindow : Window
         }
 
         // Track Left/Right Alt separately for Open/Closed Apple
-        if (e.Key == Key.LeftOption)
+        if (e.Key == Key.LeftAlt)
         {
             leftAltPressed = false;
         }
-        else if (e.Key == Key.RightOption)
+        else if (e.Key == Key.RightAlt)
         {
             rightAltPressed = false;
         }
@@ -441,7 +441,7 @@ public partial class VideoWindow : Window
             Key.Tab => KeyboardKey.Tab,
             Key.Escape => KeyboardKey.Escape,
             Key.Back => KeyboardKey.Backspace,
-            Key.ForwardDelete => KeyboardKey.ForwardDelete,
+            Key.Delete => KeyboardKey.ForwardDelete,
             Key.Left => KeyboardKey.Left,
             Key.Right => KeyboardKey.Right,
             Key.Up => KeyboardKey.Up,
@@ -450,8 +450,8 @@ public partial class VideoWindow : Window
             Key.RightShift => KeyboardKey.RightShift,
             Key.LeftCtrl => KeyboardKey.LeftControl,
             Key.RightCtrl => KeyboardKey.RightControl,
-            Key.LeftOption => KeyboardKey.LeftOption,
-            Key.RightOption => KeyboardKey.RightOption,
+            Key.LeftAlt => KeyboardKey.LeftOption,
+            Key.RightAlt => KeyboardKey.RightOption,
             Key.CapsLock => KeyboardKey.CapsLock,
             _ => KeyboardKey.None,
         };

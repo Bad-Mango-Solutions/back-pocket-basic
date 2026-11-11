@@ -27,9 +27,9 @@ public sealed class AppleIIeKeyTranslatorTests
         (KeyboardKey.Equals, '=', '+'),
         (KeyboardKey.OpenBracket, '[', '{'),
         (KeyboardKey.CloseBracket, ']', '}'),
-        (KeyboardKey.Backslash, '\', '|'),
+        (KeyboardKey.Backslash, '\\', '|'),
         (KeyboardKey.Semicolon, ';', ':'),
-        (KeyboardKey.Quote, ''', '"'),
+        (KeyboardKey.Quote, '\'', '"'),
         (KeyboardKey.Comma, ',', '<'),
         (KeyboardKey.Period, '.', '>'),
         (KeyboardKey.Slash, '/', '?'),
@@ -90,48 +90,94 @@ public sealed class AppleIIeKeyTranslatorTests
 
     private readonly IKeyTranslator translator = new AppleIIeKeyTranslator();
 
+    /// <summary>
+    /// Verifies that letter keys follow the Shift/XOR Caps Lock rule.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected lowercase or uppercase character.</param>
     [TestCaseSource(nameof(LetterCases))]
     public void Translate_Letter_FollowsShiftXorCapsLock(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that digits and punctuation use the US key legend and ignore Caps Lock.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected character code.</param>
     [TestCaseSource(nameof(PrintableCases))]
     public void Translate_DigitOrPunctuation_UsesUsLegendAndIgnoresCapsLock(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that Control combinations on letter keys produce the Apple II control codes.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected control-code value.</param>
     [TestCaseSource(nameof(ControlLetterCases))]
     public void Translate_ControlLetter_GivesControlCodeIgnoringShiftAndCapsLock(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that Control combinations on punctuation keys produce the expected Apple II control codes.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected control-code value.</param>
     [TestCaseSource(nameof(ControlPunctuationCases))]
     public void Translate_ControlPunctuation_GivesControlCode(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that non-control printable keys are left alone when Control is pressed.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected character code.</param>
     [TestCaseSource(nameof(ControlUnchangedCases))]
     public void Translate_ControlWithOtherPrintable_LeavesCodeUnchanged(KeyboardKey key, KeyboardModifiers modifiers, char expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that special keys translate to the IIe keyboard codes regardless of modifier state.
+    /// </summary>
+    /// <param name="key">The special keyboard key being translated.</param>
+    /// <param name="modifiers">The active modifier state.</param>
+    /// <param name="expected">The expected Apple IIe keyboard code.</param>
     [TestCaseSource(nameof(SpecialCases))]
     public void Translate_SpecialKey_IgnoresModifiers(KeyboardKey key, KeyboardModifiers modifiers, int expected)
     {
         Assert.That(translator.Translate(key, modifiers), Is.EqualTo((byte)expected));
     }
 
+    /// <summary>
+    /// Verifies that Apple modifier keys do not change the translated code.
+    /// </summary>
+    /// <param name="key">The keyboard key being translated.</param>
+    /// <param name="baseModifiers">The original modifier state.</param>
+    /// <param name="appleKeys">The Apple-key modifiers being added.</param>
     [TestCaseSource(nameof(AppleKeyCases))]
     public void Translate_AppleKeys_NeverChangeTheCode(KeyboardKey key, KeyboardModifiers baseModifiers, KeyboardModifiers appleKeys)
     {
         Assert.That(translator.Translate(key, baseModifiers | appleKeys), Is.EqualTo(translator.Translate(key, baseModifiers)));
     }
 
+    /// <summary>
+    /// Verifies that modifier-only keys produce no translator code.
+    /// </summary>
+    /// <param name="key">The modifier key under test.</param>
     [TestCaseSource(nameof(ModifierKeys))]
     public void Translate_ModifierKey_ReturnsNull(KeyboardKey key)
     {
@@ -144,6 +190,9 @@ public sealed class AppleIIeKeyTranslatorTests
         });
     }
 
+    /// <summary>
+    /// Verifies that every <see cref="KeyboardKey"/> is explicitly accounted for by the translator tables.
+    /// </summary>
     [Test]
     public void Translate_EveryKeyboardKey_IsCoveredByTheTables()
     {

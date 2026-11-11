@@ -46,7 +46,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("keyboard")]
-public sealed class AppleIIeKeyboard : IAppleIIeKeyboard, ISoftSwitchProvider, IResetReceiver
+public sealed class AppleIIeKeyboard : IKeyboardDevice, ISoftSwitchProvider, IResetReceiver
 {
     private const ushort KeyboardDataAddress = 0xC000;
     private const ushort KeyboardStrobeAddress = 0xC010;
