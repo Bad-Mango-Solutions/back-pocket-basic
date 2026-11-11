@@ -192,13 +192,19 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
                 if (holdOpenApple)
                 {
                     resetModifiers |= KeyboardModifiers.OpenApple;
-                    resetOnlyModifiers |= KeyboardModifiers.OpenApple;
+                    if (!originalModifiers.HasFlag(KeyboardModifiers.OpenApple))
+                    {
+                        resetOnlyModifiers |= KeyboardModifiers.OpenApple;
+                    }
                 }
 
                 if (holdClosedApple)
                 {
                     resetModifiers |= KeyboardModifiers.ClosedApple;
-                    resetOnlyModifiers |= KeyboardModifiers.ClosedApple;
+                    if (!originalModifiers.HasFlag(KeyboardModifiers.ClosedApple))
+                    {
+                        resetOnlyModifiers |= KeyboardModifiers.ClosedApple;
+                    }
                 }
 
                 keyboard.SetModifiers(resetModifiers);
@@ -207,7 +213,7 @@ public sealed class ResetCommand : CommandHandlerBase, ICommandHelp
             () =>
             {
                 keyboard.ReleaseResetKey();
-                keyboard.SetModifiers(originalModifiers | KeyboardModifiers.Control);
+                keyboard.SetModifiers(originalModifiers | resetOnlyModifiers);
 
                 if (resetOnlyModifiers == KeyboardModifiers.None)
                 {
