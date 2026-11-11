@@ -318,6 +318,7 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
         ArgumentNullException.ThrowIfNull(shouldTerminate);
 
         var cpu = debugContext.Cpu!;
+        var machine = debugContext.Machine;
         var tracingListener = debugContext.TracingListener;
         bool tracingWasEnabled = tracingListener?.IsEnabled ?? false;
 
@@ -363,9 +364,28 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
                 // Get the opcode before stepping (for derived class termination check)
                 byte opcode = cpu.Peek8(cpu.GetPC());
 
-                var result = cpu.Step();
+                var result = machine?.Step() ?? cpu.Step();
                 instructionCount++;
                 cycleCount += (long)result.CyclesConsumed.Value;
+
+                if (result.State == Core.Cpu.CpuRunState.WaitingForInterrupt)
+                {
+                    if (machine?.Scheduler.JumpToNextEventAndDispatch() == true)
+                    {
+                        continue;
+                    }
+
+                    stopReason = "CPU waiting for interrupt";
+                    normalCompletion = true;
+                    break;
+                }
+
+                if (result.State is Core.Cpu.CpuRunState.Stopped or Core.Cpu.CpuRunState.Halted)
+                {
+                    stopReason = $"CPU halted ({cpu.HaltReason})";
+                    normalCompletion = true;
+                    break;
+                }
 
                 // Check custom termination condition
                 if (shouldTerminate(debugContext, opcode))

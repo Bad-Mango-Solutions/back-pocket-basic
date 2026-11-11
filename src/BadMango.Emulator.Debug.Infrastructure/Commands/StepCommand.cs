@@ -132,7 +132,7 @@ public sealed class StepCommand : CommandHandlerBase, ICommandHelp
                     $"${disassembled.Address:X4}: {disassembled.FormatBytes(),-12} {disassembled.FormatInstruction()}");
             }
 
-            var result = debugContext.Cpu.Step();
+            var result = debugContext.Machine?.Step() ?? debugContext.Cpu.Step();
             totalCycles += (int)result.CyclesConsumed.Value;
 
             // Show register state and effective address after the instruction.

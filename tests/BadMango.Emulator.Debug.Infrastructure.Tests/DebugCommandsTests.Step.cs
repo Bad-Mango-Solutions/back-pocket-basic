@@ -4,6 +4,12 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus;
+using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Cpu;
+
+using Moq;
+
 /// <content>
 /// Unit tests for <see cref="StepCommand"/>.
 /// </content>
@@ -91,6 +97,37 @@ public partial class DebugCommandsTests
         {
             Assert.That(result.Success, Is.False);
             Assert.That(result.Message, Does.Contain("halted"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that StepCommand routes stepping through the attached machine.
+    /// </summary>
+    [Test]
+    public void StepCommand_UsesMachineStep_WhenMachineAttached()
+    {
+        WriteByte(bus, 0x1000, 0xEA); // NOP
+        cpu.Reset();
+
+        var mockMachine = new Mock<IMachine>();
+        var machineState = MachineState.Stopped;
+        mockMachine.SetupGet(m => m.State).Returns(() => machineState);
+        mockMachine.SetupGet(m => m.Cpu).Returns(cpu);
+        mockMachine.SetupGet(m => m.Bus).Returns(bus);
+        mockMachine.Setup(m => m.Step())
+            .Callback(() => machineState = MachineState.Paused)
+            .Returns(() => cpu.Step());
+        debugContext.AttachMachine(mockMachine.Object);
+
+        var command = new StepCommand();
+        var result = command.Execute(debugContext, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(cpu.GetPC(), Is.EqualTo(0x1001u));
+            Assert.That(machineState, Is.EqualTo(MachineState.Paused));
+            mockMachine.Verify(m => m.Step(), Times.Once);
         });
     }
 }
