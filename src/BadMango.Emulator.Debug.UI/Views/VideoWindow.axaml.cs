@@ -400,6 +400,14 @@ public partial class VideoWindow : Window
         e.Handled = true;
     }
 
+    private static bool IsCriticalException(Exception ex)
+    {
+        return ex is OutOfMemoryException
+            or AccessViolationException
+            or InvalidProgramException
+            or BadImageFormatException;
+    }
+
     /// <summary>
     /// Maps Avalonia key codes to Pocket2e ASCII codes.
     /// </summary>
@@ -491,15 +499,7 @@ public partial class VideoWindow : Window
             return null;
         }
 
-        return keyTranslator?.Translate(translated, effectiveModifiers) ?? AppleIIeKeyTranslator.Translate(translated, effectiveModifiers);
-    }
-
-    private static bool IsCriticalException(Exception ex)
-    {
-        return ex is OutOfMemoryException
-            or AccessViolationException
-            or InvalidProgramException
-            or BadImageFormatException;
+        return keyTranslator?.Translate(translated, effectiveModifiers) ?? AppleIIeKeyTranslator.MapKeyToPocket2(translated, effectiveModifiers);
     }
 
     /// <summary>

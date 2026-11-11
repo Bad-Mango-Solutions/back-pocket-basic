@@ -44,7 +44,7 @@ public sealed class AppleIIeKeyTranslatorTests
             modifiers |= KeyboardModifiers.CapsLock;
         }
 
-        var actual = AppleIIeKeyTranslator.Translate(
+        var actual = AppleIIeKeyTranslator.MapKeyToPocket2(
             letter switch
             {
                 'a' => AppleIIeKeyTranslator.AppleIIeKey.A,
@@ -76,8 +76,8 @@ public sealed class AppleIIeKeyTranslatorTests
         var withCaps = modifiers | KeyboardModifiers.CapsLock;
         Assert.Multiple(() =>
         {
-            Assert.That(AppleIIeKeyTranslator.Translate(key, modifiers), Is.EqualTo(expected));
-            Assert.That(AppleIIeKeyTranslator.Translate(key, withCaps), Is.EqualTo(expected));
+            Assert.That(AppleIIeKeyTranslator.MapKeyToPocket2(key, modifiers), Is.EqualTo(expected));
+            Assert.That(AppleIIeKeyTranslator.MapKeyToPocket2(key, withCaps), Is.EqualTo(expected));
         });
     }
 
@@ -99,9 +99,9 @@ public sealed class AppleIIeKeyTranslatorTests
         KeyboardModifiers modifiers,
         byte expected)
     {
-        Assert.That(AppleIIeKeyTranslator.Translate(key, modifiers), Is.EqualTo(expected));
+        Assert.That(AppleIIeKeyTranslator.MapKeyToPocket2(key, modifiers), Is.EqualTo(expected));
         Assert.That(
-            AppleIIeKeyTranslator.Translate(key, modifiers | KeyboardModifiers.Shift | KeyboardModifiers.CapsLock),
+            AppleIIeKeyTranslator.MapKeyToPocket2(key, modifiers | KeyboardModifiers.Shift | KeyboardModifiers.CapsLock),
             Is.EqualTo(expected));
     }
 
@@ -123,7 +123,7 @@ public sealed class AppleIIeKeyTranslatorTests
         AppleIIeKeyTranslator.AppleIIeKey key,
         byte expected)
     {
-        Assert.That(AppleIIeKeyTranslator.Translate(key, KeyboardModifiers.None), Is.EqualTo(expected));
+        Assert.That(AppleIIeKeyTranslator.MapKeyToPocket2(key, KeyboardModifiers.None), Is.EqualTo(expected));
     }
 
     /// <summary>
@@ -136,6 +136,6 @@ public sealed class AppleIIeKeyTranslatorTests
     [TestCase(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple, 0x61)]
     public void Translate_AppleModifiers_DoesNotChangeCharacterCode(KeyboardModifiers modifiers, byte expected)
     {
-        Assert.That(AppleIIeKeyTranslator.Translate(AppleIIeKeyTranslator.AppleIIeKey.A, modifiers), Is.EqualTo(expected));
+        Assert.That(AppleIIeKeyTranslator.MapKeyToPocket2(AppleIIeKeyTranslator.AppleIIeKey.A, modifiers), Is.EqualTo(expected));
     }
 }
