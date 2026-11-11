@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign iteration for selected items
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ORG_LOGIN: Bad-Mango-Solutions
           PROJECT_NUMBER: '3'
