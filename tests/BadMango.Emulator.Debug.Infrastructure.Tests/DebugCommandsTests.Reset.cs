@@ -130,16 +130,21 @@ public partial class DebugCommandsTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Success, Is.True);
-            mockKeyboard.Verify(k => k.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple), Times.Once);
-            mockKeyboard.Verify(k => k.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple), Times.Exactly(2));
+            mockKeyboard.Verify(
+                k => k.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple),
+                Times.Once);
+            mockKeyboard.Verify(
+                k => k.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple),
+                Times.Once);
             mockKeyboard.Verify(k => k.PressResetKey(), Times.Once);
             mockKeyboard.Verify(k => k.ReleaseResetKey(), Times.Once);
-            mockScheduler.Verify(s => s.ScheduleAt(
-                It.IsAny<Cycle>(),
-                ScheduledEventKind.DeferredWork,
-                It.IsAny<int>(),
-                It.IsAny<Action<IEventContext>>(),
-                It.IsAny<object?>()),
+            mockScheduler.Verify(
+                s => s.ScheduleAt(
+                    It.IsAny<Cycle>(),
+                    ScheduledEventKind.DeferredWork,
+                    It.IsAny<int>(),
+                    It.IsAny<Action<IEventContext>>(),
+                    It.IsAny<object?>()),
                 Times.Once);
         });
     }
