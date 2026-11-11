@@ -36,11 +36,6 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BCC };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -67,11 +62,6 @@ public static partial class Instructions
                 {
                     opCycles++; // Page boundary crossed
                 }
-            }
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BCS };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -102,11 +92,6 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BEQ };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -133,11 +118,6 @@ public static partial class Instructions
                 {
                     opCycles++; // Page boundary crossed
                 }
-            }
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BNE };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -168,11 +148,6 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BMI };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -199,11 +174,6 @@ public static partial class Instructions
                 {
                     opCycles++; // Page boundary crossed
                 }
-            }
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BPL };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -234,11 +204,6 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BVC };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -267,11 +232,6 @@ public static partial class Instructions
                 }
             }
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BVS };
-            }
-
             cpu.Registers.TCU += opCycles;
         };
     }
@@ -298,11 +258,6 @@ public static partial class Instructions
             if ((oldPC & 0xFF00) != (targetAddr & 0xFF00))
             {
                 opCycles++; // Page boundary crossed
-            }
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BRA };
             }
 
             cpu.Registers.TCU += opCycles;

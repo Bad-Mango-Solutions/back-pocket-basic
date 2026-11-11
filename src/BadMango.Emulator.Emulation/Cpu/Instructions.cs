@@ -51,20 +51,15 @@ public static partial class Instructions
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDA };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
+                var operands = cpu.Trace.Operands;
+                operands[0] = (byte)(value & 0xff);
+                cpu.Trace = cpu.Trace with
                 {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = (byte)(value & 0xff);
-                    cpu.Trace = cpu.Trace with
-                    {
-                        OperandSize = (byte)(size / 8),
-                        Operands = operands,
-                    };
-                }
+                    OperandSize = (byte)(size / 8),
+                    Operands = operands,
+                };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -88,20 +83,15 @@ public static partial class Instructions
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDX };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
+                var operands = cpu.Trace.Operands;
+                operands[0] = (byte)(value & 0xff);
+                cpu.Trace = cpu.Trace with
                 {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = (byte)(value & 0xff);
-                    cpu.Trace = cpu.Trace with
-                    {
-                        OperandSize = (byte)(size / 8),
-                        Operands = operands,
-                    };
-                }
+                    OperandSize = (byte)(size / 8),
+                    Operands = operands,
+                };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -125,20 +115,15 @@ public static partial class Instructions
             var value = cpu.ReadValue(address, size);
             opCycles++; // Memory read cycle
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.LDY };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
+                var operands = cpu.Trace.Operands;
+                operands[0] = (byte)(value & 0xff);
+                cpu.Trace = cpu.Trace with
                 {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = (byte)(value & 0xff);
-                    cpu.Trace = cpu.Trace with
-                    {
-                        OperandSize = (byte)(size / 8),
-                        Operands = operands,
-                    };
-                }
+                    OperandSize = (byte)(size / 8),
+                    Operands = operands,
+                };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -160,11 +145,6 @@ public static partial class Instructions
             byte size = cpu.Registers.GetAccumulatorSize();
             cpu.WriteValue(address, cpu.Registers.A.GetValue(size), size);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STA };
-            }
-
             cpu.Registers.TCU += 1; // Memory write cycle
         };
     }
@@ -182,11 +162,6 @@ public static partial class Instructions
             byte size = cpu.Registers.GetIndexSize();
             cpu.WriteValue(address, cpu.Registers.X.GetValue(size), size);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STX };
-            }
-
             cpu.Registers.TCU += 1; // Memory write cycle
         };
     }
@@ -203,11 +178,6 @@ public static partial class Instructions
             Addr address = addressingMode(cpu);
             byte size = cpu.Registers.GetIndexSize();
             cpu.WriteValue(address, cpu.Registers.Y.GetValue(size), size);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.STY };
-            }
 
             cpu.Registers.TCU += 1; // Memory write cycle
         };
@@ -238,11 +208,6 @@ public static partial class Instructions
         return cpu =>
         {
             addressingMode(cpu); // Call addressing mode (usually does nothing for Implied)
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.NOP };
-            }
 
             if (instructionCycles > 0)
             {
@@ -283,11 +248,6 @@ public static partial class Instructions
             cpu.Registers.P &= ~ProcessorStatusFlags.D;
             cpu.Registers.PC.SetWord(cpu.Read16(Cpu65C02Constants.IrqVector));
             opCycles += 2; // Read IRQ vector (2 bytes)
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.BRK };
-            }
 
             cpu.Registers.TCU += opCycles;
         };

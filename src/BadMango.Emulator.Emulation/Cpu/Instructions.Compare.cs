@@ -41,16 +41,11 @@ public static partial class Instructions
 
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CMP };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -86,16 +81,11 @@ public static partial class Instructions
 
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CPX };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;
@@ -131,16 +121,11 @@ public static partial class Instructions
 
             cpu.Registers.P.SetZeroAndNegative(result);
 
-            if (cpu.IsDebuggerAttached)
+            if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
             {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.CPY };
-
-                if (cpu.Trace.AddressingMode == CpuAddressingModes.Immediate)
-                {
-                    var operands = cpu.Trace.Operands;
-                    operands[0] = value;
-                    cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
-                }
+                var operands = cpu.Trace.Operands;
+                operands[0] = value;
+                cpu.Trace = cpu.Trace with { OperandSize = 1, Operands = operands };
             }
 
             cpu.Registers.TCU += opCycles;

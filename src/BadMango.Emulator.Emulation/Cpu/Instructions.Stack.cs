@@ -24,11 +24,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), cpu.Registers.A.GetByte());
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PHA };
-            }
-
             cpu.Registers.TCU += 2;
         };
     }
@@ -44,11 +39,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), (byte)(cpu.Registers.P | ProcessorStatusFlags.B | ProcessorStatusFlags.R));
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PHP };
-            }
 
             cpu.Registers.TCU += 2;
         };
@@ -68,11 +58,6 @@ public static partial class Instructions
             cpu.Registers.A.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PLA };
-            }
-
             cpu.Registers.TCU += 3;
         };
     }
@@ -89,11 +74,6 @@ public static partial class Instructions
             addressingMode(cpu);
             cpu.Registers.P = (ProcessorStatusFlags)cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase)) | ProcessorStatusFlags.R;
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PLP };
-            }
-
             cpu.Registers.TCU += 3;
         };
     }
@@ -109,11 +89,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), cpu.Registers.X.GetByte());
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PHX };
-            }
 
             cpu.Registers.TCU += 2;
         };
@@ -133,11 +108,6 @@ public static partial class Instructions
             cpu.Registers.X.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
 
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PLX };
-            }
-
             cpu.Registers.TCU += 3;
         };
     }
@@ -153,11 +123,6 @@ public static partial class Instructions
         {
             addressingMode(cpu);
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), cpu.Registers.Y.GetByte());
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PHY };
-            }
 
             cpu.Registers.TCU += 2;
         };
@@ -176,11 +141,6 @@ public static partial class Instructions
             byte value = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             cpu.Registers.Y.SetByte(value);
             cpu.Registers.P.SetZeroAndNegative(value);
-
-            if (cpu.IsDebuggerAttached)
-            {
-                cpu.Trace = cpu.Trace with { Instruction = CpuInstructions.PLY };
-            }
 
             cpu.Registers.TCU += 3;
         };

@@ -224,6 +224,29 @@ public class CpuDebugSupportTests : CpuTestBase
     }
 
     /// <summary>
+    /// Verifies that step event data contains instruction metadata for implied mode opcodes.
+    /// </summary>
+    [Test]
+    public void StepEventData_ContainsInstructionMetadata_ImpliedMode()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
+
+        var listener = new TestDebugListener();
+        Cpu.AttachDebugger(listener);
+
+        Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(listener.LastAfterStepData.Instruction, Is.EqualTo(CpuInstructions.NOP));
+            Assert.That(listener.LastAfterStepData.AddressingMode, Is.EqualTo(CpuAddressingModes.Implied));
+            Assert.That(listener.LastAfterStepData.OperandSize, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     /// Verifies that after step event contains updated register state.
     /// </summary>
     [Test]
