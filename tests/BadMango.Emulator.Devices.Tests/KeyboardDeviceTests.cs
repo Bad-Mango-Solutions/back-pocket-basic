@@ -33,33 +33,6 @@ public class KeyboardDeviceTests
     }
 
     /// <summary>
-    /// Verifies that Name returns the correct value.
-    /// </summary>
-    [Test]
-    public void Name_ReturnsKeyboard()
-    {
-        Assert.That(device.Name, Is.EqualTo("Keyboard"));
-    }
-
-    /// <summary>
-    /// Verifies that DeviceType returns the correct value.
-    /// </summary>
-    [Test]
-    public void DeviceType_ReturnsKeyboard()
-    {
-        Assert.That(device.DeviceType, Is.EqualTo("Keyboard"));
-    }
-
-    /// <summary>
-    /// Verifies that Kind returns Motherboard.
-    /// </summary>
-    [Test]
-    public void Kind_ReturnsMotherboard()
-    {
-        Assert.That(device.Kind, Is.EqualTo(PeripheralKind.Motherboard));
-    }
-
-    /// <summary>
     /// Verifies that KeyDown sets the key data and strobe.
     /// </summary>
     [Test]

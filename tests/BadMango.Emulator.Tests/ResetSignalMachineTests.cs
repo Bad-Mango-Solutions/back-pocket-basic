@@ -33,6 +33,11 @@ public sealed class ResetSignalMachineTests
     private const ushort LoopAddress = 0x6000;
     private const ushort LcBank1ReadWrite = 0xC08B;
     private const ushort LcBank2ReadWrite = 0xC083;
+    private const ushort KeyboardDataAddress = 0xC000;
+    private const ushort KeyboardStrobeAddress = 0xC010;
+    private const ushort PushButton0Address = 0xC061;
+    private const ushort PushButton1Address = 0xC062;
+    private const ushort PushButton2Address = 0xC063;
 
     private static string RepositoryRoot { get; } = LocateRepositoryRoot();
 
@@ -417,6 +422,134 @@ public sealed class ResetSignalMachineTests
     }
 
     /// <summary>
+    /// Verifies keyboard data/strobe behavior through real soft-switch reads and writes.
+    /// </summary>
+    [Test]
+    public void KeyboardSoftSwitches_KeyDownAndStrobeClear_BehaveOnMachineBus()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+
+        keyboard.KeyDown((byte)'A');
+        byte keyData = machine.Cpu.Read8(KeyboardDataAddress);
+        byte keyDownBeforeRelease = machine.Cpu.Read8(KeyboardStrobeAddress);
+        byte keyDataAfterReadClear = machine.Cpu.Read8(KeyboardDataAddress);
+
+        keyboard.KeyUp();
+        byte keyDownAfterRelease = machine.Cpu.Read8(KeyboardStrobeAddress);
+
+        keyboard.KeyDown((byte)'B');
+        machine.Cpu.Write8(KeyboardStrobeAddress, 0x00);
+        byte keyDataAfterWriteClear = machine.Cpu.Read8(KeyboardDataAddress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(keyData, Is.EqualTo((byte)('A' | 0x80)));
+            Assert.That(keyDownBeforeRelease, Is.EqualTo(0x80));
+            Assert.That(keyDataAfterReadClear, Is.EqualTo((byte)'A'));
+            Assert.That(keyDownAfterRelease, Is.EqualTo(0x00));
+            Assert.That(keyDataAfterWriteClear, Is.EqualTo((byte)'B'));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that debugger reads of <c>$C010</c> do not clear the keyboard strobe.
+    /// </summary>
+    [Test]
+    public void KeyboardSoftSwitches_DebugReadC010_DoesNotClearStrobe()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+
+        keyboard.KeyDown((byte)'A');
+        byte keyDataBeforeDebugRead = machine.Cpu.Read8(KeyboardDataAddress);
+        byte keyDownDebugRead = DebugPeek(machine.Bus, KeyboardStrobeAddress);
+        byte keyDataAfterDebugRead = machine.Cpu.Read8(KeyboardDataAddress);
+        byte keyDownNormalRead = machine.Cpu.Read8(KeyboardStrobeAddress);
+        byte keyDataAfterNormalRead = machine.Cpu.Read8(KeyboardDataAddress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(keyDataBeforeDebugRead, Is.EqualTo((byte)('A' | 0x80)));
+            Assert.That(keyDownDebugRead, Is.EqualTo(0x80));
+            Assert.That(keyDataAfterDebugRead, Is.EqualTo((byte)('A' | 0x80)));
+            Assert.That(keyDownNormalRead, Is.EqualTo(0x80));
+            Assert.That(keyDataAfterNormalRead, Is.EqualTo((byte)'A'));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="IKeyboardDevice.TypeString"/> delivers every character in order
+    /// while the machine runs and releases each key on scheduler timing.
+    /// </summary>
+    [Test]
+    public void TypeString_OnRunningMachine_DeliversCharactersInOrder()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        WriteLoop(machine);
+        var observed = new List<byte>();
+
+        keyboard.TypeString("ABC", delayMs: 2);
+        for (int i = 0; i < 3; i++)
+        {
+            bool strobeSet = StepUntil(machine, () => (machine.Cpu.Read8(KeyboardDataAddress) & 0x80) != 0, maxCycles: 200_000);
+            Assert.That(strobeSet, Is.True, $"Character {i + 1} was never strobed");
+
+            byte keyData = machine.Cpu.Read8(KeyboardDataAddress);
+            observed.Add((byte)(keyData & 0x7F));
+            _ = machine.Cpu.Read8(KeyboardStrobeAddress);
+
+            bool keyReleased = StepUntil(machine, () => !keyboard.HasKeyDown, maxCycles: 200_000);
+            Assert.That(keyReleased, Is.True, $"Character {i + 1} did not release");
+        }
+
+        StepFor(machine, 100_000);
+        byte idleData = machine.Cpu.Read8(KeyboardDataAddress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(observed, Is.EqualTo(new byte[] { (byte)'A', (byte)'B', (byte)'C' }));
+            Assert.That(idleData & 0x80, Is.Zero, "No pending strobe should remain after typing");
+            Assert.That(machine.Cpu.Read8(KeyboardStrobeAddress), Is.EqualTo(0x00), "No key should remain down");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RESET clears strobe/type-ahead but keeps physically held key/modifier state.
+    /// Releasing the held key after RESET must clear <c>$C010</c>.
+    /// </summary>
+    [Test]
+    public void SoftReset_KeepsHeldKeyAndModifiers_KeyUpAfterResetClearsC010()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        WriteLoop(machine);
+
+        keyboard.KeyDown((byte)'Z');
+        keyboard.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.Shift);
+        machine.Reset();
+        WriteLoop(machine);
+
+        byte keyDataAfterReset = machine.Cpu.Read8(KeyboardDataAddress);
+        byte keyDownAfterReset = machine.Cpu.Read8(KeyboardStrobeAddress);
+        byte pb0AfterReset = machine.Cpu.Read8(PushButton0Address);
+        byte pb2AfterReset = machine.Cpu.Read8(PushButton2Address);
+
+        keyboard.KeyUp();
+        byte keyDownAfterRelease = machine.Cpu.Read8(KeyboardStrobeAddress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(keyDataAfterReset, Is.EqualTo((byte)'Z'), "RESET should clear strobe but keep the held key value");
+            Assert.That(keyDownAfterReset, Is.EqualTo(0x80), "Held key should remain physically down through RESET");
+            Assert.That(pb0AfterReset, Is.EqualTo(0x80), "Open Apple should remain held through RESET");
+            Assert.That(pb2AfterReset, Is.EqualTo(0x80), "Shift should remain held through RESET");
+            Assert.That(keyDownAfterRelease, Is.EqualTo(0x00), "KeyUp after RESET should clear KBDSTRB");
+        });
+    }
+
+    /// <summary>
     /// Verifies that a disk inserted while the drive motor runs (deferred to the next scheduler
     /// turn) is not lost when a RESET flushes the scheduler before the insert is applied.
     /// </summary>
@@ -697,6 +830,23 @@ public sealed class ResetSignalMachineTests
         }
 
         return true;
+    }
+
+    private static byte DebugPeek(IMemoryBus bus, ushort address)
+    {
+        var access = new BusAccess(
+            Address: address,
+            Value: 0,
+            WidthBits: 8,
+            Mode: BusAccessMode.Decomposed,
+            EmulationFlag: true,
+            Intent: AccessIntent.DebugRead,
+            SourceId: 0,
+            Cycle: 0,
+            Flags: AccessFlags.NoSideEffects);
+
+        var result = bus.TryRead8(access);
+        return result.Ok ? result.Value : (byte)0xFF;
     }
 
     private static string ReadTextLine(IMachine machine, int row)

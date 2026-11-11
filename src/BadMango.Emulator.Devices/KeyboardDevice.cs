@@ -280,7 +280,7 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
 
         if (!context.IsSideEffectFree)
         {
-            strobe = false;
+            ClearStrobeAndPumpTypeQueue();
         }
 
         return result;
@@ -290,7 +290,19 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     {
         if (!context.IsSideEffectFree)
         {
-            strobe = false;
+            ClearStrobeAndPumpTypeQueue();
+        }
+    }
+
+    private void ClearStrobeAndPumpTypeQueue()
+    {
+        strobe = false;
+
+        // TypeString advances from its release callback only when strobe is clear. If a key is
+        // released before firmware clears KBDSTRB, continue once the clear finally happens.
+        if (!typedKeyUpPending)
+        {
+            ProcessTypeQueue();
         }
     }
 
