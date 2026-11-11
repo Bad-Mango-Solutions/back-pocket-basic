@@ -84,6 +84,61 @@ public class SectorImageMediaTests
     }
 
     /// <summary>
+    /// Writing a sparse nibble track only updates sectors that decode successfully.
+    /// </summary>
+    [Test]
+    public void TrackWrite_UntouchedSectorSlotsAreNotOverwritten()
+    {
+        const int track = 12;
+        const int updatedPhysicalSector = 7;
+
+        var payload = ImageFixtures.Random525Payload(991);
+        using var backend = new RamStorageBackend(payload);
+        var image = new SectorImageMedia(backend, DiskGeometry.Standard525Dos);
+        var media = image.As525Media();
+
+        var originalTrack = new byte[GcrEncoder.StandardTrackLength];
+        media.ReadTrack(track * 4, originalTrack);
+
+        var decoded = new byte[SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector];
+        var mask = GcrEncoder.DecodeTrack(originalTrack, decoded);
+        Assert.That(mask, Is.EqualTo(0xFFFF));
+
+        decoded.AsSpan(updatedPhysicalSector * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector).Fill(0xA5);
+        var updatedTrack = new byte[GcrEncoder.StandardTrackLength];
+        GcrEncoder.EncodeTrack(volume: 254, track, decoded, updatedTrack);
+
+        var sparseTrack = new byte[GcrEncoder.StandardTrackLength];
+        sparseTrack.AsSpan().Fill(GcrEncoder.GapByte);
+
+        var sectorSlotStart = updatedPhysicalSector * GcrEncoder.EncodedSectorStride;
+        updatedTrack.AsSpan(sectorSlotStart, GcrEncoder.EncodedSectorStride).CopyTo(sparseTrack.AsSpan(sectorSlotStart, GcrEncoder.EncodedSectorStride));
+
+        var before = backend.ToArray();
+        media.WriteTrack(track * 4, sparseTrack);
+        var after = backend.ToArray();
+
+        for (var physical = 0; physical < SectorSkew.SectorsPerTrack; physical++)
+        {
+            var logical = SectorSkew.PhysicalToLogical(SectorOrder.Dos33, physical);
+            var offset = ((track * SectorSkew.SectorsPerTrack) + logical) * GcrEncoder.BytesPerSector;
+
+            if (physical == updatedPhysicalSector)
+            {
+                var expected = decoded.AsSpan(physical * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector).ToArray();
+                var actual = after.AsSpan(offset, GcrEncoder.BytesPerSector).ToArray();
+                Assert.That(actual, Is.EqualTo(expected));
+            }
+            else
+            {
+                var expected = before.AsSpan(offset, GcrEncoder.BytesPerSector).ToArray();
+                var actual = after.AsSpan(offset, GcrEncoder.BytesPerSector).ToArray();
+                Assert.That(actual, Is.EqualTo(expected), $"physical sector {physical} should be untouched");
+            }
+        }
+    }
+
+    /// <summary>
     /// Write-protect at construction time blocks writes from both views.
     /// </summary>
     [Test]
