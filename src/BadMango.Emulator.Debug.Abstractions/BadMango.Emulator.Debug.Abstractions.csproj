@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BadMango.Emulator.Debug.Abstractions</RootNamespace>
+    <Product>BackPocket Emulator - Debug Abstractions</Product>
+    <Description>Debug contracts and JSON-serializable data models for emulator debugging sessions without depending on emulation, bus, or UI layers.</Description>
+    <PackageTags>emulator;debugger;contracts;6502;65816;65832;json;abstractions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
