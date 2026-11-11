@@ -5,484 +5,131 @@
 namespace BadMango.Emulator.Devices;
 
 /// <summary>
-/// Translates host keyboard keys into Apple IIe character codes while honoring modifier state.
+/// Translates physical host keys into Apple IIe keyboard codes for a US layout.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The result is the 7-bit code the IIe keyboard encoder latches into <c>$C000</c>:
+/// </para>
+/// <list type="bullet">
+/// <item><description>Letters: uppercase when exactly one of Shift and Caps Lock is active, lowercase otherwise.</description></item>
+/// <item><description>Digits and punctuation: the US-layout shifted or unshifted legend. Caps Lock has no effect.</description></item>
+/// <item><description>
+/// Control: Ctrl+A..Z give <c>$01</c>-<c>$1A</c> regardless of Shift and Caps Lock; Ctrl+[ <c>$1B</c>,
+/// Ctrl+\ <c>$1C</c>, Ctrl+] <c>$1D</c>, Ctrl+@ (Shift+2) <c>$00</c>, Ctrl+^ (Shift+6) <c>$1E</c>,
+/// Ctrl+_ (Shift+Minus) <c>$1F</c>. Other printable keys produce nothing while Ctrl is held.
+/// </description></item>
+/// <item><description>
+/// Special keys ignore Shift, Caps Lock and Ctrl: Left <c>$08</c>, Right <c>$15</c>, Up <c>$0B</c>,
+/// Down <c>$0A</c>, Return <c>$0D</c>, Tab <c>$09</c>, Escape <c>$1B</c>, Space <c>$20</c>,
+/// Backspace <c>$08</c> and Delete <c>$7F</c>.
+/// </description></item>
+/// <item><description>
+/// Open Apple and Closed Apple never change the code; they are only visible as the pushbuttons
+/// at <c>$C061</c>/<c>$C062</c>. Modifier keys themselves produce no code.
+/// </description></item>
+/// </list>
+/// </remarks>
 public sealed class AppleIIeKeyTranslator : IKeyTranslator
 {
-    /// <summary>
-    /// Host-neutral Apple IIe key enumeration.
-    /// </summary>
-    public enum AppleIIeKey
+    private const byte AsciiDelete = 0x7F;
+
+    /// <inheritdoc />
+    public byte? Translate(HostKey key, KeyboardModifiers modifiers)
     {
-        /// <summary>
-        /// Represents no key mapping.
-        /// </summary>
-        None,
-
-        /// <summary>
-        /// The A key.
-        /// </summary>
-        A,
-
-        /// <summary>
-        /// The B key.
-        /// </summary>
-        B,
-
-        /// <summary>
-        /// The C key.
-        /// </summary>
-        C,
-
-        /// <summary>
-        /// The D key.
-        /// </summary>
-        D,
-
-        /// <summary>
-        /// The E key.
-        /// </summary>
-        E,
-
-        /// <summary>
-        /// The F key.
-        /// </summary>
-        F,
-
-        /// <summary>
-        /// The G key.
-        /// </summary>
-        G,
-
-        /// <summary>
-        /// The H key.
-        /// </summary>
-        H,
-
-        /// <summary>
-        /// The I key.
-        /// </summary>
-        I,
-
-        /// <summary>
-        /// The J key.
-        /// </summary>
-        J,
-
-        /// <summary>
-        /// The K key.
-        /// </summary>
-        K,
-
-        /// <summary>
-        /// The L key.
-        /// </summary>
-        L,
-
-        /// <summary>
-        /// The M key.
-        /// </summary>
-        M,
-
-        /// <summary>
-        /// The N key.
-        /// </summary>
-        N,
-
-        /// <summary>
-        /// The O key.
-        /// </summary>
-        O,
-
-        /// <summary>
-        /// The P key.
-        /// </summary>
-        P,
-
-        /// <summary>
-        /// The Q key.
-        /// </summary>
-        Q,
-
-        /// <summary>
-        /// The R key.
-        /// </summary>
-        R,
-
-        /// <summary>
-        /// The S key.
-        /// </summary>
-        S,
-
-        /// <summary>
-        /// The T key.
-        /// </summary>
-        T,
-
-        /// <summary>
-        /// The U key.
-        /// </summary>
-        U,
-
-        /// <summary>
-        /// The V key.
-        /// </summary>
-        V,
-
-        /// <summary>
-        /// The W key.
-        /// </summary>
-        W,
-
-        /// <summary>
-        /// The X key.
-        /// </summary>
-        X,
-
-        /// <summary>
-        /// The Y key.
-        /// </summary>
-        Y,
-
-        /// <summary>
-        /// The Z key.
-        /// </summary>
-        Z,
-
-        /// <summary>
-        /// The 0 key.
-        /// </summary>
-        D0,
-
-        /// <summary>
-        /// The 1 key.
-        /// </summary>
-        D1,
-
-        /// <summary>
-        /// The 2 key.
-        /// </summary>
-        D2,
-
-        /// <summary>
-        /// The 3 key.
-        /// </summary>
-        D3,
-
-        /// <summary>
-        /// The 4 key.
-        /// </summary>
-        D4,
-
-        /// <summary>
-        /// The 5 key.
-        /// </summary>
-        D5,
-
-        /// <summary>
-        /// The 6 key.
-        /// </summary>
-        D6,
-
-        /// <summary>
-        /// The 7 key.
-        /// </summary>
-        D7,
-
-        /// <summary>
-        /// The 8 key.
-        /// </summary>
-        D8,
-
-        /// <summary>
-        /// The 9 key.
-        /// </summary>
-        D9,
-
-        /// <summary>
-        /// The minus key.
-        /// </summary>
-        Minus,
-
-        /// <summary>
-        /// The plus key.
-        /// </summary>
-        Plus,
-
-        /// <summary>
-        /// The equals key.
-        /// </summary>
-        Equals,
-
-        /// <summary>
-        /// The open bracket key.
-        /// </summary>
-        OpenBracket,
-
-        /// <summary>
-        /// The close bracket key.
-        /// </summary>
-        CloseBracket,
-
-        /// <summary>
-        /// The backslash key.
-        /// </summary>
-        Backslash,
-
-        /// <summary>
-        /// The semicolon key.
-        /// </summary>
-        Semicolon,
-
-        /// <summary>
-        /// The quote key.
-        /// </summary>
-        Quote,
-
-        /// <summary>
-        /// The comma key.
-        /// </summary>
-        Comma,
-
-        /// <summary>
-        /// The period key.
-        /// </summary>
-        Period,
-
-        /// <summary>
-        /// The slash key.
-        /// </summary>
-        Slash,
-
-        /// <summary>
-        /// The backtick key.
-        /// </summary>
-        Backtick,
-
-        /// <summary>
-        /// The space bar.
-        /// </summary>
-        Space,
-
-        /// <summary>
-        /// The return key.
-        /// </summary>
-        Return,
-
-        /// <summary>
-        /// The tab key.
-        /// </summary>
-        Tab,
-
-        /// <summary>
-        /// The escape key.
-        /// </summary>
-        Escape,
-
-        /// <summary>
-        /// The delete key.
-        /// </summary>
-        Delete,
-
-        /// <summary>
-        /// The left arrow key.
-        /// </summary>
-        Left,
-
-        /// <summary>
-        /// The right arrow key.
-        /// </summary>
-        Right,
-
-        /// <summary>
-        /// The up arrow key.
-        /// </summary>
-        Up,
-
-        /// <summary>
-        /// The down arrow key.
-        /// </summary>
-        Down,
-    }
-
-    /// <summary>
-    /// Alias for <see cref="TranslateStatic(AppleIIeKey, KeyboardModifiers)"/> for compatibility with the inlined mapping logic.
-    /// </summary>
-    /// <param name="key">The host-neutral key to translate.</param>
-    /// <param name="modifiers">The active Apple II keyboard modifiers.</param>
-    /// <returns>The translated Apple II character code, or <see langword="null"/> if the key is unmapped.</returns>
-    public static byte? MapKeyToPocket2(AppleIIeKey key, KeyboardModifiers modifiers) => TranslateStatic(key, modifiers);
-
-    /// <summary>
-    /// Translates the specified host-neutral key using the current Apple IIe mapping rules.
-    /// </summary>
-    /// <param name="key">The key to translate.</param>
-    /// <param name="modifiers">The active keyboard modifiers.</param>
-    /// <returns>The Apple IIe character code, or <see langword="null"/> if the key is not mapped.</returns>
-    public static byte? TranslateStatic(AppleIIeKey key, KeyboardModifiers modifiers)
-    {
-        bool ctrl = modifiers.HasFlag(KeyboardModifiers.Control);
         bool shift = modifiers.HasFlag(KeyboardModifiers.Shift);
-        bool capsLock = modifiers.HasFlag(KeyboardModifiers.CapsLock);
 
-        if (ctrl)
+        byte? special = TranslateSpecial(key);
+        if (special.HasValue)
         {
-            return key switch
-            {
-                AppleIIeKey.A => 0x01,
-                AppleIIeKey.B => 0x02,
-                AppleIIeKey.C => 0x03,
-                AppleIIeKey.D => 0x04,
-                AppleIIeKey.E => 0x05,
-                AppleIIeKey.F => 0x06,
-                AppleIIeKey.G => 0x07,
-                AppleIIeKey.H => 0x08,
-                AppleIIeKey.I => 0x09,
-                AppleIIeKey.J => 0x0A,
-                AppleIIeKey.K => 0x0B,
-                AppleIIeKey.L => 0x0C,
-                AppleIIeKey.M => 0x0D,
-                AppleIIeKey.N => 0x0E,
-                AppleIIeKey.O => 0x0F,
-                AppleIIeKey.P => 0x10,
-                AppleIIeKey.Q => 0x11,
-                AppleIIeKey.R => 0x12,
-                AppleIIeKey.S => 0x13,
-                AppleIIeKey.T => 0x14,
-                AppleIIeKey.U => 0x15,
-                AppleIIeKey.V => 0x16,
-                AppleIIeKey.W => 0x17,
-                AppleIIeKey.X => 0x18,
-                AppleIIeKey.Y => 0x19,
-                AppleIIeKey.Z => 0x1A,
-                AppleIIeKey.OpenBracket => 0x1B,
-                AppleIIeKey.Backslash => 0x1C,
-                AppleIIeKey.CloseBracket => 0x1D,
-                AppleIIeKey.Up => 0x1E,
-                AppleIIeKey.Right => 0x1F,
-                _ => null,
-            };
+            return special;
         }
 
+        if (modifiers.HasFlag(KeyboardModifiers.Control))
+        {
+            return TranslateControl(key, shift);
+        }
+
+        if (key is >= HostKey.A and <= HostKey.Z)
+        {
+            bool uppercase = shift ^ modifiers.HasFlag(KeyboardModifiers.CapsLock);
+            byte upper = (byte)('A' + (key - HostKey.A));
+            return uppercase ? upper : (byte)(upper + 0x20);
+        }
+
+        return TranslatePrintable(key, shift);
+    }
+
+    private static byte? TranslateSpecial(HostKey key)
+    {
         return key switch
         {
-            AppleIIeKey.Left => 0x08,
-            AppleIIeKey.Right => 0x15,
-            AppleIIeKey.Up => 0x0B,
-            AppleIIeKey.Down => 0x0A,
-            AppleIIeKey.Return => 0x0D,
-            AppleIIeKey.Tab => 0x09,
-            AppleIIeKey.Escape => 0x1B,
-            AppleIIeKey.Space => 0x20,
-            AppleIIeKey.Delete => 0x7F,
-            AppleIIeKey.A => MapLetter('A', shift, capsLock),
-            AppleIIeKey.B => MapLetter('B', shift, capsLock),
-            AppleIIeKey.C => MapLetter('C', shift, capsLock),
-            AppleIIeKey.D => MapLetter('D', shift, capsLock),
-            AppleIIeKey.E => MapLetter('E', shift, capsLock),
-            AppleIIeKey.F => MapLetter('F', shift, capsLock),
-            AppleIIeKey.G => MapLetter('G', shift, capsLock),
-            AppleIIeKey.H => MapLetter('H', shift, capsLock),
-            AppleIIeKey.I => MapLetter('I', shift, capsLock),
-            AppleIIeKey.J => MapLetter('J', shift, capsLock),
-            AppleIIeKey.K => MapLetter('K', shift, capsLock),
-            AppleIIeKey.L => MapLetter('L', shift, capsLock),
-            AppleIIeKey.M => MapLetter('M', shift, capsLock),
-            AppleIIeKey.N => MapLetter('N', shift, capsLock),
-            AppleIIeKey.O => MapLetter('O', shift, capsLock),
-            AppleIIeKey.P => MapLetter('P', shift, capsLock),
-            AppleIIeKey.Q => MapLetter('Q', shift, capsLock),
-            AppleIIeKey.R => MapLetter('R', shift, capsLock),
-            AppleIIeKey.S => MapLetter('S', shift, capsLock),
-            AppleIIeKey.T => MapLetter('T', shift, capsLock),
-            AppleIIeKey.U => MapLetter('U', shift, capsLock),
-            AppleIIeKey.V => MapLetter('V', shift, capsLock),
-            AppleIIeKey.W => MapLetter('W', shift, capsLock),
-            AppleIIeKey.X => MapLetter('X', shift, capsLock),
-            AppleIIeKey.Y => MapLetter('Y', shift, capsLock),
-            AppleIIeKey.Z => MapLetter('Z', shift, capsLock),
-            AppleIIeKey.D0 => MapDigit(AppleIIeKey.D0, shift),
-            AppleIIeKey.D1 => MapDigit(AppleIIeKey.D1, shift),
-            AppleIIeKey.D2 => MapDigit(AppleIIeKey.D2, shift),
-            AppleIIeKey.D3 => MapDigit(AppleIIeKey.D3, shift),
-            AppleIIeKey.D4 => MapDigit(AppleIIeKey.D4, shift),
-            AppleIIeKey.D5 => MapDigit(AppleIIeKey.D5, shift),
-            AppleIIeKey.D6 => MapDigit(AppleIIeKey.D6, shift),
-            AppleIIeKey.D7 => MapDigit(AppleIIeKey.D7, shift),
-            AppleIIeKey.D8 => MapDigit(AppleIIeKey.D8, shift),
-            AppleIIeKey.D9 => MapDigit(AppleIIeKey.D9, shift),
-            AppleIIeKey.Minus => shift ? (byte)'_' : (byte)'-',
-            AppleIIeKey.Plus => (byte)'+',
-            AppleIIeKey.Equals => shift ? (byte)'+' : (byte)'=',
-            AppleIIeKey.OpenBracket => shift ? (byte)'{' : (byte)'[',
-            AppleIIeKey.CloseBracket => shift ? (byte)'}' : (byte)']',
-            AppleIIeKey.Backslash => shift ? (byte)'|' : (byte)'\\',
-            AppleIIeKey.Semicolon => shift ? (byte)':' : (byte)';',
-            AppleIIeKey.Quote => shift ? (byte)'"' : (byte)'\'',
-            AppleIIeKey.Comma => shift ? (byte)'<' : (byte)',',
-            AppleIIeKey.Period => shift ? (byte)'>' : (byte)'.',
-            AppleIIeKey.Slash => shift ? (byte)'?' : (byte)'/',
-            AppleIIeKey.Backtick => shift ? (byte)'~' : (byte)'`',
+            HostKey.Left => 0x08,
+            HostKey.Right => 0x15,
+            HostKey.Up => 0x0B,
+            HostKey.Down => 0x0A,
+            HostKey.Return => 0x0D,
+            HostKey.Tab => 0x09,
+            HostKey.Escape => 0x1B,
+            HostKey.Space => 0x20,
+            HostKey.Backspace => 0x08,
+            HostKey.Delete => AsciiDelete,
             _ => null,
         };
     }
 
-    /// <summary>
-    /// Converts a host-neutral key and active modifiers into an Apple IIe ASCII code.
-    /// </summary>
-    /// <param name="key">The key to translate.</param>
-    /// <param name="modifiers">The active keyboard modifiers.</param>
-    /// <returns>The Apple IIe character code, or <see langword="null"/> if the key is not mapped.</returns>
-    public byte? Translate(AppleIIeKey key, KeyboardModifiers modifiers)
+    private static byte? TranslateControl(HostKey key, bool shift)
     {
-        return TranslateStatic(key, modifiers);
-    }
-
-    /// <inheritdoc />
-    byte? IKeyTranslator.Translate(AppleIIeKey key, KeyboardModifiers modifiers)
-    {
-        return Translate(key, modifiers);
-    }
-
-    private static byte MapLetter(char letter, bool shift, bool capsLock)
-    {
-        bool uppercase = shift ^ capsLock;
-        return uppercase ? (byte)letter : (byte)(letter + 0x20);
-    }
-
-    private static byte MapDigit(AppleIIeKey key, bool shift)
-    {
-        if (!shift)
+        if (key is >= HostKey.A and <= HostKey.Z)
         {
-            return key switch
-            {
-                AppleIIeKey.D0 => (byte)'0',
-                AppleIIeKey.D1 => (byte)'1',
-                AppleIIeKey.D2 => (byte)'2',
-                AppleIIeKey.D3 => (byte)'3',
-                AppleIIeKey.D4 => (byte)'4',
-                AppleIIeKey.D5 => (byte)'5',
-                AppleIIeKey.D6 => (byte)'6',
-                AppleIIeKey.D7 => (byte)'7',
-                AppleIIeKey.D8 => (byte)'8',
-                AppleIIeKey.D9 => (byte)'9',
-                _ => throw new ArgumentOutOfRangeException(nameof(key)),
-            };
+            return (byte)(0x01 + (key - HostKey.A));
         }
 
         return key switch
         {
-            AppleIIeKey.D1 => (byte)'!',
-            AppleIIeKey.D2 => (byte)'@',
-            AppleIIeKey.D3 => (byte)'#',
-            AppleIIeKey.D4 => (byte)'$',
-            AppleIIeKey.D5 => (byte)'%',
-            AppleIIeKey.D6 => (byte)'^',
-            AppleIIeKey.D7 => (byte)'&',
-            AppleIIeKey.D8 => (byte)'*',
-            AppleIIeKey.D9 => (byte)'(',
-            AppleIIeKey.D0 => (byte)')',
-            _ => throw new ArgumentOutOfRangeException(nameof(key)),
+            HostKey.OpenBracket => 0x1B,
+            HostKey.Backslash => 0x1C,
+            HostKey.CloseBracket => 0x1D,
+            HostKey.D2 when shift => 0x00,
+            HostKey.D6 when shift => 0x1E,
+            HostKey.Minus when shift => 0x1F,
+            _ => null,
         };
+    }
+
+    private static byte? TranslatePrintable(HostKey key, bool shift)
+    {
+        (char Unshifted, char Shifted)? legend = key switch
+        {
+            HostKey.D1 => ('1', '!'),
+            HostKey.D2 => ('2', '@'),
+            HostKey.D3 => ('3', '#'),
+            HostKey.D4 => ('4', '$'),
+            HostKey.D5 => ('5', '%'),
+            HostKey.D6 => ('6', '^'),
+            HostKey.D7 => ('7', '&'),
+            HostKey.D8 => ('8', '*'),
+            HostKey.D9 => ('9', '('),
+            HostKey.D0 => ('0', ')'),
+            HostKey.Minus => ('-', '_'),
+            HostKey.Equals => ('=', '+'),
+            HostKey.OpenBracket => ('[', '{'),
+            HostKey.CloseBracket => (']', '}'),
+            HostKey.Backslash => ('\\', '|'),
+            HostKey.Semicolon => (';', ':'),
+            HostKey.Quote => ('\'', '"'),
+            HostKey.Comma => (',', '<'),
+            HostKey.Period => ('.', '>'),
+            HostKey.Slash => ('/', '?'),
+            HostKey.Backtick => ('`', '~'),
+            _ => null,
+        };
+
+        if (legend is not { } pair)
+        {
+            return null;
+        }
+
+        return (byte)(shift ? pair.Shifted : pair.Unshifted);
     }
 }

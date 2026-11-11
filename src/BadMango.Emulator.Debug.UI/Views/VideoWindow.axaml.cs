@@ -74,7 +74,6 @@ public partial class VideoWindow : Window
     private IVideoDevice? videoDevice;
     private ICharacterDevice? characterDevice;
     private IExtended80ColumnDevice? extended80ColumnDevice;
-    private IKeyTranslator? keyTranslator;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
     private ReadOnlyMemory<byte> mainRam;
@@ -228,7 +227,6 @@ public partial class VideoWindow : Window
         this.memoryBus = machine.Bus;
         this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
-        this.keyTranslator = machine.GetComponent<IKeyTranslator>() ?? new AppleIIeKeyTranslator();
         this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
         // Get direct physical main RAM reference for snapshot capture.
@@ -363,8 +361,8 @@ public partial class VideoWindow : Window
         // Handle modifier keys
         UpdateModifiers(e);
 
-        // Map key to Pocket2e byte code
-        byte? keyCode = MapKeyToPocket2(e.Key, e.KeyModifiers, capsLockActive);
+        // Map the Avalonia key to a physical host key, then let the machine's keyboard translate it.
+        byte? keyCode = TranslateKey(e.Key, e.KeyModifiers, capsLockActive);
         if (keyCode.HasValue)
         {
             keyboardDevice.KeyDown(keyCode.Value);
@@ -409,97 +407,93 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
-    /// Maps Avalonia key codes to Pocket2e ASCII codes.
+    /// Maps an Avalonia key to the physical <see cref="HostKey"/> it represents.
     /// </summary>
     /// <param name="key">The Avalonia key code.</param>
-    /// <param name="modifiers">The active key modifiers.</param>
-    /// <param name="capsLock">Whether Caps Lock is active.</param>
-    /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
-    private byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
+    /// <returns>The host key, or <see cref="HostKey.None"/> if the key has no host-key equivalent.</returns>
+    private static HostKey MapToHostKey(Key key)
     {
-        var effectiveModifiers = KeyboardModifiers.None;
-        if (modifiers.HasFlag(KeyModifiers.Shift))
+        if (key is >= Key.A and <= Key.Z)
         {
-            effectiveModifiers |= KeyboardModifiers.Shift;
+            return HostKey.A + (key - Key.A);
         }
 
-        if (modifiers.HasFlag(KeyModifiers.Control))
+        if (key is >= Key.D0 and <= Key.D9)
         {
-            effectiveModifiers |= KeyboardModifiers.Control;
+            return HostKey.D0 + (key - Key.D0);
         }
 
-        if (capsLock)
+        return key switch
         {
-            effectiveModifiers |= KeyboardModifiers.CapsLock;
-        }
-
-        var translated = key switch
-        {
-            Key.A => AppleIIeKeyTranslator.AppleIIeKey.A,
-            Key.B => AppleIIeKeyTranslator.AppleIIeKey.B,
-            Key.C => AppleIIeKeyTranslator.AppleIIeKey.C,
-            Key.D => AppleIIeKeyTranslator.AppleIIeKey.D,
-            Key.E => AppleIIeKeyTranslator.AppleIIeKey.E,
-            Key.F => AppleIIeKeyTranslator.AppleIIeKey.F,
-            Key.G => AppleIIeKeyTranslator.AppleIIeKey.G,
-            Key.H => AppleIIeKeyTranslator.AppleIIeKey.H,
-            Key.I => AppleIIeKeyTranslator.AppleIIeKey.I,
-            Key.J => AppleIIeKeyTranslator.AppleIIeKey.J,
-            Key.K => AppleIIeKeyTranslator.AppleIIeKey.K,
-            Key.L => AppleIIeKeyTranslator.AppleIIeKey.L,
-            Key.M => AppleIIeKeyTranslator.AppleIIeKey.M,
-            Key.N => AppleIIeKeyTranslator.AppleIIeKey.N,
-            Key.O => AppleIIeKeyTranslator.AppleIIeKey.O,
-            Key.P => AppleIIeKeyTranslator.AppleIIeKey.P,
-            Key.Q => AppleIIeKeyTranslator.AppleIIeKey.Q,
-            Key.R => AppleIIeKeyTranslator.AppleIIeKey.R,
-            Key.S => AppleIIeKeyTranslator.AppleIIeKey.S,
-            Key.T => AppleIIeKeyTranslator.AppleIIeKey.T,
-            Key.U => AppleIIeKeyTranslator.AppleIIeKey.U,
-            Key.V => AppleIIeKeyTranslator.AppleIIeKey.V,
-            Key.W => AppleIIeKeyTranslator.AppleIIeKey.W,
-            Key.X => AppleIIeKeyTranslator.AppleIIeKey.X,
-            Key.Y => AppleIIeKeyTranslator.AppleIIeKey.Y,
-            Key.Z => AppleIIeKeyTranslator.AppleIIeKey.Z,
-            Key.D0 => AppleIIeKeyTranslator.AppleIIeKey.D0,
-            Key.D1 => AppleIIeKeyTranslator.AppleIIeKey.D1,
-            Key.D2 => AppleIIeKeyTranslator.AppleIIeKey.D2,
-            Key.D3 => AppleIIeKeyTranslator.AppleIIeKey.D3,
-            Key.D4 => AppleIIeKeyTranslator.AppleIIeKey.D4,
-            Key.D5 => AppleIIeKeyTranslator.AppleIIeKey.D5,
-            Key.D6 => AppleIIeKeyTranslator.AppleIIeKey.D6,
-            Key.D7 => AppleIIeKeyTranslator.AppleIIeKey.D7,
-            Key.D8 => AppleIIeKeyTranslator.AppleIIeKey.D8,
-            Key.D9 => AppleIIeKeyTranslator.AppleIIeKey.D9,
-            Key.OemMinus => AppleIIeKeyTranslator.AppleIIeKey.Minus,
-            Key.OemPlus => AppleIIeKeyTranslator.AppleIIeKey.Plus,
-            Key.OemOpenBrackets => AppleIIeKeyTranslator.AppleIIeKey.OpenBracket,
-            Key.OemCloseBrackets => AppleIIeKeyTranslator.AppleIIeKey.CloseBracket,
-            Key.OemBackslash or Key.OemPipe => AppleIIeKeyTranslator.AppleIIeKey.Backslash,
-            Key.OemSemicolon => AppleIIeKeyTranslator.AppleIIeKey.Semicolon,
-            Key.OemQuotes => AppleIIeKeyTranslator.AppleIIeKey.Quote,
-            Key.OemComma => AppleIIeKeyTranslator.AppleIIeKey.Comma,
-            Key.OemPeriod => AppleIIeKeyTranslator.AppleIIeKey.Period,
-            Key.OemQuestion => AppleIIeKeyTranslator.AppleIIeKey.Slash,
-            Key.OemTilde => AppleIIeKeyTranslator.AppleIIeKey.Backtick,
-            Key.Left => AppleIIeKeyTranslator.AppleIIeKey.Left,
-            Key.Right => AppleIIeKeyTranslator.AppleIIeKey.Right,
-            Key.Up => AppleIIeKeyTranslator.AppleIIeKey.Up,
-            Key.Down => AppleIIeKeyTranslator.AppleIIeKey.Down,
-            Key.Return => AppleIIeKeyTranslator.AppleIIeKey.Return,
-            Key.Tab => AppleIIeKeyTranslator.AppleIIeKey.Tab,
-            Key.Escape => AppleIIeKeyTranslator.AppleIIeKey.Escape,
-            Key.Space => AppleIIeKeyTranslator.AppleIIeKey.Space,
-            Key.Back => AppleIIeKeyTranslator.AppleIIeKey.Delete,
-            _ => AppleIIeKeyTranslator.AppleIIeKey.None,
+            Key.OemMinus => HostKey.Minus,
+            Key.OemPlus => HostKey.Equals,
+            Key.OemOpenBrackets => HostKey.OpenBracket,
+            Key.OemCloseBrackets => HostKey.CloseBracket,
+            Key.OemBackslash or Key.OemPipe => HostKey.Backslash,
+            Key.OemSemicolon => HostKey.Semicolon,
+            Key.OemQuotes => HostKey.Quote,
+            Key.OemComma => HostKey.Comma,
+            Key.OemPeriod => HostKey.Period,
+            Key.OemQuestion => HostKey.Slash,
+            Key.OemTilde => HostKey.Backtick,
+            Key.Space => HostKey.Space,
+            Key.Return => HostKey.Return,
+            Key.Tab => HostKey.Tab,
+            Key.Escape => HostKey.Escape,
+            Key.Back => HostKey.Backspace,
+            Key.Delete => HostKey.Delete,
+            Key.Left => HostKey.Left,
+            Key.Right => HostKey.Right,
+            Key.Up => HostKey.Up,
+            Key.Down => HostKey.Down,
+            Key.LeftShift => HostKey.LeftShift,
+            Key.RightShift => HostKey.RightShift,
+            Key.LeftCtrl => HostKey.LeftControl,
+            Key.RightCtrl => HostKey.RightControl,
+            Key.LeftAlt => HostKey.LeftAlt,
+            Key.RightAlt => HostKey.RightAlt,
+            Key.CapsLock => HostKey.CapsLock,
+            _ => HostKey.None,
         };
+    }
 
-        if (translated == AppleIIeKeyTranslator.AppleIIeKey.None)
+    /// <summary>
+    /// Translates an Avalonia key press into the attached keyboard's key code.
+    /// </summary>
+    /// <param name="key">The Avalonia key code.</param>
+    /// <param name="modifiers">The active Avalonia key modifiers.</param>
+    /// <param name="capsLock">Whether Caps Lock is active.</param>
+    /// <returns>The key code, or <see langword="null"/> if the key produces no code.</returns>
+    private byte? TranslateKey(Key key, KeyModifiers modifiers, bool capsLock)
+    {
+        if (keyboardDevice is null)
         {
             return null;
         }
 
-        return keyTranslator?.Translate(translated, effectiveModifiers) ?? AppleIIeKeyTranslator.MapKeyToPocket2(translated, effectiveModifiers);
+        HostKey hostKey = MapToHostKey(key);
+        if (hostKey == HostKey.None)
+        {
+            return null;
+        }
+
+        var keyboardModifiers = KeyboardModifiers.None;
+        if (modifiers.HasFlag(KeyModifiers.Shift))
+        {
+            keyboardModifiers |= KeyboardModifiers.Shift;
+        }
+
+        if (modifiers.HasFlag(KeyModifiers.Control))
+        {
+            keyboardModifiers |= KeyboardModifiers.Control;
+        }
+
+        if (capsLock)
+        {
+            keyboardModifiers |= KeyboardModifiers.CapsLock;
+        }
+
+        return keyboardDevice.Translator.Translate(hostKey, keyboardModifiers);
     }
 
     /// <summary>
