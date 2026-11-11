@@ -2,7 +2,7 @@
 
 ## Before you finish
 
-Every change must pass locally with the same commands CI uses:
+Every change must pass locally with the following CI-parity commands:
 
 ```bash
 dotnet build BackPocketEmulator.slnx -c Release -warnaserror
