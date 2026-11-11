@@ -124,6 +124,43 @@ public class IOPageDispatcherTests
     }
 
     /// <summary>
+    /// Verifies that RegisterReadIfUnregistered registers when offset is unclaimed.
+    /// </summary>
+    [Test]
+    public void RegisterReadIfUnregistered_WhenUnclaimed_RegistersHandler()
+    {
+        var dispatcher = new IOPageDispatcher();
+        var context = CreateTestContext();
+
+        bool registered = dispatcher.RegisterReadIfUnregistered(0x61, (offset, in ctx) => 0x80);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registered, Is.True);
+            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RegisterReadIfUnregistered does not replace existing handlers.
+    /// </summary>
+    [Test]
+    public void RegisterReadIfUnregistered_WhenClaimed_DoesNotReplaceHandler()
+    {
+        var dispatcher = new IOPageDispatcher();
+        var context = CreateTestContext();
+        dispatcher.RegisterRead(0x61, (offset, in ctx) => 0x01);
+
+        bool registered = dispatcher.RegisterReadIfUnregistered(0x61, (offset, in ctx) => 0x80);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registered, Is.False);
+            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x01));
+        });
+    }
+
+    /// <summary>
     /// Verifies that RegisterWrite throws ArgumentNullException for null handler.
     /// </summary>
     [Test]

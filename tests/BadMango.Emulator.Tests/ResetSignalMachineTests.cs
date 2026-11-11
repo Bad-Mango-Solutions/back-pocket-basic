@@ -485,6 +485,74 @@ public sealed class ResetSignalMachineTests
     }
 
     /// <summary>
+    /// Verifies that PB0/PB1/PB2 bus reads are the OR of keyboard modifiers and game-port buttons.
+    /// </summary>
+    [Test]
+    public void PushButtons_OnProfileMachine_OrKeyboardAndJoystickSources()
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var gameIo = machine.GetComponent<GameIOController>()!;
+
+        keyboard.SetModifiers(KeyboardModifiers.OpenApple);
+        Assert.That(machine.Cpu.Read8(0xC061), Is.EqualTo(0x80), "Open Apple should assert PB0");
+
+        keyboard.SetModifiers(KeyboardModifiers.ClosedApple);
+        Assert.That(machine.Cpu.Read8(0xC062), Is.EqualTo(0x80), "Closed Apple should assert PB1");
+
+        keyboard.SetModifiers(KeyboardModifiers.Shift);
+        Assert.That(machine.Cpu.Read8(0xC063), Is.EqualTo(0x80), "Shift should assert PB2");
+
+        keyboard.SetModifiers(KeyboardModifiers.None);
+        gameIo.SetButton(0, true);
+        gameIo.SetButton(1, true);
+        Assert.That(machine.Cpu.Read8(0xC061), Is.EqualTo(0x80), "Button 0 should assert PB0");
+        Assert.That(machine.Cpu.Read8(0xC062), Is.EqualTo(0x80), "Button 1 should assert PB1");
+
+        keyboard.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple);
+        gameIo.SetButton(0, false);
+        gameIo.SetButton(1, false);
+        Assert.That(machine.Cpu.Read8(0xC061), Is.EqualTo(0x80), "PB0 should stay asserted while Open Apple is held");
+        Assert.That(machine.Cpu.Read8(0xC062), Is.EqualTo(0x80), "PB1 should stay asserted while Closed Apple is held");
+
+        keyboard.SetModifiers(KeyboardModifiers.None);
+        Assert.Multiple(() =>
+        {
+            Assert.That(machine.Cpu.Read8(0xC061), Is.EqualTo(0x00));
+            Assert.That(machine.Cpu.Read8(0xC062), Is.EqualTo(0x00));
+            Assert.That(machine.Cpu.Read8(0xC063), Is.EqualTo(0x00));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that reset command Apple-key options assert PB0/PB1 until the scheduled release.
+    /// </summary>
+    /// <param name="flag">Reset flag to request the Apple key hold.</param>
+    /// <param name="address">Pushbutton address expected to be asserted during hold.</param>
+    [TestCase("--open-apple", 0xC061)]
+    [TestCase("--closed-apple", 0xC062)]
+    public void ResetCommand_WithAppleHoldFlags_AssertsThenReleasesPushButton(string flag, int address)
+    {
+        var machine = CreateMachine();
+        var keyboard = machine.GetComponent<KeyboardDevice>()!;
+        var (context, _) = CreateDebugContext(machine);
+        keyboard.SetModifiers(KeyboardModifiers.None);
+
+        var result = new ResetCommand().Execute(context, [flag]);
+        byte heldValue = machine.Cpu.Read8((uint)address);
+
+        StepFor(machine, 600_000);
+        byte releasedValue = machine.Cpu.Read8((uint)address);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True, result.Message);
+            Assert.That(heldValue, Is.EqualTo(0x80), "Pushbutton should be set while reset hold is active");
+            Assert.That(releasedValue, Is.EqualTo(0x00), "Pushbutton should clear after scheduled release");
+        });
+    }
+
+    /// <summary>
     /// Verifies the REPL <c>reset</c> command while the machine runs: the reset is applied by
     /// the run loop (never on the REPL thread), the machine keeps running, and the ROM reset
     /// handler runs.

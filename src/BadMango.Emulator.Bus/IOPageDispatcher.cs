@@ -121,6 +121,31 @@ public sealed class IOPageDispatcher
     }
 
     /// <summary>
+    /// Registers a read handler for a specific offset only when no handler is currently registered.
+    /// </summary>
+    /// <param name="offset">Offset within $C000-$C0FF (0x00-0xFF).</param>
+    /// <param name="handler">The read handler to register.</param>
+    /// <returns>
+    /// <see langword="true"/> if the handler was registered; <see langword="false"/> if the offset
+    /// already had a read handler.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="handler"/> is <see langword="null"/>.
+    /// </exception>
+    public bool RegisterReadIfUnregistered(byte offset, SoftSwitchReadHandler handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        if (readHandlers[offset] is not null)
+        {
+            return false;
+        }
+
+        readHandlers[offset] = handler;
+        return true;
+    }
+
+    /// <summary>
     /// Registers a write handler for a specific offset.
     /// </summary>
     /// <param name="offset">Offset within $C000-$C0FF (0x00-0xFF).</param>
