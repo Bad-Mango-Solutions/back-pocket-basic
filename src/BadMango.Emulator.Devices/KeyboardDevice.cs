@@ -73,6 +73,7 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     private IMachineDispatcher? dispatcher;
     private int typeGeneration;
     private bool typedKeyUpPending;
+    private bool typeQueueContinuationScheduled;
     private byte lastKey;
     private bool strobe;
     private bool keyDown;
@@ -229,10 +230,12 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
                 typeQueue.Enqueue(entry);
             }
 
-            // Start processing the queue if not already in progress
+            // Hand off to the scheduler so queued typing advances through an observable
+            // key-down / key-up / strobe-clear sequence rather than re-entering the queue
+            // inline while the previous key is still in flight.
             if (!typedKeyUpPending)
             {
-                ProcessTypeQueue();
+                ScheduleQueueContinuation();
             }
         });
     }
@@ -297,13 +300,6 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     private void ClearStrobeAndPumpTypeQueue()
     {
         strobe = false;
-
-        // TypeString advances from its release callback only when strobe is clear. If a key is
-        // released before firmware clears KBDSTRB, continue once the clear finally happens.
-        if (!typedKeyUpPending)
-        {
-            ProcessTypeQueue();
-        }
     }
 
     private byte ReadPushButton0(byte offset, in BusAccess context)
@@ -340,6 +336,7 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
     {
         typeQueue.Clear();
         typeGeneration++;
+        typeQueueContinuationScheduled = false;
 
         if (typedKeyUpPending)
         {
@@ -350,12 +347,14 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
 
     private void ProcessTypeQueue()
     {
+        typeQueueContinuationScheduled = false;
+
         if (typeQueue.Count == 0 || scheduler is null)
         {
             return;
         }
 
-        // Only inject a key if strobe is clear
+        // Only inject a key if strobe is clear.
         if (!strobe && typeQueue.TryDequeue(out var entry))
         {
             lastKey = (byte)(entry.Key & 0x7F);
@@ -363,7 +362,6 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
             keyDown = true;
             typedKeyUpPending = true;
 
-            // Schedule key release and next key
             var delayCycles = (ulong)(entry.DelayMs * CyclesPerMillisecond);
             int generation = typeGeneration;
 
@@ -373,7 +371,6 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
                 0,
                 _ =>
                 {
-                    // A RESET (or device reset) in the meantime cancelled this typing run.
                     if (generation != typeGeneration)
                     {
                         return;
@@ -381,9 +378,20 @@ public sealed class KeyboardDevice : IKeyboardDevice, ISoftSwitchProvider, IRese
 
                     typedKeyUpPending = false;
                     keyDown = false;
-                    ProcessTypeQueue();
+                    ScheduleQueueContinuation();
                 });
         }
+    }
+
+    private void ScheduleQueueContinuation()
+    {
+        if (scheduler is null || typeQueue.Count == 0 || strobe || typedKeyUpPending || typeQueueContinuationScheduled)
+        {
+            return;
+        }
+
+        typeQueueContinuationScheduled = true;
+        scheduler.ScheduleAfter(1, ScheduledEventKind.DeferredWork, 0, _ => ProcessTypeQueue(), tag: "keyboard-type-queue");
     }
 
     private void UpdateResetLineState()

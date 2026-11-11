@@ -407,97 +407,89 @@ public partial class VideoWindow : Window
     /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
     private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
     {
-        bool ctrl = modifiers.HasFlag(KeyModifiers.Control);
-        bool shift = modifiers.HasFlag(KeyModifiers.Shift);
-
-        // Control key combinations
-        if (ctrl)
+        var effectiveModifiers = KeyboardModifiers.None;
+        if (modifiers.HasFlag(KeyModifiers.Shift))
         {
-            return key switch
-            {
-                >= Key.A and <= Key.Z => (byte)(key - Key.A + 1), // Ctrl+A = 0x01, etc.
-                Key.OemOpenBrackets => 0x1B, // Ctrl+[ = ESC
-                _ => null,
-            };
+            effectiveModifiers |= KeyboardModifiers.Shift;
         }
 
-        // Arrow keys
-        switch (key)
+        if (modifiers.HasFlag(KeyModifiers.Control))
         {
-            case Key.Left:
-                return 0x08; // Backspace / Left arrow
-            case Key.Right:
-                return 0x15; // Ctrl+U / Right arrow
-            case Key.Up:
-                return 0x0B; // Ctrl+K / Up arrow
-            case Key.Down:
-                return 0x0A; // Ctrl+J / Down arrow
-            case Key.Return:
-                return 0x0D; // Carriage return
-            case Key.Back:
-                return 0x08; // Backspace
-            case Key.Tab:
-                return 0x09; // Tab
-            case Key.Escape:
-                return 0x1B; // Escape
-            case Key.Space:
-                return 0x20; // Space
+            effectiveModifiers |= KeyboardModifiers.Control;
         }
 
-        // Alphanumeric keys
-        if (key >= Key.A && key <= Key.Z)
+        if (capsLock)
         {
-            byte baseCode = (byte)(key - Key.A + 0x41); // A = 0x41
-
-            // Caps Lock affects only letters: XOR with shift for toggle behavior
-            // - Caps Lock off, Shift off → lowercase
-            // - Caps Lock off, Shift on → uppercase
-            // - Caps Lock on, Shift off → uppercase
-            // - Caps Lock on, Shift on → lowercase (shift "undoes" caps lock)
-            bool uppercase = shift ^ capsLock;
-            return uppercase ? baseCode : (byte)(baseCode + 0x20);
+            effectiveModifiers |= KeyboardModifiers.CapsLock;
         }
 
-        if (key >= Key.D0 && key <= Key.D9)
+        var translated = key switch
         {
-            if (shift)
-            {
-                // Shifted number keys produce symbols (Caps Lock does NOT affect these)
-                return key switch
-                {
-                    Key.D1 => (byte)'!',
-                    Key.D2 => (byte)'@',
-                    Key.D3 => (byte)'#',
-                    Key.D4 => (byte)'$',
-                    Key.D5 => (byte)'%',
-                    Key.D6 => (byte)'^',
-                    Key.D7 => (byte)'&',
-                    Key.D8 => (byte)'*',
-                    Key.D9 => (byte)'(',
-                    Key.D0 => (byte)')',
-                    _ => null,
-                };
-            }
-
-            return (byte)(key - Key.D0 + 0x30); // 0 = 0x30
-        }
-
-        // Punctuation (Caps Lock does NOT affect these)
-        return key switch
-        {
-            Key.OemMinus => shift ? (byte)'_' : (byte)'-',
-            Key.OemPlus => shift ? (byte)'+' : (byte)'=',
-            Key.OemOpenBrackets => shift ? (byte)'{' : (byte)'[',
-            Key.OemCloseBrackets => shift ? (byte)'}' : (byte)']',
-            Key.OemBackslash or Key.OemPipe => shift ? (byte)'|' : (byte)'\\',
-            Key.OemSemicolon => shift ? (byte)':' : (byte)';',
-            Key.OemQuotes => shift ? (byte)'"' : (byte)'\'',
-            Key.OemComma => shift ? (byte)'<' : (byte)',',
-            Key.OemPeriod => shift ? (byte)'>' : (byte)'.',
-            Key.OemQuestion => shift ? (byte)'?' : (byte)'/',
-            Key.OemTilde => shift ? (byte)'~' : (byte)'`',
-            _ => null,
+            Key.A => AppleIIeKeyTranslator.AppleIIeKey.A,
+            Key.B => AppleIIeKeyTranslator.AppleIIeKey.B,
+            Key.C => AppleIIeKeyTranslator.AppleIIeKey.C,
+            Key.D => AppleIIeKeyTranslator.AppleIIeKey.D,
+            Key.E => AppleIIeKeyTranslator.AppleIIeKey.E,
+            Key.F => AppleIIeKeyTranslator.AppleIIeKey.F,
+            Key.G => AppleIIeKeyTranslator.AppleIIeKey.G,
+            Key.H => AppleIIeKeyTranslator.AppleIIeKey.H,
+            Key.I => AppleIIeKeyTranslator.AppleIIeKey.I,
+            Key.J => AppleIIeKeyTranslator.AppleIIeKey.J,
+            Key.K => AppleIIeKeyTranslator.AppleIIeKey.K,
+            Key.L => AppleIIeKeyTranslator.AppleIIeKey.L,
+            Key.M => AppleIIeKeyTranslator.AppleIIeKey.M,
+            Key.N => AppleIIeKeyTranslator.AppleIIeKey.N,
+            Key.O => AppleIIeKeyTranslator.AppleIIeKey.O,
+            Key.P => AppleIIeKeyTranslator.AppleIIeKey.P,
+            Key.Q => AppleIIeKeyTranslator.AppleIIeKey.Q,
+            Key.R => AppleIIeKeyTranslator.AppleIIeKey.R,
+            Key.S => AppleIIeKeyTranslator.AppleIIeKey.S,
+            Key.T => AppleIIeKeyTranslator.AppleIIeKey.T,
+            Key.U => AppleIIeKeyTranslator.AppleIIeKey.U,
+            Key.V => AppleIIeKeyTranslator.AppleIIeKey.V,
+            Key.W => AppleIIeKeyTranslator.AppleIIeKey.W,
+            Key.X => AppleIIeKeyTranslator.AppleIIeKey.X,
+            Key.Y => AppleIIeKeyTranslator.AppleIIeKey.Y,
+            Key.Z => AppleIIeKeyTranslator.AppleIIeKey.Z,
+            Key.D0 => AppleIIeKeyTranslator.AppleIIeKey.D0,
+            Key.D1 => AppleIIeKeyTranslator.AppleIIeKey.D1,
+            Key.D2 => AppleIIeKeyTranslator.AppleIIeKey.D2,
+            Key.D3 => AppleIIeKeyTranslator.AppleIIeKey.D3,
+            Key.D4 => AppleIIeKeyTranslator.AppleIIeKey.D4,
+            Key.D5 => AppleIIeKeyTranslator.AppleIIeKey.D5,
+            Key.D6 => AppleIIeKeyTranslator.AppleIIeKey.D6,
+            Key.D7 => AppleIIeKeyTranslator.AppleIIeKey.D7,
+            Key.D8 => AppleIIeKeyTranslator.AppleIIeKey.D8,
+            Key.D9 => AppleIIeKeyTranslator.AppleIIeKey.D9,
+            Key.OemMinus => AppleIIeKeyTranslator.AppleIIeKey.Minus,
+            Key.OemPlus => AppleIIeKeyTranslator.AppleIIeKey.Plus,
+            Key.OemOpenBrackets => AppleIIeKeyTranslator.AppleIIeKey.OpenBracket,
+            Key.OemCloseBrackets => AppleIIeKeyTranslator.AppleIIeKey.CloseBracket,
+            Key.OemBackslash or Key.OemPipe => AppleIIeKeyTranslator.AppleIIeKey.Backslash,
+            Key.OemSemicolon => AppleIIeKeyTranslator.AppleIIeKey.Semicolon,
+            Key.OemQuotes => AppleIIeKeyTranslator.AppleIIeKey.Quote,
+            Key.OemComma => AppleIIeKeyTranslator.AppleIIeKey.Comma,
+            Key.OemPeriod => AppleIIeKeyTranslator.AppleIIeKey.Period,
+            Key.OemQuestion => AppleIIeKeyTranslator.AppleIIeKey.Slash,
+            Key.OemTilde => AppleIIeKeyTranslator.AppleIIeKey.Backtick,
+            Key.Left => AppleIIeKeyTranslator.AppleIIeKey.Left,
+            Key.Right => AppleIIeKeyTranslator.AppleIIeKey.Right,
+            Key.Up => AppleIIeKeyTranslator.AppleIIeKey.Up,
+            Key.Down => AppleIIeKeyTranslator.AppleIIeKey.Down,
+            Key.Return => AppleIIeKeyTranslator.AppleIIeKey.Return,
+            Key.Tab => AppleIIeKeyTranslator.AppleIIeKey.Tab,
+            Key.Escape => AppleIIeKeyTranslator.AppleIIeKey.Escape,
+            Key.Space => AppleIIeKeyTranslator.AppleIIeKey.Space,
+            Key.Back => AppleIIeKeyTranslator.AppleIIeKey.Delete,
+            _ => AppleIIeKeyTranslator.AppleIIeKey.None,
         };
+
+        if (translated == AppleIIeKeyTranslator.AppleIIeKey.None)
+        {
+            return null;
+        }
+
+        return AppleIIeKeyTranslator.Translate(translated, effectiveModifiers);
     }
 
     private static bool IsCriticalException(Exception ex)
