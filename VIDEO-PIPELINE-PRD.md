@@ -234,6 +234,8 @@ public sealed class CapturedFrame<TState> where TState : class
 }
 ```
 
+- **Backing and validity.** `SwitchLog` and `WriteLog` are computed on each call from preallocated per-slot arrays plus a count (`events.AsSpan(0, count)`). No span is ever stored. Slots, and the `CapturedFrame` objects in them, are reused by the triple buffer, so a `CapturedFrame` and anything read from it are valid only while the caller holds the slot: inside `IVideoScanner.Scan`, or while holding a `CapturedFrameLease` (§11.6). Keeping a reference after that means reading a later frame.
+
 - **Memory is snapshotted once per frame.** The off-thread layers never read live RAM: doing so would tear, because the CPU keeps writing while they work. A program that rewrites a line after it has been drawn (racing the beam) shows the end-of-frame contents in v1.
 
 #### 7.2.1 Reserved extension point: the video-page write log (beam racing)
@@ -272,6 +274,7 @@ public interface IVideoScanner<TState> where TState : class
 - For each fetch it records the bits that leave the character generator or the graphics shifter: 7 video bits (glyph row after inverse, flash, ALTCHAR, and ALTGLYPH for text; memory bits for graphics), bit 7 (for the hi-res delay), the aux bits when 80-column or double-width modes are active, and the mode in effect. For each line it records whether the color burst gate was open, which comes from TEXT at the burst point in horizontal blanking (§8.1.5).
 - It uses `ScannerAddress` (§8.1.6), the same pure address function the floating bus uses, so the scan and the floating bus always agree.
 - It never touches the machine. Its only input is the captured frame, and that is enforced by its signature.
+- **`ScanFrame`** is a sealed class preallocated once per hub and reused for every scan. It is backed by fixed arrays: a `ScanFetch[]` of 192 × 40 fetch records (`readonly record struct ScanFetch(byte MainBits, byte AuxBits, bool Bit7, ScanMode Mode)`) and a `ScanlineFlags[]` of 192 per-line flags (burst gate). It exposes them as `ReadOnlySpan<ScanFetch> Line(int y)` and `ReadOnlySpan<ScanlineFlags> LineFlags` for the outputs, which read it synchronously under the hub lock. It is never handed to consumers.
 - It merges `SwitchLog` and `WriteLog` by `CycleInFrame` during replay. In v1 the write log is empty, so this is a no-op branch, but the merge is implemented and tested from the start (§14.27) so the beam-racing upgrade (§7.2.1) needs no scanner rework.
 
 ### 7.4 Layer 2: output connectors and signals
@@ -290,7 +293,7 @@ public interface ICompositeSignal : IVideoSignal
     int Lines { get; }                        // 192
     int StrideWords { get; }                  // 9
     ReadOnlyMemory<ulong> Dots { get; }       // packed LSB-first, see below
-    ReadOnlyMemory<byte> LineFlags { get; }   // ScanlineFlags per line
+    ReadOnlyMemory<ScanlineFlags> LineFlags { get; }   // one per line
 }
 
 public interface IRgbSignal : IVideoSignal
@@ -347,16 +350,16 @@ public interface IVideoOutputVisitor<TResult>
 - **Concrete outputs:** `Composite560Out : IVideoSignalSource<ICompositeSignal>`, producing pooled `Composite560Signal` objects, and `RgbOut : IVideoSignalSource<IRgbSignal>`, producing pooled `RgbSignal` objects.
 - **Who maps colors (rule, Josh 2026-11-11).** RGB and newer outputs (`RgbOut`, `AppleIIgsRgbOut`, a future `HdmiOut`/`DisplayPortOut`) emit *finished* BGRA8888. Mapping hardware color numbers to RGB is the output's job, because on real hardware the card or chip did it: the Video-7 drives a fixed 16-color RGBI table (it physically output digital RGBI, and the RGBI-to-BGRA mapping is that table), and the IIgs VGC looks colors up in its 12-bit palette. Composite outputs, by contrast, emit dots, and the monitor (frame provider) decodes color. `RgbFrameProvider` is therefore a pass-through plus optional cosmetic options (§7.5, §9.1).
 - **Multiple outputs are normal.** Each output is a machine component (`machine.GetComponents<IVideoOutput>()`). All outputs on a machine share one captured frame and one scan per sequence. Each generates its own signal at most once per sequence.
-- **The composite dot layout (`Composite560Signal`).** 192 lines × 560 dots, one dot per 14.318 MHz dot-clock period of the active line. Each line is 9 64-bit words (576 bits). Dot *x* is bit `x & 63` of word `x >> 6`, LSB-first, matching the order the Apple II shifts video bytes out. Bits 560–575 are zero. A frame is 13,824 bytes of dots plus 192 bytes of line flags.
+- **The composite dot layout (`Composite560Signal`).** 192 lines × 560 dots, one dot per 14.318 MHz dot-clock period of the active line. Each line is 9 64-bit words (576 bits). Dot *x* is bit `x & 63` of word `x >> 6`, LSB-first, matching the order the Apple II shifts video bytes out. Bits 560–575 are zero. A frame is 13,824 bytes of dots plus 192 bytes of line flags. The dot order is defined on word bits and so doesn't depend on byte order. A byte view of the words (`MemoryMarshal.AsBytes(Dots.Span)`, for example for a GPU texture upload) assumes little-endian; code that takes one asserts `BitConverter.IsLittleEndian`.
 - **Why packed bits rather than a byte per dot (107,520 bytes, 7.8× more):**
-  - The dot stream is cached and read by every frame provider, so small wins: 13.8 KB stays in L1/L2.
+  - The dot stream is cached and read by every frame provider, so small wins: 13.8 KB stays in L2.
   - Generation is bit-oriented: a hi-res byte becomes 14 dots, a 40-column glyph row 14 dots, an 80-column or DHR byte 7 dots, each through a small table and a shift into a 64-bit accumulator, with no per-dot branch.
   - The NTSC provider's 4-dot window is a shift and a mask. The greyscale-family providers expand 8 dots to 8 pixels through a 256-entry table.
 
 ### 7.5 Layer 3: frame providers and compile-time pairing
 
 ```csharp
-public interface IFrameProvider<in TSignal> where TSignal : IVideoSignal
+public interface IFrameProvider<in TSignal> where TSignal : class, IVideoSignal
 {
     string Id { get; }                        // "greyscale", "greenscale", "amberscale", "ntsc", "rgb"
     string DisplayName { get; }
@@ -366,9 +369,13 @@ public interface IFrameProvider<in TSignal> where TSignal : IVideoSignal
 
     VideoFrameGeometry GetOutputGeometry(TSignal signal);
 
-    /// Consumer side. Allocates nothing.
+    /// Consumer side. Allocates nothing. Writes GetOutputGeometry(signal).Height rows of
+    /// Width pixels at Stride; throws ArgumentException if
+    /// bgraOutput.Length < Stride * Height.
     void Provide(TSignal signal, Span<uint> bgraOutput);
 }
+
+public readonly record struct VideoFrameGeometry(int Width, int Height, int Stride);   // Stride in pixels
 
 /// Reserved extension point for monitor fidelity (decided Q8). Value equality (records)
 /// lets the hub share frames between consumers with equal options.
@@ -401,15 +408,15 @@ public sealed class RgbFrameProvider : IFrameProvider<IRgbSignal> { /* ... */ }
 public static class FrameProviders
 {
     /// Immutable catalog: every provider compatible with TSignal, for menus.
-    public static IReadOnlyList<IFrameProvider<TSignal>> For<TSignal>() where TSignal : IVideoSignal;
-    public static bool TryGet<TSignal>(string id, out IFrameProvider<TSignal> provider) where TSignal : IVideoSignal;
+    public static IReadOnlyList<IFrameProvider<TSignal>> For<TSignal>() where TSignal : class, IVideoSignal;
+    public static bool TryGet<TSignal>(string id, out IFrameProvider<TSignal> provider) where TSignal : class, IVideoSignal;
 }
 ```
 
 - **Typed code can't pair things wrong.** `composite.TryAcquireLatestFrame(new RgbFrameProvider(), out _)` fails to compile (CS1503), because `RgbFrameProvider` is not an `IFrameProvider<ICompositeSignal>`. The same goes for `NtscFrameProvider` on `RgbOut`.
 - **UI code that holds an `IVideoOutput` reaches the typed world through `Accept(visitor)`.** Inside `Visit<TSignal>`, it offers `FrameProviders.For<TSignal>()`. The catalog is the only place with a runtime type switch, and it only lists compatible providers.
 - **Providers are physical.** The greyscale family and NTSC accept composite only; RGB accepts RGB only. A future HDMI or DisplayPort output implements `IRgbSignal` if it is a plain digital RGB frame, or a new marker if its semantics differ.
-- `IFrameProvider<in TSignal>` is contravariant, so a hypothetical provider written against `IVideoSignal` would accept any signal. None is planned.
+- `IFrameProvider<in TSignal>` is contravariant, so a hypothetical provider written against `IVideoSignal` would accept any signal. None is planned. The `class` constraint matches `IVideoSignalSource<TSignal>` and keeps variance meaningful (variance applies only to reference type arguments). Signals are never ref structs: they are pooled, cached, and shared across threads, so `allows ref struct` is deliberately not used anywhere in these contracts.
 - Providers are stateless, immutable, and shared by every output and machine in the process.
 - **Options (reserved for fidelity work, decided Q8).** Each provider takes its options record in its constructor (`new NtscFrameProvider(new NtscOptions { ColorKillerLagLines = 3 })`), defaulting to the exact options, and exposes `With(options)` returning a new instance. `FrameProviders.For<TSignal>()` returns the exact instances. The hub's frame cache key is (sequence, output, provider `Id`, `Options`), so two windows with equal options share one frame. v1 implements only the exact values; non-exact values are accepted by the type system but rejected with `NotSupportedException` at construction until implemented. Fidelity work then either adds option values (when the effect is a variant of the same monitor) or adds a provider (when it is a different monitor). Temporal effects that need earlier frames (phosphor persistence) don't fit a stateless shared provider; they are a consumer-side post-pass or a later stateful-provider contract, not part of v1.
 
@@ -418,13 +425,23 @@ public static class FrameProviders
 ```csharp
 public readonly struct VideoFrame : IDisposable
 {
+    private readonly FrameSlot? slot;         // pooled, owned by the hub
+    private readonly long ticket;             // unique per acquire
+
     public VideoFrameInfo Info { get; }       // Sequence, Cycle, Width, Height, Stride; always Bgra8888
-    public ReadOnlyMemory<uint> Pixels { get; }
-    public void Dispose();                    // safe to call more than once
+
+    /// Throws ObjectDisposedException if this lease was released (or is default).
+    public ReadOnlyMemory<uint> Pixels =>
+        slot is not null && slot.IsHeld(ticket) ? slot.Pixels : throw new ObjectDisposedException(nameof(VideoFrame));
+
+    /// Releases this lease's ticket. Idempotent: a second call, a call on a copy, or a
+    /// call on default(VideoFrame) does nothing.
+    public void Dispose() => slot?.Release(ticket);
 }
 
 public readonly struct SignalLease<TSignal> : IDisposable where TSignal : class, IVideoSignal
 {
+    // Same slot + ticket scheme; Signal throws ObjectDisposedException once released.
     public TSignal Signal { get; }
     public void Dispose();
 }
@@ -432,8 +449,18 @@ public readonly struct SignalLease<TSignal> : IDisposable where TSignal : class,
 public readonly record struct VideoFrameInfo(long Sequence, ulong Cycle, int Width, int Height, int Stride);
 ```
 
-- Both are `readonly struct`s around a pooled slot plus a generation token, so acquiring allocates nothing. A double dispose or a stale copy can't release someone else's lease.
-- **`ReadOnlyMemory<T>`, not `Span<T>`.** A lease may be held across an `await` or handed to a dispatcher callback, which a `ref struct` can't do. Consumers take `.Span` once inside the method that does the copy, upload, or decode, never per pixel.
+- **Why a `readonly struct`.** Acquiring allocates nothing. A class lease would allocate per acquire, or, if pooled, a stale reference would point at a recycled lease. A `ref struct` can't cross an `await` or a dispatcher callback. Being `readonly` means no defensive copies under `using var`, `in`, or readonly fields.
+- **Ticket-based release.** A frame buffer is shared: one cached frame can be leased to several consumers at once, so a per-slot generation alone can't tell a second dispose of a copy from a different consumer's release. Instead:
+  - Each acquire takes a unique ticket (`Interlocked.Increment` on a per-hub `long` counter) and records it in the slot's **fixed holder table** (`long[16]`, preallocated; a free entry is 0) with a compare-and-swap.
+  - `Dispose` does a compare-and-swap of its ticket back to 0. If the ticket isn't found, nothing happens, so double dispose, disposing a copy, and `default` are all harmless and can never release someone else's hold.
+  - A buffer returns to its pool only when its holder table is empty and it is no longer the cache entry for the latest sequence.
+  - If a buffer already has 16 holders, or every buffer in a pool (3 growing to 8) is held, the acquire returns false and `PoolExhausted` is counted and logged (§10).
+  - `SignalLease<TSignal>` uses the same slot, ticket, and holder-table scheme.
+- **`ReadOnlyMemory<T>`, not `Span<T>`.** A lease may be held across an `await` or handed to a dispatcher callback, which a span (a `ref struct`) can't do. Consumers take `.Span` once inside the method that does the copy, upload, or decode, never per pixel (`.Span` costs a type check and slice per call).
+- **Validity of lease memory (rule).** Memory taken from a lease (`Pixels`, the signal's `Dots`, `LineFlags`, or `Pixels`, or the `Signal` object itself) is valid only until that lease is disposed. Consumers never store it beyond the lease. The ticket check guards each access through the lease, but not a `ReadOnlyMemory<T>` already copied out, so this is a rule, backed by the Debug fill below and test §14.31.
+- **No writes (rule).** Lease buffers are shared between consumers. Never write through them, including through `MemoryMarshal.TryGetArray` or `MemoryMarshal.AsMemory` on the returned `ReadOnlyMemory<T>`.
+- **Debug poisoning.** In Debug builds a pool fills a buffer with `0xDEADBEEF` (dots, flags, and pixels alike, as their element type allows) when it is freed, so a use after dispose shows up as an obvious pattern in tests (§14.12 and §14.31 run in Debug).
+- **Ownership and pools (rule).** All pixel, dot, flag, captured-memory, and event buffers are plain arrays (`uint[]`, `ulong[]`, `ScanlineFlags[]`, `byte[]`, `DisplaySwitchEvent[]`, `VideoWriteEvent[]`) of exactly the needed length, owned by that machine's hub or its slot pools. Not `ArrayPool<T>.Shared`: it returns oversized arrays (breaking length and stride arithmetic), shares buffers across machines, and can't track holders. Not `IMemoryOwner<T>`: it adds a disposable reference object per rent. Pooled memory leaves the hub only through a lease.
 - A buffer is never reused while any lease on it is outstanding. Consumers dispose within one present (`using var frame = ...`).
 
 ### 7.7 Threading
@@ -452,7 +479,7 @@ public readonly record struct VideoFrameInfo(long Sequence, ulong Cycle, int Wid
   - Consumers enumerate `machine.GetComponents<IVideoOutput>()` or have outputs injected. Views never resolve anything through a static.
 - **The machine disposes them.** `IMachine` gains `IDisposable`. `Machine.Dispose()` stops the run loop, then disposes every `IDisposable` component in reverse registration order. Disposing the hub unsubscribes from VBlank, releases `FrameReady` handlers, and returns pooled buffers once outstanding leases are disposed.
 - **Profile reload means a new machine and new outputs.** Consumers reattach to the new machine's outputs. The old ones are disposed with the old machine, which removes the #319/#320 stale-attachment failure mode by construction.
-- **No static mutable state.** `MachineVideoFrameSourceRegistry` is not adopted. Static, immutable tables (dot-expansion tables, palettes, the `FrameProviders` catalog, the `ScannerAddress` tables) are fine. `DefaultCharacterRom.GetRomData()` must return a defensive copy (or `ReadOnlyMemory<byte>`) so two machines never share a mutable array.
+- **No static mutable state.** `MachineVideoFrameSourceRegistry` is not adopted. Static, immutable tables (dot-expansion tables, palettes, the `FrameProviders` catalog, the `ScannerAddress` tables) are fine. `DefaultCharacterRom` exposes `public static ReadOnlySpan<byte> RomData { get; }` over a private static readonly array, replacing `GetRomData()`. `CharacterDevice` copies it into its own array (`RomData.CopyTo(rom)`), so two machines never share a mutable array. A span is used rather than `ReadOnlyMemory<byte>` because `MemoryMarshal.TryGetArray` on a `ReadOnlyMemory<byte>` would hand back the shared writable array, and a span returned from a static property can't be stored.
 
 ## 8. Per-machine video
 
@@ -461,6 +488,24 @@ public readonly record struct VideoFrameInfo(long Sequence, ulong Cycle, int Wid
 #### 8.1.1 Captured state and the character set
 
 **`Pocket2CapturedState`:**
+
+```csharp
+public sealed class Pocket2CapturedState
+{
+    private readonly byte[] main = new byte[0x5C00];     // $0400-$5FFF
+    private readonly byte[] aux = new byte[0x5C00];
+    private readonly byte[] glyphs = new byte[0x1000];
+
+    public ReadOnlySpan<byte> Main => main;
+    public ReadOnlySpan<byte> Aux => HasAux ? aux : default;
+    public ReadOnlySpan<byte> Glyphs => glyphs;
+    public bool HasAux { get; }
+    public DisplaySwitchState StartSwitches { get; }      // value type: one bit per DisplaySwitch
+    public bool FlashOn { get; }
+}
+```
+
+The arrays are owned by the slot. Capture writes into them with `CopyTo` from the physical RAM span (internal writer, emulator thread only). The scanner reads them synchronously through the `ReadOnlySpan<byte>` properties, which is why spans, not `ReadOnlyMemory<byte>`, are right here; slot ownership is what keeps them tear-free.
 
 | Field | Size | Source at capture |
 |---|---|---|
@@ -485,7 +530,8 @@ Per slot: about 51 KB of state plus 32 KB of switch log, so about 250 KB per mac
 
   /// Copies the 4 KB effective glyph table: bank 1 ($000-$7FF) from glyph RAM when
   /// ALTGLYPH1 is on, otherwise from the character ROM; bank 2 ($800-$FFF) likewise
-  /// for ALTGLYPH2. An unloaded ROM bank is copied as zeros.
+  /// for ALTGLYPH2. An unloaded ROM bank is copied as zeros. Throws ArgumentException
+  /// if destination.Length < 4096. Allocates nothing.
   void CopyEffectiveGlyphs(Span<byte> destination);
   ```
 
@@ -496,7 +542,7 @@ Per slot: about 51 KB of state plus 32 KB of switch log, so about 250 KB per mac
 
 - It replaces the scanning half of `Pocket2VideoRenderer`. It reads `ReadOnlySpan<byte>` views over the captured `Main`, `Aux`, and `Glyphs`, indexed as `address − 0x0400`. There are no `Func<ushort, byte>` delegates.
 - It applies inverse, flash, NOFLASH, ALTCHAR, and ALTGLYPH, because the real character generator does that before the signal leaves the machine.
-- Its output (`ScanFrame`, preallocated) is per line: 40 fetch records (main bits, aux bits, bit 7, mode), plus the burst-gate state.
+- Its output is the preallocated `ScanFrame` (§7.3): per line, 40 `ScanFetch` records (main bits, aux bits, bit 7, mode), plus the burst-gate flag.
 - The 11-parameter `IVideoRenderer.RenderFrame` and the `IVideoRenderer` interface are deleted.
 
 #### 8.1.3 `Composite560Out`: dots per mode
@@ -601,7 +647,7 @@ Text modes through `GreyscaleFrameProvider`, `GreenscaleFrameProvider`, and `Amb
   - Critical exceptions (`OutOfMemoryException`, `AccessViolationException`, `InvalidProgramException`, `BadImageFormatException`) are never caught.
 - **Rate limiting.** The first occurrence of each error kind is logged with its stack trace. Repeats are summarized at most once every 5 seconds with a count.
 - **Counters.** `VideoPipelineStats` is a `readonly record struct` with `FramesCaptured`, `SwitchEvents`, `SwitchLogOverflows`, `Scans`, `SignalsGenerated`, `FramesProvided`, `CacheHits`, `CaptureErrors`, `ScanErrors`, `SignalErrors`, `ProvideErrors`, `SubscriberErrors`, `LeasesOutstanding`, `PoolExhausted`, `RecorderDroppedFrames` (only when the recorder is on, §11.6), and `LatestSequence`. Counters use `Interlocked`. The status monitor and a new REPL `video stats` show them. FPS in the window is computed from presented sequences, not VBlank callbacks.
-- **Lease pools.** Each signal pool and each frame pool starts at 3 buffers and grows to at most 8. If all 8 are leased, the acquire returns false and `PoolExhausted` is incremented and logged (it indicates a consumer leaking leases).
+- **Lease pools.** Each signal pool and each frame pool starts at 3 buffers and grows to at most 8. If all 8 are held, or one buffer already has 16 holders (§7.6), the acquire returns false and `PoolExhausted` is incremented and logged (it indicates a consumer leaking leases).
 
 ## 11. Integration
 
@@ -648,7 +694,9 @@ The redo may implement GPU frame providers (decided Q5), for example decoding `C
 
 Video recording and frame-exact agent traces need every frame. The main API stays latest-frame only (decided Q4). A separate `VideoRecorder` component subscribes to `FrameReady` and acquires synchronously inside the handler, so no frame can be overwritten before it is taken:
 
-- The synchronous acquire is `VideoPipelineHub.TryPinLatestCapture(out CapturedFrameLease lease)`: it takes the just-published captured slot out of the triple-buffer rotation by swapping in a spare slot from a small bounded pool. That is an index swap, no copy and no allocation, so the emulator thread still does no scanning or rendering.
+- The synchronous acquire is `internal bool VideoPipelineHub.TryPinLatestCapture(long expectedSequence, out CapturedFrameLease lease)`, called with the sequence `FrameReady` delivered. It takes the just-published captured slot out of the triple-buffer rotation by swapping in a spare slot from a small bounded pool. That is an index swap, no copy and no allocation, so the emulator thread still does no scanning or rendering.
+- **Race with consumers.** Consumer threads also swap the ready-slot index, so the pin swaps it with `Interlocked.Exchange` and then checks `slot.Sequence == expectedSequence`. On a mismatch (a consumer took that slot first), it swaps the slot back with `Interlocked.Exchange` and counts the frame in `RecorderDroppedFrames`, so the recorder never records a stale or duplicate frame.
+- `CapturedFrameLease` is an `internal readonly struct : IDisposable` holding the slot and its generation. It has a single owner, so a generation token is enough. Dispose is idempotent, and the `CapturedFrame` is valid only while it is held (§7.2).
 - The recorder's own thread scans, generates signals, and provides frames from the pinned captures (through the same scanner, outputs, and providers), encodes, writes, and disposes the leases, which returns the slots to the pool.
 - If the spare pool is empty (the recorder fell behind), the pin fails, the frame is dropped and counted (`RecorderDroppedFrames`), and the emulator never waits.
 - The recorder is opt-in and off by default. Pinning is internal to the hub and the recorder; the public consumer API stays latest-frame only.
@@ -747,13 +795,20 @@ All tests run without Avalonia except the `VideoWindow` ones. Each test runs on 
 28. **Provider options.** Each provider's default `Options` equals its exact options, and every frame golden is pinned to them. Two consumers with equal options share one provided frame; different options get separate cache entries. Constructing a provider with a not-yet-implemented non-exact option throws `NotSupportedException`.
 29. **RGB outputs emit finished BGRA.** `RgbOut` maps each Video-7 RGBI color number through the card's fixed table (golden per mode once the table is verified, §8.2), and `RgbFrameProvider` with exact `RgbOptions` returns those pixels bit-for-bit.
 30. **Recorder.** With the recorder on and a deliberately slow drain, every published sequence is either recorded or counted in `RecorderDroppedFrames`, none twice, and the emulator thread never blocks or allocates. With it off, no slot is ever pinned.
+31. **Lease safety.**
+    - Two consumers hold the same cached frame; one disposes its lease twice and also disposes a copy. The other's `Pixels` stays valid and the buffer isn't freed until it disposes.
+    - `default(VideoFrame).Dispose()` does nothing; `Pixels` on a disposed or default lease throws `ObjectDisposedException`; the same for `SignalLease<TSignal>.Signal`.
+    - A 17th holder on one buffer, or a pool with all 8 buffers held, makes the acquire return false and increments `PoolExhausted`.
+    - In Debug, a `ReadOnlyMemory<uint>` kept past dispose reads `0xDEADBEEF` once the buffer is freed.
+32. **Recorder pin race.** A consumer thread hammers `TryAcquireLatestFrame` while the recorder pins on every `FrameReady`. Every pinned lease's `Sequence` equals the `FrameReady` sequence; mismatches are swapped back and counted, never recorded.
+33. **Length rules.** `Provide` with a destination shorter than `Stride × Height` and `CopyEffectiveGlyphs` with fewer than 4,096 bytes throw `ArgumentException`. `DefaultCharacterRom.RomData` copies into two machines' character devices independently (writing one doesn't change the other).
 
 ## 15. Migration plan
 
 Each step builds and tests green on its own (`dotnet build BackPocketEmulator.slnx -c Release -warnaserror` and `dotnet test`).
 
 1. **Reference goldens.** Add the `main` reference frames (§14.1). No production change.
-2. **Contracts and lifecycle.** Add the layer contracts (§7): the signal markers, `IVideoOutput`, `IVideoSignalSource<TSignal>`, `IFrameProvider<TSignal>`, `FrameProviderOptions` and the per-provider options records (exact defaults only), the leases, `CapturedFrame<TState>` (including the reserved, always-empty `WriteLog`), `VideoWriteEvent`/`IVideoWriteLog` (declared, not installed), and `IVideoScanner<TState>`. Make `IMachine : IDisposable` with component disposal in `Machine`. Add `MachineBuilder.AddComponentFactory<T>` and the `DefaultCharacterRom` defensive copy. Add the compile-time pairing test (§14.3) with stub providers.
+2. **Contracts and lifecycle.** Add the layer contracts (§7): the signal markers, `IVideoOutput`, `IVideoSignalSource<TSignal>`, `IFrameProvider<TSignal>`, `FrameProviderOptions` and the per-provider options records (exact defaults only), the leases, `CapturedFrame<TState>` (including the reserved, always-empty `WriteLog`), `VideoWriteEvent`/`IVideoWriteLog` (declared, not installed), and `IVideoScanner<TState>`. Make `IMachine : IDisposable` with component disposal in `Machine`. Add `MachineBuilder.AddComponentFactory<T>` and replace `DefaultCharacterRom.GetRomData()` with `RomData` (§7.8). Add lease tests §14.31 and §14.33 against stub pools. Add the compile-time pairing test (§14.3) with stub providers.
 3. **Glyph API.** Add `GlyphVersion` and `CopyEffectiveGlyphs` to `ICharacterDevice` and `CharacterDevice`, with tests for every version bump trigger.
 4. **Hot side of the video device.** Refactor `VideoDevice`:
    - Add `IDisplaySwitchLog` and record changes from `VideoDevice` and `CharacterDevice`.
@@ -766,7 +821,7 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
    - Add `VideoPipelineHub`: the consumer side of the triple buffer, caches under one `System.Threading.Lock`, lease pools, the immutable subscriber array, `RequestFrame`, stats, and logging.
    - Add `WithVideoPipeline(profile)` and register it in `MachineFactory` and the headless host.
    - Rename `colorMode` to `defaultMonitor` and add `defaultOutput` in the profiles and schema.
-   - Tests §14.12–§14.16 and §14.18–§14.22, plus §14.25 without the RGB card.
+   - Tests §14.12–§14.16 and §14.18–§14.22, plus §14.25 without the RGB card and §14.31 against the real hub.
 8. **Window, REPL, and layering.**
    - Switch `VideoWindow` and `DebugWindowManager` to outputs plus providers, with the Output and Monitor menus (§11.1).
    - Move `PixelBuffer` to `Debug.UI` and drop Avalonia from `Rendering`.
