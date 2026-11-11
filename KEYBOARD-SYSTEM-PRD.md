@@ -416,7 +416,7 @@ The window does not contain a switch or a hard-coded table from Avalonia `Key` t
 
 - `keyboard type <text>` calls `TypeText` and prints the receipt.
 - `keyboard press <chord>` accepts chords such as `shift+1`, `ctrl+c`, `ctrl+reset`, `return` and `open-apple`. It does key down, holds for the default hold time, then key up.
-- `keyboard press $8D` stays available as a debugging convenience. It maps the code back to a keystroke with `TryGetKeystroke` and fails clearly if there is none.
+- `keyboard press $8D` stays available as a debugging convenience. The argument is a byte. The command masks off bit 7 (the strobe bit, if present), treats the remaining 7-bit value as an ASCII character (`$8D` becomes `$0D`, Return), and looks that character up with `TryGetKeystroke`. If there is no keystroke for it, the command fails with a clear error and presses nothing. Values above `$FF` are rejected.
 - `keyboard read` is unchanged.
 - `reset` (#369) uses `KeyDown(KeyboardKey.Reset, modifiers)` and `KeyUp(KeyboardKey.Reset, modifiers)`, with Control and the Apple keys in the snapshot, instead of device methods.
 - `keymap show|load|save|set|unset|reset` views and edits the resolved JSON keymap (§12.6).
