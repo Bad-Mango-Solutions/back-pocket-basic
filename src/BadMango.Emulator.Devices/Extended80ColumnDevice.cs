@@ -41,7 +41,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("extended80column")]
-public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider, IExtended80ColumnDevice, IResetReceiver
+public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProvider, IExtended80ColumnDevice, IResetReceiver, IHardResetMemory
 {
     /// <summary>
     /// The name of the auxiliary RAM layer for $0200-$BFFF.
@@ -426,6 +426,12 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         hires = false;
 
         ApplyState();
+    }
+
+    /// <inheritdoc />
+    public void ClearForHardReset()
+    {
+        auxiliaryRam.Clear();
     }
 
     /// <summary>

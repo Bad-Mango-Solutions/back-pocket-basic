@@ -16,6 +16,9 @@ using Interfaces;
 /// </content>
 public sealed partial class MachineBuilder
 {
+    private readonly HashSet<string> profileHardResetMemoryNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> profileRamPhysicalNames = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Configures the builder from a machine profile.
     /// </summary>
@@ -119,6 +122,10 @@ public sealed partial class MachineBuilder
                 ConfigureSlotCard(cardEntry, romImages);
             }
         }
+
+#if DEBUG
+        ValidateProfileHardResetCoverage();
+#endif
 
         return this;
     }
@@ -514,6 +521,14 @@ public sealed partial class MachineBuilder
         }
 
         physicalMemoryBlocks[physicalProfile.Name] = physical;
+
+        // Profile physical blocks without explicit ROM sources are RAM-backed stores.
+        // Register them so hard reset clears their underlying storage.
+        if (physicalProfile.Sources is null || physicalProfile.Sources.Count == 0)
+        {
+            RegisterProfileHardResetMemory(physicalProfile.Name, physical);
+            profileRamPhysicalNames.Add(physicalProfile.Name);
+        }
     }
 
     private void ConfigureRegion(MemoryRegionProfile region, ProfilePathResolver pathResolver)
@@ -619,6 +634,8 @@ public sealed partial class MachineBuilder
     {
         // Get physical memory backing
         var (physical, sourceOffset) = GetPhysicalMemoryForRegion(region, size);
+        RegisterProfileHardResetMemory(region.Source!, physical);
+        profileRamPhysicalNames.Add(region.Source!);
 
         var target = new RamTarget(physical.Slice(sourceOffset, size), physical.Name);
 
@@ -642,6 +659,28 @@ public sealed partial class MachineBuilder
                 physicalBase: 0);
         });
     }
+
+    private void RegisterProfileHardResetMemory(string physicalName, PhysicalMemory physical)
+    {
+        if (profileHardResetMemoryNames.Add(physicalName))
+        {
+            AddComponent(new ProfilePhysicalRamHardResetMemory(physical));
+        }
+    }
+
+#if DEBUG
+    private void ValidateProfileHardResetCoverage()
+    {
+        foreach (string physicalName in profileRamPhysicalNames)
+        {
+            if (!profileHardResetMemoryNames.Contains(physicalName))
+            {
+                throw new InvalidOperationException(
+                    $"RAM physical memory '{physicalName}' is not registered for hard reset clearing.");
+            }
+        }
+    }
+#endif
 
     private void ConfigureRomRegion(MemoryRegionProfile region, uint start, uint size, PagePerms perms)
     {
@@ -805,6 +844,11 @@ public sealed partial class MachineBuilder
     /// <param name="Slot">The slot number (1-7).</param>
     /// <param name="Card">The slot card to install.</param>
     private sealed record PendingSlotCardFromProfile(int Slot, ISlotCard Card) : IPendingSlotCard;
+
+    private sealed record ProfilePhysicalRamHardResetMemory(PhysicalMemory Memory) : IHardResetMemory
+    {
+        public void ClearForHardReset() => Memory.Clear();
+    }
 
     /// <summary>
     /// Information about a ROM image, supporting both file-based and embedded resources.
