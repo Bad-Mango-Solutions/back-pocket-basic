@@ -74,6 +74,7 @@ public partial class VideoWindow : Window
     private IVideoDevice? videoDevice;
     private ICharacterDevice? characterDevice;
     private IExtended80ColumnDevice? extended80ColumnDevice;
+    private IKeyTranslator? keyTranslator;
     private EmulatorKeyboardDevice? keyboardDevice;
     private IMemoryBus? memoryBus;
     private ReadOnlyMemory<byte> mainRam;
@@ -227,6 +228,7 @@ public partial class VideoWindow : Window
         this.memoryBus = machine.Bus;
         this.videoDevice = machine.GetComponent<IVideoDevice>();
         this.keyboardDevice = machine.GetComponent<EmulatorKeyboardDevice>();
+        this.keyTranslator = machine.GetComponent<IKeyTranslator>() ?? new AppleIIeKeyTranslator();
         this.extended80ColumnDevice = machine.GetComponent<IExtended80ColumnDevice>();
 
         // Get direct physical main RAM reference for snapshot capture.
@@ -405,7 +407,7 @@ public partial class VideoWindow : Window
     /// <param name="modifiers">The active key modifiers.</param>
     /// <param name="capsLock">Whether Caps Lock is active.</param>
     /// <returns>The Pocket2e ASCII code, or null if the key is not mapped.</returns>
-    private static byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
+    private byte? MapKeyToPocket2(Key key, KeyModifiers modifiers, bool capsLock)
     {
         var effectiveModifiers = KeyboardModifiers.None;
         if (modifiers.HasFlag(KeyModifiers.Shift))
@@ -489,7 +491,7 @@ public partial class VideoWindow : Window
             return null;
         }
 
-        return AppleIIeKeyTranslator.Translate(translated, effectiveModifiers);
+        return keyTranslator?.Translate(translated, effectiveModifiers) ?? AppleIIeKeyTranslator.Translate(translated, effectiveModifiers);
     }
 
     private static bool IsCriticalException(Exception ex)
