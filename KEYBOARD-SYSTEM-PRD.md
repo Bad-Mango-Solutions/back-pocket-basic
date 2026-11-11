@@ -5,7 +5,7 @@
 | Status | Draft for engineering review |
 | Owner | Josh |
 | Tracking issue | #386 |
-| Builds on | #331 / PR #375 (`HostKey`, `IKeyTranslator`, `AppleIIeKeyTranslator`, scheduler-driven `TypeString`) |
+| Builds on | #331 / PR #375 (`HostKey`, `IKeyTranslator`, `AppleIIeKeyTranslator`, scheduler-driven `TypeString`). This spec renames `HostKey` to `KeyboardKey`. |
 | Related | #333 (agent-friendly debugger), #337 (headless host), #330 and #369 (reset), #371 (Game I/O OR) |
 | Supersedes | The *Implementation Architecture* section of [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). Its key tables remain a reference, with corrections listed in §15. |
 
@@ -17,9 +17,9 @@ Define one keyboard architecture that serves every machine the core will host: t
 
 The design has three layers:
 
-1. **Input sources** only produce host-neutral events: a physical `HostKey` going down or up, with a `KeyboardModifiers` snapshot, or plain text.
+1. **Input sources** only produce host-neutral events: a `KeyboardKey` going down or up, with a `KeyboardModifiers` snapshot, or plain text.
 2. **`IKeyboardInput`**, one per machine, accepts those events from any thread. It applies them on the emulator thread through scheduler events, and owns text-typing timing.
-3. **The machine's keyboard device**, chosen by the machine profile, turns host keys into whatever its hardware presents to software. For the IIe and IIc that is an ASCII latch at `$C000`/`$C010` built on an `IKeyTranslator`. For the IIgs it is ADB key codes handled by an ADB controller.
+3. **The machine's keyboard device**, chosen by the machine profile, turns `KeyboardKey` events into whatever its hardware presents to software. For the IIe and IIc that is an ASCII latch at `$C000`/`$C010` built on an `IKeyTranslator`. For the IIgs it is ADB key codes handled by an ADB controller.
 
 No static or global state is allowed, so any number of machines can run in one process.
 
@@ -37,7 +37,7 @@ The current design is one Apple IIe-shaped `KeyboardDevice` that every caller dr
 
 | # | Goal | Acceptance |
 |---|---|---|
-| G1 | Input sources are machine-agnostic. | `VideoWindow`, the REPL, and the MCP host only use `HostKey`, `KeyboardModifiers`, and text. None of them references a machine-specific type or code. |
+| G1 | Input sources are machine-agnostic. | `VideoWindow`, the REPL, and the MCP host only use `KeyboardKey`, `KeyboardModifiers`, and text. None of them references a machine-specific type or code. |
 | G2 | One input entry point per machine. | `machine.GetComponent<IKeyboardInput>()` returns the machine's input layer. Nothing outside a keyboard device calls `KeyDown(byte)`. |
 | G3 | Emulator-thread application. | Every input event changes machine state only on the machine thread, at a scheduler event boundary, whichever thread it came from. |
 | G4 | Deterministic, replayable input. | The same profile, initial state, and input journal produce an identical bus and keyboard trace. A golden-trace test enforces this. |
@@ -50,12 +50,12 @@ The current design is one Apple IIe-shaped `KeyboardDevice` that every caller dr
 ## 4. Non-goals (for v1)
 
 - Implementing the IIc, IIgs/ADB, or 65832 keyboards. This PRD specifies their shape so the IIe work doesn't block them; each is its own epic.
-- Implementing the IIe J16 keypad connector and the IIgs keypad hardware. `HostKey` already includes the full keypad (§7.1); IIe and IIc translators return `null` for those keys until this work lands.
+- Implementing the IIe J16 keypad connector and the IIgs keypad hardware. `KeyboardKey` already includes the full keypad (§7.1); IIe and IIc translators return `null` for those keys until this work lands.
 - Mouse and joystick input. These use separate input paths, which may follow the same `IKeyboardInput`-style pattern later.
 - International character sets in the video ROM.
 - Emulating the ADB microcontroller at the instruction level (M50740 firmware). The IIgs path is high-level emulation (HLE) first.
 - Shipping keyboard ROM images. Layouts are C# code tables (see §11 and Q9).
-- A key-binding editor UI.
+- A key-binding editor UI. The JSON keymap and the REPL `keymap` commands are the v1 way to view and change mappings; the eventual UI can load, modify and save the same files.
 
 ## 5. Users and scenarios
 
@@ -72,7 +72,8 @@ The current design is one Apple IIe-shaped `KeyboardDevice` that every caller dr
 ```mermaid
 flowchart LR
   subgraph Host["Input sources (any thread)"]
-    VW["VideoWindow<br/>(host Key -> HostKey)"]
+    VW["VideoWindow<br/>(Avalonia Key)"]
+    KM["IHostKeymap<br/>(JSON keymap)"]
     REPL["Debugger REPL<br/>keyboard press/type"]
     MCP["MCP / agent host<br/>(#333, #337)"]
     SCR["Scripts / tests"]
@@ -90,7 +91,8 @@ flowchart LR
     SIG["SignalBus RESET"]
   end
 
-  VW --> IN
+  VW --> KM
+  KM --> IN
   REPL --> IN
   MCP --> IN
   SCR --> IN
@@ -106,7 +108,7 @@ The layers have these responsibilities:
 
 | Layer | Owns | Must not |
 |---|---|---|
-| Input source | Mapping its native key type to `HostKey` (including Reset and Power, via the profile's host bindings), plus the modifier snapshot. Its Caps Lock toggle state. | Know any machine code, translator, or soft switch. The core never sees a host key type. |
+| Input source | Mapping its native key type to `KeyboardKey` through the JSON host keymap (§12), including Reset and Power, plus the modifier snapshot. Its Caps Lock toggle state. | Know any machine code, translator, or soft switch. The core never sees a host key type. |
 | `IKeyboardInput` | Thread-safe intake, ordering, and hand-off to the emulator thread. `TypeText` (characters to keystrokes, timing). Filtering host auto-repeat. The input journal. | Know `$C000`, ASCII, or ADB. It asks the sink for keystrokes. |
 | Keyboard device (sink) | Hardware semantics: translation, latch, strobe, any-key-down, auto-repeat, modifier soft switches, the RESET line, model-specific switches. | Be called from a host thread, or be called by anything other than its `IKeyboardInput` (except bus reads and writes). |
 
@@ -114,16 +116,18 @@ The layers have these responsibilities:
 
 All new types live in `BadMango.Emulator.Devices`. Interfaces go in `BadMango.Emulator.Devices.Interfaces`, following the existing convention. Nothing here references Avalonia.
 
-### 7.1 `HostKey` (exists since #375; expanded by the implementation of this spec)
+### 7.1 `KeyboardKey` (renamed from `HostKey` in #375; expanded by the implementation of this spec)
 
-`HostKey` is a complete, host-neutral key abstraction. It is modeled on the Apple Extended Keyboard II (M3501). Figure 8-10 of the *Guide to the Macintosh Family Hardware* [MacHW] is the reference for that layout and for the keys the keyboard actually has.
+`KeyboardKey` is the shared key set that all input sources produce and all keyboard devices consume, not the host's keys. It is modeled on the Apple Extended Keyboard II (M3501). Figure 8-10 of the *Guide to the Macintosh Family Hardware* [MacHW] is the reference for that layout and for the keys the keyboard actually has.
 
-The app host (`VideoWindow`, the REPL, MCP, scripts, a headless runner) maps physical host keys to `HostKey`. The core never sees a host key type (Avalonia `Key`, a terminal code, or anything else). Each keyboard device, and its translator where it has one, interprets `HostKey`.
+The app host (`VideoWindow`, the REPL, MCP, scripts, a headless runner) maps physical host keys to `KeyboardKey` through a JSON keymap (§12). The core never sees a host key type (Avalonia `Key`, a terminal code, or anything else). Each keyboard device, and its translator where it has one, interprets `KeyboardKey`.
 
-`HostKey` describes a **physical position** (or a dedicated machine-control key), not a character. Layout (Dvorak, international) is applied by the machine keyboard, never by the input source. Legends below are US-layout.
+PR #375 introduced this enum under the name `HostKey`. That name no longer fits: the set includes Reset and Power, which a typical host keyboard does not have, and the app host maps physical host keys onto this set through the keymap rather than treating the enum as "the host's keys." The implementation of this spec renames it to `KeyboardKey`. Its modifiers type is `KeyboardModifiers`.
+
+`KeyboardKey` describes a **physical position** (or a dedicated machine-control key), not a character. Layout (Dvorak, international) is applied by the machine keyboard, never by the input source. Legends below are US-layout.
 
 ```csharp
-public enum HostKey
+public enum KeyboardKey
 {
     None,
 
@@ -173,25 +177,25 @@ public enum HostKey
 }
 ```
 
-Members that #375 already has keep their names, except: `Delete` is renamed to `ForwardDelete`, and `LeftAlt` / `RightAlt` are renamed to `LeftOption` / `RightOption`. The implementation issue (#388) expands the smaller #375 enum and performs those renames. `Reset` and `Power` are included even though a typical modern host keyboard has no Reset key, so a headless machine can be sent Reset (or Power) without a window.
+Members that #375 already has keep their names, except: `Delete` is renamed to `ForwardDelete`, and `LeftAlt` / `RightAlt` are renamed to `LeftOption` / `RightOption`. The implementation issue (#388) expands the smaller #375 `HostKey` enum, renames it to `KeyboardKey`, and performs those member renames. Do not change #375 itself. `Reset` and `Power` are included even though a typical modern host keyboard has no Reset key, so a headless machine can be sent Reset (or Power) without a window.
 
-- Every `HostKey` needs an explicit mapping decision in every translator, including "this key produces no code." A coverage test fails if a `HostKey` is added without a decision. Unmapped keys return `null`. They do not strobe and do not count toward AKD.
-- **`Reset` is a `HostKey`, not a separate input.** Hosts press it with `KeyDown(HostKey.Reset, modifiers)` and `KeyUp(HostKey.Reset, modifiers)`. IIe and IIc devices route it to the RESET signal path, not to the encoder: it never strobes, never counts toward AKD, and honors `requireControlForReset`. The IIgs device routes it the same way (the ADB Reset key). The earlier idea that F12 is not a `HostKey` member and that Reset stays a separate input is withdrawn: `F12` is an ordinary `HostKey`, and the F12 / Ctrl+F12 and Ctrl+Alt+F12 defaults are host-side bindings that map a host chord to `HostKey.Reset` with the right modifiers (§12). Those bindings stay per-profile and provisional. **Cold reset stays a machine action, not a `HostKey`.**
+- Every `KeyboardKey` needs an explicit mapping decision in every translator, including "this key produces no code." A coverage test fails if a `KeyboardKey` is added without a decision. Unmapped keys return `null`. They do not strobe and do not count toward AKD.
+- **`Reset` is a `KeyboardKey`, not a separate input.** Hosts press it with `KeyDown(KeyboardKey.Reset, modifiers)` and `KeyUp(KeyboardKey.Reset, modifiers)`. IIe and IIc devices route it to the RESET signal path, not to the encoder: it never strobes, never counts toward AKD, and honors `requireControlForReset`. The IIgs device routes it the same way (the ADB Reset key). The earlier idea that F12 is not a `KeyboardKey` member and that Reset stays a separate input is withdrawn: `F12` is an ordinary `KeyboardKey`, and the F12 / Ctrl+F12 and Ctrl+Alt+F12 defaults are JSON keymap entries that map a host chord to `KeyboardKey.Reset` with the right modifiers, or to the cold-reset machine action (§12). Those defaults stay provisional. **Cold reset stays a machine action, not a `KeyboardKey`.**
 - **`Power`** is the Extended Keyboard II / ADB power key. Machines that have no power key (the IIe and IIc) ignore it: the translator returns `null`, and it does not strobe or assert RESET. The IIgs may treat it as the ADB Power key when that work lands; until then it is reserved.
 
-Default host-to-`HostKey` correspondences (the host applies these; they are not translator rules) are in §12.
+The default host-to-`KeyboardKey` map is the contents of the built-in `avalonia-default.json` keymap (§12). It is not a translator rule and is not hard-coded in `VideoWindow`.
 
 ### 7.2 `IKeyboardInput`
 
 ```csharp
 public interface IKeyboardInput
 {
-    /// A physical host key went down. modifiers is the full host modifier snapshot
+    /// A KeyboardKey went down. modifiers is the full KeyboardModifiers snapshot
     /// (Shift, Control, OpenApple, ClosedApple, CapsLock) at the time of the event.
-    void KeyDown(HostKey key, KeyboardModifiers modifiers);
+    void KeyDown(KeyboardKey key, KeyboardModifiers modifiers);
 
-    /// A physical host key went up. modifiers is the snapshot after the release.
-    void KeyUp(HostKey key, KeyboardModifiers modifiers);
+    /// A KeyboardKey went up. modifiers is the snapshot after the release.
+    void KeyUp(KeyboardKey key, KeyboardModifiers modifiers);
 
     /// Queues text to be typed as keystrokes. Returns immediately with what was accepted.
     TypeTextReceipt TypeText(string text, TypeTextOptions? options = null);
@@ -207,10 +211,10 @@ public interface IKeyboardInput
 }
 ```
 
-- **Modifiers travel as a snapshot on every event.** Modifier keys are also `HostKey`s, so `KeyDown(LeftOption, OpenApple)` updates PB0 even though it produces no character. The snapshot is authoritative and avoids drift when the host misses an event, for example after a focus change. Caps Lock in the snapshot is the host's toggle state.
+- **Modifiers travel as a snapshot on every event.** Modifier keys are also `KeyboardKey`s, so `KeyDown(LeftOption, OpenApple)` updates PB0 even though it produces no character. The snapshot is authoritative and avoids drift when the host misses an event, for example after a focus change. Caps Lock in the snapshot is the host's toggle state.
 - **Mapping Option (host Alt) to the Apple keys is the input source's job.** It is a host binding. The current default is Left Option (Left Alt) for Open Apple and Right Option (Right Alt) for Closed Apple (Command and Option on the IIgs). Host Command / GUI keys arrive as `LeftCommand` / `RightCommand`; whether they also set the Apple-key snapshot is a host binding, and the default does not.
 - **Host auto-repeat is filtered.** A `KeyDown` for a key that is already down is ignored, because the machine keyboard generates its own auto-repeat (§8.1.4). Sources must still send `KeyUp`.
-- **Reset is a `HostKey`.** `KeyDown(HostKey.Reset, modifiers)` is how every host, including a headless runner, presses Reset. Whether the RESET line asserts depends on the device (Control required or not, §8.1.6). There is no separate `ResetKeyDown` / `ResetKeyUp` method.
+- **Reset is a `KeyboardKey`.** `KeyDown(KeyboardKey.Reset, modifiers)` is how every host, including a headless runner, presses Reset. Whether the RESET line asserts depends on the device (Control required or not, §8.1.6). There is no separate `ResetKeyDown` / `ResetKeyUp` method.
 
 ### 7.3 Threading and scheduler semantics
 
@@ -225,8 +229,8 @@ public interface IKeyboardInput
 ```csharp
 public interface IHostKeyboardSink
 {
-    void OnHostKeyDown(HostKey key, KeyboardModifiers modifiers);
-    void OnHostKeyUp(HostKey key, KeyboardModifiers modifiers);
+    void OnHostKeyDown(KeyboardKey key, KeyboardModifiers modifiers);
+    void OnHostKeyUp(KeyboardKey key, KeyboardModifiers modifiers);
 
     /// For TypeText: the keystroke that produces c on this keyboard and layout, if any.
     bool TryGetKeystroke(char c, out HostKeystroke keystroke);
@@ -238,14 +242,14 @@ public interface IHostKeyboardSink
     void ReleaseAllTypedKeys();
 }
 
-public readonly record struct HostKeystroke(HostKey Key, KeyboardModifiers Modifiers);
+public readonly record struct HostKeystroke(KeyboardKey Key, KeyboardModifiers Modifiers);
 ```
 
-Every machine keyboard implements this. Only its `KeyboardInput` calls it, and only on the machine thread. That contract is the boundary between "host" and "hardware". `HostKey.Reset` and `HostKey.Power` arrive through `OnHostKeyDown` / `OnHostKeyUp`, not through a separate method. The device decides what they do (§7.1, §8.1.6, §8.3).
+Every machine keyboard implements this. Only its `KeyboardInput` calls it, and only on the machine thread. That contract is the boundary between "host" and "hardware". `KeyboardKey.Reset` and `KeyboardKey.Power` arrive through `OnHostKeyDown` / `OnHostKeyUp`, not through a separate method. The device decides what they do (§7.1, §8.1.6, §8.3).
 
 ### 7.5 Determinism and the input journal
 
-- Each applied event is journaled as `(Cycle, InputEvent)`. That includes key down, key up (including `HostKey.Reset` and `HostKey.Power`), every `TypeText` keystroke, and `CancelTyping`.
+- Each applied event is journaled as `(Cycle, InputEvent)`. That includes key down, key up (including `KeyboardKey.Reset` and `KeyboardKey.Power`), every `TypeText` keystroke, and `CancelTyping`.
 - **Determinism contract:** the same profile, the same initial machine state (RAM fill, any RNG seed), and the same journal replayed at the same cycles produce an identical trace. Live host input is not deterministic in *when* it lands, but once journaled it replays exactly.
 - `KeyboardInput.Replay(IEnumerable<(Cycle, InputEvent)>)` schedules journaled events at their recorded cycles. This is used by golden-trace tests and by the agent host for reproducible sessions.
 - When the machine is paused or stepped by a caller (tests, an agent between `run-until` calls), events apply at the current cycle. Scripted input is deterministic without a journal.
@@ -310,7 +314,7 @@ On the IIe, PB2 reflects Shift only when the X6 jumper is soldered (the "single-
 
 #### 8.1.6 Reset combinations
 
-- **`HostKey.Reset`** is routed to the RESET signal path, not to the encoder. It never latches a code, never sets the strobe, and never counts toward AKD. The translator returns `null` for it. RESET pulls low only when Control is in the modifier snapshot, unless the keyboard jumpers are changed so Reset alone works [Sather ch. 7]. That jumper is the profile option `requireControlForReset`, the existing `RequireControlForReset`. A headless machine therefore presses Reset with `KeyDown(HostKey.Reset, KeyboardModifiers.Control)`. With `requireControlForReset` true, `KeyDown(HostKey.Reset, KeyboardModifiers.None)` asserts nothing and does not strobe.
+- **`KeyboardKey.Reset`** is routed to the RESET signal path, not to the encoder. It never latches a code, never sets the strobe, and never counts toward AKD. The translator returns `null` for it. RESET pulls low only when Control is in the modifier snapshot, unless the keyboard jumpers are changed so Reset alone works [Sather ch. 7]. That jumper is the profile option `requireControlForReset`, the existing `RequireControlForReset`. A headless machine therefore presses Reset with `KeyDown(KeyboardKey.Reset, KeyboardModifiers.Control)`. With `requireControlForReset` true, `KeyDown(KeyboardKey.Reset, KeyboardModifiers.None)` asserts nothing and does not strobe.
 - **Ctrl+Open Apple+Reset:** the firmware does a forced cold start. It writes two bytes into each page of main RAM, which destroys the reset vector, and then cold-starts [TRM-e ch. 4 "Forced Cold Start"].
 - **Ctrl+Closed Apple+Reset,** with or without Open Apple: the firmware runs the built-in self-test [TRM-e ch. 4].
 - These are firmware behaviors. The keyboard only has to hold PB0/PB1 while RESET is released, which already works through #369 (`reset --open-apple` / `--closed-apple`) and the #371 OR.
@@ -338,7 +342,7 @@ Hardware facts are cited to **[TRM-c]** *Apple IIc Technical Reference Manual*, 
 
 Hardware facts are cited to **[HWR-gs]** *Apple IIgs Hardware Reference*, ch. 6 "The Apple Desktop Bus", and **[TN-58]** Apple IIgs Technical Note #58.
 
-- **Transport:** the keyboard is an ADB device. ADB keyboard register 0 holds two key events. Each is a 7-bit key code plus a "key released" bit 7 [HWR-gs Table 6-10]. The keyboard device turns `HostKey` into ADB key codes and up/down transitions. It does **not** produce ASCII, so it does not use `IKeyTranslator`.
+- **Transport:** the keyboard is an ADB device. ADB keyboard register 0 holds two key events. Each is a 7-bit key code plus a "key released" bit 7 [HWR-gs Table 6-10]. The keyboard device turns `KeyboardKey` into ADB key codes and up/down transitions. It does **not** produce ASCII, so it does not use `IKeyTranslator`.
 - **Translation:** the ADB microcontroller (an M50740, a 6502-superset microcontroller) generates all 128 ASCII codes and fills the ADB GLU registers [HWR-gs ch. 6]. The emulator implements this as an HLE `AdbController` that applies the layout (selected in the Control Panel) to produce ASCII. It is a separate component from the keyboard, so mouse and ADB commands share it.
 - **GLU registers:**
 
@@ -354,15 +358,15 @@ Hardware facts are cited to **[HWR-gs]** *Apple IIgs Hardware Reference*, ch. 6 
 - **Auto-repeat:** the rate and delay are set in the Control Panel [HWR-gs ch. 6].
 - **Rollover:** modifier keys have n-key rollover. Alphanumeric keys have 2-key lockout, so a third simultaneous key is not recognized [HWR-gs ch. 6].
 - **Command key** does the same job as Open Apple on the IIe [HWR-gs glossary]. Whether Option reads as Closed Apple at `$C062`, and how `$C061`/`$C062` are wired on the IIgs, is Q7.
-- **Reset combinations** (official sources only; see also §12 for host bindings):
-  - The ADB microcontroller detects the reset key combination and asserts RESET [HWR-gs ch. 6]. `OnHostKeyDown(HostKey.Reset, modifiers)` maps onto that: the IIgs device routes `HostKey.Reset` to the RESET signal path (the ADB Reset key), not to a typable ADB key-down in register 0. It does not strobe `$C000` as a character.
+- **Reset combinations** (official sources only; see also §12 for host keymap entries):
+  - The ADB microcontroller detects the reset key combination and asserts RESET [HWR-gs ch. 6]. `OnHostKeyDown(KeyboardKey.Reset, modifiers)` maps onto that: the IIgs device routes `KeyboardKey.Reset` to the RESET signal path (the ADB Reset key), not to a typable ADB key-down in register 0. It does not strobe `$C000` as a character.
   - **Control-Command-Reset** is special: it generates a special key code, the microcontroller asserts the RESET line, and the system restarts (the reset routine) [HWR-gs ch. 6]. Bit 5 of the ADB Command/Data register at `$C026` is set when Control, Command, and Reset are pressed together; "this condition is usually used to initiate a cold start up" [HWR-gs Table 6-3]. Apple's Tech Info Library article on resetting calls this a cold reset: hold Control and Apple, then press and release Reset, "which makes the machine reboot as if it were just turned on" [TIL-2061]. The IIgs Quick Start Guide gives the same chord (Command-Control-Reset) to start up a disk when the power is already on [QSG-gs].
   - **Control-Reset** is a warm reset: hold Control and press and release Reset [TIL-2061]. The HWR-gs glossary defines Control-Reset as the combination that usually stops an Applesoft program immediately.
   - **Self-test:** "The self-test is activated by pressing Open-Apple and Option on power up, or Open-Apple, Option, and Reset" [TN-95]. That wording does **not** mention Control. This spec does not add Control to the official combination. Many secondary sources write Control-Open-Apple-Option-Reset; that has not been confirmed from an official Apple manual here.
   - **Control Panel:** the documented keyboard path that uses Reset is Option-Control-Reset [QSG-gs; TIL-522]. Holding Option while turning the power on is also documented, though Apple noted that it "doesn't always work" [TIL-522, citing the *Apple IIGS Owner's Guide*, p. 13]. Control-Open-Apple-Escape is widely cited as the running-machine Classic Desk Accessory / Control Panel shortcut; it was **not** independently verified from an official Apple manual for this spec.
-- **Extended ADB keyboards and function keys.** The Apple Extended Keyboard (M0115) and Apple Extended Keyboard II (M3501) are ADB keyboards with fifteen function keys, F1–F15 [MacHW ch. 8 and Figure 8-10; TIL-112]. `HostKey` already includes F1–F15, the navigation cluster, the full keypad, Help, Forward Delete, Command, Option, Reset and Power, using Figure 8-10 as the reference (§7.1). The Extended Keyboard II's stated requirement is "Any Apple personal computer with an Apple Desktop bus interface" [TIL-112], which includes the IIgs [HWR-gs ch. 6]. The M0115 is the same ADB device class [MacHW ch. 8]. The compact keyboard that shipped with the IIgs has no function keys; these extended keyboards are the ADB devices that add them. Contemporary IIgs programmers used an Extended ADB keyboard on the IIgs and read F1–F15 from software [Empson-94].
-  - ADB key-down codes for F13, F14 and F15 are `$69`, `$6B` and `$71` [MacHW Figure 8-10]. Those three keys sit immediately to the right of F12 in the function-key row. A PC 101-key keyboard labels that same cluster Print Screen, Scroll Lock and Pause, so the host maps Print Screen → `HostKey.F13`, Scroll Lock → `HostKey.F14` and Pause → `HostKey.F15`. That is a layout correspondence, not an Apple document that literally names those PC legends on the M0115/M3501.
-  - **`HostKey.Power`** is reserved on the IIgs until the ADB keyboard epic decides how to expose the Extended Keyboard II power key; it is not typable ASCII.
+- **Extended ADB keyboards and function keys.** The Apple Extended Keyboard (M0115) and Apple Extended Keyboard II (M3501) are ADB keyboards with fifteen function keys, F1–F15 [MacHW ch. 8 and Figure 8-10; TIL-112]. `KeyboardKey` already includes F1–F15, the navigation cluster, the full keypad, Help, Forward Delete, Command, Option, Reset and Power, using Figure 8-10 as the reference (§7.1). The Extended Keyboard II's stated requirement is "Any Apple personal computer with an Apple Desktop bus interface" [TIL-112], which includes the IIgs [HWR-gs ch. 6]. The M0115 is the same ADB device class [MacHW ch. 8]. The compact keyboard that shipped with the IIgs has no function keys; these extended keyboards are the ADB devices that add them. Contemporary IIgs programmers used an Extended ADB keyboard on the IIgs and read F1–F15 from software [Empson-94].
+  - ADB key-down codes for F13, F14 and F15 are `$69`, `$6B` and `$71` [MacHW Figure 8-10]. Those three keys sit immediately to the right of F12 in the function-key row. A PC 101-key keyboard labels that same cluster Print Screen, Scroll Lock and Pause, so the host maps Print Screen → `KeyboardKey.F13`, Scroll Lock → `KeyboardKey.F14` and Pause → `KeyboardKey.F15`. That is a layout correspondence, not an Apple document that literally names those PC legends on the M0115/M3501.
+  - **`KeyboardKey.Power`** is reserved on the IIgs until the ADB keyboard epic decides how to expose the Extended Keyboard II power key; it is not typable ASCII.
   - Software can see the function keys. Through the Event Manager, the extended keys arrive as key-down events whose character codes look like lowercase letters from the numeric keypad, distinguished by the keypad modifier bit (`keyPad`, `$2000`) [Empson-94]. Through `$C000`/`$C010`, the same keys are identified by reading the Modifier Key register at `$C025` and testing the keypad bit (bit 4) [Empson-94; HWR-gs Table 6-5]. A few programs use them; they are ordinary ADB keys, not reserved host shortcuts.
 - **Known hardware anomaly:** while an arrow key (or Space or Delete with Fast Space/Delete on) auto-repeats, pressing Control sets the Shift bit in `$C025` instead of Control [TN-58]. The fidelity profile may reproduce this.
 
@@ -371,7 +375,7 @@ Hardware facts are cited to **[HWR-gs]** *Apple IIgs Hardware Reference*, ch. 6 
 This machine defines its own keyboard and does not have to imitate the Apple II. Requirements on it:
 
 - It implements `IHostKeyboardSink`, so window, REPL, MCP and journal support come for free.
-- It is expected to expose raw `HostKey`-derived scan codes, through a FIFO and an interrupt, rather than an ASCII latch.
+- It is expected to expose raw `KeyboardKey`-derived scan codes, through a FIFO and an interrupt, rather than an ASCII latch.
 - `TryGetKeystroke` can be implemented with a US layout table.
 - Its register layout belongs in the 65832 architecture spec, not here.
 
@@ -379,7 +383,7 @@ This machine defines its own keyboard and does not have to imitate the Apple II.
 
 ### 9.1 Characters to keystrokes
 
-- Each character goes to `sink.TryGetKeystroke(c, out keystroke)`. For IIe and IIc keyboards, this is a reverse table built once per translator and layout by enumerating every `HostKey` × {none, Shift, Control, Control+Shift}. Among the keystrokes that produce a code, the one with the fewest modifiers wins.
+- Each character goes to `sink.TryGetKeystroke(c, out keystroke)`. For IIe and IIc keyboards, this is a reverse table built once per translator and layout by enumerating every `KeyboardKey` × {none, Shift, Control, Control+Shift}. Among the keystrokes that produce a code, the one with the fewest modifiers wins.
 - Newlines: `\r`, `\n`, and `\r\n` each become **one** Return. `\t` becomes Tab, and `\b` becomes Backspace (`$08`).
 - **Case** is typed exactly: `A` is typed as Shift+A. The host's live Caps Lock state is ignored, because `TypeText` uses its own modifier snapshot. `TypeTextOptions.ForceUppercase` upper-cases letters first, for software that needs uppercase. The keyboard-device option is `typeText.forceUppercase` in the machine profile's device configuration. The unenhanced `pocket2e-a2` profile defaults it to true, because Applesoft on an unenhanced IIe needs uppercase keywords. Every other profile defaults it to false. Any profile can set the option.
 - **Unmappable characters** are anything with no keystroke, such as non-ASCII or emoji. `TypeTextOptions.Unmappable` decides what happens: `Skip` (the default), `Replace` (with `ReplacementChar`, default `?`), or `Reject` (nothing is queued and the receipt lists the offending characters). The receipt always reports accepted and skipped counts, so the REPL and MCP can surface them.
@@ -404,9 +408,9 @@ While `TypeText` is active, live `KeyDown` events still apply, but `TypeText` ke
 
 ### 10.1 `VideoWindow`
 
-The window maps Avalonia `Key` to `HostKey` using the correspondences in §12 (including F1–F15, the navigation cluster, the keypad, Help, Forward Delete, Option and Command), keeps its Option/Alt-to-Apple-key binding and Caps Lock toggle, and calls `IKeyboardInput.KeyDown` and `KeyUp` with the snapshot. That is all it does for ordinary keys. It never touches a translator or `KeyDown(byte)`. The core never sees Avalonia `Key`. (The #375 interim reads `IKeyboardDevice.Translator`; that property goes away in migration step 4.)
+The window does not contain a switch or a hard-coded table from Avalonia `Key` to `KeyboardKey`. An Avalonia adapter in the UI project turns the Avalonia `Key` (and, when useful, the physical key or scan code) into the host-key names used in the JSON keymap (§12). The window then calls `IHostKeymap.TryMap` (and `TryMapAction` for cold reset). Ordinary keys become `IKeyboardInput.KeyDown` and `KeyUp` with the resulting `KeyboardKey` and a `KeyboardModifiers` snapshot. The window still keeps its Option/Alt-to-Apple-key snapshot and Caps Lock toggle. It never touches a translator or `KeyDown(byte)`. The core never sees Avalonia `Key`. (The #375 interim reads `IKeyboardDevice.Translator` and uses a code switch; both go away in the VideoWindow migration step.)
 
-**Reset and cold-reset bindings.** `VideoWindow` reads `bindings.reset` and `bindings.coldReset` from the machine profile (§11.1, §12). The Reset binding is a host-side map from a host chord to `KeyDown` / `KeyUp` of `HostKey.Reset` with the modifiers the binding specifies (Control implied where the default says so). The cold-reset binding invokes the cold-reset **machine action**; it is not a `HostKey` and does not also assert `HostKey.Reset`. The window does not hard-code F12. When a binding consumes a host key (for example F12 on an IIe profile), that key is not also delivered as its ordinary `HostKey` (it is not also `HostKey.F12`). Defaults are machine-specific and **provisional** (§12). The menu command and the REPL `reset` command always work, independently of the host binding, by sending `HostKey.Reset` themselves.
+**Reset and cold-reset mappings** come from the resolved keymap (§12), not from hard-coded F12 chords and not from a `bindings` block in the profile. A Reset mapping is a keymap entry from a host chord to `KeyDown` / `KeyUp` of `KeyboardKey.Reset` with the modifiers the entry specifies (Control implied where the default says so). A cold-reset mapping is a keymap **action** entry (`coldReset`); it is not a `KeyboardKey` and does not also assert `KeyboardKey.Reset`. When a mapping consumes a host key (for example F12 in `avalonia-default.json`), that key is not also delivered as its ordinary `KeyboardKey` (it is not also `KeyboardKey.F12`). Defaults are machine-specific and **provisional** (§12). The menu command and the REPL `reset` command always work, independently of the keymap, by sending `KeyboardKey.Reset` themselves.
 
 ### 10.2 Debugger REPL
 
@@ -414,11 +418,12 @@ The window maps Avalonia `Key` to `HostKey` using the correspondences in §12 (i
 - `keyboard press <chord>` accepts chords such as `shift+1`, `ctrl+c`, `ctrl+reset`, `return` and `open-apple`. It does key down, holds for the default hold time, then key up.
 - `keyboard press $8D` stays available as a debugging convenience. It maps the code back to a keystroke with `TryGetKeystroke` and fails clearly if there is none.
 - `keyboard read` is unchanged.
-- `reset` (#369) uses `KeyDown(HostKey.Reset, modifiers)` and `KeyUp(HostKey.Reset, modifiers)`, with Control and the Apple keys in the snapshot, instead of device methods.
+- `reset` (#369) uses `KeyDown(KeyboardKey.Reset, modifiers)` and `KeyUp(KeyboardKey.Reset, modifiers)`, with Control and the Apple keys in the snapshot, instead of device methods.
+- `keymap show|load|save|set|unset|reset` views and edits the resolved JSON keymap (§12.6).
 
 ### 10.3 MCP / agent host (#333, #337)
 
-The agent tools are `keyboard.type(text, options)`, `keyboard.press(chord)` and `keyboard.key(down|up, key, modifiers)`. They are thin wrappers over `IKeyboardInput`. A headless runner presses Reset the same way as any other key: `KeyDown(HostKey.Reset, modifiers)`. Because the agent normally drives a paused or `run-until` machine, input lands at known cycles (§7.5). The journal is exported with snapshots (#339) for reproducible sessions.
+The agent tools are `keyboard.type(text, options)`, `keyboard.press(chord)` and `keyboard.key(down|up, key, modifiers)`. They are thin wrappers over `IKeyboardInput`. A headless runner presses Reset the same way as any other key: `KeyDown(KeyboardKey.Reset, modifiers)`. Because the agent normally drives a paused or `run-until` machine, input lands at known cycles (§7.5). The journal is exported with snapshots (#339) for reproducible sessions.
 
 ### 10.4 Reset (#330, #369)
 
@@ -430,7 +435,7 @@ When RESET asserts, the device clears the strobe and cancels typing. The input l
 
 ## 11. `IKeyTranslator` and layouts
 
-- `IKeyTranslator.Translate(HostKey, KeyboardModifiers) -> byte?` is a building block for keyboards that output **one code per keystroke** (the IIe and IIc). It is not a cross-machine contract. ADB and the 65832 machine do not use it.
+- `IKeyTranslator.Translate(KeyboardKey, KeyboardModifiers) -> byte?` is a building block for keyboards that output **one code per keystroke** (the IIe and IIc). It is not a cross-machine contract. ADB and the 65832 machine do not use it.
 - Implementations are stateless and shareable.
 - **Layouts** are C# code tables (or separate translator classes), selected in the profile: `AppleIIeKeyTranslator` (US QWERTY) and, later, `AppleIIeDvorakTranslator`. The keyboard ROM is emulated in those tables. We will not ship keyboard ROM images. A ROM-image-driven translator is out of scope unless a real need appears later. Sather Table 7.2 documents the 2K IIe keyboard ROM layout (matrix position XY maps to ROM address `XY × 4` plus the mode and set bits) and is the reference for building the C# tables [Sather ch. 7].
 
@@ -454,10 +459,7 @@ This extends the existing `motherboard[].config` for the keyboard. Existing keys
     "autoRepeat": true,                // existing key; enables §8.1.4
     "shiftKeyMod": false,              // IIe X6 jumper: Shift on PB2. Default off (stock IIe).
     "strobeDebounceMs": 0,             // 0 = immediate; 10 ≈ AY-3600 bounce mask (Q4)
-    "bindings": {                      // host bindings used by VideoWindow; overridable data
-      "reset": "F12",                  // maps the host chord to HostKey.Reset; IIe/IIc default shown; IIgs default is Ctrl+Alt+F12. See §12.
-      "coldReset": "Ctrl+F12"          // cold-reset machine action, not a HostKey; IIe/IIc default shown; IIgs default is Ctrl+Alt+Shift+F12.
-    },
+    "keymap": "avalonia-default",      // name or path of the JSON host keymap (§12). IIe/IIc default shown; IIgs default is avalonia-iigs.
     "typeText": {                      // defaults for TypeText on this machine
       "holdMs": 50,
       "gapMs": 10,
@@ -469,59 +471,212 @@ This extends the existing `motherboard[].config` for the keyboard. Existing keys
 }
 ```
 
-For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position. On the unenhanced `pocket2e-a2` profile, `typeText.forceUppercase` defaults to true; every other profile leaves it false. IIe profiles default `capsLockMode` to `hardware`. The `bindings` values in the sketch are the IIe/IIc defaults; IIgs profiles use the IIgs defaults in §12. All of those binding defaults are provisional and can be overridden in this block without a code change.
+For the IIc, `"model": "apple-iic"` also accepts `"columns80Switch": "up" | "down"`, the initial 80/40 switch position. On the unenhanced `pocket2e-a2` profile, `typeText.forceUppercase` defaults to true; every other profile leaves it false. IIe profiles default `capsLockMode` to `hardware`. IIe and IIc profiles default `keymap` to `avalonia-default`; IIgs profiles default it to `avalonia-iigs`. Reset and cold-reset chords live in the keymap, not in a `bindings` block. Those keymap defaults are provisional and can be overridden by a different `keymap` name or path, or by a user overlay, without a code change.
 
-## 12. Host key bindings
+## 12. Host keymap
 
-The app host maps physical host keys to `HostKey`. The tables in this section are host-side correspondences and profile bindings, not translator rules.
+The mapping from physical host keys to `KeyboardKey` plus `KeyboardModifiers` lives in a JSON keymap file, not in code (Josh, 2026-11-10). Host key names are the Avalonia `Key` enum names for the Avalonia host, plus an optional physical-key or scan-code field when a `Key` name is not enough to tell two keys apart. The REPL and the eventual UI can load, modify and save the same files. The tables and excerpts in this section are the contents of those files, not translator rules and not a switch statement in `VideoWindow`.
 
-### 12.0 Default host-to-`HostKey` map
+### 12.1 File format
 
-These are the usual mappings a host (a PC or Mac keyboard, a headless API, the REPL) applies. A host may offer a way to change them later; they are not the Reset profile bindings in §12.1 and §12.2.
+Each keymap is a JSON document that validates against `schemas/host-keymap.schema.json`.
 
-| Host input | `HostKey` | Notes |
+```jsonc
+{
+  "$schema": "./schemas/host-keymap.schema.json",
+  "version": 1,
+  "name": "avalonia-default",
+  "inherits": null,          // optional name of a base keymap; omitted or null means none
+  "mappings": [
+    { "hostKey": "A", "key": "A" },
+    { "hostKey": "Insert", "key": "Help" },
+    { "hostKey": "F12", "key": "Reset", "modifiers": "Control" },
+    { "hostKey": "F12", "hostModifiers": "Control", "action": "coldReset" }
+  ]
+}
+```
+
+| Field | Required | Meaning |
 |---|---|---|
-| Letters, digits, punctuation | The matching letter, `D0`–`D9`, or punctuation member | US-layout legends. |
-| F1–F15 | `F1`–`F15` | Unless a profile Reset binding consumes the key (§12.1, §12.2). |
-| Print Screen, Scroll Lock, Pause | `F13`, `F14`, `F15` | Same cluster as F13–F15 on the Extended Keyboard II [MacHW Figure 8-10]. |
-| Left / Right Alt | `LeftOption` / `RightOption` | Default Apple-key snapshot: Left Option → Open Apple, Right Option → Closed Apple. On the IIgs, Option. |
-| Left / Right GUI (Windows, Command) | `LeftCommand` / `RightCommand` | On the IIgs, Command. The default IIe/IIc host binding does not also treat these as Apple keys. |
-| PC Backspace / Mac Delete | `Backspace` | IIe `$08`. |
-| PC Delete / Mac Forward Delete | `ForwardDelete` | IIe `$7F`. |
-| Insert | `Help` | Help sits where PC Insert is on the Extended Keyboard II. |
+| `$schema` | no | JSON Schema id, pointing at `schemas/host-keymap.schema.json`. |
+| `version` | yes | Format version. The current version is `1`. A newer loader must reject an unknown version with a clear error. |
+| `name` | yes | Stable name used for resolution and for `inherits`. |
+| `inherits` | no | Name of a base keymap whose mappings this one starts from. A child entry with the same `hostKey` and `hostModifiers` replaces the inherited one. A child entry may set `"unset": true` to remove an inherited mapping. |
+| `mappings` | yes | Array of entries, each either a key mapping or a machine-action mapping. |
+
+Each mapping entry:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `hostKey` | yes | Host key name. In `avalonia-*.json` this is an Avalonia `Key` name (`A`, `D1`, `OemPlus`, `Back`, `Delete`, `LeftAlt`, `LWin`, `F12`, `PrintScreen`, `Pause`, …). Unknown names are a validation error. |
+| `hostPhysicalKey` / `hostScanCode` | no | Optional extra identity when the Avalonia `Key` name is ambiguous. When present, a match requires both the name and this field. |
+| `hostModifiers` | no | Host modifiers that must be down for this entry to apply. A plus-separated list of `Shift`, `Control`, `Alt`, `Meta` (Windows / Command / GUI). Omitted or `"None"` means no extra host modifiers are required. |
+| `key` | one of `key` or `action` | The `KeyboardKey` this host key maps to (`A`, `Reset`, `ForwardDelete`, `LeftOption`, …). |
+| `modifiers` | no | Extra `KeyboardModifiers` to merge into the snapshot sent with the `KeyboardKey` (for example `"Control"` so F12 still resets when `requireControlForReset` is on). The live host snapshot (Shift, Option as Open/Closed Apple, Caps Lock, and so on) is still applied. |
+| `action` | one of `key` or `action` | A machine action, not a `KeyboardKey`. The only defined action in v1 is `coldReset`. An action entry does not also assert `KeyboardKey.Reset`. |
+| `unset` | no | When `true`, removes the inherited mapping for this `hostKey` + `hostModifiers`. Cannot be combined with `key` or `action`. |
+
+Matching: an entry applies when its `hostKey` (and optional physical/scan field) matches and every modifier in `hostModifiers` is down. If several entries match, the one with the most `hostModifiers` wins. A matching entry consumes the host key: it is not also delivered as any less-specific or default `KeyboardKey` for that host key. Conflicts that cannot be resolved this way (two entries with the same `hostKey`, `hostModifiers` and specificity, or an entry that sets both `key` and `action`) are validation errors, as are duplicate entries and unknown `key`, `action`, `hostKey` or modifier names.
+
+### 12.2 Built-in `avalonia-default.json`
+
+`avalonia-default.json` is the built-in keymap for the Avalonia host on IIe and IIc profiles. Its mappings are the default host-to-`KeyboardKey` correspondences:
+
+| Host input (Avalonia `Key`) | `KeyboardKey` | Notes |
+|---|---|---|
+| Letters, digits, punctuation | The matching letter, `D0`–`D9`, or punctuation member | US-layout legends. Avalonia names such as `OemPlus` → `Equals`, `OemTilde` → `Backtick`. |
+| F1–F15 | `F1`–`F15` | Unless a Reset or cold-reset mapping consumes the key (§12.3). |
+| `PrintScreen`, `Scroll`, `Pause` | `F13`, `F14`, `F15` | Same cluster as F13–F15 on the Extended Keyboard II [MacHW Figure 8-10]. |
+| `LeftAlt` / `RightAlt` | `LeftOption` / `RightOption` | Default Apple-key snapshot: Left Option → Open Apple, Right Option → Closed Apple. On the IIgs, Option. |
+| `LWin` / `RWin` (Windows, Command) | `LeftCommand` / `RightCommand` | On the IIgs, Command. The default IIe/IIc keymap does not also treat these as Apple keys. |
+| `Back` (PC Backspace / Mac Delete) | `Backspace` | IIe `$08`. |
+| `Delete` (PC Delete / Mac Forward Delete) | `ForwardDelete` | IIe `$7F`. |
+| `Insert` | `Help` | Help sits where PC Insert is on the Extended Keyboard II. |
 | Home, End, Page Up, Page Down, arrows | The matching member | |
 | Keypad keys | The matching `Keypad*` member | |
 | Host power key, if any | `Power` | |
-| (no modern Reset key) | `Reset` | Only via a profile binding (§12.1, §12.2) or an explicit API call (headless, REPL, MCP, menu). |
+| (no modern Reset key) | `Reset` | Only via a keymap entry (§12.3) or an explicit API call (headless, REPL, MCP, menu). |
 
-Reset and cold-reset host chords are **per-profile settings** (`config.bindings.reset` and `config.bindings.coldReset`). Each machine family has its own defaults, in the tables below. **These defaults are provisional and subject to change.** A profile overrides them by setting the `bindings` block. A binding is just data: changing a default later does not require a code change. Tests must read the bindings from the profile rather than hard-coding F12 or any other chord.
+Reset and cold-reset entries that this file also contains are in §12.3.
 
-The Reset binding maps the host chord to `HostKey.Reset` with the modifiers the binding specifies. The cold-reset binding invokes the cold-reset machine action; it is not a `HostKey` and does not also assert `HostKey.Reset`. When a binding consumes a host key, that key is not also delivered as its ordinary `HostKey`. The menu command and the REPL `reset` command always work, including `reset --open-apple` and `reset --closed-apple` (#369), by sending `HostKey.Reset` themselves, regardless of the host binding.
+Short excerpt (illustrative, not the complete file):
 
-### 12.1 IIe and IIc defaults
+```json
+{
+  "$schema": "./schemas/host-keymap.schema.json",
+  "version": 1,
+  "name": "avalonia-default",
+  "mappings": [
+    { "hostKey": "A", "key": "A" },
+    { "hostKey": "D1", "key": "D1" },
+    { "hostKey": "OemPlus", "key": "Equals" },
+    { "hostKey": "OemTilde", "key": "Backtick" },
+    { "hostKey": "Back", "key": "Backspace" },
+    { "hostKey": "Delete", "key": "ForwardDelete" },
+    { "hostKey": "Insert", "key": "Help" },
+    { "hostKey": "LeftAlt", "key": "LeftOption" },
+    { "hostKey": "RightAlt", "key": "RightOption" },
+    { "hostKey": "LWin", "key": "LeftCommand" },
+    { "hostKey": "RWin", "key": "RightCommand" },
+    { "hostKey": "PrintScreen", "key": "F13" },
+    { "hostKey": "Scroll", "key": "F14" },
+    { "hostKey": "Pause", "key": "F15" },
+    { "hostKey": "F12", "key": "Reset", "modifiers": "Control" },
+    { "hostKey": "F12", "hostModifiers": "Control", "action": "coldReset" }
+  ]
+}
+```
 
-These continue the earlier decision in [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). They apply only to IIe and IIc profiles. The IIe and IIc have no function keys, so using F12 does not hide a machine key.
+Letters, digits, F1–F11, arrows, the navigation cluster and the keypad follow the same pattern (`"hostKey": "F1", "key": "F1"`, and so on) and are omitted here for brevity. The complete built-in file is the source of truth and is tested for load and round-trip (§12.7, §13).
 
-| Host input | Default binding | Notes |
+### 12.3 Reset and cold-reset mappings
+
+Reset and cold-reset host chords are **keymap entries**, not code and not a `bindings` block in the profile. Each machine family has its own built-in keymap (or a built-in that `inherits` from another) with its own defaults. **These defaults are provisional and subject to change.** Changing a default later means editing the built-in keymap (and any user overlay), not a code change. Tests must resolve the keymap rather than hard-coding F12 or any other chord.
+
+The Reset mapping sends `KeyboardKey.Reset` with the modifiers the entry specifies. The cold-reset mapping is an `action` of `coldReset`. The menu command and the REPL `reset` command always work, including `reset --open-apple` and `reset --closed-apple` (#369), by sending `KeyboardKey.Reset` themselves, regardless of the keymap.
+
+#### 12.3.1 IIe and IIc: `avalonia-default.json`
+
+These continue the earlier decision in [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). They apply to IIe and IIc profiles, which use `avalonia-default`. The IIe and IIc have no function keys, so using F12 does not hide a machine key.
+
+| Host input | Default mapping | Notes |
 |---|---|---|
-| Reset | F12 | Host-side binding: the host F12 key is mapped to `HostKey.Reset`, not to `HostKey.F12`, with Control implied in the modifier snapshot, so `requireControlForReset` does not block the shortcut. Left Alt+F12 holds Open Apple (IIe reboot / forced cold start). Right Alt+F12 holds Closed Apple (IIe self-test). |
-| Cold reset | Ctrl+F12 | The cold-reset machine action. It is not a `HostKey` and does not also assert `HostKey.Reset`. |
+| F12 | `key: Reset`, `modifiers: Control` | The host F12 key is mapped to `KeyboardKey.Reset`, not to `KeyboardKey.F12`, with Control implied, so `requireControlForReset` does not block the shortcut. Left Alt+F12 holds Open Apple (IIe reboot / forced cold start). Right Alt+F12 holds Closed Apple (IIe self-test). |
+| Ctrl+F12 | `action: coldReset` | The cold-reset machine action. It is not a `KeyboardKey` and does not also assert `KeyboardKey.Reset`. |
 
-### 12.2 IIgs defaults
+#### 12.3.2 IIgs: `avalonia-iigs.json`
 
-On the IIgs, every host function key must reach the emulated machine as an ADB key (§8.3). F12 is a real key on the Extended Keyboard and Extended Keyboard II [MacHW Figure 8-10], and software can read it [Empson-94], so F12 is **not** the Reset default on this profile. Host Print Screen, Scroll Lock and Pause are mapped to F13, F14 and F15 and also pass through.
+`avalonia-iigs.json` is a built-in keymap that `inherits` from `avalonia-default` and overrides the F12 / Ctrl+F12 entries so every host function key reaches the emulated machine as an ADB key (§8.3). F12 is a real key on the Extended Keyboard and Extended Keyboard II [MacHW Figure 8-10], and software can read it [Empson-94], so F12 is **not** the Reset default on this keymap. Host Print Screen, Scroll Lock and Pause stay mapped to F13, F14 and F15 and also pass through.
 
-| Host input | Default binding | Notes |
+```json
+{
+  "$schema": "./schemas/host-keymap.schema.json",
+  "version": 1,
+  "name": "avalonia-iigs",
+  "inherits": "avalonia-default",
+  "mappings": [
+    { "hostKey": "F12", "key": "F12" },
+    { "hostKey": "F12", "hostModifiers": "Control", "unset": true },
+    { "hostKey": "F12", "hostModifiers": "Control+Alt", "key": "Reset", "modifiers": "Control" },
+    { "hostKey": "F12", "hostModifiers": "Control+Alt+Shift", "action": "coldReset" }
+  ]
+}
+```
+
+| Host input | Default mapping | Notes |
 |---|---|---|
-| F1–F15 | The matching `HostKey` (`F1`–`F15`) and ADB function key | Pass through. `F12` is `HostKey.F12` on this profile. |
-| Print Screen, Scroll Lock, Pause | `F13`, `F14`, `F15` | Same cluster as F13–F15 on the Extended Keyboard (§8.3, §12.0). |
-| Reset | Ctrl+Alt+F12 | Host-side binding: the whole chord is consumed and mapped to `HostKey.Reset` with Control implied (a warm Control-Reset [TIL-2061]). This is not a single ADB key, so it does not collide with `HostKey.F12` or any other function key. |
-| Cold reset | Ctrl+Alt+Shift+F12 | The cold-reset machine action. It is not a `HostKey`, it does not also assert `HostKey.Reset`, and it does not collide with a single ADB key. |
-| IIgs Control-Command-Reset / self-test / Control Panel | Menu or REPL | Use `reset --open-apple` (Control-Command-Reset cold start [HWR-gs Table 6-3; TIL-2061]), `reset --open-apple --closed-apple` (self-test, following [TN-95]), or the documented Option-Control-Reset Control Panel path when that action exists. Additional host chords may be added later as more `bindings` entries; they are data. |
+| F1–F15 | The matching `KeyboardKey` (`F1`–`F15`) and ADB function key | Pass through. `F12` is `KeyboardKey.F12` on this keymap. |
+| Print Screen, Scroll Lock, Pause | `F13`, `F14`, `F15` | Inherited from `avalonia-default` (§12.2). |
+| Ctrl+Alt+F12 | `key: Reset`, `modifiers: Control` | The whole chord is consumed and mapped to `KeyboardKey.Reset` with Control implied (a warm Control-Reset [TIL-2061]). This is not a single ADB key, so it does not collide with `KeyboardKey.F12` or any other function key. |
+| Ctrl+Alt+Shift+F12 | `action: coldReset` | The cold-reset machine action. It is not a `KeyboardKey`, it does not also assert `KeyboardKey.Reset`, and it does not collide with a single ADB key. |
+| IIgs Control-Command-Reset / self-test / Control Panel | Menu or REPL | Use `reset --open-apple` (Control-Command-Reset cold start [HWR-gs Table 6-3; TIL-2061]), `reset --open-apple --closed-apple` (self-test, following [TN-95]), or the documented Option-Control-Reset Control Panel path when that action exists. Additional host chords may be added later as more keymap entries; they are data. |
+
+### 12.4 Where keymaps live and how they resolve
+
+- **Built-in defaults** are shipped as embedded resources, one per host, plus per-machine-family overrides where needed: `avalonia-default.json` (Avalonia host, IIe/IIc Reset chords) and `avalonia-iigs.json` (same host, F1–F15 pass-through and the IIgs Reset chords). Other hosts can add their own built-ins later (for example a headless or terminal host) without changing the format.
+- **User overrides** live in the user config directory, alongside the existing settings and profiles: `~/.backpocket/keymaps/<name>.json` (for example `~/.backpocket/keymaps/avalonia-default.json`).
+- **The profile** references a keymap by name or path in its keyboard `config.keymap` field (§11.1). IIe and IIc profiles default to `avalonia-default`. IIgs profiles default to `avalonia-iigs`. A path is taken as a profile-supplied keymap file.
+- **Resolution order is user, then profile, then built-in.** `HostKeymap.Resolve` loads the name or path from the profile (or the host built-in if the profile omits it), walks `inherits` through built-in resources (and files), then overlays the user file for that name if one exists. The user file wins on any (`hostKey`, `hostModifiers`) conflict. A user file may also set `inherits` to the built-in of the same name and list only its overrides.
+
+### 12.5 `IHostKeymap` / `HostKeymap`
+
+`IHostKeymap` and `HostKeymap` live in a host-neutral assembly that can already see `KeyboardKey` (start in `BadMango.Emulator.Devices`, or a small dedicated project if that becomes too heavy). They must not reference Avalonia. The Avalonia adapter — which turns an Avalonia `Key`, and when useful a physical key or scan code, into the `hostKey` / `hostPhysicalKey` / `hostScanCode` strings the JSON uses — lives in the UI project (`BadMango.Emulator.Debug.UI`).
+
+```csharp
+public interface IHostKeymap
+{
+    string Name { get; }
+    int Version { get; }
+
+    bool TryMap(
+        string hostKey,
+        HostModifiers hostMods,
+        out KeyboardKey key,
+        out KeyboardModifiers modifiers);
+
+    bool TryMapAction(
+        string hostKey,
+        HostModifiers hostMods,
+        out string action);
+}
+
+public sealed class HostKeymap : IHostKeymap
+{
+    public static HostKeymap Load(string path);
+    public static HostKeymap LoadBuiltIn(string name);
+    public static HostKeymap Resolve(string nameOrPath, HostKeymapSources sources);
+    public void Save(string path);
+    public IReadOnlyList<KeymapValidationError> Validate();
+    // TryMap / TryMapAction as on the interface
+}
+```
+
+`TryMap` is the lookup used for ordinary keys and for Reset. It returns false when the matching entry is an action (or when nothing matches). `TryMapAction` is the lookup for machine actions such as `coldReset`; it returns false when the matching entry is a key mapping. Both apply the most-specific `hostModifiers` rule in §12.1. `HostKeymapSources` describes the built-in resource set, the user config directory, and an optional profile path. `Load` / `Save` read and write JSON. `Resolve` applies the resolution order in §12.4. `Validate` reports unknown key or modifier names, unknown versions, unknown `inherits` targets, duplicates, and conflicts, each as a `KeymapValidationError` with a clear message (file, entry, and reason). An invalid file fails to load; it is not silently ignored.
+
+`HostModifiers` is a host-side flags type (`Shift`, `Control`, `Alt`, `Meta`), distinct from `KeyboardModifiers`. The Avalonia adapter fills it from the host event before calling `TryMap`.
+
+### 12.6 REPL commands
+
+The debugger REPL gains a `keymap` command that operates on the resolved keymap for the current machine (or a named file):
+
+| Command | Effect |
+|---|---|
+| `keymap show` | Prints the resolved name, the inheritance chain, and every mapping (host chord → `KeyboardKey` plus modifiers, or action). |
+| `keymap load <name-or-path>` | Loads a built-in, a user file, or a path, and makes it the effective keymap (still overlaid by a user file of the same name, unless the path is the user file itself). |
+| `keymap save [path]` | Writes the current keymap to `~/.backpocket/keymaps/<name>.json`, or to `path` if given. |
+| `keymap set <host-chord> <KeyboardKey> [modifiers]` | Adds or replaces a key mapping (example: `keymap set F12 Reset Control`). |
+| `keymap set <host-chord> action:<name>` | Adds or replaces an action mapping (example: `keymap set Ctrl+F12 action:coldReset`). |
+| `keymap unset <host-chord>` | Removes a mapping, so the inherited or built-in entry (if any) shows through. |
+| `keymap reset` | Discards the user overlay for this name and reloads the built-in (and profile) keymap. |
+
+### 12.7 Validation and testing
+
+Every built-in keymap must load and round-trip: `Load` then `Save` then `Load` yields an equivalent keymap (same `name`, `version`, `inherits`, and mappings, ignoring insignificant JSON whitespace and property order). Unknown `hostKey`, `key`, `action`, modifier, or `version` values fail with a clear `KeymapValidationError`; they must not load. Duplicate and conflicting entries fail the same way. Hot reload of a keymap that changes on disk while the emulator is running is optional and is left for later.
+
 
 ## 13. Testing strategy
 
-1. **Translator table tests** (exist for the IIe since #375). For every `HostKey` × {Shift, Caps Lock, Control} × Apple-key combination, they check the expected code or `null`. That includes the expanded members (F1–F15, the navigation cluster, the keypad, Help, Forward Delete, Command, Reset, Power, and so on). A coverage test fails if a `HostKey` is added without a decision. Unmapped keys, including `Reset` and `Power` on the IIe translator, return `null`. Each new layout or model gets its own table.
+1. **Translator table tests** (exist for the IIe since #375). For every `KeyboardKey` × {Shift, Caps Lock, Control} × Apple-key combination, they check the expected code or `null`. That includes the expanded members (F1–F15, the navigation cluster, the keypad, Help, Forward Delete, Command, Reset, Power, and so on). A coverage test fails if a `KeyboardKey` is added without a decision. Unmapped keys, including `Reset` and `Power` on the IIe translator, return `null`. Each new layout or model gets its own table.
 2. **`KeyboardInput` unit tests** use a fake scheduler and dispatcher. They cover:
    - FIFO order across threads
    - nothing applied off the machine thread
@@ -538,26 +693,28 @@ On the IIgs, every host function key must reach the emulated machine as an ADB k
    - Apple keys held
    - type-ahead kept while the program isn't reading
    - auto-repeat count over a held key (once implemented)
-   - a headless machine pressing `HostKey.Reset` with Control asserts the RESET signal; with no Control and `requireControlForReset` true, nothing is asserted and no strobe fires
+   - a headless machine pressing `KeyboardKey.Reset` with Control asserts the RESET signal; with no Control and `requireControlForReset` true, nothing is asserted and no strobe fires
 4. **Golden traces.** A fixed `TypeText` script runs on a fixed profile and initial state. The trace records `(cycle, $C000, AKD, PB0–PB2, RESET)` at each keyboard state change and is compared with a checked-in golden file. A determinism test replays the journal and asserts an identical trace.
 5. **Multi-machine test.** Two machines run in one process, input goes to one, and the other is unaffected.
 6. **Flake guard.** The `TypeText` end-to-end tests run in a loop (20 or more times) in CI or before merge.
+7. **Host keymap tests.** Every built-in keymap (`avalonia-default.json`, `avalonia-iigs.json`) loads and round-trips through `Save`/`Load`. A user overlay in `~/.backpocket/keymaps/` wins over the profile and the built-in for the same (`hostKey`, `hostModifiers`). An unknown `hostKey`, `KeyboardKey`, action, or modifier is rejected with a clear `KeymapValidationError`. `VideoWindow` has no Avalonia-to-`KeyboardKey` switch; it goes through `IHostKeymap`. Reset and cold-reset chords come from the resolved keymap.
 
 ## 14. Migration plan
 
 Each step builds and tests green on its own (`dotnet build BackPocketEmulator.slnx -c Release -warnaserror` and `dotnet test`).
 
 1. **Done in #375.** Added a smaller `HostKey`, `IKeyTranslator`, `AppleIIeKeyTranslator`, and `IKeyboardDevice.Translator` (interim). `VideoWindow` maps to `HostKey`. `TypeString` runs on scheduler events, the strobe clear never starts a key, and the test suite was added.
-2. **Add the input layer and expand `HostKey`.** Expand `HostKey` to the set in §7.1 (F1–F15, navigation, keypad, Help, Forward Delete, Option, Command, Reset, Power), renaming #375's `Delete` to `ForwardDelete` and `LeftAlt` / `RightAlt` to `LeftOption` / `RightOption`. Update every translator table so each new member has an explicit decision (`null` on the IIe for keys the encoder does not produce, including Reset and Power). Add `IKeyboardInput`, `TypeTextOptions`, `TypeTextReceipt`, `IHostKeyboardSink`, `HostKeystroke`, the `InputEvent` journal types, and a `KeyboardInput` implementation. There is no separate Reset method: Reset arrives as `KeyDown(HostKey.Reset, modifiers)`. `KeyboardDevice` implements `IHostKeyboardSink` and routes `HostKey.Reset` to the RESET signal path. `MachineFactory` (or the builder) registers one `KeyboardInput` per machine whenever a keyboard sink exists.
+2. **Add the input layer, expand the enum, and rename it to `KeyboardKey`.** Expand #375's `HostKey` to the set in §7.1 (F1–F15, navigation, keypad, Help, Forward Delete, Option, Command, Reset, Power), rename the enum to `KeyboardKey`, and rename #375's `Delete` to `ForwardDelete` and `LeftAlt` / `RightAlt` to `LeftOption` / `RightOption`. Do not change #375 itself; do the expansion and rename here. Update every translator table so each new member has an explicit decision (`null` on the IIe for keys the encoder does not produce, including Reset and Power). Add `IKeyboardInput`, `TypeTextOptions`, `TypeTextReceipt`, `IHostKeyboardSink`, `HostKeystroke`, the `InputEvent` journal types, and a `KeyboardInput` implementation. There is no separate Reset method: Reset arrives as `KeyDown(KeyboardKey.Reset, modifiers)`. `KeyboardDevice` implements `IHostKeyboardSink` and routes `KeyboardKey.Reset` to the RESET signal path. `MachineFactory` (or the builder) registers one `KeyboardInput` per machine whenever a keyboard sink exists.
 3. **Move text typing.** Move `TypeString` logic into `KeyboardInput.TypeText`, using the profile clock rate instead of 1,020 cycles/ms. Delete `IKeyboardDevice.TypeString`, and update `KeyboardCommand type` and the tests in the same change.
-4. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`. Map Avalonia keys to the expanded `HostKey` (§12.0). Wire the Reset and cold-reset bindings from the profile (§12) as host-side maps to `HostKey.Reset` (with the implied modifiers) and to the cold-reset machine action, including the IIe/IIc Alt+F12 Open-Apple and Closed-Apple combinations when those defaults are in effect. Do not hard-code F12.
-5. **Move the REPL.** Switch `KeyboardCommand` (`press` chords, `type`) and `ResetCommand` to `IKeyboardInput`. `keyboard press ctrl+reset` and the `reset` command send `HostKey.Reset` with the appropriate modifiers.
-6. **Narrow `IKeyboardDevice`.** Remove `KeyDown(byte)`, `KeyUp()`, `SetModifiers`, `Translator`, `PressResetKey` and `ReleaseResetKey` from the public interface. `KeyDown(byte)`, `KeyUp()` and `SetModifiers` become sink methods (`OnHostKeyDown` / `OnHostKeyUp`). `PressResetKey` and `ReleaseResetKey` go away: Reset arrives as `OnHostKeyDown(HostKey.Reset, modifiers)`. Rename `KeyboardDevice` to `AppleIIeKeyboard`, keeping `[DeviceType("keyboard")]`.
-7. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode` (default **`hardware`** on IIe profiles), `requireControlForReset`, `autoRepeat`, `shiftKeyMod` (default **false**), the `typeText` defaults (including `forceUppercase`, true on `pocket2e-a2` only), and the `bindings` for Reset and cold reset (machine-specific defaults from §12; provisional). Update the profile JSON schema.
-8. **Add the journal and replay.** Add the input journal and `Replay`, the golden-trace test, the determinism test, and the multi-machine test.
-9. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode as the IIe default, with `pc-toggle` still selectable. **Behavior changes:** `shiftKeyMod` defaults to off, so Shift is no longer shown on PB2 unless a profile turns the option on; `capsLockMode` defaults to `hardware`, which changes today's Shift-XOR-Caps behavior in PR #375's `AppleIIeKeyTranslator`.
-10. **MCP tools** (with #337). Add `keyboard.type`, `keyboard.press` and `keyboard.key`.
-11. **Later epics:** `AppleIIcKeyboard` (§8.2), `AdbKeyboard` and `AdbController` (§8.3), the 65832 keyboard (§8.4), and later layouts such as Dvorak as C# tables (§11).
+4. **JSON host keymap.** Add `IHostKeymap` / `HostKeymap`, `schemas/host-keymap.schema.json`, and the built-in embedded resources `avalonia-default.json` and `avalonia-iigs.json`. Implement `Load`, `Save`, `Resolve` (user, then profile, then built-in), `TryMap`, `TryMapAction`, and validation (§12). Tests: every built-in loads and round-trips; a user overlay wins; an unknown name is rejected with a clear error. The Avalonia adapter lives in the UI project. Hot reload is out of scope.
+5. **Move `VideoWindow`.** Switch it to `IKeyboardInput` and remove its use of `IKeyboardDevice.Translator`, `KeyDown(byte)`, `KeyUp()` and `SetModifiers`. Remove the Avalonia `Key` switch / hard-coded table; the window uses the resolved keymap via the Avalonia adapter and `IHostKeymap.TryMap` / `TryMapAction` (§12). Reset and cold-reset come from the keymap, including the IIe/IIc Alt+F12 Open-Apple and Closed-Apple combinations when those defaults are in effect. Do not hard-code F12.
+6. **Move the REPL.** Switch `KeyboardCommand` (`press` chords, `type`) and `ResetCommand` to `IKeyboardInput`. `keyboard press ctrl+reset` and the `reset` command send `KeyboardKey.Reset` with the appropriate modifiers. Add `keymap show|load|save|set|unset|reset` (§12.6).
+7. **Narrow `IKeyboardDevice`.** Remove `KeyDown(byte)`, `KeyUp()`, `SetModifiers`, `Translator`, `PressResetKey` and `ReleaseResetKey` from the public interface. `KeyDown(byte)`, `KeyUp()` and `SetModifiers` become sink methods (`OnHostKeyDown` / `OnHostKeyUp`). `PressResetKey` and `ReleaseResetKey` go away: Reset arrives as `OnHostKeyDown(KeyboardKey.Reset, modifiers)`. Rename `KeyboardDevice` to `AppleIIeKeyboard`, keeping `[DeviceType("keyboard")]`.
+8. **Read the profile config.** Parse the keyboard config from §11.1: `capsLockMode` (default **`hardware`** on IIe profiles), `requireControlForReset`, `autoRepeat`, `shiftKeyMod` (default **false**), the `typeText` defaults (including `forceUppercase`, true on `pocket2e-a2` only), and `keymap` (name or path; IIe/IIc default `avalonia-default`; IIgs default `avalonia-iigs`). There is no `bindings` block; Reset and cold-reset chords live in the keymap. Update the profile JSON schema.
+9. **Add the journal and replay.** Add the input journal and `Replay`, the golden-trace test, the determinism test, and the multi-machine test.
+10. **IIe fidelity.** Add auto-repeat (§8.1.4), ASCII in the `$C010` low bits, strobe clear on writes to `$C010`–`$C01F` (check the overlap with the IOU/MMU `$C00x`/`$C01x` handlers first), AKD with multiple held keys, PB2 gated by `shiftKeyMod`, and the `hardware` Caps Lock mode as the IIe default, with `pc-toggle` still selectable. **Behavior changes:** `shiftKeyMod` defaults to off, so Shift is no longer shown on PB2 unless a profile turns the option on; `capsLockMode` defaults to `hardware`, which changes today's Shift-XOR-Caps behavior in PR #375's `AppleIIeKeyTranslator`.
+11. **MCP tools** (with #337). Add `keyboard.type`, `keyboard.press` and `keyboard.key`.
+12. **Later epics:** `AppleIIcKeyboard` (§8.2), `AdbKeyboard` and `AdbController` (§8.3), the 65832 keyboard (§8.4), and later layouts such as Dvorak as C# tables (§11).
 
 ## 15. Corrections to `specs/Keyboard Mapping Specification.md`
 
@@ -582,8 +739,9 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 |---|---|---|
 | Q1 | **IIe profiles default to `hardware` Caps Lock, configurable.** With Caps Lock down, letters are uppercase whether or not Shift is held, matching a real IIe [Sather ch. 7]. `pc-toggle` (Shift XOR Caps Lock, today's PR #375 behavior) remains a per-profile option. | This is a behavior change from the current translator. The default flips when the implementation of this spec lands; #375 is left as `pc-toggle`. |
 | Q5 | **Shift-key mod defaults to off.** PB2 does not show Shift unless the profile sets `shiftKeyMod` to true. | Matches a stock IIe with no X6 jumper [TRM-e ch. 2]. This is a behavior change: today's device always reports Shift on PB2. |
-| Q8 | **Reset and cold-reset bindings are per-profile settings with machine-specific defaults, and those defaults are provisional (subject to change).** The bindings are host-side maps: they produce `HostKey.Reset` with the specified modifiers, or invoke the cold-reset machine action. They are not a separate Reset input, and F12 remains an ordinary `HostKey`. IIe and IIc profiles keep F12 as Reset (Control implied) and Ctrl+F12 as cold reset, with Alt modifiers as Open Apple / Closed Apple. IIgs profiles pass every host function key (F1–F15, plus Print Screen / Scroll Lock / Pause as F13–F15) through as an ADB key, and default Reset to Ctrl+Alt+F12 and cold reset to Ctrl+Alt+Shift+F12, chords that do not collide with any single ADB key. The menu command and the REPL `reset` command always work, by sending `HostKey.Reset`. A profile overrides the bindings in its `bindings` block; a binding is just data, so changing a default later does not require a code change. | IIe/IIc F12 defaults come from [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). IIgs F-key pass-through is required because the Extended Keyboard and Extended Keyboard II have F1–F15 as ordinary ADB keys [MacHW Figure 8-10; TIL-112; Empson-94]. Refined (Josh, 2026-11-10) so Reset is itself a `HostKey`; see the HostKey row below. |
-| HostKey | **`HostKey` is a complete, host-neutral key abstraction modeled on the Apple Extended Keyboard II (M3501), including Reset and Power.** The app host maps physical keys to `HostKey`. The core never sees host key types. Each keyboard device interprets `HostKey`. Reset is a `HostKey` so a headless instance can press it. IIe and IIc devices route `HostKey.Reset` to the RESET signal path, not the encoder (no strobe, no AKD, `requireControlForReset` still applies). The IIgs routes it the same way (the ADB Reset key). Power is ignored or reserved on machines that have no power key. Cold reset stays a machine action, not a key. Every `HostKey` needs an explicit translator decision, enforced by a test; unmapped keys return `null`. | Josh, 2026-11-10. Reference: [MacHW] Figure 8-10. The #375 enum is the starting subset; the implementation issue (#388) expands it and renames `Delete` → `ForwardDelete` and `LeftAlt` / `RightAlt` → `LeftOption` / `RightOption`. |
+| Q8 | **Reset and cold-reset chords are JSON keymap entries with machine-specific defaults, and those defaults are provisional (subject to change).** They produce `KeyboardKey.Reset` with the specified modifiers, or invoke the cold-reset machine action (`action: coldReset`). They are not a separate Reset input, and F12 remains an ordinary `KeyboardKey`. IIe and IIc profiles use `avalonia-default.json`, which maps F12 to Reset (Control implied) and Ctrl+F12 to cold reset, with Alt modifiers as Open Apple / Closed Apple. IIgs profiles use `avalonia-iigs.json`, which inherits from that file, passes every host function key (F1–F15, plus Print Screen / Scroll Lock / Pause as F13–F15) through as an ADB key, and default Reset to Ctrl+Alt+F12 and cold reset to Ctrl+Alt+Shift+F12, chords that do not collide with any single ADB key. The menu command and the REPL `reset` command always work, by sending `KeyboardKey.Reset`. A profile selects a keymap by name or path; a user overlay wins over the profile and the built-in. Changing a default later means editing the keymap, not a code change. | IIe/IIc F12 defaults come from [`specs/Keyboard Mapping Specification.md`](./specs/Keyboard%20Mapping%20Specification.md). IIgs F-key pass-through is required because the Extended Keyboard and Extended Keyboard II have F1–F15 as ordinary ADB keys [MacHW Figure 8-10; TIL-112; Empson-94]. Refined (Josh, 2026-11-10) so Reset is itself a `KeyboardKey`, and again so the host mapping lives in a JSON keymap; see the KeyboardKey and Host keymap rows below. |
+| KeyboardKey | **`KeyboardKey` is the shared key set that all input sources produce and all keyboard devices consume, not the host's keys.** It is modeled on the Apple Extended Keyboard II (M3501), including Reset and Power. The app host maps physical host keys to `KeyboardKey` through a JSON keymap (§12). The core never sees host key types. Each keyboard device interprets `KeyboardKey`. Reset is a `KeyboardKey` so a headless instance can press it. IIe and IIc devices route `KeyboardKey.Reset` to the RESET signal path, not the encoder (no strobe, no AKD, `requireControlForReset` still applies). The IIgs routes it the same way (the ADB Reset key). Power is ignored or reserved on machines that have no power key. Cold reset stays a machine action, not a key. Every `KeyboardKey` needs an explicit translator decision, enforced by a test; unmapped keys return `null`. The modifiers type is `KeyboardModifiers`. | Josh, 2026-11-10. Reference: [MacHW] Figure 8-10. Renamed from #375's `HostKey` (Josh, 2026-11-10) because that name no longer fits. The implementation issue (#388) expands the enum, renames it, and renames `Delete` → `ForwardDelete` and `LeftAlt` / `RightAlt` → `LeftOption` / `RightOption`. Do not change #375 itself. |
+| Host keymap | **The mapping from physical host keys to `KeyboardKey` plus `KeyboardModifiers` lives in a JSON keymap file, not in code.** The file has `$schema` / `version`, a `name`, optional `inherits`, and `mappings` from a host key plus host modifiers to a `KeyboardKey` plus modifiers, or to a machine action (`coldReset`). Built-in defaults are embedded resources per host (`avalonia-default.json`) and per machine family where needed (`avalonia-iigs.json`). User overrides live in `~/.backpocket/keymaps/`. The profile's keyboard section references a keymap by name or path. Resolution order is user, then profile, then built-in. `IHostKeymap` / `HostKeymap` (`Load` / `Save` / `Resolve`, `TryMap`, `TryMapAction`, validation) live in a host-neutral assembly; the Avalonia adapter lives in the UI project. The REPL exposes `keymap show`, `load`, `save`, `set`, `unset` and `reset`. Every built-in keymap must load and round-trip; unknown names fail with a clear error. Hot reload is later. The REPL and the eventual UI can load, modify and save the same files. | Josh, 2026-11-10. See §12. |
 | Q9 | **We will not ship keyboard ROM images.** The keyboard ROM is emulated in C# code tables. A ROM-image-driven translator is out of scope unless a real need appears later. | Sather Table 7.2 remains the reference for building the C# tables. |
 | Q10 | **Yes.** `TypeText` forces uppercase on the unenhanced `pocket2e-a2` profile by default (`typeText.forceUppercase: true`). Other profiles default to false. Any profile can set the option. | Applesoft on an unenhanced IIe needs uppercase keywords. |
 
@@ -600,6 +758,6 @@ Each step builds and tests green on its own (`dotnet build BackPocketEmulator.sl
 - **[TIL-522]** Apple Tech Info Library #522, "Apple IIGS: Entering the Control Panel" (reviewed 21 September 1987): Option while powering on (Owner's Guide p. 13; "doesn't always work"); Option-Control-Reset. <https://www.savagetaylor.com/TIL/TIL00522.pdf>
 - **[TIL-2061]** Apple Tech Info Library #2061, "Apple IIGS: Resetting And Buffer Clearing": warm reset is Control-Reset; cold reset is Control-Apple-Reset, "reboot as if it were just turned on." <http://absurdengineering.org/library/MASTER%20Tech%20Info%20Library/Apple%20II%20Hardware/Apple%20IIGS%20Hardware%20Issues/TIL02061%20-%20Apple%20IIGS%20-%20Resetting%20And%20Buffer%20Clearing.pdf>
 - **[QSG-gs]** Apple Computer, *Apple IIGS Quick Start Guide* (1988, part no. 031-0107-A): Control Panel via Option-Control-Reset; start a disk when the power is on via Command-Control-Reset. <https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/machines/Apple%20IIGS%20Quick%20Start%20Guide.pdf>
-- **[MacHW]** Apple Computer, *Guide to the Macintosh Family Hardware*, 2nd edition (Addison-Wesley, 1990), ch. 8 "Apple Desktop Bus": the Apple Extended Keyboard is an ADB keyboard. Figure 8-10 is the reference layout for `HostKey` (the Extended Keyboard II, M3501): F1–F15 and their key-down transition codes (F13 `$69`, F14 `$6B`, F15 `$71`, immediately to the right of F12), the navigation cluster (Help, Home, Page Up, Forward Delete, End, Page Down, arrows), the full keypad (0–9, `.`, Enter, `+`, `-`, `*`, `/`, `=`, Clear), and the modifier and power keys. <https://vintageapple.org/inside_o/pdf/Guide_to_Macintosh_Family_Hardware_2nd_Edition_1990.pdf>
+- **[MacHW]** Apple Computer, *Guide to the Macintosh Family Hardware*, 2nd edition (Addison-Wesley, 1990), ch. 8 "Apple Desktop Bus": the Apple Extended Keyboard is an ADB keyboard. Figure 8-10 is the reference layout for `KeyboardKey` (the Extended Keyboard II, M3501): F1–F15 and their key-down transition codes (F13 `$69`, F14 `$6B`, F15 `$71`, immediately to the right of F12), the navigation cluster (Help, Home, Page Up, Forward Delete, End, Page Down, arrows), the full keypad (0–9, `.`, Enter, `+`, `-`, `*`, `/`, `=`, Clear), and the modifier and power keys. <https://vintageapple.org/inside_o/pdf/Guide_to_Macintosh_Family_Hardware_2nd_Edition_1990.pdf>
 - **[Empson-94]** David Empson, "Re: Extended ADB keyboard help," *comp.sys.apple2.programmer*, 2 August 1994: on a IIgs with an Extended ADB keyboard, F1–F15 are visible to the Event Manager (keypad modifier bit) and via `$C000`/`$C010` plus `$C025` bit 4. <https://groups.google.com/g/comp.sys.apple2.programmer/c/oZBTT54qOTc>
 - Gary Little, *Inside the Apple IIe* (Brady, 1985), ch. 6, "Keyboard auto-repeat" (about 900 ms, 15 per second). <https://apple2online.com/wp-content/uploads/Inside-the-Apple-IIe.pdf>
