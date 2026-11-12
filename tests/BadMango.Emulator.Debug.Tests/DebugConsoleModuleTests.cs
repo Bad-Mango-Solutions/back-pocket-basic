@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Debug.Tests;
 
 using Autofac;
 
+using BadMango.Emulator.Core.Configuration;
+
 /// <summary>
 /// Unit tests for the <see cref="DebugConsoleModule"/> class.
 /// </summary>
@@ -133,13 +135,59 @@ public class DebugConsoleModuleTests
         Assert.That(handlers.Select(h => h.Name), Does.Contain("testcmd"));
     }
 
-    private sealed class TestCustomCommand : CommandHandlerBase
+    /// <summary>
+    /// Verifies that EmudbgOptions can be registered and affects startup.
+    /// </summary>
+    [Test]
+    public void Module_RespectsEmudbgOptions_WhenRegisteredBefore()
     {
-        public TestCustomCommand()
-            : base("testcmd", "A test custom command")
-        {
-        }
+        var builder = new ContainerBuilder();
+        var options = new EmudbgOptions(Profile: "simple-65c02", NoBanner: true);
+        builder.RegisterInstance(options).AsSelf().SingleInstance();
+        builder.RegisterModule<DebugConsoleModule>();
 
+        using var container = builder.Build();
+
+        var resolvedOptions = container.Resolve<EmudbgOptions>();
+        Assert.That(resolvedOptions, Is.SameAs(options));
+    }
+
+    /// <summary>
+    /// Verifies that providing exec commands registers a non-console TextReader for the REPL.
+    /// </summary>
+    [Test]
+    public void Module_UsesStringReaderForExecCommands()
+    {
+        var builder = new ContainerBuilder();
+        builder.RegisterInstance(new EmudbgOptions(ExecCommands: "regs;exit")).AsSelf().SingleInstance();
+        builder.RegisterModule<DebugConsoleModule>();
+
+        using var container = builder.Build();
+
+        var input = container.Resolve<TextReader>();
+        Assert.That(input, Is.InstanceOf<StringReader>());
+    }
+
+    /// <summary>
+    /// Verifies profile override from CLI options is honored when resolving MachineProfile.
+    /// </summary>
+    [Test]
+    public void Module_UsesProfileFromOptions()
+    {
+        var builder = new ContainerBuilder();
+        builder.RegisterInstance(new EmudbgOptions(Profile: "simple-65c02")).AsSelf().SingleInstance();
+        builder.RegisterModule<DebugConsoleModule>();
+
+        using var container = builder.Build();
+
+        var profile = container.Resolve<MachineProfile>();
+
+        // The loader will have loaded it (or default if file missing in test env); name should reflect requested
+        Assert.That(profile.Name, Is.EqualTo("simple-65c02").IgnoreCase);
+    }
+
+    private sealed class TestCustomCommand() : CommandHandlerBase("testcmd", "A test custom command")
+    {
         public override CommandResult Execute(ICommandContext context, string[] args)
         {
             return CommandResult.Ok("Custom command executed");

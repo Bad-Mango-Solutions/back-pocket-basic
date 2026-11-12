@@ -4,8 +4,11 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
+using System.Runtime.CompilerServices;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Signaling;
 using BadMango.Emulator.Core.Signaling;
 
@@ -269,6 +272,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFF;
@@ -331,6 +335,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFFFF;
@@ -385,9 +390,11 @@ public abstract class CpuBase : ICpu
     /// </remarks>
     public virtual Addr PushByte(Addr stackBase = 0)
     {
+        // Compat (65C02/6502 E=1): SP is strictly 8-bit; mask to avoid high bits/underflow producing bogus addrs like FFFFFFF4 leading to unmapped Stp.
         byte sp = registers.SP.GetByte();
-        registers.SP.SetDWord(unchecked((byte)(sp - 1)));
-        return stackBase + sp;
+        Addr addr = stackBase + sp;
+        registers.SP.SetByte((byte)((sp - 1) & 0xFF));
+        return addr;
     }
 
     /// <inheritdoc/>
@@ -398,11 +405,10 @@ public abstract class CpuBase : ICpu
     /// </remarks>
     public virtual Addr PopByte(Addr stackBase = 0)
     {
-        byte sp = unchecked((byte)(registers.SP.GetByte() + 1));
-        registers.SP.SetDWord(sp);
+        byte sp = (byte)((registers.SP.GetByte() + 1) & 0xFF);
+        registers.SP.SetByte(sp);
         return stackBase + sp;
     }
-
     // ─── Protected Helper Methods ───────────────────────────────────────
 
     /// <summary>
@@ -420,6 +426,7 @@ public abstract class CpuBase : ICpu
             if (result.Fault.Kind == FaultKind.Unmapped)
             {
                 haltReason = HaltState.Stp;
+                System.Console.Error.WriteLine($"[UNMAPPED] addr=${address:X4} size=8/16/32");
             }
 
             return 0xFFFFFFFF;
@@ -445,6 +452,10 @@ public abstract class CpuBase : ICpu
     /// <param name="address">The address being accessed.</param>
     /// <param name="widthBits">The width of the access in bits.</param>
     /// <returns>A configured <see cref="BusAccess"/> for reading.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected Cycle GetAccessCycle() => context.Now + registers.TCU;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected BusAccess CreateReadAccess(Addr address, byte widthBits)
     {
         return new(
@@ -455,7 +466,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.DataRead,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 
@@ -475,7 +486,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.DataWrite,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 
@@ -500,7 +511,7 @@ public abstract class CpuBase : ICpu
             EmulationFlag: GetEmulationFlag(),
             Intent: AccessIntent.InstructionFetch,
             SourceId: CpuSourceId,
-            Cycle: context.Now,
+            Cycle: GetAccessCycle(),
             Flags: AccessFlags.None);
     }
 

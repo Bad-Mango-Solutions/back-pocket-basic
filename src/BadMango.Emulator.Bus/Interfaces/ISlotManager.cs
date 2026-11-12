@@ -52,6 +52,24 @@ public interface ISlotManager
     int? ActiveExpansionSlot { get; }
 
     /// <summary>
+    /// Gets a value indicating whether INTCXROM is enabled.
+    /// When true, internal ROM overlays all slot ROMs in the $C100-$C7FF range.
+    /// When false (default at power-on), slot card ROMs are visible for their respective $Cn00 areas.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> if internal CX ROM is selected (slot ROMs hidden); otherwise <see langword="false"/>.
+    /// </value>
+    bool IsInternalCxRomEnabled { get; }
+
+    /// <summary>
+    /// Sets the INTCXROM state. This affects visibility of slot ROMs vs internal ROM
+    /// for $C100-$C7FF. Trap registries and other components use this to determine
+    /// whether slot-dependent ROM traps (e.g. PocketWatch clock intercepts) should fire.
+    /// </summary>
+    /// <param name="enabled">True to select internal CX ROM (hide slot ROMs).</param>
+    void SetInternalCxRom(bool enabled);
+
+    /// <summary>
     /// Installs a slot card in the specified slot.
     /// </summary>
     /// <param name="slot">Slot number (1-7).</param>

@@ -23,7 +23,7 @@ public static partial class Instructions
         return cpu =>
         {
             Addr targetAddr = addressingMode(cpu);
-            cpu.Registers.PC.SetWord((Word)targetAddr);
+            cpu.Registers.PC.SetWord((Word)(targetAddr & 0xFFFF));
 
             if (cpu.IsDebuggerAttached)
             {
@@ -52,7 +52,7 @@ public static partial class Instructions
             opCycles++; // Push high byte
             cpu.Write8(cpu.PushByte(Cpu65C02Constants.StackBase), returnAddr.LowByte());
             opCycles++; // Push low byte
-            cpu.Registers.PC.SetAddr(targetAddr);
+            cpu.Registers.PC.SetAddr((Addr)(targetAddr & 0xFFFF));
             opCycles++; // Internal operation
 
             if (cpu.IsDebuggerAttached)
@@ -80,7 +80,7 @@ public static partial class Instructions
             opCycles++; // Pull low byte
             byte hi = cpu.Read8(cpu.PopByte(Cpu65C02Constants.StackBase));
             opCycles++; // Pull high byte
-            cpu.Registers.PC.SetWord((Word)(((hi << 8) | lo) + 1));
+            cpu.Registers.PC.SetWord((Word)((((hi << 8) | lo) + 1) & 0xFFFF));
             opCycles += 3; // Internal operations
 
             if (cpu.IsDebuggerAttached)

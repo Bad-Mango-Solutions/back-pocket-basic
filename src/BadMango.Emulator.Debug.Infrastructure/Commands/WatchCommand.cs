@@ -227,7 +227,37 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult List(IDebugContext context)
     {
+        bool useJson = context.JsonOutput;
         var all = context.Watchpoints.GetAll();
+        var lastHitAddr = context.Watchpoints.LastHitAddress;
+        var lastAccess = context.Watchpoints.LastHitAccess;
+        var lastValue = context.Watchpoints.LastHitValue;
+
+        if (useJson)
+        {
+            var list = new
+            {
+                count = all.Count,
+                watchpoints = all.Select(wp => new
+                {
+                    address = $"${wp.Address:X4}",
+                    access = wp.Access.ToString(),
+                    stopOnHit = wp.StopOnHit,
+                    enabled = wp.Enabled,
+                    hits = wp.Hits,
+                    label = wp.Label,
+                }).ToList(),
+                lastHit = lastHitAddr.HasValue ? new
+                {
+                    address = $"${lastHitAddr.Value:X4}",
+                    access = lastAccess.ToString(),
+                    value = lastValue.HasValue ? $"${lastValue.Value:X2}" : null,
+                } : null,
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(list, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         if (all.Count == 0)
         {
             context.Output.WriteLine("No watchpoints set.");
@@ -248,13 +278,11 @@ public sealed class WatchCommand : CommandHandlerBase, ICommandHelp
                 wp.Label ?? string.Empty));
         }
 
-        var lastHit = context.Watchpoints.LastHitAddress;
-        if (lastHit is not null)
+        if (lastHitAddr is not null)
         {
             context.Output.WriteLine();
-            var lastValue = context.Watchpoints.LastHitValue;
             var valueSuffix = lastValue.HasValue ? $" = ${lastValue.Value:X2}" : string.Empty;
-            context.Output.WriteLine($"Last hit: ${lastHit.Value:X4} ({context.Watchpoints.LastHitAccess}){valueSuffix}");
+            context.Output.WriteLine($"Last hit: ${lastHitAddr.Value:X4} ({lastAccess}){valueSuffix}");
         }
 
         return CommandResult.Ok();

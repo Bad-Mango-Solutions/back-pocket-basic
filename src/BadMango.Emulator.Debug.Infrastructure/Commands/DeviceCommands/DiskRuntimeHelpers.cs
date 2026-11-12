@@ -198,4 +198,47 @@ internal static class DiskRuntimeHelpers
         sectorImage = sectorResult.SectorImage;
         return true;
     }
+
+    /// <summary>
+    /// Resolves the <see cref="IBlockMedia"/> backing the image currently mounted
+    /// at <paramref name="slot"/> / <paramref name="driveIndex"/> by looking up the
+    /// retained <see cref="DiskImageOpenResult"/> in <see cref="IDebugContext.MountedDisks"/>.
+    /// </summary>
+    public static bool TryGetBlockMedia(
+        ICommandContext context,
+        int slot,
+        int driveIndex,
+        out IBlockMedia? blockMedia,
+        out string? error)
+    {
+        blockMedia = null;
+        error = null;
+
+        if (context is not IDebugContext debugContext)
+        {
+            error = "Debug context required for this command.";
+            return false;
+        }
+
+        if (!debugContext.MountedDisks.TryGet(slot, driveIndex, out var open) || open is null)
+        {
+            error = $"No tracked image for slot {slot} drive {driveIndex + 1}; direct-image access requires a debug-console mount.";
+            return false;
+        }
+
+        if (open is Image525AndBlockResult result && result.BlockMedia != null)
+        {
+            blockMedia = result.BlockMedia;
+            return true;
+        }
+
+        if (open is ImageBlockResult blockResult && blockResult.Media != null)
+        {
+            blockMedia = blockResult.Media;
+            return true;
+        }
+
+        error = $"Mounted image for slot {slot} drive {driveIndex + 1} does not expose block media.";
+        return false;
+    }
 }

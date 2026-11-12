@@ -1,8 +1,10 @@
-// <copyright file="PeekCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="PeekCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
+
+using System.Linq;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -55,12 +57,16 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
         "names registered by the current machine (e.g., SPEAKER, KBD, KBDSTRB).";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output value(s) as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "peek $C000               Read keyboard data without triggering strobe",
+        "peek --json $C000 4      Read as JSON array",
         "peek KBD                  Same as above using soft switch name",
         "peek $300 16             Read 16 bytes starting at $0300",
         "peek 0x6000              Read a single byte from $6000",
@@ -88,20 +94,25 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No memory bus attached to debug context.");
         }
 
-        if (args.Length == 0)
+        // Filter json for parsing
+        var filteredArgs = args.Where(a => !a.Equals("--json", StringComparison.OrdinalIgnoreCase) && !a.Equals("-j", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        bool useJson = context.JsonOutput || filteredArgs.Length < args.Length;
+
+        if (filteredArgs.Length == 0)
         {
             return CommandResult.Error("Address required. Usage: peek <address> [count]");
         }
 
-        if (!AddressParser.TryParse(args[0], debugContext.Machine, out uint address))
+        if (!AddressParser.TryParse(filteredArgs[0], debugContext.Machine, out uint address))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use {AddressParser.GetFormatDescription()}.");
+            return CommandResult.Error($"Invalid address: '{filteredArgs[0]}'. Use {AddressParser.GetFormatDescription()}.");
         }
 
         int count = DefaultByteCount;
-        if (args.Length > 1 && !AddressParser.TryParseCount(args[1], out count))
+        if (filteredArgs.Length > 1 && !AddressParser.TryParseCount(filteredArgs[1], out count))
         {
-            return CommandResult.Error($"Invalid count: '{args[1]}'. Expected a positive integer.");
+            return CommandResult.Error($"Invalid count: '{filteredArgs[1]}'. Expected a positive integer.");
         }
 
         count = Math.Clamp(count, 1, MaxByteCount);
@@ -136,6 +147,20 @@ public sealed class PeekCommand : CommandHandlerBase, ICommandHelp
             {
                 bytes.Add($"{result.Value:X2}");
             }
+        }
+
+        if (useJson)
+        {
+            var jsonData = new
+            {
+                address = $"${address:X4}",
+                count,
+                values = bytes,
+                faults = faults.Any() ? faults.Select(f => new { address = $"${f.Address:X4}", fault = f.Fault.ToString() }) : null,
+            };
+            string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
         }
 
         if (count == 1)

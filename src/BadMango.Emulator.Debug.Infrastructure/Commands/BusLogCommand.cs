@@ -87,6 +87,8 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        bool useJson = context.JsonOutput || args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) || a.Equals("-j", StringComparison.OrdinalIgnoreCase));
+
         if (context is not IDebugContext debugContext)
         {
             return CommandResult.Error("Debug context required for this command.");
@@ -163,10 +165,29 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
             n = parsed;
         }
 
+        bool useJson = context.JsonOutput;
         var snapshot = ring.Snapshot();
         if (snapshot.Length == 0)
         {
-            context.Output.WriteLine("Bus fault log is empty.");
+            if (useJson)
+                context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { count = 0 }));
+            else
+                context.Output.WriteLine("Bus fault log is empty.");
+            return CommandResult.Ok();
+        }
+
+        if (useJson)
+        {
+            var items = snapshot.TakeLast(n).Select(f => new {
+                cycle = f.Cycle,
+                kind = f.Kind.ToString(),
+                address = $"${f.Address:X4}",
+                width = f.WidthBits,
+                intent = f.Intent.ToString(),
+                device = f.DeviceId,
+                region = f.RegionTag
+            }).ToArray();
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { shown = items.Length, total = ring.TotalFaults, faults = items }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             return CommandResult.Ok();
         }
 
@@ -199,6 +220,13 @@ public sealed class BusLogCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult ShowStatus(IDebugContext context, BadMango.Emulator.Bus.Interfaces.IBusFaultRing ring)
     {
+        bool useJson = context.JsonOutput;
+        if (useJson)
+        {
+            var st = new { capacity = ring.Capacity, count = ring.Count, total = ring.TotalFaults };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(st, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
         context.Output.WriteLine("Bus Fault Log Status:");
         context.Output.WriteLine();
         context.Output.WriteLine(string.Create(

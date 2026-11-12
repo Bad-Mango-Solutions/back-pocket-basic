@@ -4,6 +4,8 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
+using System.Linq;
+
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -56,12 +58,16 @@ public sealed class ReadCommand : CommandHandlerBase, ICommandHelp
         "names registered by the current machine (e.g., SPEAKER, KBD, KBDSTRB).";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output read values as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "read $C000               Read keyboard data (triggers strobe)",
+        "read --json $C000 4      Read as JSON",
         "read KBD                  Same as above using soft switch name",
         "read SPEAKER              Toggle speaker (makes a click)",
         "read $300 16             Read 16 bytes starting at $0300",

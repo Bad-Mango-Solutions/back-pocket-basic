@@ -5,6 +5,8 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands;
 
 using BadMango.Emulator.Devices;
+using BadMango.Emulator.Debug.Infrastructure.Commands.DeviceCommands; // for DiskLs / ReadFile in same folder, but to satisfy compiler if needed
+
 
 /// <summary>
 /// Top-level <c>disk</c> command that delegates to the offline (<c>create</c>, <c>info</c>)
@@ -122,9 +124,12 @@ public sealed class DiskCommand : CommandHandlerBase, ICommandHelp
             "flush" => this.flushCommand.Execute(context, subArgs),
             "dump-track" or "dumptrack" => this.dumpTrackCommand.Execute(context, subArgs),
             "read-sector" or "readsector" => this.readSectorCommand.Execute(context, subArgs),
+            "ls" or "listfiles" or "lsfiles" => new DiskLsCommand().Execute(context, subArgs),
+            "readfile" or "cat" or "getfile" => new DiskReadFileCommand().Execute(context, subArgs),
+            "fsinfo" or "fs" => new DiskFsInfoCommand().Execute(context, subArgs),
             _ => CommandResult.Error(
                 $"Unknown 'disk' subcommand: '{subcommand}'. " +
-                "Use 'create', 'info', 'list', 'insert', 'eject', 'flush', 'dump-track', or 'read-sector'."),
+                "Use 'create', 'info', 'list', 'insert', 'eject', 'flush', 'dump-track', 'read-sector', 'ls', 'readfile', 'cat', 'getfile', or 'fsinfo'."),
         };
     }
 }

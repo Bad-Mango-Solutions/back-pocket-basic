@@ -221,4 +221,38 @@ public class BuiltInCommandsTests
         errorWriter = new();
         return new(dispatcher, outputWriter, errorWriter);
     }
+
+    /// <summary>
+    /// Verifies PerfCommand (6.9 introspection) has correct name/aliases.
+    /// </summary>
+    [Test]
+    public void PerfCommand_HasCorrectNameAndAliases()
+    {
+        var command = new PerfCommand();
+
+        Assert.That(command.Name, Is.EqualTo("perf"));
+        Assert.That(command.Aliases, Is.EquivalentTo(new[] { "performance", "stats" }));
+    }
+
+    /// <summary>
+    /// Verifies PerfCommand executes and produces JSON output.
+    /// </summary>
+    [Test]
+    public void PerfCommand_ExecutesWithOutput()
+    {
+        var dispatcher = new CommandDispatcher();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var debugCtx = new DebugContext(dispatcher, output, error, null, jsonOutput: true);
+        var command = new PerfCommand();
+
+        var result = command.Execute(debugCtx, []);
+
+        var written = output.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(written, Does.Contain("instructions").Or.Contain("pc"));
+        });
+    }
 }

@@ -795,4 +795,53 @@ public class Cpu65C02Tests : CpuTestBase
         Assert.That(Cpu.Halted, Is.True);
         Assert.That(Cpu.Registers.A.GetByte(), Is.EqualTo(0x55));
     }
+
+    /// <summary>
+    /// Emulation mode must always use 8-bit index operations even when P.X (break bit) is clear.
+    /// </summary>
+    [Test]
+    public void LDX_Absolute_InEmulationMode_AlwaysLoads8Bits()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xAE); // LDX $0200
+        Write(0x1001, 0x00);
+        Write(0x1002, 0x02);
+        Write(0x0200, 0x05);
+        Write(0x0201, 0xAA);
+        Cpu.Reset();
+
+        // Clear break/reserved bits as PLP might after returning from ProDOS routines.
+        Cpu.Registers.P &= ~(ProcessorStatusFlags.B | ProcessorStatusFlags.R);
+
+        Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.E, Is.True, "65C02 must stay in emulation mode");
+            Assert.That(Cpu.Registers.GetIndexSize(), Is.EqualTo(8), "Index width must remain 8-bit in emulation mode");
+            Assert.That(Cpu.Registers.X.GetByte(), Is.EqualTo(0x05), "LDX must load only the low byte at the operand address");
+        });
+    }
+
+    /// <summary>
+    /// Each instruction re-locks the 65C02 into emulation mode so native widths cannot leak in.
+    /// </summary>
+    [Test]
+    public void Step_ReLocksEmulationMode()
+    {
+        WriteWord(0xFFFC, 0x1000);
+        Write(0x1000, 0xEA); // NOP
+        Cpu.Reset();
+        Cpu.Registers.E = false;
+        Cpu.Registers.CP = false;
+
+        Cpu.Step();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Cpu.Registers.E, Is.True);
+            Assert.That(Cpu.Registers.CP, Is.True);
+            Assert.That(Cpu.Registers.GetIndexSize(), Is.EqualTo(8));
+        });
+    }
 }

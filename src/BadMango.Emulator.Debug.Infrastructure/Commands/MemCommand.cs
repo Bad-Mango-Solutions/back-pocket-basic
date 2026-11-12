@@ -1,10 +1,11 @@
-// <copyright file="MemCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="MemCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 using BadMango.Emulator.Bus;
@@ -50,12 +51,16 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
         "Maximum displayable length is 65536 bytes.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output memory dump as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "mem $300                 Display 256 bytes starting at $0300",
+        "mem --json $300 64       Output hex dump as JSON",
         "mem $800 64              Display 64 bytes starting at $0800",
         "mem 0x6000 $100          Display 256 bytes starting at $6000",
     ];
@@ -81,20 +86,25 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No memory bus attached to debug context.");
         }
 
-        if (args.Length == 0)
+        // Filter json flag for arg parsing
+        var filteredArgs = args.Where(a => !a.Equals("--json", StringComparison.OrdinalIgnoreCase) && !a.Equals("-j", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        bool useJson = context.JsonOutput || filteredArgs.Length < args.Length;
+
+        if (filteredArgs.Length == 0)
         {
             return CommandResult.Error("Address required. Usage: mem <address> [length]");
         }
 
-        if (!TryParseAddress(args[0], out uint startAddress))
+        if (!TryParseAddress(filteredArgs[0], out uint startAddress))
         {
-            return CommandResult.Error($"Invalid address: '{args[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
+            return CommandResult.Error($"Invalid address: '{filteredArgs[0]}'. Use hex format ($1234 or 0x1234) or decimal.");
         }
 
         int byteCount = DefaultByteCount;
-        if (args.Length > 1 && !TryParseLength(args[1], out byteCount))
+        if (filteredArgs.Length > 1 && !TryParseLength(filteredArgs[1], out byteCount))
         {
-            return CommandResult.Error($"Invalid length: '{args[1]}'. Expected a positive integer.");
+            return CommandResult.Error($"Invalid length: '{filteredArgs[1]}'. Expected a positive integer.");
         }
 
         // Clamp byte count to valid range
@@ -121,6 +131,28 @@ public sealed class MemCommand : CommandHandlerBase, ICommandHelp
         if (startAddress + (uint)byteCount > memorySize)
         {
             byteCount = (int)(memorySize - startAddress);
+        }
+
+        if (useJson)
+        {
+            var data = new List<string>(byteCount);
+            for (int i = 0; i < byteCount; i++)
+            {
+                uint addr = startAddress + (uint)i;
+                var res = ReadByteWithFault(debugContext.Bus, addr);
+                string val = res.Fault.IsFault ? "??" : $"0x{res.Value:X2}";
+                data.Add(val);
+            }
+
+            var jsonData = new
+            {
+                startAddress = $"0x{startAddress:X4}",
+                length = byteCount,
+                data,
+            };
+            string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
         }
 
         var faults = new List<(uint Address, BusFault Fault)>();

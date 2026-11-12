@@ -23,12 +23,15 @@ public class PocketWatchCardTests
         var card = new PocketWatchCard();
 
         // Assert
-        Assert.That(card.Name, Is.EqualTo("PocketWatch"));
-        Assert.That(card.DeviceType, Is.EqualTo("PocketWatch"));
-        Assert.That(card.Kind, Is.EqualTo(PeripheralKind.SlotCard));
-        Assert.That(card.IOHandlers, Is.Not.Null);
-        Assert.That(card.ROMRegion, Is.Not.Null);
-        Assert.That(card.ExpansionROMRegion, Is.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(card.Name, Is.EqualTo("PocketWatch"));
+            Assert.That(card.DeviceType, Is.EqualTo("PocketWatch"));
+            Assert.That(card.Kind, Is.EqualTo(PeripheralKind.SlotCard));
+            Assert.That(card.IOHandlers, Is.Not.Null);
+            Assert.That(card.ROMRegion, Is.Not.Null);
+            Assert.That(card.ExpansionROMRegion, Is.Null);
+        });
     }
 
     /// <summary>

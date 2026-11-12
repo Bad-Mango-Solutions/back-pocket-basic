@@ -438,7 +438,7 @@ public sealed partial class MainBus
         var access0 = access with { WidthBits = 8 };
         byte low = Read8(access0);
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         byte high = Read8(access1);
 
         return (Word)(low | (high << 8));
@@ -452,7 +452,7 @@ public sealed partial class MainBus
         var access0 = access with { WidthBits = 8 };
         Write8(access0, (byte)value);
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         Write8(access1, (byte)(value >> 8));
     }
 
@@ -464,13 +464,13 @@ public sealed partial class MainBus
         var access0 = access with { WidthBits = 8 };
         byte b0 = Read8(access0);
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         byte b1 = Read8(access1);
 
-        var access2 = access with { Address = access.Address + 2, WidthBits = 8 };
+        var access2 = access with { Address = access.Address + 2, WidthBits = 8, Cycle = access.Cycle + 2 };
         byte b2 = Read8(access2);
 
-        var access3 = access with { Address = access.Address + 3, WidthBits = 8 };
+        var access3 = access with { Address = access.Address + 3, WidthBits = 8, Cycle = access.Cycle + 3 };
         byte b3 = Read8(access3);
 
         return (DWord)(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24));
@@ -484,13 +484,13 @@ public sealed partial class MainBus
         var access0 = access with { WidthBits = 8 };
         Write8(access0, (byte)value);
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         Write8(access1, (byte)(value >> 8));
 
-        var access2 = access with { Address = access.Address + 2, WidthBits = 8 };
+        var access2 = access with { Address = access.Address + 2, WidthBits = 8, Cycle = access.Cycle + 2 };
         Write8(access2, (byte)(value >> 16));
 
-        var access3 = access with { Address = access.Address + 3, WidthBits = 8 };
+        var access3 = access with { Address = access.Address + 3, WidthBits = 8, Cycle = access.Cycle + 3 };
         Write8(access3, (byte)(value >> 24));
     }
 
@@ -506,7 +506,7 @@ public sealed partial class MainBus
             return BusResult<Word>.FromFault(result0.Fault);
         }
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         var result1 = TryRead8(access1);
         if (result1.Failed)
         {
@@ -529,7 +529,7 @@ public sealed partial class MainBus
             return result0;
         }
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         var result1 = TryWrite8(access1, (byte)(value >> 8));
         if (result1.Failed)
         {
@@ -551,21 +551,21 @@ public sealed partial class MainBus
             return BusResult<DWord>.FromFault(result0.Fault);
         }
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         var result1 = TryRead8(access1);
         if (result1.Failed)
         {
             return BusResult<DWord>.FromFault(result1.Fault, cycles: result0.Cycles);
         }
 
-        var access2 = access with { Address = access.Address + 2, WidthBits = 8 };
+        var access2 = access with { Address = access.Address + 2, WidthBits = 8, Cycle = access.Cycle + 2 };
         var result2 = TryRead8(access2);
         if (result2.Failed)
         {
             return BusResult<DWord>.FromFault(result2.Fault, cycles: result0.Cycles + result1.Cycles);
         }
 
-        var access3 = access with { Address = access.Address + 3, WidthBits = 8 };
+        var access3 = access with { Address = access.Address + 3, WidthBits = 8, Cycle = access.Cycle + 3 };
         var result3 = TryRead8(access3);
         if (result3.Failed)
         {
@@ -588,21 +588,21 @@ public sealed partial class MainBus
             return result0;
         }
 
-        var access1 = access with { Address = access.Address + 1, WidthBits = 8 };
+        var access1 = access with { Address = access.Address + 1, WidthBits = 8, Cycle = access.Cycle + 1 };
         var result1 = TryWrite8(access1, (byte)(value >> 8));
         if (result1.Failed)
         {
             return BusResult.FromFault(result1.Fault, cycles: result0.Cycles);
         }
 
-        var access2 = access with { Address = access.Address + 2, WidthBits = 8 };
+        var access2 = access with { Address = access.Address + 2, WidthBits = 8, Cycle = access.Cycle + 2 };
         var result2 = TryWrite8(access2, (byte)(value >> 16));
         if (result2.Failed)
         {
             return BusResult.FromFault(result2.Fault, cycles: result0.Cycles + result1.Cycles);
         }
 
-        var access3 = access with { Address = access.Address + 3, WidthBits = 8 };
+        var access3 = access with { Address = access.Address + 3, WidthBits = 8, Cycle = access.Cycle + 3 };
         var result3 = TryWrite8(access3, (byte)(value >> 24));
         if (result3.Failed)
         {

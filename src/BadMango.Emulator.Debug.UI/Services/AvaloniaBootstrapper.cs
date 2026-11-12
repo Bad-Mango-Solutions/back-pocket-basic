@@ -1,4 +1,4 @@
-// <copyright file="AvaloniaBootstrapper.cs" company="Bad Mango Solutions">
+﻿// <copyright file="AvaloniaBootstrapper.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -7,6 +7,7 @@ namespace BadMango.Emulator.Debug.UI.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Headless;
 using Avalonia.Threading;
 
 /// <summary>
@@ -56,6 +57,12 @@ public sealed class AvaloniaBootstrapper : IDisposable
             IsBackground = true,
         };
     }
+
+    /// <summary>
+    /// Gets or sets whether to use Avalonia's headless platform (for no-display / AI video diagnostics).
+    /// Must be set before first EnsureInitialized() call.
+    /// </summary>
+    public static bool UseHeadless { get; set; } = false;
 
     /// <summary>
     /// Gets a value indicating whether Avalonia has been initialized and is running.
@@ -138,10 +145,22 @@ public sealed class AvaloniaBootstrapper : IDisposable
     }
 
     private static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<DebugApp>()
-            .UsePlatformDetect()
+    {
+        var builder = AppBuilder.Configure<DebugApp>()
             .WithInterFont()
             .LogToTrace();
+
+        if (UseHeadless)
+        {
+            builder.UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        }
+        else
+        {
+            builder.UsePlatformDetect();
+        }
+
+        return builder;
+    }
 
     private void Start()
     {

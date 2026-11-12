@@ -54,6 +54,11 @@ public sealed class SlotManager : ISlotManager, IResetReceiver
     private int? activeExpansionSlot;
 
     /// <summary>
+    /// Tracks the current INTCXROM state (internal CX ROM vs slot ROMs visible at $C100-$C7FF).
+    /// </summary>
+    private bool internalCxRomEnabled;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SlotManager"/> class.
     /// </summary>
     /// <param name="dispatcher">The I/O page dispatcher for registering slot handlers.</param>
@@ -75,6 +80,15 @@ public sealed class SlotManager : ISlotManager, IResetReceiver
 
     /// <inheritdoc />
     public int? ActiveExpansionSlot => activeExpansionSlot;
+
+    /// <inheritdoc />
+    public bool IsInternalCxRomEnabled => internalCxRomEnabled;
+
+    /// <inheritdoc />
+    public void SetInternalCxRom(bool enabled)
+    {
+        internalCxRomEnabled = enabled;
+    }
 
     /// <inheritdoc />
     public void Install(int slot, ISlotCard card)
@@ -161,13 +175,21 @@ public sealed class SlotManager : ISlotManager, IResetReceiver
     /// <inheritdoc />
     public IBusTarget? GetVisibleExpansionRom()
     {
-        // If a slot is selected, return its expansion ROM
+        // If a slot is selected, return its expansion ROM when the card (or internal
+        // registration) provides one. Empty slots cannot drive $C800-$CFFF on real
+        // hardware — the motherboard's default expansion ROM (Extended 80-column on
+        // the IIe) remains visible, which ProDOS's slot scan relies on when it JSRs
+        // into $C850 while iterating unpopulated slots.
         if (activeExpansionSlot is { } slot)
         {
-            return GetExpansionRomRegion(slot);
+            var slotRom = GetExpansionRomRegion(slot);
+            if (slotRom is not null)
+            {
+                return slotRom;
+            }
         }
 
-        // Otherwise return the default expansion ROM (from Extended 80-Column Card)
+        // No active slot layer, or the selected slot has no expansion ROM.
         return defaultExpansionRom;
     }
 
@@ -234,6 +256,9 @@ public sealed class SlotManager : ISlotManager, IResetReceiver
     {
         // Deselect any active expansion ROM (revealing default)
         DeselectExpansionSlot();
+
+        // Restore default CX ROM state (slot ROMs visible, internal overlay off)
+        internalCxRomEnabled = false;
 
         // Reset all installed cards
         for (int i = 0; i < SlotCount; i++)

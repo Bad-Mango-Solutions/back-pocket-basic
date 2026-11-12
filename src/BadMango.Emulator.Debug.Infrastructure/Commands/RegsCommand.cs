@@ -1,8 +1,10 @@
-// <copyright file="RegsCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="RegsCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
+
+using System.Linq;
 
 using Core.Cpu;
 
@@ -46,12 +48,16 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
         "shows 32-bit registers, 65816 compat shows 16-bit, and 65C02 compat shows 8-bit.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output in JSON format instead of formatted text", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "regs                    Display all CPU registers",
+        "regs --json             Display registers as JSON",
         "r                       Alias for regs",
         "registers               Alias for regs",
     ];
@@ -77,7 +83,36 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No CPU attached to debug context.");
         }
 
+        bool useJson = context.JsonOutput ||
+                       args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                                     a.Equals("-j", StringComparison.OrdinalIgnoreCase));
+
         var registers = debugContext.Cpu.GetRegisters();
+
+        if (useJson)
+        {
+            // Use 16-bit views for simplicity in JSON (common case); full mode info is included
+            var jsonData = new
+            {
+                mode = GetEmulationModeName(registers),
+                pc = registers.PC.GetWord(),
+                sp = registers.SP.GetWord(),
+                a = registers.A.GetWord(),
+                x = registers.X.GetWord(),
+                y = registers.Y.GetWord(),
+                flags = BuildFlagsJson(registers),
+                indexWidth = registers.GetIndexSize(),
+                accumulatorWidth = registers.GetAccumulatorSize(),
+                e = registers.E,
+                cp = registers.CP,
+                interruptsDisabled = registers.P.HasFlag(ProcessorStatusFlags.I),
+            };
+
+            string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
+        }
+
         FormatRegisters(debugContext.Output, registers);
 
         return CommandResult.Ok();
@@ -216,5 +251,38 @@ public sealed class RegsCommand : CommandHandlerBase, ICommandHelp
     private static char FormatFlag(ProcessorStatusFlags p, ProcessorStatusFlags flag)
     {
         return p.HasFlag(flag) ? '1' : '0';
+    }
+
+    private static object BuildFlagsJson(Registers registers)
+    {
+        if (registers.E)
+        {
+            // In emulation mode P bit 4/5 are B/R (6502), not M/X width flags.
+            return new
+            {
+                N = registers.P.HasFlag(ProcessorStatusFlags.N),
+                V = registers.P.HasFlag(ProcessorStatusFlags.V),
+                B = registers.P.HasFlag(ProcessorStatusFlags.B),
+                R = registers.P.HasFlag(ProcessorStatusFlags.R),
+                D = registers.P.HasFlag(ProcessorStatusFlags.D),
+                I = registers.P.HasFlag(ProcessorStatusFlags.I),
+                Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
+                C = registers.P.HasFlag(ProcessorStatusFlags.C),
+                raw = (byte)registers.P,
+            };
+        }
+
+        return new
+        {
+            N = registers.P.HasFlag(ProcessorStatusFlags.N),
+            V = registers.P.HasFlag(ProcessorStatusFlags.V),
+            M = registers.P.HasFlag(ProcessorStatusFlags.M),
+            X = registers.P.HasFlag(ProcessorStatusFlags.X),
+            D = registers.P.HasFlag(ProcessorStatusFlags.D),
+            I = registers.P.HasFlag(ProcessorStatusFlags.I),
+            Z = registers.P.HasFlag(ProcessorStatusFlags.Z),
+            C = registers.P.HasFlag(ProcessorStatusFlags.C),
+            raw = (byte)registers.P,
+        };
     }
 }

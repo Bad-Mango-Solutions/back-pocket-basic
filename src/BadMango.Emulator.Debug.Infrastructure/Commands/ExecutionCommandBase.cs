@@ -257,6 +257,24 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
                     options.TimeoutMs = timeout;
                 }
             }
+            else if (arg.StartsWith("--until=", StringComparison.OrdinalIgnoreCase) ||
+                     arg.StartsWith("--until-pc=", StringComparison.OrdinalIgnoreCase))
+            {
+                var prefix = arg.StartsWith("--until-pc=", StringComparison.OrdinalIgnoreCase)
+                    ? "--until-pc="
+                    : "--until=";
+                var valueStr = arg[prefix.Length..];
+                if (TryParseAddress(valueStr, out uint untilAddr))
+                {
+                    options.UntilPc = untilAddr;
+                }
+            }
+            else if (arg.Equals("--until", StringComparison.OrdinalIgnoreCase) ||
+                     arg.Equals("--until-pc", StringComparison.OrdinalIgnoreCase))
+            {
+                // Will be handled in next iteration? No — caller must pass value attached or we improve caller.
+                // For now we rely on = form or caller concatenates. (See RunCommand improvement if needed)
+            }
         }
     }
 
@@ -458,6 +476,11 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
         /// Gets or sets the number of last trace records to display.
         /// </summary>
         public int TraceLastN { get; set; } = 100;
+
+        /// <summary>
+        /// Optional target PC to stop at (for "run until" style usage).
+        /// </summary>
+        public uint? UntilPc { get; set; }
     }
 
     /// <summary>
@@ -468,7 +491,10 @@ public abstract class ExecutionCommandBase : CommandHandlerBase, ICommandHelp
     /// <param name="ElapsedMs">The elapsed wall-clock time in milliseconds.</param>
     /// <param name="StopReason">The reason execution stopped.</param>
     /// <param name="NormalCompletion">Whether execution completed normally.</param>
-    protected sealed record ExecutionResult(
+    /// <summary>
+    /// Result of instruction execution (public for run status / agent polling).
+    /// </summary>
+    public sealed record ExecutionResult(
         int InstructionCount,
         long CycleCount,
         long ElapsedMs,

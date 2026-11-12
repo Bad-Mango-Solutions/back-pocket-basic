@@ -1,8 +1,10 @@
-// <copyright file="SwitchesCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="SwitchesCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
+
+using System.Linq;
 
 using BadMango.Emulator.Bus.Interfaces;
 
@@ -47,12 +49,16 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
         "queries all components that implement ISoftSwitchProvider to gather switch states.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output switch states as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "switches                 Display soft switch state",
+        "switches --json          Output as JSON",
         "sw                       Alias for switches",
     ];
 
@@ -77,11 +83,34 @@ public sealed class SwitchesCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No bus attached. This command requires a bus-based system.");
         }
 
-        debugContext.Output.WriteLine("Soft Switch State:");
-        debugContext.Output.WriteLine();
+        bool useJson = context.JsonOutput ||
+                       args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                                     a.Equals("-j", StringComparison.OrdinalIgnoreCase));
 
         // Try to find soft switch providers through the machine
         var providers = GetSoftSwitchProviders(debugContext);
+
+        if (useJson)
+        {
+            var jsonData = providers.Select(p => new
+            {
+                provider = p.ProviderName,
+                switches = p.GetSoftSwitchStates().Select(s => new
+                {
+                    name = s.Name,
+                    address = $"${s.Address:X4}",
+                    value = s.Value,
+                    description = s.Description,
+                }).ToList(),
+            }).ToList();
+
+            string json = System.Text.Json.JsonSerializer.Serialize(jsonData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
+        }
+
+        debugContext.Output.WriteLine("Soft Switch State:");
+        debugContext.Output.WriteLine();
 
         if (providers.Count == 0)
         {

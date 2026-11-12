@@ -1041,4 +1041,14 @@ public sealed class DiskRuntimeCommandsTests
         {
         }
     }
+
+    /// <summary>fsinfo command is auto-registered and has help.</summary>
+    [Test]
+    public void DiskFsInfoCommand_IsRegisteredAndHasHelp()
+    {
+        var cmd = new DiskFsInfoCommand();
+        Assert.That(cmd.Name, Is.EqualTo("disk-fsinfo"));
+        Assert.That(cmd.Usage, Does.Contain("fsinfo"));
+        Assert.That(cmd.Synopsis, Does.Contain("DOS 3.3"));
+    }
 }

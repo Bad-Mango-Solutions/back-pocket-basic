@@ -705,6 +705,22 @@ public class SlotManagerTests
     }
 
     /// <summary>
+    /// Verifies that selecting an empty slot (no expansion ROM published) falls back to
+    /// the default expansion ROM so $C800-$CFFF reads do not float to $FF during ProDOS
+    /// slot scans.
+    /// </summary>
+    [Test]
+    public void GetVisibleExpansionRom_EmptySlotSelected_FallsBackToDefaultRom()
+    {
+        var defaultRom = new Mock<IBusTarget>();
+        slotManager.SetDefaultExpansionRom(defaultRom.Object);
+        slotManager.SelectExpansionSlot(2);
+
+        var result = slotManager.GetVisibleExpansionRom();
+        Assert.That(result, Is.SameAs(defaultRom.Object));
+    }
+
+    /// <summary>
     /// Verifies that GetVisibleExpansionRom returns null when no default and no slot selected.
     /// </summary>
     [Test]

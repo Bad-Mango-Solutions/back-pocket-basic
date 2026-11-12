@@ -74,7 +74,10 @@ public static class DeviceFactoryExtensions
         /// </remarks>
         public MachineBuilder RegisterPocketWatchCardFactory()
         {
-            return builder.RegisterSlotCardFactory("pocketwatch", (_, _) => new PocketWatchCard());
+            // Pass the per-card config (e.g. "rom": "name-from-rom-images") through to the card.
+            // The standard profile processing will also call LoadBootRom(byte[]) via reflection
+            // if "rom" is present in the card config (see LoadSlotCardRoms).
+            return builder.RegisterSlotCardFactory("pocketwatch", (_, config) => PocketWatchCard.CreateFromProfileConfig(config));
         }
 
         /// <summary>
@@ -110,6 +113,11 @@ public static class DeviceFactoryExtensions
         {
             // Register auto-discovered device factories (simple devices with parameterless constructors)
             builder.RegisterAllDeviceFactories();
+
+            // Explicitly register pocketwatch with support for per-card config (e.g. "rom")
+            // so that it overrides the auto-discovered ignoring-config version. This allows
+            // profiles to specify the Thunderclock firmware ROM the same way as disk boot ROMs.
+            builder.RegisterPocketWatchCardFactory();
 
             // Register devices that require special memory configuration.
             // The Language Card needs memory layers and swap groups configured, which can't

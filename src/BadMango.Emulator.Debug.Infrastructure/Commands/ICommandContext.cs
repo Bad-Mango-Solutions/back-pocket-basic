@@ -20,14 +20,14 @@ public interface ICommandContext
     ICommandDispatcher Dispatcher { get; }
 
     /// <summary>
-    /// Gets the console output writer.
+    /// Gets or sets the console output writer. Can be replaced for capture in agent mode.
     /// </summary>
-    TextWriter Output { get; }
+    TextWriter Output { get; set; }
 
     /// <summary>
-    /// Gets the console error writer.
+    /// Gets or sets the console error writer. Can be replaced for capture in agent mode.
     /// </summary>
-    TextWriter Error { get; }
+    TextWriter Error { get; set; }
 
     /// <summary>
     /// Gets the console input reader for interactive commands.
@@ -37,4 +37,10 @@ public interface ICommandContext
     /// Commands should check for null before attempting to read input.
     /// </remarks>
     TextReader? Input { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether output should be in JSON format (structured)
+    /// rather than human-readable text.
+    /// </summary>
+    bool JsonOutput { get; }
 }

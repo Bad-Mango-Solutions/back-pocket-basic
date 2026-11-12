@@ -55,12 +55,10 @@ internal sealed class PocketWatchRom : IBusTarget
         romData[0x05] = 0x00; // Card type (0 = Thunderclock Plus compatible)
         romData[0x07] = 0x00; // Revision
 
-        // Simple RTS at common entry points
-        romData[0xFB] = RtsInstruction; // RTS at $CnFB
-        romData[0xFC] = RtsInstruction; // RTS at $CnFC
-        romData[0xFD] = RtsInstruction; // RTS at $CnFD
-        romData[0xFE] = RtsInstruction; // RTS at $CnFE
-        romData[0xFF] = RtsInstruction; // RTS at $CnFF
+        // Do not put RTS at end (would be executed on JMP to entry causing stack pop corruption to data bytes like DB).
+        // Set boot indicator $CnFF=0 so slot scan treats as non-bootable.
+        // Traps will be installed only at RTS offsets to skip them safely if PC ever lands here.
+        romData[0xFF] = 0x00;
     }
 
     /// <inheritdoc />

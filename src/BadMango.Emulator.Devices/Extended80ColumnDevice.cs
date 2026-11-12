@@ -276,22 +276,6 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
 
         bus = context.Bus;
 
-        // Save the current page table entries for $1000-$BFFF as base mappings.
-        // This must be done during Initialize (not ConfigureMemory) because RAM
-        // and ROM regions are mapped AFTER memory configurations in
-        // MachineBuilder.Build(). At this point, main RAM is properly mapped
-        // and we can save it as the base mapping that will be restored whenever
-        // the AUX_RAM / AUX_HIRES1 layers are deactivated (i.e. when RAMRD and
-        // RAMWRT both go off). Without this, deactivating the auxiliary RAM
-        // layer would leave pages $1-$B with the default empty page entry,
-        // effectively "paging out" all main RAM above the zero page composite.
-        // See LanguageCardDevice for the same pattern at $D000-$FFFF.
-        if (bus is MainBus mainBus && layersConfigured)
-        {
-            // Pages $1 through $B (11 pages covering $1000-$BFFF)
-            mainBus.SaveBaseMappingRange(0x1, 0xB);
-        }
-
         // Get the video device from the machine context
         videoDevice = context.GetComponent<IVideoDevice>();
 
@@ -476,10 +460,9 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
         // to this device and checks Is80StoreEnabled/IsPage2Selected for routing.
         //
         // For now, we only set up layers for regions that are page-aligned (>= $1000).
-
-        // Capture the current base mappings for pages $1-$B so split RAMRD/RAMWRT
-        // routing can still reach the underlying main-RAM targets while the AUX layer
-        // is active.
+        //
+        // RAMRD/RAMWRT for $1000-$BFFF is handled by an asymmetric split target because
+        // reads and writes route independently. A single layer cannot model asymmetric bank selection.
         var mainRamPages = new PageEntry[11];
         for (int page = 0; page < mainRamPages.Length; page++)
         {
@@ -502,7 +485,7 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
             PhysBase: 0));
 
         // Create the layer for auxiliary hi-res page 1 ($2000-$3FFF) - 80STORE + HIRES mode
-        // This has higher priority than the general AUX_RAM layer and handles 80STORE+PAGE2+HIRES
+        // This overlays the general composite target when 80STORE+PAGE2+HIRES are enabled
         var hiresLayer = memoryBus.CreateLayer(LayerNameAuxHiRes1, LayerPriority + 1);
         memoryBus.AddLayeredMapping(new(
             VirtualBase: 0x2000,
@@ -621,6 +604,15 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     public RamTarget GetAuxPage0Target()
     {
         return new RamTarget(auxiliaryRam.Slice(0, 0x1000), "AUX_PAGE0");
+    }
+
+    /// <summary>
+    /// Gets the auxiliary RAM target for $1000-$BFFF (used by composite target configuration).
+    /// </summary>
+    /// <returns>A RAM target covering the page-aligned auxiliary region.</returns>
+    public RamTarget GetAuxGeneralTarget()
+    {
+        return new RamTarget(auxiliaryRam.Slice(0x1000, 0xB000), "AUX_RAM_1000");
     }
 
     /// <summary>
@@ -873,42 +865,59 @@ public sealed class Extended80ColumnDevice : IMotherboardDevice, ISoftSwitchProv
     /// When a layer is deactivated, accesses fall through to the base memory mapping (main RAM/ROM).
     /// </para>
     /// </remarks>
+    private bool applyingState;
+
     private void ApplyState()
     {
-        // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget
-        // These always work, even when layers aren't configured
-        if (internalRomHandler is not null)
+        if (applyingState)
         {
-            internalRomHandler.SetIntCxRom(intcxrom);
-            internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
-        }
-
-        // Update page 0 routing table for sub-page regions
-        // This is efficient - just updates a few array entries, no per-access checks
-        page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
-
-        if (bus is null)
-        {
+            // Reentrant call (e.g. softswitch side-effect during layer recompute or another Apply).
+            // Outer Apply will see the latest flag values and finish the update.
             return;
         }
 
-        // If layers haven't been configured, skip layer-related operations
-        // This happens when the device is used without ConfigureMemory being called
-        if (!layersConfigured)
+        applyingState = true;
+        try
         {
-            return;
+            // INTCXROM and SLOTC3ROM: Control internal ROM overlay via CompositeIOTarget.
+            // These always work, even when layers aren't configured.
+            if (internalRomHandler is not null)
+            {
+                internalRomHandler.SetIntCxRom(intcxrom);
+                internalRomHandler.SetIntC3Rom(!slotc3rom); // INTC3ROM is inverted from SLOTC3ROM
+            }
+
+            // Update page 0 routing table for sub-page regions.
+            // This is efficient - just updates a few array entries, no per-access checks.
+            page0Target?.UpdateRouting(altzp, store80, page2, ramrd, ramwrt);
+
+            if (bus is null)
+            {
+                return;
+            }
+
+            // If layers haven't been configured, skip layer-related operations.
+            // This happens when the device is used without ConfigureMemory being called.
+            if (!layersConfigured)
+            {
+                return;
+            }
+
+            // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
+            // Note: Routing is handled by AuxiliarySplitRamTarget so split modes
+            // (RAMWRT-only, RAMRD-only) work without permission faults.
+            bool auxRamActive = ramrd || ramwrt;
+            SetLayerActive(LayerNameAuxRam, auxRamActive);
+
+            // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES.
+            // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res.
+            bool auxHiResActive = store80 && page2 && hires;
+            SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
         }
-
-        // RAMRD/RAMWRT: Auxiliary RAM ($1000-$BFFF)
-        // Note: Routing is handled by AuxiliarySplitRamTarget so split modes
-        // (RAMWRT-only, RAMRD-only) work without permission faults.
-        bool auxRamActive = ramrd || ramwrt;
-        SetLayerActive(LayerNameAuxRam, auxRamActive);
-
-        // 80STORE mode: Hi-res page 1 ($2000-$3FFF) controlled by PAGE2 + HIRES
-        // When 80STORE is on, PAGE2 is set, and HIRES is on, use auxiliary hi-res
-        bool auxHiResActive = store80 && page2 && hires;
-        SetLayerActive(LayerNameAuxHiRes1, auxHiResActive);
+        finally
+        {
+            applyingState = false;
+        }
     }
 
     /// <summary>

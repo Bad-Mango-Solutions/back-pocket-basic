@@ -4,15 +4,14 @@
 
 namespace BadMango.Emulator.Emulation.Cpu;
 
-using System.Runtime.CompilerServices;
-
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core.Cpu; // for ProcessorStatusFlags in reset
+using BadMango.Emulator.Core.Debugger;
 using BadMango.Emulator.Core.Signaling;
 
 using Core;
 using Core.Cpu;
-using Core.Debugger;
 
 /// <summary>
 /// WDC 65C02 CPU emulator with cycle-accurate execution using bus-based memory access.
@@ -29,9 +28,59 @@ using Core.Debugger;
 /// cycle counting for decomposed access).
 /// </para>
 /// <para>
-/// Optimized with aggressive inlining for maximum performance.
+/// Hot loop is optimized with AggressiveInlining, ref Registers (zero-copy), precomputed
+/// routing tables in page0 targets, and 16-bit masking for fidelity. Delegate table dispatch
+/// via composition provides flexibility.
+/// </para>
+/// <para>
+/// Future 65816 base: evolve Registers with banks (PBR/DBR), direct page, E/M/X flags;
+/// handlers can branch on mode or use different tables; addressing returns 24-bit capable Addrs.
+/// Speculative 65832: extend bus layers for MMU/privilege (hypervisor/kernel/user separation via
+/// priority/perm layers), secure models (NX, capability-based via intents).
 /// </para>
 /// </remarks>
+
+/// <para>
+/// Important context from Apple IIe ROM and ProDOS analysis (used to guide every host-only fix):
+/// The Enhanced IIe reset vector at $FFFC/$FFFD points to the handler at $FA62. After the
+/// standard CLD + stack setup and warm/cold test, the cold path issues a long series of direct
+/// STA $C0xx instructions to place the machine in a known state (80STORE off so that PAGE2 and
+/// RAMRD/RAMWRT control auxiliary memory, main RAM read and write selected, slot CX ROM visible
+/// rather than internal, main zero page, TEXT mode, PAGE1, LORES, full screen). It then calls
+/// the HOME routine (entry near $FC58) whose job is to clear the 40-column (or 80-column when
+/// enabled) text page at $0400-$07FF by writing appropriate space/inverse characters using
+/// computed screen-base addresses kept in zero page ($28/$29) and the current window parameters
+/// ($20-$23). Only after this does the code build a slot pointer in zero page, walk from high
+/// slots downward with indirect loads (LDA (00),Y) to test the three signature bytes, and on
+/// success perform the indirect jump (6C 00 00) to the slot ROM entry ($Cn00).
+/// </para>
+/// <para>
+/// The Disk II P6 ROM (256 bytes at $C600) is itself full of indexed I/O ($C08x,X where X holds
+/// a value derived from the slot number), tight self-clocking GCR read loops that poll status
+/// bits with BPL-style waits, checksum verification, and a final JMP $0801 into the boot block
+/// that was read from track 0 sector 0. ProDOS disks begin that boot block with the distinctive
+/// 01 38 B0 03 ... bytes; the loader then uses more zero-page pointers and indexed/indirect
+/// operations to bring the rest of the operating system into memory.
+/// </para>
+/// <para>
+/// The Apple IIe designers used computed and indexed addressing, zero-page indirection, and
+/// self-modifying tricks extensively because both ROM space and CPU cycles were extremely
+/// precious on a 1 MHz 65C02 with only 64 KB (or 128 KB with the auxiliary card). The host
+/// implementation must therefore treat every address calculation as a full 16-bit value,
+/// keep the stack pointer strictly within an 8-bit page-1 range, make soft-switch writes
+/// (especially to $C006/$C007 for INTCXROM) affect the very next instruction fetch, and
+/// deliver disk bytes and VBlank events with cycle-accurate timing so that the polling loops
+/// inside the P6 ROM see data when they expect it.
+/// </para>
+/// <para>
+/// Observed symptoms such as the program counter landing on data bytes (producing opcode
+/// $DB = STP or floods of $00 = BRK), the text page remaining entirely zero after HOME should
+/// have run, or the Disk II signature bytes being invisible during slot scan, are therefore
+/// almost always caused by a missing 16-bit mask, a layering decision that has not yet been
+/// applied, a stack pull that did not account for the documented RTS +1 behavior, or a
+/// scheduler event that fired (or failed to fire) at the wrong moment relative to the CPU's
+/// accumulated TCU.
+/// </para>
 public sealed class Cpu65C02 : CpuBase
 {
     private readonly OpcodeTable opcodeTable;
@@ -79,12 +128,6 @@ public sealed class Cpu65C02 : CpuBase
     /// which never contains traps.
     /// </summary>
     private bool trapRegistryIsNull;
-
-    /// <summary>
-    /// Set while the CPU is holding in RESET (the line was seen asserted at an instruction
-    /// boundary). The next boundary with the line released runs the reset sequence.
-    /// </summary>
-    private bool resetHeld;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Cpu65C02"/> class with an event context.
@@ -140,38 +183,67 @@ public sealed class Cpu65C02 : CpuBase
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// This is the immediate power-on reset: registers are initialized to their power-on
-    /// values and PC is loaded from the reset vector through the current bus mapping. It
-    /// replaces the signal-driven reset sequence, so any pending RESET hold or release edge
-    /// is discarded. The RESET signal path (hold while the line is low, sequence on release)
-    /// is handled in <see cref="Step"/>.
-    /// </remarks>
     public override void Reset()
     {
         // Note: Scheduler reset is handled by Machine.Reset(), not the CPU.
         // The CPU only resets its own state (registers, halt reason, stop flag).
-        Registers = new(true, Read16(Cpu65C02Constants.ResetVector));
+        // Follow true hard reset sequence: explicitly read the reset vector from $FFFC (low) / $FFFD (high)
+        // so PC is set to the address from the vector at FFFC, then execution begins at that handler address.
+        // This ensures the ROM reset code (including HOME clear screen) runs for full loader fidelity.
+        byte lo = Read8(Cpu65C02Constants.ResetVector);
+        byte hi = Read8(Cpu65C02Constants.ResetVector + 1);
+        Word vector = (Word)((hi << 8) | lo);
+        Registers = new(true, vector);
+
+        // Standard 65C02 reset flags: I=1, D=0 (clear decimal).
+        // Hardware reset does not push to the stack; SP remains at the emulator cold-start
+        // value ($FF) established by Registers(bool compat, Word resetVector).
+        Registers.P |= ProcessorStatusFlags.I;
+        Registers.P &= ~ProcessorStatusFlags.D;
+
         interruptDisableSample = Registers.P.IsInterruptDisabled();
         interruptDisableChangePending = false;
         HaltReason = HaltState.None;
-        resetHeld = false;
-        concreteSignals?.ConsumeResetReleaseEdge();
         ClearStopRequest();
     }
 
     /// <inheritdoc/>
     public override CpuStepResult Step()
     {
-        // Clear TCU at the start of each instruction
-        Registers.TCU = Cycle.Zero;
+        // Use ref local for hot path perf (avoids repeated property access; enables future 65816 ref struct state sharing).
+        ref var regs = ref Registers;
 
-        // Instruction-boundary attention: machine service requests, RESET hold/release
-        // and interrupts. With the concrete SignalBus a single cached flag covers all of
-        // them, so the common path costs one field read and one branch.
-        if ((concreteSignals is null || concreteSignals.AttentionPending) && TryServiceBoundary(out var boundaryResult))
+        // Apple II 65C02 is always in emulation mode; native 16/32-bit register widths must never apply.
+        regs.E = true;
+        regs.CP = true;
+
+        // Clear TCU at the start of each instruction
+        regs.TCU = Cycle.Zero;
+
+        // Determine the I value visible at this instruction boundary. Normally this is the
+        // current register value; after CLI/SEI/PLP the poll uses the I value from before
+        // that instruction executed, so its new I is seen one instruction later.
+        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
+
+        // Check for pending interrupts at instruction boundary using the signal bus.
+        // With the concrete SignalBus, a single cached flag tells us whether an NMI
+        // edge is pending or IRQ is asserted; if neither, CheckInterrupts would
+        // return false with no side effects, so skip it.
+        bool interruptProcessed = (concreteSignals is null || concreteSignals.AnyInterruptPending) && CheckInterrupts(irqMaskedAtBoundary);
+        if (interruptProcessed)
         {
-            return boundaryResult;
+            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
+            interruptDisableSample = Registers.P.IsInterruptDisabled();
+            interruptDisableChangePending = false;
+
+            // Interrupt was processed, TCU was updated by ProcessInterrupt.
+            // Advance the scheduler by the TCU value.
+            Cycle interruptCycles = regs.TCU;
+            EventContext.Scheduler.Advance(interruptCycles);
+
+            // Clear TCU after advancing scheduler.
+            regs.TCU = Cycle.Zero;
+            return new(CpuRunState.Running, interruptCycles);
         }
 
         if (Halted)
@@ -186,7 +258,7 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         // Capture state before execution for debug listener
-        Addr pcBefore = Registers.PC.GetAddr();
+        Addr pcBefore = regs.PC.GetAddr() & 0xFFFF;  // Defensive 16-bit mask for 65C02 (flex for 65816 banks later)
 
         // Check for trap at this address before fetching the opcode.
         // First perform an O(1) address check; only if a trap exists at this
@@ -205,7 +277,7 @@ public sealed class Cpu65C02 : CpuBase
 
                 // Trap was handled - the handler determines how to return
                 // Add cycles from the trap result
-                Registers.TCU += trapResult.CyclesConsumed;
+                regs.TCU += trapResult.CyclesConsumed;
 
                 // Handle return based on the method specified by the trap handler
                 switch (trapResult.ReturnMethod)
@@ -218,10 +290,10 @@ public sealed class Cpu65C02 : CpuBase
                         Addr rtsHighAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtsHighByte = Read8(rtsHighAddr);
                         ushort rtsReturnAddress = (ushort)((rtsHighByte << 8) | rtsLowByte);
-                        Registers.PC.SetAddr((uint)(rtsReturnAddress + 1));
+                        regs.PC.SetAddr((uint)((rtsReturnAddress + 1) & 0xFFFF));
 
                         // Add RTS cycles (6 cycles for RTS)
-                        Registers.TCU += 6;
+                        regs.TCU += 6;
                         break;
 
                     case TrapReturnMethod.Rti:
@@ -229,17 +301,17 @@ public sealed class Cpu65C02 : CpuBase
                         // RTI pulls status first, then PC low, then PC high (no +1)
                         Addr statusAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte status = Read8(statusAddr);
-                        Registers.P = (ProcessorStatusFlags)status | ProcessorStatusFlags.R;
+                        regs.P = (ProcessorStatusFlags)status;
 
                         Addr rtiLowAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiLowByte = Read8(rtiLowAddr);
                         Addr rtiHighAddr = PopByte(Cpu65C02Constants.StackBase);
                         byte rtiHighByte = Read8(rtiHighAddr);
                         ushort rtiReturnAddress = (ushort)((rtiHighByte << 8) | rtiLowByte);
-                        Registers.PC.SetAddr(rtiReturnAddress);
+                        regs.PC.SetAddr((uint)(rtiReturnAddress & 0xFFFF));
 
                         // Add RTI cycles (6 cycles for RTI)
-                        Registers.TCU += 6;
+                        regs.TCU += 6;
                         break;
 
                     case TrapReturnMethod.None:
@@ -248,7 +320,7 @@ public sealed class Cpu65C02 : CpuBase
                         // the handler has already set PC)
                         if (trapResult.ReturnAddress.HasValue)
                         {
-                            Registers.PC.SetAddr(trapResult.ReturnAddress.Value);
+                            regs.PC.SetAddr((uint)(trapResult.ReturnAddress.Value & 0xFFFF));
                         }
 
                         // No additional cycles for direct PC manipulation
@@ -256,13 +328,13 @@ public sealed class Cpu65C02 : CpuBase
                 }
 
                 // Capture TCU before advancing scheduler (for return value)
-                Cycle trapCycles = Registers.TCU;
+                Cycle trapCycles = regs.TCU;
 
                 // Advance the scheduler by the TCU value
                 AdvanceScheduler(trapCycles);
 
                 // Clear TCU after advancing scheduler
-                Registers.TCU = Cycle.Zero;
+                regs.TCU = Cycle.Zero;
 
                 return new(CpuRunState.Running, trapCycles);
             }
@@ -291,7 +363,7 @@ public sealed class Cpu65C02 : CpuBase
             {
                 PC = pcBefore,
                 Opcode = opcode,
-                Registers = Registers,
+                Registers = regs,
                 Cycles = EventContext.Now.Value,
                 Halted = false,
                 HaltReason = HaltState.None,
@@ -313,7 +385,7 @@ public sealed class Cpu65C02 : CpuBase
         interruptDisableChangePending = opcode is 0x58 or 0x78 or 0x28;
 
         // Capture TCU before advancing scheduler (for return value)
-        Cycle instructionCycles = Registers.TCU;
+        Cycle instructionCycles = regs.TCU;
 
         // Advance the scheduler by the TCU value (total cycles for this instruction)
         AdvanceScheduler(instructionCycles);
@@ -333,7 +405,7 @@ public sealed class Cpu65C02 : CpuBase
                 OperandSize = Trace.OperandSize,
                 Operands = Trace.Operands,
                 EffectiveAddress = Trace.EffectiveAddress,
-                Registers = Registers,
+                Registers = regs,
                 Cycles = EventContext.Now.Value,
                 InstructionCycles = (byte)instructionCycles.Value,
                 Halted = Halted,
@@ -343,7 +415,12 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         // Clear TCU after advancing scheduler (cycles have been committed)
-        Registers.TCU = Cycle.Zero;
+        regs.TCU = Cycle.Zero;
+
+        // Defensive 16-bit PC mask for 65C02 hot loop fidelity (ROM relies on exact 16-bit computed/indexed
+        // addresses; prevents drift to data bytes/DB/STP from prior bugs in JMP/RTS/calc). For 65816 base
+        // this will evolve to bank-aware masking (PBR etc.).
+        regs.PC.SetAddr(regs.PC.GetAddr() & 0xFFFF);
 
         // Determine the run state after execution
         CpuRunState runState = HaltReason switch
@@ -378,116 +455,6 @@ public sealed class Cpu65C02 : CpuBase
         }
 
         return !trapRegistryIsNull && trapRegistry.ContainsAddress(address);
-    }
-
-    /// <summary>
-    /// Handles everything that can need the CPU's attention at an instruction boundary:
-    /// pending machine service requests, the RESET line and interrupts.
-    /// </summary>
-    /// <param name="result">The step result when the boundary consumed the step.</param>
-    /// <returns>
-    /// <see langword="true"/> if a RESET hold cycle, the reset sequence or an interrupt entry
-    /// consumed this step; <see langword="false"/> to continue with normal instruction execution.
-    /// </returns>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private bool TryServiceBoundary(out CpuStepResult result)
-    {
-        // Run work the machine marshalled onto this thread (for example a RESET request
-        // from the REPL) before sampling the lines, so its effects are seen right away.
-        concreteSignals?.ServiceRequests();
-
-        // RESET is level-sensitive while asserted and edge-triggered on release.
-        // While held, the CPU does not execute instructions but still advances time.
-        // On release, execute the reset entry sequence.
-        if (Signals.IsAsserted(SignalLine.Reset))
-        {
-            result = ProcessResetHoldCycle();
-            return true;
-        }
-
-        // Always consume the latched release edge so the attention flag clears. The edge
-        // also covers a RESET that was asserted and released between two boundaries.
-        bool releaseEdge = concreteSignals is not null && concreteSignals.ConsumeResetReleaseEdge();
-        if (resetHeld || releaseEdge)
-        {
-            result = ProcessResetReleaseSequence();
-            return true;
-        }
-
-        // Determine the I value visible at this instruction boundary. Normally this is the
-        // current register value; after CLI/SEI/PLP the poll uses the I value from before
-        // that instruction executed, so its new I is seen one instruction later.
-        bool irqMaskedAtBoundary = interruptDisableChangePending ? interruptDisableSample : Registers.P.IsInterruptDisabled();
-
-        if (CheckInterrupts(irqMaskedAtBoundary))
-        {
-            // Interrupt entry updates I immediately; keep the latched boundary sample in sync.
-            interruptDisableSample = Registers.P.IsInterruptDisabled();
-            interruptDisableChangePending = false;
-
-            // Interrupt was processed, TCU was updated by ProcessInterrupt
-            // Advance the scheduler by the TCU value
-            Cycle interruptCycles = Registers.TCU;
-            AdvanceScheduler(interruptCycles);
-
-            // Clear TCU after advancing scheduler
-            Registers.TCU = Cycle.Zero;
-            result = new(CpuRunState.Running, interruptCycles);
-            return true;
-        }
-
-        result = default;
-        return false;
-    }
-
-    private CpuStepResult ProcessResetHoldCycle()
-    {
-        resetHeld = true;
-        HaltReason = HaltState.None;
-        Registers.P.SetInterruptDisable(true);
-        Registers.P.SetDecimalMode(false);
-        Registers.TCU += 1;
-
-        Cycle holdCycle = Registers.TCU;
-        AdvanceScheduler(holdCycle);
-        Registers.TCU = Cycle.Zero;
-        return new(CpuRunState.Running, holdCycle);
-    }
-
-    private CpuStepResult ProcessResetReleaseSequence()
-    {
-        resetHeld = false;
-        HaltReason = HaltState.None;
-
-        // Two internal cycles while releasing reset.
-        Registers.TCU += 2;
-
-        // Three suppressed stack pushes: no writes, SP decrements by 3.
-        byte sp = Registers.SP.GetByte();
-        Registers.SP.SetByte(unchecked((byte)(sp - 3)));
-        Registers.TCU += 3;
-
-        // Reset always enforces I=1 and D=0 before vector fetch (W65C02S datasheet;
-        // Sather, Understanding the Apple IIe, p. 4-14). The 65C02 has no native mode,
-        // so RESET also returns the extended register model to the same 8-bit
-        // emulation/compatibility state that a power-on reset (new Registers(true, ...))
-        // establishes: E=1, CP=1, M=1, X=1. A, X, Y and the rest of P are unaffected.
-        Registers.E = true;
-        Registers.CP = true;
-        Registers.P |= ProcessorStatusFlags.M | ProcessorStatusFlags.X;
-        Registers.P.SetInterruptDisable(true);
-        Registers.P.SetDecimalMode(false);
-
-        Registers.PC.SetAddr(Read16(Cpu65C02Constants.ResetVector));
-        Registers.TCU += 2;
-
-        interruptDisableSample = Registers.P.IsInterruptDisabled();
-        interruptDisableChangePending = false;
-
-        Cycle releaseCycles = Registers.TCU;
-        AdvanceScheduler(releaseCycles);
-        Registers.TCU = Cycle.Zero;
-        return new(CpuRunState.Running, releaseCycles);
     }
 
     private byte FetchByte()
@@ -526,6 +493,13 @@ public sealed class Cpu65C02 : CpuBase
             }
 
             return 0xFF;
+        }
+
+        if (result.Value == 0xDB)
+        {
+            // Diagnostic: log when $DB (STP data byte) is fetched as opcode during boot investigation.
+            // This should not happen in correct execution; indicates PC landed on data in ROM.
+            System.Console.Error.WriteLine($"[DB FETCH] addr=${address:X4} value=DB (likely data byte fetched as opcode)");
         }
 
         return result.Value;

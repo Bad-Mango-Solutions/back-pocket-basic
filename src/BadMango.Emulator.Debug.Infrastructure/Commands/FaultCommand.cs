@@ -69,6 +69,8 @@ public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        bool useJson = context.JsonOutput || args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) || a.Equals("-j", StringComparison.OrdinalIgnoreCase));
+
         if (context is not IDebugContext debugContext)
         {
             return CommandResult.Error("Debug context required for this command.");
@@ -106,11 +108,33 @@ public sealed class FaultCommand : CommandHandlerBase, ICommandHelp
         var last = ring.Last;
         if (last is null)
         {
-            debugContext.Output.WriteLine("  No fault recorded.");
+            if (useJson)
+            {
+                debugContext.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { hasFault = false, ring = new { capacity = ring.Capacity, count = ring.Count, total = ring.TotalFaults } }));
+            }
+            else
+            {
+                debugContext.Output.WriteLine("  No fault recorded.");
+            }
             return CommandResult.Ok();
         }
 
         var f = last.Value;
+        if (useJson)
+        {
+            debugContext.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new {
+                hasFault = true,
+                kind = f.Kind.ToString(),
+                address = $"${f.Address:X4}",
+                widthBits = f.WidthBits,
+                intent = f.Intent.ToString(),
+                mode = f.Mode.ToString(),
+                deviceId = f.DeviceId,
+                region = f.RegionTag
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         debugContext.Output.WriteLine("Most recent fault:");
         debugContext.Output.WriteLine(string.Create(
             CultureInfo.InvariantCulture,

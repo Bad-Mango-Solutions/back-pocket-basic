@@ -65,4 +65,34 @@ public partial class DebugCommandsTests
             Assert.That(result.Message, Does.Contain("No CPU attached"));
         });
     }
+
+    /// <summary>
+    /// Verifies that RegsCommand outputs JSON when --json flag or context JsonOutput is set.
+    /// </summary>
+    [Test]
+    public void RegsCommand_OutputsJson_WhenRequested()
+    {
+        // Per-command flag
+        var command = new RegsCommand();
+        var result = command.Execute(debugContext, ["--json"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            var output = outputWriter.ToString();
+            Assert.That(output, Does.Contain("\"mode\""));
+            Assert.That(output, Does.Contain("\"pc\""));
+            Assert.That(output, Does.Contain("Compat"));
+        });
+
+        // Reset writer
+        outputWriter.GetStringBuilder().Clear();
+
+        // Global via context
+        var jsonContext = new DebugContext(dispatcher, outputWriter, errorWriter, cpu, bus, disassembler, null, null, null, true);
+
+        // Attach needed? but for test use the one with cpu
+        var result2 = command.Execute(jsonContext, []);
+        Assert.That(outputWriter.ToString(), Does.Contain("\"mode\""));
+    }
 }

@@ -149,7 +149,7 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
         var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
-        var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true };
+        var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true, IsInteractive = true };
 
         repl.Run();
 
@@ -181,7 +181,7 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
         var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
-        var repl = new DebugRepl(dispatcher, context, input, "dbg> ") { ShowBanner = false };
+        var repl = new DebugRepl(dispatcher, context, input, "dbg> ") { ShowBanner = false, IsInteractive = true };
 
         repl.Run();
 
@@ -221,11 +221,112 @@ public class DebugReplTests
         var dispatcher = new CommandDispatcher();
         var input = new StringReader(string.Empty);
         var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
-        var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true };
+        var repl = new DebugRepl(dispatcher, context, input) { ShowBanner = true, IsInteractive = true };
 
         repl.Run();
 
         Assert.That(outputWriter.ToString(), Does.Contain("Machine:"));
+    }
+
+    /// <summary>
+    /// Verifies that non-interactive input (StringReader) auto-suppresses banner and prompt.
+    /// </summary>
+    [Test]
+    public void Run_AutoSuppressesForNonInteractiveInput()
+    {
+        var dispatcher = new CommandDispatcher();
+        var input = new StringReader("exit\n");
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
+
+        // Do not set Show* explicitly; rely on auto-detect
+        var repl = new DebugRepl(dispatcher, context, input);
+        dispatcher.Register(new ExitCommand());
+
+        repl.Run();
+
+        var output = outputWriter.ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Does.Not.Contain("Emulator Debug Console"));
+            Assert.That(output, Does.Not.Contain(">"));
+            Assert.That(output, Does.Not.Contain("Goodbye!"));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that IsInteractive override forces interactive behavior even with StringReader.
+    /// </summary>
+    [Test]
+    public void Run_RespectsIsInteractiveOverride()
+    {
+        var dispatcher = new CommandDispatcher();
+        var input = new StringReader(string.Empty);
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
+        var repl = new DebugRepl(dispatcher, context, input) { IsInteractive = true };
+
+        repl.Run();
+
+        Assert.That(outputWriter.ToString(), Does.Contain("Emulator Debug Console"));
+    }
+
+    /// <summary>
+    /// Verifies PrintExitMessage controls whether Goodbye is printed.
+    /// </summary>
+    [Test]
+    public void Run_PrintExitMessageControlsGoodbye()
+    {
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new ExitCommand());
+        var input = new StringReader("exit\n");
+        var context = CreateTestDebugContext(dispatcher, out var outputWriter, out _);
+        var repl = new DebugRepl(dispatcher, context, input) { PrintExitMessage = false, ShowBanner = false, IsInteractive = true };
+
+        repl.Run();
+
+        Assert.That(outputWriter.ToString(), Does.Not.Contain("Goodbye!"));
+    }
+
+    /// <summary>
+    /// Verifies the lightweight ExecuteBatch path runs commands directly without interactive loop.
+    /// </summary>
+    [Test]
+    public void ExecuteBatch_RunsCommandsAndStopsOnExit()
+    {
+        var dispatcher = new CommandDispatcher();
+        var handler1 = new TestCommand("cmd1", "Command 1");
+        var handler2 = new TestCommand("cmd2", "Command 2");
+        dispatcher.Register(handler1);
+        dispatcher.Register(handler2);
+        dispatcher.Register(new ExitCommand());
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
+        var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty)) { ShowBanner = false };
+
+        var commands = new[] { "cmd1", "cmd2", "exit", "cmd3" };
+        repl.ExecuteBatch(commands);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(handler1.ExecuteCount, Is.EqualTo(1));
+            Assert.That(handler2.ExecuteCount, Is.EqualTo(1));
+        });
+    }
+
+    /// <summary>
+    /// Verifies ExecuteBatch stops when input exhausted (no explicit exit).
+    /// </summary>
+    [Test]
+    public void ExecuteBatch_StopsOnExhaustion()
+    {
+        var dispatcher = new CommandDispatcher();
+        var handler = new TestCommand("cmd", "Command");
+        dispatcher.Register(handler);
+        var context = CreateTestDebugContext(dispatcher, out _, out _);
+        var repl = new DebugRepl(dispatcher, context, new StringReader(string.Empty)) { ShowBanner = false };
+
+        var commands = new[] { "cmd", "cmd" };
+        repl.ExecuteBatch(commands);
+
+        Assert.That(handler.ExecuteCount, Is.EqualTo(2));
     }
 
     private static DebugContext CreateTestDebugContext(ICommandDispatcher dispatcher, out StringWriter outputWriter, out StringWriter errorWriter)

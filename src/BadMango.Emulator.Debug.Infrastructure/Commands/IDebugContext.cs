@@ -187,4 +187,25 @@ public interface IDebugContext : ICommandContext
     /// <see cref="DebugContext"/>; lifetime follows the context itself.
     /// </value>
     MountedDiskRegistry MountedDisks { get; }
+
+    // --- 6.4 long-running execution control surface (for agents/MCP polling) ---
+    /// <summary>
+    /// Whether a background long-running execution (e.g. "run start") is currently active.
+    /// </summary>
+    bool IsRunActive { get; }
+
+    /// <summary>
+    /// Human description of the active background run, if any.
+    /// </summary>
+    string? ActiveRunDescription { get; }
+
+    /// <summary>
+    /// Result of the most recent completed run (sync or background). Useful for polling.
+    /// </summary>
+    ExecutionCommandBase.ExecutionResult? LastRunResult { get; }
+
+    /// <summary>
+    /// Requests cancellation/stop for any active background run (and sets CPU stop request).
+    /// </summary>
+    void RequestRunStop();
 }

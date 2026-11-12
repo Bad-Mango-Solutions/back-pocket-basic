@@ -1,4 +1,4 @@
-// <copyright file="DebugContext.cs" company="Bad Mango Solutions">
+﻿// <copyright file="DebugContext.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
@@ -38,7 +38,8 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <param name="output">The output writer.</param>
     /// <param name="error">The error writer.</param>
     /// <param name="input">The input reader for interactive commands.</param>
-    public DebugContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null)
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
+    public DebugContext(ICommandDispatcher dispatcher, TextWriter output, TextWriter error, TextReader? input = null, bool jsonOutput = false)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(output);
@@ -48,6 +49,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
         this.Output = output;
         this.Error = error;
         this.Input = input;
+        this.JsonOutput = jsonOutput;
     }
 
     /// <summary>
@@ -62,6 +64,7 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <param name="machineInfo">The machine information.</param>
     /// <param name="tracingListener">The tracing debug listener.</param>
     /// <param name="input">The input reader for interactive commands.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     public DebugContext(
         ICommandDispatcher dispatcher,
         TextWriter output,
@@ -71,8 +74,9 @@ public sealed class DebugContext : IDebugContext, IDisposable
         IDisassembler? disassembler,
         MachineInfo? machineInfo = null,
         TracingDebugListener? tracingListener = null,
-        TextReader? input = null)
-        : this(dispatcher, output, error, input)
+        TextReader? input = null,
+        bool jsonOutput = false)
+        : this(dispatcher, output, error, input, jsonOutput)
     {
         this.Cpu = cpu;
         this.Bus = bus;
@@ -85,13 +89,16 @@ public sealed class DebugContext : IDebugContext, IDisposable
     public ICommandDispatcher Dispatcher { get; }
 
     /// <inheritdoc/>
-    public TextWriter Output { get; }
+    public TextWriter Output { get; set; }
 
     /// <inheritdoc/>
-    public TextWriter Error { get; }
+    public TextWriter Error { get; set; }
 
     /// <inheritdoc/>
-    public TextReader? Input { get; }
+    public TextReader? Input { get; set; }
+
+    /// <inheritdoc/>
+    public bool JsonOutput { get; }
 
     /// <inheritdoc/>
     public ICpu? Cpu { get; private set; }
@@ -135,14 +142,78 @@ public sealed class DebugContext : IDebugContext, IDisposable
     /// <inheritdoc/>
     public MountedDiskRegistry MountedDisks { get; } = new();
 
+    // 6.4: Background run control (start/poll/stop for long-running ops from agents/MCP)
+    private Task<ExecutionCommandBase.ExecutionResult>? _backgroundRunTask;
+    private string? _backgroundRunDescription;
+    private CancellationTokenSource? _backgroundRunCts;
+
+    /// <inheritdoc/>
+    public bool IsRunActive => _backgroundRunTask != null && !_backgroundRunTask.IsCompleted;
+
+    /// <inheritdoc/>
+    public string? ActiveRunDescription => _backgroundRunDescription;
+
+    /// <inheritdoc/>
+    public ExecutionCommandBase.ExecutionResult? LastRunResult { get; private set; }
+
+    internal void SetLastRunResult(ExecutionCommandBase.ExecutionResult result) => LastRunResult = result;
+
+    /// <inheritdoc/>
+    public void RequestRunStop()
+    {
+        Cpu?.RequestStop();
+        _backgroundRunCts?.Cancel();
+    }
+
+    /// <summary>
+    /// Starts a background execution run (for 6.4 agent polling support).
+    /// The runner should perform the long-running work (e.g. ExecuteInstructionLoop wrapper).
+    /// </summary>
+    public void StartBackgroundRun(Func<CancellationToken, Task<ExecutionCommandBase.ExecutionResult>> runner, string description)
+    {
+        StopBackgroundRun();
+
+        _backgroundRunDescription = description;
+        _backgroundRunCts = new CancellationTokenSource();
+        var token = _backgroundRunCts.Token;
+
+        _backgroundRunTask = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await runner(token).ConfigureAwait(false);
+                LastRunResult = result;
+                return result;
+            }
+            finally
+            {
+                _backgroundRunDescription = null;
+                // keep task ref briefly for status; cleared on next start or explicit
+            }
+        }, token);
+    }
+
+    /// <summary>
+    /// Stops any active background run and clears state.
+    /// </summary>
+    public void StopBackgroundRun()
+    {
+        RequestRunStop();
+        _backgroundRunTask = null;
+        _backgroundRunCts?.Dispose();
+        _backgroundRunCts = null;
+        _backgroundRunDescription = null;
+    }
+
     /// <summary>
     /// Creates a debug context using the standard console streams.
     /// </summary>
     /// <param name="dispatcher">The command dispatcher.</param>
+    /// <param name="jsonOutput">Whether structured JSON output should be produced.</param>
     /// <returns>A new <see cref="DebugContext"/> using console streams.</returns>
-    public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher)
+    public static DebugContext CreateConsoleContext(ICommandDispatcher dispatcher, bool jsonOutput = false)
     {
-        var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In);
+        var context = new DebugContext(dispatcher, Console.Out, Console.Error, Console.In, jsonOutput);
         context.AttachPathResolver(new DebugPathResolver());
         context.AttachDiskImageFactory(new DiskImageFactory());
         return context;

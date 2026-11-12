@@ -1,8 +1,10 @@
-// <copyright file="RegionsCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="RegionsCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
+
+using System.Linq;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -48,12 +50,16 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
         "subregions within the composite. Requires a bus-based system.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output regions as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "regions                 Display all memory regions",
+        "regions --json          Output as JSON",
     ];
 
     /// <inheritdoc/>
@@ -77,8 +83,34 @@ public sealed class RegionsCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No bus attached. This command requires a bus-based system.");
         }
 
+        bool useJson = context.JsonOutput ||
+                       args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                                     a.Equals("-j", StringComparison.OrdinalIgnoreCase));
+
         var bus = debugContext.Bus;
         var pageSize = 1 << bus.PageShift;
+
+        if (useJson)
+        {
+            var regionList = new List<object>();
+            for (int pageIndex = 0; pageIndex < bus.PageCount; pageIndex++)
+            {
+                ref readonly var entry = ref bus.GetPageEntryByIndex(pageIndex);
+                uint addr = (uint)(pageIndex * pageSize);
+                regionList.Add(new
+                {
+                    page = pageIndex,
+                    address = $"${addr:X4}",
+                    tag = entry.RegionTag.ToString(),
+                    perms = entry.Perms.ToString(),
+                    deviceId = entry.DeviceId,
+                });
+            }
+
+            string json = System.Text.Json.JsonSerializer.Serialize(new { pageSize, pageCount = bus.PageCount, regions = regionList }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
+        }
 
         debugContext.Output.WriteLine("Memory Regions:");
         debugContext.Output.WriteLine();

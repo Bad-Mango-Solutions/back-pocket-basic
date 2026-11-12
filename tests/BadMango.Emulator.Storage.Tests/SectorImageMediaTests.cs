@@ -63,6 +63,33 @@ public class SectorImageMediaTests
     }
 
     /// <summary>
+    /// A flush that only dirties nibbles outside a sector's 416-byte slot must not
+    /// overwrite that sector — DecodeTrack can still false-positive in gap bytes.
+    /// </summary>
+    [Test]
+    public void TrackWrite_UntouchedSectorSlotsAreNotOverwritten()
+    {
+        var payload = ImageFixtures.Random525Payload(4242);
+        using var backend = new RamStorageBackend(payload);
+        var media = new SectorImageMedia(backend, DiskGeometry.Standard525ProDos).As525Media();
+
+        var nibbles = new byte[GcrEncoder.StandardTrackLength];
+        media.ReadTrack(quarterTrack: 0, nibbles);
+
+        // Dirtied nibbles live only in physical sector 5's slot; sector 0's 416-byte
+        // region is unchanged so a gap false-positive decode must not wipe it.
+        const int sectorStride = 416;
+        const int sector5DataOffset = (5 * sectorStride) + 48 + 14 + 5 + 50;
+        nibbles[sector5DataOffset] ^= 0x01;
+
+        var sector0Before = backend.ToArray()[..256];
+        media.WriteTrack(0, nibbles);
+        var sector0After = backend.ToArray()[..256];
+
+        Assert.That(sector0After, Is.EqualTo(sector0Before));
+    }
+
+    /// <summary>
     /// Encoded-then-rewritten track preserves the underlying sector data.
     /// </summary>
     [Test]

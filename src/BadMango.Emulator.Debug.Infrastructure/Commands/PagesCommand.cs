@@ -1,10 +1,11 @@
-// <copyright file="PagesCommand.cs" company="Bad Mango Solutions">
+﻿// <copyright file="PagesCommand.cs" company="Bad Mango Solutions">
 // Copyright (c) Bad Mango Solutions. All rights reserved.
 // </copyright>
 
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
+using System.Linq;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
@@ -51,12 +52,16 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
         "pages. For composite targets, also displays subregions within the page. Requires a bus-based system.";
 
     /// <inheritdoc/>
-    public IReadOnlyList<CommandOption> Options { get; } = [];
+    public IReadOnlyList<CommandOption> Options { get; } =
+    [
+        new("--json", "-j", "flag", "Output page table as JSON", "off"),
+    ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "pages                    Display first 16 pages",
+        "pages --json             Output as JSON",
         "pages $04                Display pages starting from page 4",
         "pages 0 32               Display first 32 pages",
     ];
@@ -109,6 +114,32 @@ public sealed class PagesCommand : CommandHandlerBase, ICommandHelp
 
         // Clamp count to remaining pages
         count = Math.Min(count, bus.PageCount - startPage);
+
+        bool useJson = context.JsonOutput ||
+                       args.Any(a => a.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                                     a.Equals("-j", StringComparison.OrdinalIgnoreCase));
+
+        if (useJson)
+        {
+            var pageEntries = new List<object>();
+            for (int i = 0; i < count; i++)
+            {
+                int pageIndex = startPage + i;
+                ref readonly var entry = ref bus.GetPageEntryByIndex(pageIndex);
+                pageEntries.Add(new
+                {
+                    page = pageIndex,
+                    address = $"${pageIndex * pageSize:X4}",
+                    tag = entry.RegionTag.ToString(),
+                    perms = entry.Perms.ToString(),
+                    deviceId = entry.DeviceId,
+                });
+            }
+
+            string json = System.Text.Json.JsonSerializer.Serialize(new { startPage, count, pageSize, pages = pageEntries }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            debugContext.Output.WriteLine(json);
+            return CommandResult.Ok();
+        }
 
         debugContext.Output.WriteLine($"Page Table (pages {startPage}-{startPage + count - 1} of {bus.PageCount}, page size: 0x{pageSize:X}):");
         debugContext.Output.WriteLine();

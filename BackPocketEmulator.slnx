@@ -6,6 +6,8 @@
   </Configurations>
   <Folder Name="/config/">
     <File Path=".editorconfig" />
+    <File Path=".github/GITHUB_PROJECT.md" />
+    <File Path=".github/project.config.json" />
     <File Path=".github/copilot-instructions.md" />
     <File Path=".gitignore" />
     <File Path="Directory.Build.props" />
@@ -18,11 +20,13 @@
   </Folder>
   <Folder Name="/docs/">
     <File Path="65C02-IMPLEMENTATION-ROADMAP.md" />
+    <File Path="AGENTS.md" />
     <File Path="BRANCH_MIGRATION.md" />
     <File Path="BRANCH_PROTECTION.md" />
     <File Path="CONTRIBUTING.md" />
     <File Path="DISK-EMULATION-PRD.md" />
     <File Path="DISK-IMPLEMENTATION-PLAN.md" />
+    <File Path="emudbg.md" />
     <File Path="IMPLEMENTATION_DEDUPLICATION.md" />
     <File Path="IMPLEMENTATION_SUMMARY.md" />
     <File Path="ISSUE_COMMENT.md" />
@@ -34,6 +38,7 @@
     <File Path="SETUP_GUIDE.md" />
   </Folder>
   <Folder Name="/profiles/">
+    <File Path="profiles/pocket2e-a2-enh.json" />
     <File Path="profiles/pocket2e-a2.json" />
     <File Path="profiles/pocket2e-devices.json" />
     <File Path="profiles/pocket2e-lite.json" />
@@ -97,7 +102,6 @@
     <File Path="specs/video/Display Rendering Integration Specification.md" />
     <File Path="specs/video/Pocket2e Debug Video Window (Avalonia) — Specification.md" />
   </Folder>
-  <Folder Name="/src/" />
   <Folder Name="/src/emulator/">
     <Project Path="src/BadMango.Emulator.Bus/BadMango.Emulator.Bus.csproj" />
     <Project Path="src/BadMango.Emulator.Devices/BadMango.Emulator.Devices.csproj" />
@@ -107,6 +111,7 @@
   <Folder Name="/src/emulator/infrastructure/">
     <Project Path="src/BadMango.Emulator.Configuration/BadMango.Emulator.Configuration.csproj" />
     <Project Path="src/BadMango.Emulator.Core/BadMango.Emulator.Core.csproj" />
+    <Project Path="src/BadMango.Emulator.Debug.Agent/BadMango.Emulator.Debug.Agent.csproj" />
     <Project Path="src/BadMango.Emulator.Debug.Infrastructure/BadMango.Emulator.Debug.Infrastructure.csproj" />
     <Project Path="src/BadMango.Emulator.Emulation/BadMango.Emulator.Emulation.csproj" />
     <Project Path="src/BadMango.Emulator.Infrastructure/BadMango.Emulator.Infrastructure.csproj" />

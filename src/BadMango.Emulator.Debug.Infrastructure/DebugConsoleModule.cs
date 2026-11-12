@@ -66,6 +66,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<RunUntilCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<StopCommand>()
             .As<ICommandHandler>()
             .SingleInstance();
@@ -164,6 +168,10 @@ public class DebugConsoleModule : Module
             .As<ICommandHandler>()
             .SingleInstance();
 
+        builder.RegisterType<PerfCommand>()
+            .As<ICommandHandler>()
+            .SingleInstance();
+
         builder.RegisterType<DeviceMapCommand>()
             .As<ICommandHandler>()
             .SingleInstance();
@@ -228,13 +236,24 @@ public class DebugConsoleModule : Module
             .AsSelf()
             .SingleInstance();
 
-        // Register the default machine profile, respecting user's choice from .default-profile
+        // Register the default machine profile, respecting CLI override or .default-profile
         builder.Register(ctx =>
         {
             var loader = ctx.Resolve<IMachineProfileLoader>();
-            string profileName = GetUserDefaultProfileName();
 
-            // Try to load the user's chosen default profile
+            // CLI --profile takes precedence
+            string? profileName = null;
+            var options = ctx.ResolveOptional<EmudbgOptions>();
+            if (options?.Profile is { Length: > 0 })
+            {
+                profileName = options.Profile;
+            }
+            else
+            {
+                profileName = GetUserDefaultProfileName();
+            }
+
+            // Try to load the requested profile
             var profile = loader.LoadProfile(profileName);
             if (profile is not null)
             {
@@ -253,7 +272,8 @@ public class DebugConsoleModule : Module
             var dispatcher = ctx.Resolve<ICommandDispatcher>();
             var profile = ctx.Resolve<MachineProfile>();
             var tracingListener = ctx.Resolve<TracingDebugListener>();
-            var context = DebugContext.CreateConsoleContext(dispatcher);
+            var opts = ctx.ResolveOptional<EmudbgOptions>();
+            var context = DebugContext.CreateConsoleContext(dispatcher, opts?.JsonOutput ?? false);
 
             // Create a path resolver with the library root for resolving library:// paths
             string libraryRoot = GetLibraryRoot();
@@ -275,6 +295,15 @@ public class DebugConsoleModule : Module
         .As<ICommandContext>()
         .SingleInstance();
 
+        // Register TextReader driven by EmudbgOptions (supports --exec / --file for non-interactive use)
+        builder.Register(ctx =>
+        {
+            var opts = ctx.ResolveOptional<EmudbgOptions>();
+            return opts?.CreateInputReader() ?? Console.In;
+        })
+        .As<TextReader>()
+        .SingleInstance();
+
         // Register the REPL
         builder.Register(ctx =>
         {
@@ -288,7 +317,9 @@ public class DebugConsoleModule : Module
                 dispatcher.Register(handler);
             }
 
-            return new DebugRepl(dispatcher, context, Console.In);
+            // Use the injected TextReader (may be Console.In, StringReader for --exec, or file reader)
+            var input = ctx.Resolve<TextReader>();
+            return new DebugRepl(dispatcher, context, input);
         })
         .AsSelf()
         .SingleInstance();

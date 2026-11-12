@@ -72,6 +72,21 @@ public sealed class TrapMonCommand : CommandHandlerBase, ICommandHelp
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        bool useJson = context.JsonOutput || args.Any(a => a is "--json" or "-j");
+
+        if (useJson)
+        {
+            var info = new
+            {
+                machineAttached = debugContext?.Machine != null,
+                breakpoints = debugContext?.Breakpoints?.Count ?? 0,
+                watchpoints = debugContext?.Watchpoints?.Count ?? 0,
+                note = "Structured trap status for agent (full monitor is UI)"
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         // If a window manager is available, try to show the popup window
         if (windowManager is null)
         {

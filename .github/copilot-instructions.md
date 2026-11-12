@@ -53,6 +53,7 @@ This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2
 - It will include debugging tools such as register/memory inspection, breakpoints, watchpoints, tracing, and disk state management.
 - The ultimate goal is to reuse this infrastructure for a user-friendly application that can host multiple instances of an emulator.
 - We will use this debug console as we move towards the 65816 emulator and, eventually, our speculative 32-bit "65832" processor, so it must be designed with future extensibility in mind.
+- **For AI agents and tools**: See `AGENTS.md` (root) for the exact recommended patterns to launch and drive the REPL (batching via stdin piping, core commands, limitations, and examples). Always test changes with realistic command sequences.
 
 ### Emulator Host Agent (emudbg-agent)
 
@@ -60,6 +61,7 @@ This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2
 - It will reuse the existing debug infrastructure and command surface while exposing a machine-friendly transport suitable for local tooling integrations such as MCP clients.
 - Use headless Avalonia for video output when implementing the emudbg agent host.
 - Use a fake speaker controller for audio in the emudbg agent host on Linux/Ubuntu diagnostic hosts where Windows-only implementations are unavailable.
+- Practical interaction guidance for the current REPL (while the dedicated agent host is being built) lives in `AGENTS.md`.
 
 ## Development Guidelines
 
@@ -96,6 +98,37 @@ This repository is a .NET emulator for the WDC 65C02 (an Apple IIe-class Pocket2
 - **Performance testing.** Include performance tests to ensure that new features do not degrade the system's performance.
 - **User acceptance testing.** Involve end-users in testing to validate that the software meets their needs and expectations.
 - **Bug tracking.** Use a bug tracking system (GitHub Issues) to log, prioritize, and manage bugs effectively.
+
+## GitHub Project and Copilot Workflow
+
+This repository is tracked on a **GitHub Project** board under the [Bad-Mango-Solutions](https://github.com/Bad-Mango-Solutions) organization. See [`.github/GITHUB_PROJECT.md`](GITHUB_PROJECT.md) for board setup, automation variables, and verification commands.
+
+### When Copilot (or any agent) picks up work
+
+1. **Start from the GitHub Issue** linked on the project card — use its reproduction steps and acceptance criteria.
+2. **Read `AGENTS.md`** (repo root) for `emudbg` batch verification when touching emulator, boot, disk, or debug commands.
+3. **Branch naming:** `feature/<issue>-short-description` or `fix/<issue>-short-description`.
+4. **Commit messages:** reference issues (`Fixes #123`, `Relates to #456`).
+5. **Before finishing:** run `dotnet build BackPocketBasic.slnx` and `dotnet test BackPocketBasic.slnx`; for boot-path changes, run the DOS/ProDOS smoke sequences in `AGENTS.md` or `.github/GITHUB_PROJECT.md`.
+6. **PR template:** fill Related Issues, Testing, and link the project card.
+
+### Repository automation
+
+| Workflow | Purpose |
+|----------|---------|
+| [`ci.yml`](workflows/ci.yml) | Build and test on push/PR to `main` |
+| [`copilot-setup-steps.yml`](workflows/copilot-setup-steps.yml) | Copilot coding agent environment setup (restore, build, test, emudbg smoke) |
+| [`project-automation.yml`](workflows/project-automation.yml) | Auto-add new issues/PRs to [org project #3](https://github.com/orgs/Bad-Mango-Solutions/projects/3) (requires `ADD_TO_PROJECT_PAT` secret) |
+| [`.github/project.config.json`](project.config.json) | Committed project id/URL for Copilot and agents |
+
+### Key planning documents
+
+| Document | Scope |
+|----------|-------|
+| `PRD-emudbg-agent.md` | Agent mode product requirements |
+| `emudbg-agent-plan.md` | MCP / structured tool implementation plan |
+| `AGENTS.md` | Current `emudbg` command patterns for humans and AI |
+| `specs/` and `profiles/` | Machine profiles and hardware specifications |
 
 ## Issue and PR Guidelines
 

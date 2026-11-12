@@ -25,8 +25,9 @@ using BadMango.Emulator.Debug.UI.Services;
 /// </list>
 /// </para>
 /// <para>
-/// When running in headless mode (no Avalonia), this module should not be registered,
-/// and commands will fall back to console-based output.
+/// The module can be registered even for headless runs. When AvaloniaBootstrapper.UseHeadless is true,
+/// Avalonia will be initialized with its headless platform, enabling video rendering and diagnostics
+/// without a physical display (useful for AI agents performing video diagnostics).
 /// </para>
 /// </remarks>
 /// <example>

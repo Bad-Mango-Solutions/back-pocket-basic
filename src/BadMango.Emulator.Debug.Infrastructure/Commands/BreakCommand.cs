@@ -172,14 +172,34 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
 
     private static CommandResult List(IDebugContext context)
     {
+        bool useJson = context.JsonOutput;
         var all = context.Breakpoints.GetAll();
+        var lastHitAddr = context.Breakpoints.LastHitAddress;
+
+        if (useJson)
+        {
+            var list = new
+            {
+                count = all.Count,
+                breakpoints = all.Select(bp => new
+                {
+                    address = $"${bp.Address:X4}",
+                    enabled = bp.Enabled,
+                    hits = bp.Hits,
+                    label = bp.Label,
+                }).ToList(),
+                lastHit = lastHitAddr.HasValue ? $"${lastHitAddr.Value:X4}" : null,
+            };
+            context.Output.WriteLine(System.Text.Json.JsonSerializer.Serialize(list, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            return CommandResult.Ok();
+        }
+
         if (all.Count == 0)
         {
             context.Output.WriteLine("No breakpoints set.");
-            var last = context.Breakpoints.LastHitAddress;
-            if (last is not null)
+            if (lastHitAddr is not null)
             {
-                context.Output.WriteLine($"Last hit (before clear): ${last.Value:X4}");
+                context.Output.WriteLine($"Last hit (before clear): ${lastHitAddr.Value:X4}");
             }
 
             return CommandResult.Ok();
@@ -197,11 +217,10 @@ public sealed class BreakCommand : CommandHandlerBase, ICommandHelp
                 bp.Label ?? string.Empty));
         }
 
-        var lastHit = context.Breakpoints.LastHitAddress;
-        if (lastHit is not null)
+        if (lastHitAddr is not null)
         {
             context.Output.WriteLine();
-            context.Output.WriteLine($"Last hit: ${lastHit.Value:X4}");
+            context.Output.WriteLine($"Last hit: ${lastHitAddr.Value:X4}");
         }
 
         return CommandResult.Ok();

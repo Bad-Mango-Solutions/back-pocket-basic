@@ -80,7 +80,8 @@ public sealed partial class MainBus
 
         // Recompute all pages affected by this layer's mappings
         var mappings = layeredMappings[layerName];
-        foreach (var mapping in mappings)
+        // Snapshot to guard against reentrant modification during recompute (e.g. device state changes from side effects)
+        foreach (var mapping in mappings.ToList())
         {
             int startPage = mapping.GetStartPage(PageShift);
             int pageCount = mapping.GetPageCount(PageShift);
@@ -107,7 +108,8 @@ public sealed partial class MainBus
 
         // Recompute all pages affected by this layer's mappings
         var mappings = layeredMappings[layerName];
-        foreach (var mapping in mappings)
+        // Snapshot to guard against reentrant modification during recompute (e.g. device state changes from side effects)
+        foreach (var mapping in mappings.ToList())
         {
             int startPage = mapping.GetStartPage(PageShift);
             int pageCount = mapping.GetPageCount(PageShift);
@@ -147,7 +149,8 @@ public sealed partial class MainBus
         // If the layer is active, recompute affected pages
         if (layer.IsActive)
         {
-            foreach (var mapping in mappings)
+            // Snapshot to guard against reentrant modification during recompute (e.g. device state changes from side effects)
+            foreach (var mapping in mappings.ToList())
             {
                 int startPage = mapping.GetStartPage(PageShift);
                 int pageCount = mapping.GetPageCount(PageShift);
@@ -165,16 +168,18 @@ public sealed partial class MainBus
     /// <inheritdoc />
     public IEnumerable<LayeredMapping> GetAllMappingsAt(Addr address)
     {
-        return layeredMappings.Values
-            .SelectMany(mappings => mappings)
+        // Snapshot to avoid modification during enumeration by callers (e.g. debug during execution)
+        return layeredMappings.Values.ToList()
+            .SelectMany(mappings => mappings.ToList())
             .Where(mapping => mapping.ContainsAddress(address));
     }
 
     /// <inheritdoc />
     public IEnumerable<MappingLayer> GetLayersAt(Addr address)
     {
-        return layeredMappings
-            .Where(kvp => kvp.Value.Any(mapping => mapping.ContainsAddress(address)))
+        // Snapshot to avoid modification during enumeration by callers (e.g. debug during execution)
+        return layeredMappings.ToList()
+            .Where(kvp => kvp.Value.ToList().Any(mapping => mapping.ContainsAddress(address)))
             .Select(kvp => layers[kvp.Key])
             .OrderByDescending(l => l.Priority);
     }
@@ -253,7 +258,8 @@ public sealed partial class MainBus
         int highestPriority = int.MinValue;
 
         // Check all active layers for mappings at this address
-        foreach (var kvp in layeredMappings)
+        // Snapshot collections to guard against concurrent/reentrant modification during recomputes (e.g. from device ApplyState side-effects during CPU writes)
+        foreach (var kvp in layeredMappings.ToList())
         {
             var layerName = kvp.Key;
             var layer = layers[layerName];
@@ -263,7 +269,7 @@ public sealed partial class MainBus
                 continue;
             }
 
-            foreach (var mapping in kvp.Value)
+            foreach (var mapping in kvp.Value.ToList())
             {
                 if (!mapping.ContainsAddress(pageAddress))
                 {
@@ -287,7 +293,8 @@ public sealed partial class MainBus
 
                     lock (swapGroupLock)
                     {
-                        foreach (var swapGroup in swapGroupsById.Values)
+                        // Snapshot to prevent modification-during-enumeration if reentrant swap or layer ops occur
+                        foreach (var swapGroup in swapGroupsById.Values.ToList())
                         {
                             if (swapGroup.ContainsAddress(pageAddress) && swapGroup.ActiveVariantName is not null)
                             {

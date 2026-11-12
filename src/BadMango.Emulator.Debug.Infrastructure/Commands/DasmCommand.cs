@@ -5,6 +5,7 @@
 namespace BadMango.Emulator.Debug.Infrastructure.Commands;
 
 using System.Globalization;
+using System.Linq;
 
 using BadMango.Emulator.Core;
 
@@ -54,12 +55,14 @@ public sealed class DasmCommand : CommandHandlerBase, ICommandHelp
         new("--instructions", null, "int", "Number of instructions to disassemble", "16"),
         new("--bytes", null, "int", "Number of bytes to disassemble", null),
         new("--range", null, "flag", "Treat second address as end address", "off"),
+        new("--json", "-j", "flag", "Output disassembly as JSON array", "off"),
     ];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> Examples { get; } =
     [
         "dasm                    Disassemble 16 instructions from PC",
+        "dasm --json             Disassemble as JSON",
         "dasm $1000              Disassemble from $1000",
         "dasm $1000 $1050 --range   Disassemble address range",
         "dasm $300 --instructions=5 Disassemble 5 instructions",
@@ -86,8 +89,12 @@ public sealed class DasmCommand : CommandHandlerBase, ICommandHelp
             return CommandResult.Error("No disassembler attached to debug context.");
         }
 
+        // Support per-command --json / -j or global from context
+        var filteredArgs = args.Where(a => !a.Equals("--json", StringComparison.OrdinalIgnoreCase) && !a.Equals("-j", StringComparison.OrdinalIgnoreCase)).ToArray();
+        bool useJson = context.JsonOutput || filteredArgs.Length < args.Length;
+
         // Parse options
-        var options = ParseOptions(debugContext, args);
+        var options = ParseOptions(debugContext, filteredArgs);
 
         if (!options.Success)
         {
@@ -109,6 +116,13 @@ public sealed class DasmCommand : CommandHandlerBase, ICommandHelp
             else
             {
                 instructions = debugContext.Disassembler.Disassemble(options.StartAddress, options.ByteCount);
+            }
+
+            if (useJson)
+            {
+                string json = System.Text.Json.JsonSerializer.Serialize(instructions, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                debugContext.Output.WriteLine(json);
+                return CommandResult.Ok();
             }
 
             FormatDisassembly(debugContext.Output, instructions);

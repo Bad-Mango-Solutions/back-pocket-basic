@@ -810,8 +810,12 @@ public sealed partial class MachineBuilder
         {
             // No factory registered - silently skip
             // This allows profiles to declare cards that may not be supported by all hosts
+            if (cardEntry.Type == "pocketwatch")
+                System.Console.Error.WriteLine("[DEBUG] pocketwatch card in profile but no factory registered yet");
             return;
         }
+        if (cardEntry.Type == "pocketwatch")
+            System.Console.Error.WriteLine("[DEBUG] pocketwatch factory found, creating card from profile config");
 
         // Create the card instance, passing the optional per-card config blob through to the factory.
         var card = factory(this, cardEntry.Config);

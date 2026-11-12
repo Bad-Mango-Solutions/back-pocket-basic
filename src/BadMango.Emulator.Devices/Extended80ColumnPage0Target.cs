@@ -30,6 +30,16 @@ using Interfaces;
 /// simply indexes into the routing table based on the high nibble of the address offset.
 /// </para>
 /// <para>
+/// The routing table is critical for fidelity during ROM initialization. The cold-start code
+/// and the 80-column firmware perform many writes to the text page region ($0400-$07FF) using
+/// computed base addresses and indirect or indexed stores. Those writes must land in the
+/// correct backing memory (main or auxiliary) according to the current 80STORE/PAGE2/RAMWRT
+/// state, or the screen will remain full of zeros (producing the all-@ symptom) even after
+/// HOME has logically executed. The precomputed table guarantees that the decision made at
+/// the previous soft-switch write is visible to the very next store, matching the hardware
+/// behavior the ROM was written against.
+/// </para>
+/// <para>
 /// The routing table has 16 entries (one per 256-byte sub-page). When a soft switch changes,
 /// only the affected entries are updated via <see cref="UpdateRouting"/>.
 /// </para>

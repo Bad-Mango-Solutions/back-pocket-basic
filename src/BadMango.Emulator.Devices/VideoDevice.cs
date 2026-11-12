@@ -6,6 +6,7 @@ namespace BadMango.Emulator.Devices;
 
 using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 
 using Interfaces;
 
@@ -51,7 +52,7 @@ using Interfaces;
 /// </para>
 /// </remarks>
 [DeviceType("video")]
-public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetReceiver
+public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider
 {
     /// <summary>
     /// Cycles per video frame for NTSC timing (~60 Hz).
@@ -73,12 +74,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     private readonly bool[] annunciators = new bool[4];
     private IScheduler? scheduler;
     private IExtended80ColumnDevice? extended80ColumnDevice;
+    private IMainMemoryProvider? mainMemoryProvider;
     private EventHandle vblankEventHandle;
     private EventHandle vblankEndEventHandle;
-    private bool vblankStartScheduled;
-    private bool vblankEndScheduled;
-    private Core.Cycle vblankStartDue;
-    private Core.Cycle vblankEndDue;
     private bool textMode = true;
     private bool mixedMode;
     private bool page2;
@@ -86,6 +84,7 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     private bool col80Mode;
     private bool doubleHiResMode;
     private bool verticalBlanking;
+    private Cycle videoFrameStartCycle;
 
     /// <inheritdoc />
     public event Action<VideoMode>? ModeChanged;
@@ -142,6 +141,37 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     public IReadOnlyList<bool> Annunciators => annunciators;
 
     /// <inheritdoc />
+    public byte ReadScannerFloatingBus(Cycle now, IMemoryBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(bus);
+
+        ulong cyclesThisFrame = ComputeCyclesThisVideoFrame(now);
+        bool page2Via80Store = extended80ColumnDevice?.Is80StoreEnabled ?? false;
+        return VideoScannerFloatingBus.Read(
+            cyclesThisFrame,
+            textMode,
+            mixedMode,
+            page2,
+            hiresMode,
+            page2Via80Store,
+            bus,
+            mainMemoryProvider);
+    }
+
+    /// <summary>
+    /// Maps absolute bus time to the in-frame offset used by the video scanner.
+    /// </summary>
+    /// <param name="now">Current emulated bus time.</param>
+    /// <returns>Cycle offset within the current NTSC frame.</returns>
+    private ulong ComputeCyclesThisVideoFrame(Cycle now)
+    {
+        // AppleWin CpuGetCyclesThisVideoFrame is absolute position within the 17030-cycle
+        // NTSC frame (g_dwCyclesThisFrame + g_nCyclesExecuted). Using scheduler Now
+        // modulo frame length avoids VBlank event scheduling drift.
+        return (ulong)now.Value % CyclesPerFrame;
+    }
+
+    /// <inheritdoc />
     public string ProviderName => "Video";
 
     /// <inheritdoc />
@@ -150,9 +180,14 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
         ArgumentNullException.ThrowIfNull(context);
 
         scheduler = context.Scheduler;
+        if (scheduler is not null)
+        {
+            videoFrameStartCycle = scheduler.Now;
+        }
 
         // Get the Extended 80-Column Device if present, to synchronize PAGE2/HIRES state
         extended80ColumnDevice = context.GetComponent<IExtended80ColumnDevice>();
+        mainMemoryProvider = context.GetComponent<IMainMemoryProvider>();
 
         ScheduleNextVBlank();
     }
@@ -204,7 +239,11 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     public void Reset()
     {
         // Cancel any pending VBlank events
-        CancelVBlankEvents();
+        if (scheduler != null)
+        {
+            scheduler.Cancel(vblankEventHandle);
+            scheduler.Cancel(vblankEndEventHandle);
+        }
 
         textMode = true;
         mixedMode = false;
@@ -214,61 +253,15 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
         doubleHiResMode = false;
         verticalBlanking = false;
         Array.Clear(annunciators);
+        if (scheduler is not null)
+        {
+            videoFrameStartCycle = scheduler.Now;
+        }
 
         // Reschedule VBlank events
         ScheduleNextVBlank();
 
         OnModeChanged();
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// <para>
-    /// The video soft switches live in the IOU, which is wired to RESET'. Sather,
-    /// <i>Understanding the Apple IIe</i>, Table 7.1 (p. 7-5), "condition after RESET'":
-    /// 80STORE, 80COL, ALTCHRSET, PAGE2, HIRES and AN0–AN3 are reset off; TEXT and MIXED are
-    /// "NA" (not affected — the IOU only initializes them at power-up). 80STORE and ALTCHRSET are
-    /// held by the 80-column and character devices; this device resets PAGE2, HIRES, 80COL and
-    /// the annunciators, and leaves TEXT and MIXED as they were.
-    /// </para>
-    /// <para>
-    /// The video timing is not reset by RESET'. The machine flushes the scheduler when RESET is
-    /// asserted, which removes the pending VBlank edge, so the next edge is re-armed here at its
-    /// original cycle, keeping the frame phase (and <c>RDVBL</c>) intact.
-    /// </para>
-    /// </remarks>
-    public void OnResetAsserted(Core.Cycle cycle)
-    {
-        bool wasStartScheduled = vblankStartScheduled;
-        bool wasEndScheduled = vblankEndScheduled;
-
-        // The flush already dropped these events; forget the handles rather than cancel them.
-        vblankStartScheduled = false;
-        vblankEndScheduled = false;
-
-        if (scheduler != null)
-        {
-            if (wasEndScheduled)
-            {
-                ScheduleVBlankEnd(vblankEndDue);
-            }
-            else if (wasStartScheduled)
-            {
-                ScheduleVBlankStart(vblankStartDue);
-            }
-        }
-
-        page2 = false;
-        hiresMode = false;
-        col80Mode = false;
-        Array.Clear(annunciators);
-
-        OnModeChanged();
-    }
-
-    /// <inheritdoc />
-    public void OnResetReleased(Core.Cycle cycle)
-    {
     }
 
     /// <summary>
@@ -640,62 +633,19 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
             return;
         }
 
-        // Schedule the start of VBlank
-        ScheduleVBlankStart(scheduler.Now + new Core.Cycle(CyclesPerFrame - VBlankDurationCycles));
-    }
-
-    private void ScheduleVBlankStart(Core.Cycle due)
-    {
-        if (scheduler == null)
+        // Cancel any previous pending VBlank start to avoid accumulating events
+        if (vblankEventHandle.Id != 0)
         {
-            return;
+            scheduler.Cancel(vblankEventHandle);
         }
 
-        vblankStartDue = due < scheduler.Now ? scheduler.Now : due;
-        vblankEventHandle = scheduler.ScheduleAt(
-            vblankStartDue,
+        // Schedule the start of VBlank (CyclesPerFrame - duration)
+        vblankEventHandle = scheduler.ScheduleAfter(
+            new Core.Cycle(CyclesPerFrame - VBlankDurationCycles),
             ScheduledEventKind.VideoBlank,
             priority: 0,
             OnVBlankStart,
             tag: this);
-        vblankStartScheduled = true;
-    }
-
-    private void ScheduleVBlankEnd(Core.Cycle due)
-    {
-        if (scheduler == null)
-        {
-            return;
-        }
-
-        vblankEndDue = due < scheduler.Now ? scheduler.Now : due;
-        vblankEndEventHandle = scheduler.ScheduleAt(
-            vblankEndDue,
-            ScheduledEventKind.VideoBlank,
-            priority: 0,
-            OnVBlankEnd,
-            tag: this);
-        vblankEndScheduled = true;
-    }
-
-    private void CancelVBlankEvents()
-    {
-        if (scheduler == null)
-        {
-            return;
-        }
-
-        if (vblankStartScheduled)
-        {
-            scheduler.Cancel(vblankEventHandle);
-            vblankStartScheduled = false;
-        }
-
-        if (vblankEndScheduled)
-        {
-            scheduler.Cancel(vblankEndEventHandle);
-            vblankEndScheduled = false;
-        }
     }
 
     /// <summary>
@@ -704,8 +654,6 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     /// <param name="context">The event context.</param>
     private void OnVBlankStart(IEventContext context)
     {
-        vblankStartScheduled = false;
-
         // Assert vertical blanking status
         verticalBlanking = true;
 
@@ -714,7 +662,16 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
         // on and stop the VBlank cadence (no OnVBlankEnd means no next start).
         if (scheduler != null)
         {
-            ScheduleVBlankEnd(scheduler.Now + new Core.Cycle(VBlankDurationCycles));
+            if (vblankEndEventHandle.Id != 0)
+            {
+                scheduler.Cancel(vblankEndEventHandle);
+            }
+            vblankEndEventHandle = scheduler.ScheduleAfter(
+                new Core.Cycle(VBlankDurationCycles),
+                ScheduledEventKind.VideoBlank,
+                priority: 0,
+                OnVBlankEnd,
+                tag: this);
         }
 
         // Notify listeners (video window should refresh)
@@ -727,10 +684,9 @@ public sealed class VideoDevice : IVideoDevice, ISoftSwitchProvider, IResetRecei
     /// <param name="context">The event context.</param>
     private void OnVBlankEnd(IEventContext context)
     {
-        vblankEndScheduled = false;
-
         // Clear vertical blanking status
         verticalBlanking = false;
+        videoFrameStartCycle = context.Now;
 
         // Schedule the next VBlank
         ScheduleNextVBlank();

@@ -239,20 +239,57 @@ public sealed class SectorImageMedia
             var track = quarterTrack >> 2;
             Span<byte> trackSectors = stackalloc byte[SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector];
 
-            // Pre-load the existing sectors so that any sectors we fail to decode are
-            // not corrupted on disk.
             for (var phys = 0; phys < SectorSkew.SectorsPerTrack; phys++)
             {
                 this.parent.ReadSectorPhysicalCore(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
             }
 
-            var decoded = GcrEncoder.DecodeTrack(source, trackSectors);
+            // Encode the pristine track so we can tell which on-disk sector slots actually
+            // received nibble writes. A full-track DecodeTrack scan can still "find"
+            // address/data fields in self-sync gaps after unrelated partial writes;
+            // committing those false positives wiped sectors whose nibble regions were
+            // never touched (the ProDOS boot-sector corruption on first flush).
+            Span<byte> originalNibbles = stackalloc byte[GcrEncoder.StandardTrackLength];
+            GcrEncoder.EncodeTrack(this.parent.Volume, track, trackSectors, originalNibbles);
+
+            Span<byte> decodedSectors = stackalloc byte[SectorSkew.SectorsPerTrack * GcrEncoder.BytesPerSector];
+            var decoded = GcrEncoder.DecodeTrack(source, decodedSectors);
+
+            // Must match GcrEncoder.EncodeTrack sector stride: 48 gap + 14 address + 5 gap + 349 data.
+            const int sectorStride = 416;
+            Span<byte> reencodedNibbles = stackalloc byte[GcrEncoder.StandardTrackLength];
+            GcrEncoder.EncodeTrack(this.parent.Volume, track, decodedSectors, reencodedNibbles);
+
             for (var phys = 0; phys < SectorSkew.SectorsPerTrack; phys++)
             {
-                if ((decoded & (1 << phys)) != 0)
+                if ((decoded & (1 << phys)) == 0)
                 {
-                    this.parent.WriteSectorPhysical(track, phys, trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector));
+                    continue;
                 }
+
+                var sectorStart = phys * sectorStride;
+                var sourceSlot = source.Slice(sectorStart, sectorStride);
+                if (sourceSlot.SequenceEqual(originalNibbles.Slice(sectorStart, sectorStride)))
+                {
+                    continue;
+                }
+
+                // Partial nibble writes can leave a slot dirty but not decodable into a
+                // coherent sector; reject decode results that do not re-nibblise back to
+                // what the head actually wrote.
+                if (!sourceSlot.SequenceEqual(reencodedNibbles.Slice(sectorStart, sectorStride)))
+                {
+                    continue;
+                }
+
+                var decodedSector = decodedSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector);
+                var originalSector = trackSectors.Slice(phys * GcrEncoder.BytesPerSector, GcrEncoder.BytesPerSector);
+                if (decodedSector.SequenceEqual(originalSector))
+                {
+                    continue;
+                }
+
+                this.parent.WriteSectorPhysical(track, phys, decodedSector);
             }
         }
 
