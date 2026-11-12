@@ -10,7 +10,7 @@
   <!-- Analyzers applied to every project (GlobalPackageReference implies PrivateAssets="all"). -->
   <ItemGroup>
     <GlobalPackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" />
-    <GlobalPackageReference Include="StyleCop.Analyzers.Unstable" Version="1.2.0.556" />
+    <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.3.177-beta" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Autofac" Version="9.3.4" />

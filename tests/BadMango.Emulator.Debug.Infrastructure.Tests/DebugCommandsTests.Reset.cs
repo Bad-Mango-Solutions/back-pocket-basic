@@ -4,14 +4,18 @@
 
 namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
+using BadMango.Emulator.Bus;
 using BadMango.Emulator.Bus.Interfaces;
+using BadMango.Emulator.Core;
 using BadMango.Emulator.Core.Interfaces.Cpu;
+using BadMango.Emulator.Devices;
+using BadMango.Emulator.Devices.Interfaces;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="ResetCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>
@@ -90,6 +94,58 @@ public partial class DebugCommandsTests
             mockMachine.Verify(m => m.Reset(true), Times.Once);
             mockCpu.Verify(c => c.Reset(), Times.Never);
             Assert.That(outputWriter.ToString(), Does.Contain("Hard reset completed."));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that reset can hold Open Apple / Closed Apple through the reset pulse.
+    /// </summary>
+    [Test]
+    public void ResetCommand_HoldsAppleKeysThroughReset_WhenRequested()
+    {
+        var mockKeyboard = new Mock<IKeyboardDevice>();
+        mockKeyboard.SetupGet(k => k.Modifiers).Returns(KeyboardModifiers.None);
+
+        var mockScheduler = new Mock<IScheduler>();
+        mockScheduler.SetupGet(s => s.Now).Returns(Cycle.Zero);
+
+        var mockMachine = new Mock<IMachine>();
+        mockMachine.SetupGet(m => m.Cpu).Returns(cpu);
+        mockMachine.SetupGet(m => m.Bus).Returns(bus);
+        mockMachine.SetupGet(m => m.Scheduler).Returns(mockScheduler.Object);
+        mockMachine.SetupGet(m => m.ClockSpeedHz).Returns(1_023_000);
+        mockMachine.Setup(m => m.GetComponent<IKeyboardDevice>()).Returns(mockKeyboard.Object);
+        mockMachine.Setup(m => m.PulseReset(It.IsAny<Action>(), It.IsAny<Action>(), It.IsAny<bool>()))
+            .Callback<Action, Action, bool>((assertLine, releaseLine, hard) =>
+            {
+                assertLine();
+                releaseLine();
+            });
+
+        debugContext.AttachMachine(mockMachine.Object);
+
+        var command = new ResetCommand();
+        var result = command.Execute(debugContext, ["--open-apple", "--diag"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            mockKeyboard.Verify(
+                k => k.SetModifiers(KeyboardModifiers.Control | KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple),
+                Times.Once);
+            mockKeyboard.Verify(
+                k => k.SetModifiers(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple),
+                Times.Once);
+            mockKeyboard.Verify(k => k.PressResetKey(), Times.Once);
+            mockKeyboard.Verify(k => k.ReleaseResetKey(), Times.Once);
+            mockScheduler.Verify(
+                s => s.ScheduleAt(
+                    It.IsAny<Cycle>(),
+                    ScheduledEventKind.DeferredWork,
+                    It.IsAny<int>(),
+                    It.IsAny<Action<IEventContext>>(),
+                    It.IsAny<object?>()),
+                Times.Once);
         });
     }
 }

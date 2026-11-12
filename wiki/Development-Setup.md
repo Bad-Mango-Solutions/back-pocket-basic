@@ -10,12 +10,20 @@ This guide covers everything you need to start developing on the project. For ge
 
 ### Required Software
 
-1. **[.NET 10.0 SDK](https://dotnet.microsoft.com/download)** or later
-2. **Git** - [Download](https://git-scm.com/downloads)
-3. **Code Editor** (choose one):
-   - [Visual Studio 2022](https://visualstudio.microsoft.com/) (Windows/Mac)
+1. **[.NET 10.0 runtime](https://dotnet.microsoft.com/download/dotnet/10.0)** for running the emulator
+2. **[.NET 11.0 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)** for the C# 15 compiler (pinned by `global.json`)
+3. **Git** - [Download](https://git-scm.com/downloads)
+4. **Code Editor** (choose one):
+   - [Visual Studio 2026](https://visualstudio.microsoft.com/) or the latest Visual Studio / C# Dev Kit (recommended)
    - [Visual Studio Code](https://code.visualstudio.com/) (All platforms)
    - [JetBrains Rider](https://www.jetbrains.com/rider/) (All platforms)
+
+### C# 15 Toolchain Notes
+
+- The repository pins the .NET 11 SDK at `11.0.100` in `global.json` with `rollForward: latestPatch`.
+- All projects keep `TargetFramework` set to `net10.0`; the .NET 11 SDK is used to compile newer C# language features while the shipped app continues to run on the .NET 10 LTS runtime.
+- Prefer `union` and `closed` only for internal result/state types (for example debugger stop reasons, halt reasons, or bus-fault classification). They are not for JSON DTOs or for extensible CPU/device hierarchies.
+- `closed` forbids derivation outside the declaring assembly, so avoid using it for future-proof CPU, bus-target, or device models where extension is part of the design.
 
 ### Optional Tools
 

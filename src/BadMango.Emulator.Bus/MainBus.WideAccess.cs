@@ -4,9 +4,9 @@
 
 namespace BadMango.Emulator.Bus;
 
-/// <summary>
+/// <content>
 /// Wide access (16/32-bit) operations and decomposition helpers for the main memory bus.
-/// </summary>
+/// </content>
 public sealed partial class MainBus
 {
     /// <inheritdoc />

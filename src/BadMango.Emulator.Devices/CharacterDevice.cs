@@ -47,7 +47,7 @@ using Interfaces;
 /// </list>
 /// </remarks>
 [DeviceType("character")]
-public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGlyphHotLoader
+public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGlyphHotLoader, IResetReceiver
 {
     /// <summary>
     /// Character ROM size: 4KB for two complete character sets.
@@ -161,6 +161,22 @@ public sealed class CharacterDevice : ICharacterDevice, ISoftSwitchProvider, IGl
         glyphReadEnabled = false;
         glyphWriteEnabled = false;
         characterRomChangePending = false;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// ALTCHRSET is an IOU switch, and the IOU is reset by RESET' (Sather, <i>Understanding the
+    /// Apple IIe</i>, Table 7.1, p. 7-5: ALTCHRSET off after RESET'). The glyph RAM and flash
+    /// controls are emulator extensions with no hardware RESET behavior, so they are left alone.
+    /// </remarks>
+    public void OnResetAsserted(Core.Cycle cycle)
+    {
+        altCharSet = false;
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Core.Cycle cycle)
+    {
     }
 
     /// <inheritdoc />

@@ -7,9 +7,9 @@ namespace BadMango.Emulator.Emulation.Cpu;
 
 using Core.Cpu;
 
-/// <summary>
+/// <content>
 /// Flag manipulation instructions (CLC, SEC, CLI, SEI, CLD, SED, CLV).
-/// </summary>
+/// </content>
 public static partial class Instructions
 {
     /// <summary>

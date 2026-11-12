@@ -43,87 +43,87 @@ public interface IBusTarget
     /// <summary>
     /// Reads a single byte from the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="access">The access context describing the operation.</param>
     /// <returns>The byte value at the specified address.</returns>
-    byte Read8(Addr physicalAddress, in BusAccess access);
+    byte Read8(Addr offset, in BusAccess access);
 
     /// <summary>
     /// Writes a single byte to the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="value">The byte value to write.</param>
     /// <param name="access">The access context describing the operation.</param>
-    void Write8(Addr physicalAddress, byte value, in BusAccess access);
+    void Write8(Addr offset, byte value, in BusAccess access);
 
     /// <summary>
     /// Reads a 16-bit word from the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="access">The access context describing the operation.</param>
     /// <returns>The 16-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// The default implementation decomposes the read into two byte operations.
     /// Targets that support atomic wide access can override this for better performance.
     /// </remarks>
-    Word Read16(Addr physicalAddress, in BusAccess access)
+    Word Read16(Addr offset, in BusAccess access)
     {
-        byte low = Read8(physicalAddress, access);
-        byte high = Read8(physicalAddress + 1, access.WithAddressOffset(1));
+        byte low = Read8(offset, access);
+        byte high = Read8(offset + 1, access.WithAddressOffset(1));
         return (Word)(low | (high << 8));
     }
 
     /// <summary>
     /// Writes a 16-bit word to the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="value">The 16-bit value to write (little-endian).</param>
     /// <param name="access">The access context describing the operation.</param>
     /// <remarks>
     /// The default implementation decomposes the write into two byte operations.
     /// Targets that support atomic wide access can override this for better performance.
     /// </remarks>
-    void Write16(Addr physicalAddress, Word value, in BusAccess access)
+    void Write16(Addr offset, Word value, in BusAccess access)
     {
-        Write8(physicalAddress, (byte)value, access);
-        Write8(physicalAddress + 1, (byte)(value >> 8), access.WithAddressOffset(1));
+        Write8(offset, (byte)value, access);
+        Write8(offset + 1, (byte)(value >> 8), access.WithAddressOffset(1));
     }
 
     /// <summary>
     /// Reads a 32-bit double word from the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="access">The access context describing the operation.</param>
     /// <returns>The 32-bit value at the specified address (little-endian).</returns>
     /// <remarks>
     /// The default implementation decomposes the read into four byte operations.
     /// Targets that support atomic wide access can override this for better performance.
     /// </remarks>
-    DWord Read32(Addr physicalAddress, in BusAccess access)
+    DWord Read32(Addr offset, in BusAccess access)
     {
-        byte b0 = Read8(physicalAddress, access);
-        byte b1 = Read8(physicalAddress + 1, access.WithAddressOffset(1));
-        byte b2 = Read8(physicalAddress + 2, access.WithAddressOffset(2));
-        byte b3 = Read8(physicalAddress + 3, access.WithAddressOffset(3));
+        byte b0 = Read8(offset, access);
+        byte b1 = Read8(offset + 1, access.WithAddressOffset(1));
+        byte b2 = Read8(offset + 2, access.WithAddressOffset(2));
+        byte b3 = Read8(offset + 3, access.WithAddressOffset(3));
         return (DWord)(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24));
     }
 
     /// <summary>
     /// Writes a 32-bit double word to the specified physical address.
     /// </summary>
-    /// <param name="physicalAddress">The physical address within the target's address space.</param>
+    /// <param name="offset">The physical address within the target's address space.</param>
     /// <param name="value">The 32-bit value to write (little-endian).</param>
     /// <param name="access">The access context describing the operation.</param>
     /// <remarks>
     /// The default implementation decomposes the write into four byte operations.
     /// Targets that support atomic wide access can override this for better performance.
     /// </remarks>
-    void Write32(Addr physicalAddress, DWord value, in BusAccess access)
+    void Write32(Addr offset, DWord value, in BusAccess access)
     {
-        Write8(physicalAddress, (byte)value, access);
-        Write8(physicalAddress + 1, (byte)(value >> 8), access.WithAddressOffset(1));
-        Write8(physicalAddress + 2, (byte)(value >> 16), access.WithAddressOffset(2));
-        Write8(physicalAddress + 3, (byte)(value >> 24), access.WithAddressOffset(3));
+        Write8(offset, (byte)value, access);
+        Write8(offset + 1, (byte)(value >> 8), access.WithAddressOffset(1));
+        Write8(offset + 2, (byte)(value >> 16), access.WithAddressOffset(2));
+        Write8(offset + 3, (byte)(value >> 24), access.WithAddressOffset(3));
     }
 
     /// <summary>

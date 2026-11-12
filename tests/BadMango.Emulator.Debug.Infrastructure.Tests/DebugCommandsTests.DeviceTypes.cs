@@ -6,9 +6,9 @@ namespace BadMango.Emulator.Debug.Infrastructure.Tests;
 
 using BadMango.Emulator.Devices;
 
-/// <summary>
+/// <content>
 /// Unit tests for <see cref="DeviceTypesCommand"/>.
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>

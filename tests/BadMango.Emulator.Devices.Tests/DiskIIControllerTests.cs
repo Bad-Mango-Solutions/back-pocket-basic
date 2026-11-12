@@ -142,6 +142,53 @@ public class DiskIIControllerTests
     }
 
     /// <summary>
+    /// Verifies the RESET' response (Sather, <i>Understanding the Apple IIe</i>, Table 9.1
+    /// note 1: "RESET' forces all switches off"): phases off, drive off, drive 1 selected and
+    /// Q6/Q7 in read mode, while the head position, which is mechanical, stays where it was.
+    /// </summary>
+    [Test]
+    public void OnResetAsserted_ForcesAllSwitchesOffButKeepsHeadPosition()
+    {
+        var (controller, dispatcher, ctx, scheduler, media) = BuildHarness();
+        controller.Mount(0, media.Object);
+        controller.Mount(1, media.Object);
+
+        _ = dispatcher.Read(0xE3, in ctx); // phase 1 on
+        _ = dispatcher.Read(0xE5, in ctx); // phase 2 on: drive 1's head steps in
+        _ = dispatcher.Read(0xE9, in ctx); // motor on
+        _ = dispatcher.Read(0xED, in ctx); // Q6 high
+        _ = dispatcher.Read(0xEF, in ctx); // Q7 high (write)
+        _ = dispatcher.Read(0xEB, in ctx); // select drive 2
+        int quarterTrack1 = controller.GetDriveSnapshot(0).QuarterTrack;
+        Assume.That(quarterTrack1, Is.GreaterThan(0));
+        Assume.That(controller.GetDriveSnapshot(0).PhaseLatch, Is.Not.Zero);
+        Assume.That(controller.IsMotorOn && controller.IsQ6High && controller.IsQ7High && controller.GetDriveSnapshot(1).Selected, Is.True);
+
+        // The machine flushes the scheduler before delivering RESET to devices.
+        scheduler.FlushPending();
+        controller.OnResetAsserted(scheduler.Now);
+
+        var drive1 = controller.GetDriveSnapshot(0);
+        var drive2 = controller.GetDriveSnapshot(1);
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.IsMotorOn, Is.False, "Q4: drives off");
+            Assert.That(drive1.Selected, Is.True, "Q5: drive 1 selected");
+            Assert.That(drive2.Selected, Is.False);
+            Assert.That(controller.IsQ6High, Is.False, "Q6 off");
+            Assert.That(controller.IsQ7High, Is.False, "Q7 off (read)");
+            Assert.That(drive1.PhaseLatch, Is.Zero, "Q0-Q3: phases off");
+            Assert.That(drive2.PhaseLatch, Is.Zero, "Q0-Q3: phases off");
+            Assert.That(drive1.QuarterTrack, Is.EqualTo(quarterTrack1), "RESET does not move the head");
+            Assert.That(drive1.HasMedia && drive2.HasMedia, Is.True, "RESET does not eject disks");
+        });
+
+        // Turning the motor back on must re-arm the drift event the flush removed.
+        _ = dispatcher.Read(0xE9, in ctx);
+        Assert.That(scheduler.PendingEventCount, Is.EqualTo(1), "The drift event must be rescheduled after a RESET flush");
+    }
+
+    /// <summary>
     /// Verifies that a reverse phase sequence steps the head backward and clamps at 0 (FR-D4).
     /// </summary>
     [Test]

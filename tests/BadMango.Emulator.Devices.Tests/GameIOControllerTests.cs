@@ -104,6 +104,62 @@ public class GameIOControllerTests
     }
 
     /// <summary>
+    /// Verifies that PB0/PB1/PB2 include matching keyboard modifiers when present.
+    /// </summary>
+    [Test]
+    public void ReadButton_WithKeyboardModifiers_ReturnsPressedForMappedButtons()
+    {
+        var keyboard = new Mock<IKeyboardDevice>();
+        keyboard.SetupGet(k => k.Modifiers).Returns(KeyboardModifiers.OpenApple | KeyboardModifiers.ClosedApple | KeyboardModifiers.Shift);
+
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
+        mockContext.Setup(c => c.GetComponent<IKeyboardDevice>()).Returns(keyboard.Object);
+
+        controller.Initialize(mockContext.Object);
+        var context = CreateTestContext(cycle: 0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "PB0 should reflect Open Apple");
+            Assert.That(dispatcher.Read(0x62, in context), Is.EqualTo(0x80), "PB1 should reflect Closed Apple");
+            Assert.That(dispatcher.Read(0x63, in context), Is.EqualTo(0x80), "PB2 should reflect Shift");
+        });
+    }
+
+    /// <summary>
+    /// Verifies that pushbutton reads are the OR of joystick buttons and keyboard modifiers.
+    /// </summary>
+    [Test]
+    public void ReadButton_JoystickAndKeyboardInputs_AreOrCombined()
+    {
+        var keyboard = new Mock<IKeyboardDevice>();
+        var modifiers = KeyboardModifiers.None;
+        keyboard.SetupGet(k => k.Modifiers).Returns(() => modifiers);
+
+        var mockContext = new Mock<IEventContext>();
+        mockContext.Setup(c => c.Scheduler).Returns(Mock.Of<IScheduler>());
+        mockContext.Setup(c => c.GetComponent<IKeyboardDevice>()).Returns(keyboard.Object);
+
+        controller.Initialize(mockContext.Object);
+        var context = CreateTestContext(cycle: 0);
+
+        controller.SetButton(0, true);
+        Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "Joystick button should set PB0");
+
+        controller.SetButton(0, false);
+        modifiers = KeyboardModifiers.OpenApple;
+        Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "Open Apple should set PB0");
+
+        controller.SetButton(0, true);
+        modifiers = KeyboardModifiers.None;
+        Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x80), "Releasing one source should keep PB0 asserted");
+
+        controller.SetButton(0, false);
+        Assert.That(dispatcher.Read(0x61, in context), Is.EqualTo(0x00), "PB0 should clear when both sources release");
+    }
+
+    /// <summary>
     /// Verifies that SetPaddle sets paddle position.
     /// </summary>
     [Test]
@@ -191,20 +247,40 @@ public class GameIOControllerTests
     }
 
     /// <summary>
-    /// Verifies that Reset clears all state.
+    /// Verifies that Reset preserves held button state while clearing transient paddle timing.
     /// </summary>
     [Test]
-    public void Reset_ClearsAllState()
+    public void Reset_PreservesHeldButtonsButClearsTransientPaddleState()
     {
         controller.SetButton(0, true);
+        controller.SetButton(1, true);
         controller.SetPaddle(0, 128);
 
         controller.Reset();
 
         Assert.Multiple(() =>
         {
-            Assert.That(controller.Buttons[0], Is.False);
+            Assert.That(controller.Buttons[0], Is.True);
+            Assert.That(controller.Buttons[1], Is.True);
             Assert.That(controller.Paddles[0], Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    /// Verifies that RESET signal assert preserves held button and paddle position state.
+    /// </summary>
+    [Test]
+    public void OnResetAsserted_PreservesButtonsAndPaddles()
+    {
+        controller.SetButton(0, true);
+        controller.SetPaddle(0, 128);
+
+        controller.OnResetAsserted(0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(controller.Buttons[0], Is.True);
+            Assert.That(controller.Paddles[0], Is.EqualTo(128));
         });
     }
 

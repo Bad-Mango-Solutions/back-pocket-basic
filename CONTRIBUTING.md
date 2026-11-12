@@ -81,6 +81,10 @@ This project is committed to providing a welcoming and inclusive environment for
    dotnet test BackPocketEmulator.slnx
    ```
 
+### Dependency Management
+
+Package versions are centralized in `Directory.Packages.props` using NuGet Central Package Management (CPM). Dependabot watches the repo weekly for `nuget` and `github-actions` updates, grouping minor and patch bumps to keep PRs small while leaving major-version updates separate. We intentionally stay on the .NET 10 LTS line, so major updates for packages whose versions track the .NET release line (for example `Microsoft.Extensions.*` and `Microsoft.CodeAnalysis.NetAnalyzers`) are ignored until the project deliberately moves to a newer LTS target.
+
 ## Project Structure
 
 `BackPocketEmulator.slnx` is the solution (.NET 10, NUnit, StyleCop). On disk, every project is a direct child of `src/` or `tests/`. The solution also groups those projects into virtual folders for the IDE (`/src/emulator/`, `/src/emulator/infrastructure/`, `/src/emulator/ui/`, and `/tests/`).

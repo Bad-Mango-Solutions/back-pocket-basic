@@ -10,9 +10,9 @@ using BadMango.Emulator.Core.Configuration;
 
 using Moq;
 
-/// <summary>
+/// <content>
 /// Unit tests for lifecycle commands (Boot, Pause, Resume, Halt).
-/// </summary>
+/// </content>
 public partial class DebugCommandsTests
 {
     /// <summary>

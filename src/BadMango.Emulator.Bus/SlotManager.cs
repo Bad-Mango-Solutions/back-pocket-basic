@@ -6,6 +6,8 @@ namespace BadMango.Emulator.Bus;
 
 using System.Collections.ObjectModel;
 
+using BadMango.Emulator.Core;
+
 using Interfaces;
 
 /// <summary>
@@ -26,7 +28,7 @@ using Interfaces;
 /// Reading $CFFF removes the layer, revealing the default ROM again.
 /// </para>
 /// </remarks>
-public sealed class SlotManager : ISlotManager
+public sealed class SlotManager : ISlotManager, IResetReceiver
 {
     /// <summary>
     /// The minimum valid peripheral slot number.
@@ -262,6 +264,53 @@ public sealed class SlotManager : ISlotManager
         for (int i = 0; i < SlotCount; i++)
         {
             slots[i]?.Reset();
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// On the Apple IIe the RESET line reaches every peripheral slot on pin 31, and each card
+    /// decides how to respond (Sather, <i>Understanding the Apple IIe</i>, p. 4-14: "A peripheral
+    /// card can cause RESET' to drop, respond to RESET', or ignore RESET'"). Cards that implement
+    /// <see cref="IResetReceiver"/> get the signal itself; other cards get their
+    /// <see cref="IPeripheral.Reset"/> as the closest equivalent response. The machine relies on
+    /// the slot manager for this delivery and does not notify installed cards directly, so each
+    /// card hears about a RESET exactly once.
+    /// </para>
+    /// <para>
+    /// The <c>$C800</c> expansion ROM selection (INTC8ROM) is cleared here as well, so the
+    /// default expansion ROM is visible again.
+    /// </para>
+    /// </remarks>
+    public void OnResetAsserted(Cycle cycle)
+    {
+        // Deselect any active expansion ROM (revealing default)
+        DeselectExpansionSlot();
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            switch (slots[i])
+            {
+                case IResetReceiver receiver:
+                    receiver.OnResetAsserted(cycle);
+                    break;
+                case { } card:
+                    card.Reset();
+                    break;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnResetReleased(Cycle cycle)
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (slots[i] is IResetReceiver receiver)
+            {
+                receiver.OnResetReleased(cycle);
+            }
         }
     }
 
