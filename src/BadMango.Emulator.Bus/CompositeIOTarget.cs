@@ -98,6 +98,12 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         base.Capabilities | TargetCaps.HasSideEffects | TargetCaps.TimingSensitive;
 
     /// <inheritdoc />
+    public bool IsIntCxRomEnabled => intCxRomEnabled;
+
+    /// <inheritdoc />
+    public bool IsIntC3RomEnabled => intC3RomEnabled;
+
+    /// <inheritdoc />
     public override byte Read8(Addr offset, in BusAccess access)
     {
         Word maskedOffset = (Word)(offset & 0x0FFF);
@@ -200,18 +206,6 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         // No initialization required for scheduled events.
         // This device doesn't schedule any recurring events.
     }
-
-    /// <summary>
-    /// Sets the INTCXROM state (internal ROM overlay for $x100-$xFFF).
-    /// </summary>
-    /// <param name="enabled">
-    /// <see langword="true"/> to enable internal ROM overlay for all slot ROMs;
-    /// <see langword="false"/> to allow slot ROMs to be visible.
-    /// </param>
-    public bool IsIntCxRomEnabled => intCxRomEnabled;
-
-    /// <inheritdoc />
-    public bool IsIntC3RomEnabled => intC3RomEnabled;
 
     /// <summary>
     /// Sets the INTCXROM state (internal ROM overlay for $x100-$xFFF).
