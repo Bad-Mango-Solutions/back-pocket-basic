@@ -98,6 +98,12 @@ public sealed class CompositeIOTarget : CompositeTargetBase, IScheduledDevice, I
         base.Capabilities | TargetCaps.HasSideEffects | TargetCaps.TimingSensitive;
 
     /// <inheritdoc />
+    public bool IsIntCxRomEnabled => intCxRomEnabled;
+
+    /// <inheritdoc />
+    public bool IsIntC3RomEnabled => intC3RomEnabled;
+
+    /// <inheritdoc />
     public override byte Read8(Addr offset, in BusAccess access)
     {
         Word maskedOffset = (Word)(offset & 0x0FFF);
